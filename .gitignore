@@ -1,0 +1,21 @@
+# 秘密情報
+.env
+.env.*
+!.env.example
+*.pem
+
+# 生成物とモデル（採用したものだけ docs/assets/ に小さくして置く）
+outputs/
+*.safetensors
+*.gguf
+*.ckpt
+*.pth
+
+# 実行時のデータ
+.venv/
+__pycache__/
+node_modules/
+*.log
+
+# Claude Code の個人設定（共有する設定は .claude/settings.json）
+.claude/settings.local.json
