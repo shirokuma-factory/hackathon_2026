@@ -13,3 +13,7 @@
 - 確認: uv 0.12.7、Python 3.13、gh ログイン済み、RTX 5080（16GB）を認識。
 - ComfyUI が起動直後に `0xC0000005` で落ちていた。原因は chardet のネイティブ拡張。5.2.0 に入れ替えて解決し、8188 番で応答するようになった（詳細は LOCAL_AI.md の「トラブルと対処」）。
 - 次にすること: Claude Code で `/mcp` を開き `local-ai` の接続を確かめる。テーマと課題を決める。
+
+## コミット（自動記録）
+
+- 2026-11-02 15:22 `8a82719` Record local environment and ComfyUI chardet crash fix
