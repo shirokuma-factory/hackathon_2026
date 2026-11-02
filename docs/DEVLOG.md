@@ -13,6 +13,8 @@
 - 確認: uv 0.12.7、Python 3.13、gh ログイン済み、RTX 5080（16GB）を認識。
 - ComfyUI が起動直後に `0xC0000005` で落ちていた。原因は chardet のネイティブ拡張。5.2.0 に入れ替えて解決し、8188 番で応答するようになった（詳細は LOCAL_AI.md の「トラブルと対処」）。
 - 次にすること: Claude Code で `/mcp` を開き `local-ai` の接続を確かめる。テーマと課題を決める。
+- local-ai MCP の接続確認: ComfyUI は応答（RTX 5080、VRAM 空き 15.6GB、キュー 0）。`workflows/comfyui/` はまだ空。Ollama は未導入で 11434 番が拒否。代わりに LM Studio（`lms`）が入っていて、gemma-4-12b-qat / gemma-4-26b-a4b-qat / qwen3.8-27b / nomic-embed が手元にある。
+- 決定: ローカル LLM は当面使わず、ComfyUI だけで進める（作成者の判断）。Ollama の導入と LM Studio への切り替えは見送り。
 
 ## コミット（自動記録）
 
