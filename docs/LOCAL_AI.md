@@ -9,8 +9,9 @@ Claude Code が判断と設計を担当し、ローカル GPU 上のモデルが
 | GPU | NVIDIA GeForce RTX 5080（VRAM 16GB） |
 | RAM | 64GB |
 | OS | Windows 11 |
-| ComfyUI | Comfy Desktop（127.0.0.1:8188）、バージョン: |
-| torch / CUDA | （`python -c "import torch;print(torch.__version__)"` の結果） |
+| ComfyUI | Comfy Desktop（127.0.0.1:8188）、ComfyUI 0.43.2、フロントエンド 1.57.4 |
+| Python（ComfyUI） | 3.13.12 |
+| torch / CUDA | 2.12.1+cu130 |
 | Ollama | バージョン: |
 
 ## 役割分担
@@ -68,3 +69,16 @@ API 形式の JSON は `workflows/comfyui/` にあります。
 - RTX 50 系では、CUDA 版のホイールと torch のタグを厳密に合わせる。
 - 学習やほかの GPU 作業の前に `comfy_free` で VRAM を空ける。
 - Hugging Face からの大容量ダウンロードは止まりやすい。`curl -C -` で再開する。
+
+## トラブルと対処
+
+### 2026-11-03 ComfyUI が起動直後に落ちる（chardet のネイティブ拡張）
+
+- 症状: Comfy Desktop は起動するが、サーバーが `0xC0000005`（access violation）で終了し、8188 番が開かない。
+- 原因: スタックトレースは `comfyui_manager` → `requests` → `chardet\detector.py` の 23 行目。chardet に同梱されたコンパイル済み拡張の読み込みで落ちていた。GPU・モデル・ComfyUI 本体の問題ではない。
+- 対処: ComfyUI の venv の chardet を、ネイティブ拡張を含まない 5.2.0 に入れ替えた。
+  ```powershell
+  uv pip install --python <ComfyUI の .venv>\Scripts\python.exe "chardet==5.2.0"
+  ```
+- 確認: 再起動後に `/system_stats` が応答し、RTX 5080 を認識（VRAM 空き 15.6GB）。
+- 再発の条件: ComfyUI Manager や Comfy Desktop の更新で chardet が新しい版に戻ると再発しうる。同じ症状が出たら同じ対処をする。
