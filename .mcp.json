@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "local-ai": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--no-project", "--with", "mcp>=1.2,<2", "python", "tools/local_ai_mcp/server.py"],
+      "env": {
+        "COMFYUI_URL": "http://127.0.0.1:8188",
+        "OLLAMA_URL": "http://127.0.0.1:11434"
+      }
+    }
+  }
+}

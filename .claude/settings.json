@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "mcp__local-ai__comfy_status",
+      "mcp__local-ai__comfy_list_workflows",
+      "mcp__local-ai__ollama_list"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_secrets.py\"" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/devlog.py\"" }
+        ]
+      },
+      {
+        "matcher": "mcp__local-ai__comfy_run_workflow|mcp__local-ai__ollama_generate",
+        "hooks": [
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/log_generation.py\"" }
+        ]
+      }
+    ]
+  }
+}
