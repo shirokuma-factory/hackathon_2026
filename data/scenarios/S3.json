@@ -1,0 +1,24 @@
+{
+  "id": "S3",
+  "name": "EC の店",
+  "label": "想定の荷主",
+  "assumed_shipper": true,
+  "assumption_note": "発送者・受取人の種別、集荷・配達、届け先の数は仕様 §9 に記載がないため、想定として置いた。",
+  "shipment": {
+    "items": [
+      {
+        "count": 25,
+        "length_cm": 35,
+        "width_cm": 25,
+        "height_cm": 20,
+        "weight_kg": 10
+      }
+    ],
+    "route": "kanto_kansai",
+    "destinations": 1,
+    "sender_type": "法人",
+    "receiver_type": "法人",
+    "pickup": "集荷",
+    "delivery": "配達"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "carrier": "国土交通省",
+  "service": "標準的な運賃（関東運輸局、距離制）",
+  "source_url": "https://www.mlit.go.jp/report/press/content/001732088.pdf",
+  "applies_from": null,
+  "checked_on": "2026-11-03",
+  "tax": "税抜",
+  "scope_note": "国の目安であり、実際の運賃は運送会社ごとに違う。2t・4t・10t の距離制だけを持つ。",
+  "origin_region": "関東",
+  "base_km": 200,
+  "step_km": 20,
+  "vehicles": [
+    {"class": "2t", "max_kg": 2000, "base_fare": 52300, "add_per_step": 3830},
+    {"class": "4t", "max_kg": 4000, "base_fare": 60360, "add_per_step": 4380},
+    {"class": "10t", "max_kg": 10000, "base_fare": 80110, "add_per_step": 5850}
+  ],
+  "verified_by": "調査担当サブエージェントが一次資料で照合（2026-11-03）"
+}
