@@ -48,7 +48,7 @@ def test_app_loads_without_exception():
     at = new_app()
     assert not at.exception
     assert "公表運賃からの目安です" in " ".join(m.value for m in at.info)
-    assert "スポット出荷 比較・依頼" in at.title[0].value
+    assert "Backfull" in at.title[0].value
 
 
 def test_s1_confirm_shows_expected_amounts():

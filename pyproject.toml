@@ -1,7 +1,7 @@
 [project]
 name = "shipcompare"
 version = "0.1.0"
-description = "中小荷主のスポット出荷 比較・依頼ツール"
+description = "Backfull: 中小荷主のスポット出荷 比較・依頼ツール"
 requires-python = ">=3.13"
 dependencies = [
     "streamlit>=1.40",

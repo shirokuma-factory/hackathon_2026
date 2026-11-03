@@ -316,7 +316,7 @@ class Page:
 
 def fresh(p: Page, scenario: str) -> None:
     p.goto(BASE)
-    p.wait_text("スポット出荷 比較・依頼", 60)
+    p.wait_text("Backfull", 60)
     p.hide_chrome()
     p.idle()
     p.select("場面を読み込む", scenario)
@@ -451,7 +451,7 @@ def scene_s5_restored(p: Page) -> str:
         with open(tmp, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
         p.goto(BASE)
-        p.wait_text("スポット出荷 比較・依頼", 60)
+        p.wait_text("Backfull", 60)
         p.hide_chrome()
         p.idle()
         p.tab("5 判断と保存")
@@ -484,7 +484,7 @@ def scene_request_contacts(p: Page) -> str:
 def map_open(p: Page) -> None:
     """地図タブ（最初のタブ）を開き、OSM のタイルと塗り分けが描かれるまで待つ。"""
     p.goto(BASE)
-    p.wait_text("スポット出荷 比較・依頼", 60)
+    p.wait_text("Backfull", 60)
     p.hide_chrome()
     p.idle()
     p.need("© OpenStreetMap contributors", "国土数値情報（行政区域データ）（国土交通省）を加工して作成", timeout=60)
