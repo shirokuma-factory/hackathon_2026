@@ -209,12 +209,22 @@ def breakdown_frame(evals) -> pd.DataFrame:
 
 def breakdown_chart_frame(complete_evals) -> pd.DataFrame:
     """積み上げ棒に使う行。完全な回答の「金額」行だけで、不明を 0 円にしない。"""
+    keys = list(COST_KEYS)
     recs = []
     for ev in complete_evals:
         label = f"{carrier_label(ev.quote)} {ev.quote.product}".strip()
         for k, v in line_amounts_ex_tax(ev.quote).items():
-            recs.append({"回答": label, "項目": COST_KEYS[k], "金額": v, "合計": ev.total_ex_tax})
-    return pd.DataFrame(recs, columns=["回答", "項目", "金額", "合計"])
+            recs.append({"回答": label, "項目": COST_KEYS[k], "順": keys.index(k), "金額": v, "合計": ev.total_ex_tax})
+    return pd.DataFrame(recs, columns=["回答", "項目", "順", "金額", "合計"])
+
+
+# 内訳の色。赤は表で「不明」に使っているので使わない
+BREAKDOWN_COLORS = ["#1f4e79", "#2e75b6", "#9dc3e6", "#548235", "#a9d18e", "#7f6000", "#bfbfbf"]
+
+
+def breakdown_chart_height(n_rows: int) -> int:
+    """棒1本あたり 64px。st.altair_chart には凡例と軸の分を足して渡す。"""
+    return max(160, 64 * n_rows)
 
 
 def breakdown_chart(df: pd.DataFrame) -> alt.Chart:
@@ -224,12 +234,13 @@ def breakdown_chart(df: pd.DataFrame) -> alt.Chart:
                 axis=alt.Axis(labelFontSize=15, labelLimit=360)),
         x=alt.X("金額:Q", stack="zero", title="費用の内訳（税抜・円）",
                 axis=alt.Axis(format=",d", labelFontSize=13, titleFontSize=14)),
-        color=alt.Color("項目:N", sort=list(COST_KEYS.values()),
+        color=alt.Color("項目:N", scale=alt.Scale(domain=list(COST_KEYS.values()), range=BREAKDOWN_COLORS),
                         legend=alt.Legend(title="項目", orient="bottom", labelFontSize=14, titleFontSize=14)),
+        order=alt.Order("順:Q"),
         tooltip=["回答", "項目", alt.Tooltip("金額:Q", format=",d")],
     ).properties(
-        title=alt.TitleParams("見積回答の内訳（完全な回答だけ）", fontSize=20, anchor="start"),
-        height=chart_height(df["回答"].nunique()),
+        title=alt.TitleParams("見積回答の内訳（完全な回答だけ）", fontSize=16, anchor="start"),
+        height=breakdown_chart_height(df["回答"].nunique()),
     )
 
 
@@ -687,7 +698,7 @@ def section_quotes(case: Case) -> None:
         cdf = breakdown_chart_frame(complete)
         if not cdf.empty:
             st.altair_chart(breakdown_chart(cdf), width="stretch",
-                            height=chart_height(cdf["回答"].nunique()) + 110)
+                            height=breakdown_chart_height(cdf["回答"].nunique()) + 200)
     if incomplete:
         st.caption("不完全な回答（不明の項目がある）はグラフに入れません。")
 
