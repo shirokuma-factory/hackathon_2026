@@ -20,6 +20,12 @@ API（POST は Content-Type: application/json の JSON。入力の誤りは 400 
     POST /api/confirm          {case, shipment, scenario_id?}  Case.confirm → {case, changed}
     POST /api/add_quote        {case, quote}                   id と版を付けて追加 → {case, quote_id}
     POST /api/add_demo_quotes  {case, today?}                  場面の架空の回答を追加 → {case, added}
+  B 空きを探す・つなぐ（SPEC §16.2、架空のデモ。状態はメモリで、再起動か reset で初期に戻る）:
+    GET  /api/b/trips                   架空の運送会社と便（いまの重さの余りと仮予約つき）
+    POST /api/b/match   {shipment, dest_code, category?, in_container?, fragile?, is_box?}  便ごとの合否と理由
+    POST /api/b/hold    {trip_id, shipment, dest_code, ..., hold_minutes?}   期限付きの仮予約（余りを減らす）
+    POST /api/b/decide  {hold_id, decision: accept|decline}                  運送会社の役の承諾か辞退
+    POST /api/b/reset   {}                                                    初期の架空データに戻す
 """
 
 from __future__ import annotations
@@ -39,7 +45,7 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from shipcompare import geo  # noqa: E402
+from shipcompare import geo, spaceb  # noqa: E402
 from shipcompare.estimate import ST_NOCALC, estimate_all, summarize  # noqa: E402
 from shipcompare.guide import contacts_for_rows, load_transit_days, mode_group, transit_days, transit_days_text  # noqa: E402
 from shipcompare.models import COST_KEYS, KIND_AMOUNT, KIND_INCLUDED, KIND_UNKNOWN  # noqa: E402
@@ -426,11 +432,65 @@ def _case_of(body: dict[str, Any]):
         raise BadRequest(f"案件の形が違います（{type(e).__name__}: {e}）") from e
 
 
-GET_ROUTES = {"/api/scenarios": lambda q: api_scenarios(), "/api/demo_quotes": api_demo_quotes}
+# ---------------------------------------------------------------- B 空きを探す・つなぐ
+
+BOARD_B = spaceb.Board()  # サーバーの memory。再起動で初期の架空データに戻る
+
+
+def _b_shipment(body: dict[str, Any]) -> spaceb.BShipment:
+    try:
+        return spaceb.parse_shipment(body)
+    except ValueError as e:
+        raise BadRequest(str(e)) from e
+
+
+def _b_notices() -> dict[str, Any]:
+    return {"fiction_notice": spaceb.FICTION_NOTICE, "booking_notice": spaceb.BOOKING_NOTICE}
+
+
+def api_b_trips(query: dict[str, list[str]]) -> dict[str, Any]:
+    demo = spaceb.load_demo()
+    return {"note": demo["note"], "carriers": demo["carriers"], "trips": BOARD_B.trips(),
+            "holds": BOARD_B.holds(), **_b_notices()}
+
+
+def api_b_match(body: Any) -> dict[str, Any]:
+    body = _need_dict(body)
+    return {"results": BOARD_B.match_all(_b_shipment(body)), **_b_notices()}
+
+
+def api_b_hold(body: Any) -> dict[str, Any]:
+    body = _need_dict(body)
+    s = _b_shipment(body)
+    try:
+        hold = BOARD_B.hold(body.get("trip_id"), s, body.get("hold_minutes", spaceb.DEFAULT_HOLD_MINUTES))
+    except spaceb.BoardError as e:
+        raise BadRequest(str(e)) from e
+    return {"hold": hold, **_b_notices()}
+
+
+def api_b_decide(body: Any) -> dict[str, Any]:
+    body = _need_dict(body)
+    try:
+        hold = BOARD_B.decide(body.get("hold_id"), body.get("decision"))
+    except spaceb.BoardError as e:
+        raise BadRequest(str(e)) from e
+    return {"hold": hold, **_b_notices()}
+
+
+def api_b_reset(body: Any) -> dict[str, Any]:
+    _need_dict(body)
+    BOARD_B.reset()
+    return {"ok": True}
+
+
+GET_ROUTES = {"/api/scenarios": lambda q: api_scenarios(), "/api/demo_quotes": api_demo_quotes,
+              "/api/b/trips": api_b_trips}
 POST_ROUTES = {
     "/api/estimate": api_estimate, "/api/layer": api_layer, "/api/request": api_request,
     "/api/compare": api_compare, "/api/save": api_save, "/api/load": api_load,
     "/api/confirm": api_confirm, "/api/add_quote": api_add_quote, "/api/add_demo_quotes": api_add_demo_quotes,
+    "/api/b/match": api_b_match, "/api/b/hold": api_b_hold, "/api/b/decide": api_b_decide, "/api/b/reset": api_b_reset,
 }
 
 
