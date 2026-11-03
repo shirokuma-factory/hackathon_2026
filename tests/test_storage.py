@@ -65,3 +65,40 @@ def test_unsupported_schema_rejected(tmp_path):
     path.write_text('{"schema_version": 99}', encoding="utf-8")
     with pytest.raises(ValueError):
         load_case(path)
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda d: d["versions"][0]["shipment"].update(items=["x", 1]),
+    lambda d: d["versions"][0]["shipment"].update(items="abc"),
+    lambda d: d["versions"][0]["shipment"].update(destinations=0),
+    lambda d: d["versions"][0]["shipment"].update(destinations=1.5),
+    lambda d: d["versions"][0]["shipment"].update(route="mars"),
+    lambda d: d["versions"][0]["shipment"].update(sender_type="神"),
+    lambda d: d["versions"][0]["shipment"].update(ship_date=20261103),
+    lambda d: d["versions"][0]["shipment"].update(ship_date="きのう"),
+    lambda d: d["versions"][0]["shipment"].update(forklift="yes"),
+    lambda d: d["versions"][0].pop("shipment"),
+    lambda d: d["versions"][0].pop("number"),
+    lambda d: d.update(versions=5),
+    lambda d: d.update(quotes=[1]),
+    lambda d: d["quotes"][0].pop("carrier"),
+    lambda d: d["quotes"][0]["lines"].update(trunk=5),
+    lambda d: d.update(chosen_quote_id="q99"),
+    lambda d: d.update(open_issues=[1]),
+])
+def test_malformed_files_raise_value_error(mutate):
+    from shipcompare.storage import case_from_dict, case_to_dict
+
+    d = case_to_dict(build_case())
+    mutate(d)
+    with pytest.raises(ValueError):
+        case_from_dict(d)
+
+
+def test_integer_distance_is_accepted_as_float():
+    from shipcompare.storage import case_from_dict, case_to_dict
+
+    d = case_to_dict(build_case())
+    d["versions"][0]["shipment"]["distance_km"] = 700
+    got = case_from_dict(d).versions[0].shipment.distance_km
+    assert got == 700.0 and isinstance(got, float)

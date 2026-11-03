@@ -27,6 +27,9 @@ ISSUE_NOT_MODELED = "not_modeled"
 ISSUE_NEEDS_INPUT = "needs_input"
 ISSUE_PICKUP_UNKNOWN = "pickup_unknown"
 
+# 利用者が手入力した額から出した行の出典（運送会社の表ではない）
+USER_INPUT_SOURCE = Source("利用者の入力", "", None, "")
+
 TAX_RATE = Decimal("1.1")
 CM3_PER_M3 = Decimal(1_000_000)
 
@@ -166,6 +169,12 @@ def estimate_takuhai(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
         row.issues.append(Issue(ISSUE_TAKUHAI_OVER, "宅配の寸法・重量の上限を超える荷物があるため使えません"))
         return row
 
+    if shipment.route not in ROUTES:
+        row.status = ST_NOCALC
+        row.missing = ["区間"]
+        row.reasons = ["計算できない（不足: 区間）"]
+        return row
+
     if shipment.route != "kanto_kansai":
         value = _positive_int(manual.get("takuhai_ex_tax"))
         if value is None:
@@ -175,6 +184,7 @@ def estimate_takuhai(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
             row.issues.append(Issue(ISSUE_NEEDS_INPUT, row.reasons[0]))
             return row
         row.amount = value
+        row.source = USER_INPUT_SOURCE
         row.notes.append("利用者が入力した税抜額です")
         return row
 
@@ -247,6 +257,11 @@ def estimate_rosen(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
         return row
     row.detail["weight_band_kg"] = band
 
+    if shipment.route not in ROUTES:
+        row.status = ST_NOCALC
+        row.missing = ["区間"]
+        row.reasons = ["計算できない（不足: 区間）"]
+        return row
     km = _route_km(shipment)
     if km is None:
         row.status = ST_NOCALC
@@ -263,6 +278,7 @@ def estimate_rosen(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
             row.reasons = [f"この距離・重量の段（{band}kg）の表は持っていません。表を見て基準運賃を入れてください"]
             row.issues.append(Issue(ISSUE_NEEDS_INPUT, row.reasons[0]))
             return row
+        row.source = USER_INPUT_SOURCE
         row.notes.append("基準運賃は利用者が入力した値です")
 
     amount = Decimal(base)
@@ -309,7 +325,17 @@ def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
     row.notes.append(f"最低 {boxes} 本の目安。積付けは要確認")
     row.issues.append(Issue(ISSUE_LOADING, "ボックス内寸 1,040×1,040×1,700mm への積付けは要確認"))
 
-    if shipment.sender_type == "法人" and shipment.receiver_type == "法人":
+    inner = sorted(Decimal(str(x)) / 10 for x in box["inner_mm"])  # cm
+    too_big = [i for i, item in enumerate(shipment.items, start=1)
+               if any(d > b for d, b in zip(sorted(to_decimal(x) for x in (item.length_cm, item.width_cm, item.height_cm)), inner))]
+    if too_big:
+        row.status = ST_CHECK
+        row.reasons.append("1個がボックスの内寸を超えます。荷を分けて詰め直せる場合だけ使えます"
+                           f"（荷物{'・'.join(str(i) for i in too_big)}行目）")
+        row.issues.append(Issue(ISSUE_LOADING, row.reasons[-1]))
+        if not (shipment.sender_type == "法人" and shipment.receiver_type == "法人"):
+            row.issues.append(Issue(ISSUE_CORPORATE, "法人間の商品。利用できるかは要確認"))
+    elif shipment.sender_type == "法人" and shipment.receiver_type == "法人":
         row.status = ST_OK
     else:
         row.status = ST_CHECK

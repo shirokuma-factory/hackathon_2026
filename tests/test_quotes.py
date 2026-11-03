@@ -135,3 +135,13 @@ def test_tax_included_converted_before_compare():
 def test_tax_included_rounding():
     q = quote("i", {"trunk": 1005}, tax="税込", included=REST)
     assert compare_quotes([q], 1, TODAY).evaluations[0].total_ex_tax == 914  # 913.63...
+
+
+def test_quote_with_only_included_lines_is_incomplete():
+    q = quote("inc", {}, included=tuple(COST_KEYS))
+    c = compare_quotes([q, full("b")], 1, TODAY)
+    e = next(x for x in c.evaluations if x.quote.id == "inc")
+    assert e.state == STATE_INCOMPLETE and "金額の項目がありません" in e.reasons
+    assert e.rank is None
+    assert not c.ranking_shown  # 完全な回答は b の1件だけ
+    assert c.evaluations[0].quote.id == "b"

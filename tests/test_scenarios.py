@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from shipcompare.estimate import ST_NOCALC, ST_OK, ST_UNUSABLE, estimate_all, summarize
+from shipcompare.estimate import ST_CHECK, ST_NOCALC, ST_OK, ST_UNUSABLE, estimate_all, summarize
 from shipcompare.storage import list_scenarios, load_scenario
 
 from conftest import row_of
@@ -31,6 +31,7 @@ def test_s1():
     assert str(r["rosen"].detail["chargeable_kg"]) == "252.00"
     assert r["rosen"].detail["weight_band_kg"] == 300
     assert r["jitbox"].amount == 23100
+    assert r["jitbox"].status == ST_OK  # 120×50×50cm は向きを変えれば入る
     assert r["jitbox"].detail["boxes"] == 1
     assert r["kashikiri_2t"].amount == 109750
     assert r["kashikiri_4t"].amount == 126060
@@ -47,6 +48,9 @@ def test_s2():
     assert str(r["rosen"].detail["chargeable_kg"]) == "406.56"
     assert r["rosen"].detail["weight_band_kg"] == 450
     assert r["jitbox"].amount == 21100
+    # 110×110×120cm は内寸 104×104×170cm に入らない（どの向きでも）ので要確認。額は出す
+    assert r["jitbox"].status == ST_CHECK
+    assert any("1個がボックスの内寸を超えます" in x for x in r["jitbox"].reasons)
     assert r["kashikiri_2t"].amount == 82940
     assert r["kashikiri_4t"].amount == 95400
     assert r["kashikiri_10t"].amount == 126910
@@ -71,6 +75,8 @@ def test_s4():
     assert str(r["rosen"].detail["chargeable_kg"]) == "813.12"
     assert r["rosen"].detail["weight_band_kg"] == 850
     assert r["jitbox"].amount == 92400
+    assert r["jitbox"].status == ST_CHECK
+    assert any("1個がボックスの内寸を超えます" in x for x in r["jitbox"].reasons)
     assert r["jitbox"].detail["boxes"] == 2
     kashikiri = [x for x in r.values() if x.mode.startswith("kashikiri")]
     assert len(kashikiri) == 1

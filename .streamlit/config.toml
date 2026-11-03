@@ -1,0 +1,9 @@
+[theme]
+base = "light"
+font = "sans-serif"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+showEmailPrompt = false
