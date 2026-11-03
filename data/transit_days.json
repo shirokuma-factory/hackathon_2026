@@ -1,0 +1,86 @@
+{
+  "source": "docs/plan/2026-11-03_日数と問い合わせ先の出典.md",
+  "checked_on": "2026-11-03",
+  "modes": {
+    "takuhai": {
+      "source_name": "佐川急便 お届けまでの日数（照会、代表の郵便番号 100-0005→530-0001 / 100-0005→980-0021 / 060-0001→100-0005）",
+      "source_url": "https://www2.sagawa-exp.co.jp/send/days/input/",
+      "checked_on": "2026-11-03",
+      "routes": {
+        "kanto_kansai": {
+          "text": "発送日+1日（午後以降の配達）",
+          "note": "代表の郵便番号で照会した値。集荷時間や時期で変わります"
+        },
+        "kanto_tohoku": {
+          "text": "発送日+1日",
+          "note": "代表の郵便番号で照会した値。集荷時間や時期で変わります"
+        },
+        "sapporo_tokyo": {
+          "text": "発送日+2日",
+          "note": "代表の郵便番号で照会した値。集荷時間や時期で変わります"
+        },
+        "other": {
+          "text": "佐川急便の照会画面で調べてください",
+          "url": "https://www2.sagawa-exp.co.jp/send/days/input/"
+        }
+      }
+    },
+    "rosen": {
+      "source_name": "日通 fare7.pdf・こぐまアロー便の頁・名鉄NX運輸の頁に記載なし",
+      "source_url": "https://www.nipponexpress.com/jp/ja/service/domestic/truck/mixed-cargo/k-arrow/",
+      "checked_on": "2026-11-03",
+      "routes": {
+        "kanto_kansai": {
+          "text": "公表なし（見積で確認）"
+        },
+        "kanto_tohoku": {
+          "text": "公表なし（見積で確認）"
+        },
+        "sapporo_tokyo": {
+          "text": "公表なし（見積で確認）"
+        },
+        "other": {
+          "text": "公表なし（見積で確認）"
+        }
+      }
+    },
+    "jitbox": {
+      "source_name": "ヤマト JITBOX のサービス頁",
+      "source_url": "https://business.kuronekoyamato.co.jp/service/lineup/jitbox/index.html",
+      "checked_on": "2026-11-03",
+      "routes": {
+        "kanto_kansai": {
+          "text": "900km圏内は預かりの翌日、900km以上は翌々日（距離の定義は記載なし）"
+        },
+        "kanto_tohoku": {
+          "text": "900km圏内は預かりの翌日、900km以上は翌々日（距離の定義は記載なし）"
+        },
+        "sapporo_tokyo": {
+          "text": "900km圏内は預かりの翌日、900km以上は翌々日（距離の定義は記載なし）"
+        },
+        "other": {
+          "text": "900km圏内は預かりの翌日、900km以上は翌々日（距離の定義は記載なし）"
+        }
+      }
+    },
+    "kashikiri": {
+      "source_name": "標準的な運賃に記載なし",
+      "source_url": "https://www.mlit.go.jp/report/press/content/001732088.pdf",
+      "checked_on": "2026-11-03",
+      "routes": {
+        "kanto_kansai": {
+          "text": "公表なし（見積で確認）"
+        },
+        "kanto_tohoku": {
+          "text": "公表なし（見積で確認）"
+        },
+        "sapporo_tokyo": {
+          "text": "公表なし（見積で確認）"
+        },
+        "other": {
+          "text": "公表なし（見積で確認）"
+        }
+      }
+    }
+  }
+}

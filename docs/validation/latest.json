@@ -1,12 +1,9 @@
 {
-  "score": 67.0,
-  "head": "236b912",
-  "timestamp": "2026-11-03T14:59:32+09:00",
-  "fingerprint": "66bd13e9218f5477e287692f225f7314793df747881ba83b241bc564c2fca2ba",
+  "score": 78.0,
+  "head": "ea4e2b8",
+  "timestamp": "2026-11-03T15:06:36+09:00",
+  "fingerprint": "d6f0a89010235db0d746f636ee50d4a86cbd39d86d5654d55513ec15554faaf6",
   "failed_ids": [
-    "R07",
-    "R08",
-    "R09",
     "C1",
     "D1",
     "E1",
@@ -88,9 +85,9 @@
       "id": "R07",
       "text": "問い合わせ先（確認済みの公式窓口、未確認なら窓口確認が必要）",
       "points": 4,
-      "got": 0,
-      "passed": false,
-      "reason": "test_spec13_7_* の試験がない",
+      "got": 4,
+      "passed": true,
+      "reason": "",
       "excluded": false
     },
     {
@@ -98,9 +95,9 @@
       "id": "R08",
       "text": "公表のお届け日数（無ければ公表なしと出す）",
       "points": 4,
-      "got": 0,
-      "passed": false,
-      "reason": "test_spec13_8_* の試験がない",
+      "got": 4,
+      "passed": true,
+      "reason": "",
       "excluded": false
     },
     {
@@ -108,9 +105,9 @@
       "id": "R09",
       "text": "ほかの輸送手段を出典つきの早見表で案内",
       "points": 3,
-      "got": 0,
-      "passed": false,
-      "reason": "test_spec13_9_* の試験がない",
+      "got": 3,
+      "passed": true,
+      "reason": "",
       "excluded": false
     },
     {
