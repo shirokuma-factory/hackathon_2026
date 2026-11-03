@@ -3,7 +3,9 @@
 画面側は運賃を計算しない。ここで作った JSON を読むだけにする。
 使い方: uv run python tools/build_web_data.py
 出力: web/data/ （muni.geojson, pref.geojson, index.json, meta.json,
-      origin_<コード>.json, routes.json）。目安額は /api/estimate が計算するので作らない
+      origin_<コード>.json, routes.json, market.json, hubs.json, jartic.json）。
+      目安額は /api/estimate が計算するので作らない。市場を見る（SPEC §16）の数字と、最寄りの拠点（SPEC §15.5）は
+      ここで Python が計算して書き、画面は表示するだけにする
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from shipcompare import geo  # noqa: E402
+from shipcompare import geo, market  # noqa: E402
 from shipcompare.tariffs import load_tariff, source_of  # noqa: E402
 
 OUT = ROOT / "web" / "data"
@@ -80,7 +82,7 @@ def build_geometry(codes: list[str]) -> None:
     for f in pref["features"]:
         g = slim_geometry(f["geometry"], 3)
         if g:
-            pf.append({"type": "Feature", "properties": {}, "geometry": g})
+            pf.append({"type": "Feature", "properties": {"n": f["properties"].get("N03_001")}, "geometry": g})
     write_json("pref.geojson", {"type": "FeatureCollection", "features": pf})
 
 
@@ -112,6 +114,87 @@ def build_origins(codes: list[str], tariff: dict) -> None:
                                          "brk": brk, "ferry": ferry, "fare": fare, "edges": edges, "cls": cls_})
 
 
+def r4(v):
+    return round(v, 4)
+
+
+def build_market() -> None:
+    """市場を見る（SPEC §16.1）。手段ごとの区間（不足量の大きい順）、県の出と入の差、S と実車率の曲線。"""
+    data = market.load_backhaul()
+    prefs = list(data["capitals"])
+    pidx = {n: i for i, n in enumerate(prefs)}
+    modes, totals = {}, {}
+    for m in market.MODES:
+        pairs = sorted(data["modes"][m]["pairs"], key=lambda p: (-p["shortfall_t"], -p["km"], p["from"], p["to"]))
+        modes[m] = {
+            "pairs": [[pidx[p["from"]], pidx[p["to"]], p["go_t"], p["back_t"], p["ratio"], p["shortfall_t"], p["km"]] for p in pairs],
+            "balance": [data["modes"][m]["balance_out_minus_in_t"][n] for n in prefs],
+        }
+        totals[m] = {"interpref_t": data["modes"][m]["interpref_t"], "shortfall_t": data["modes"][m]["shortfall_total_t"],
+                     "shortfall_far_t": data["modes"][m]["shortfall_far_t"], "share": round(market.shortfall_share(data, m), 4)}
+    s = market.scale_s(data["modes"]["truck"]["pairs"])
+    write_json("market.json", {
+        "source": data["source"], "unit": data["unit"], "distance": data["distance"],
+        "prefs": prefs, "cap": [[r4(data["capitals"][n][0]), r4(data["capitals"][n][1])] for n in prefs],
+        "modes": modes, "totals": totals,
+        "summary": {"load_factor_pct": market.LOAD_FACTOR_PCT, "actual_rate_pct": market.ACTUAL_RATE_PCT,
+                    "shortfall_share_pct": round(totals["truck"]["share"] * 100)},
+        "scale_s": round(s, 4), "curve": market.rate_curve(s),
+    })
+
+
+def build_jartic() -> None:
+    """JARTIC の大型車（SPEC §16.4）。区間名は backhaul の多い向き（from→to）に結びつける。"""
+    src = read_json(ROOT / "data" / "traffic" / "heavy_updown.json")
+    data = market.load_backhaul()
+    pairs = data["modes"]["truck"]["pairs"]
+    pts = []
+    for p in src["points"]:
+        pr = market.pair_from_label(p["pair"], pairs)
+        pts.append({"id": p["id"], "lon": r4(p["lon"]), "lat": r4(p["lat"]), "pair": p["pair"],
+                    "from": pr["from"] if pr else None, "to": pr["to"] if pr else None,
+                    "dist_km": p["dist_to_line_km"], "up": p["up"], "down": p["down"],
+                    "up_total": p["up_total"], "down_total": p["down_total"], "ratio": p["ratio"],
+                    "missing_hours": p["missing_hours"], "observed_hours": p["observed_hours"], "granularity": p["granularity"]})
+    write_json("jartic.json", {
+        "attribution": src["attribution"], "notes": src["notes"], "fetched_at": src["fetched_at"],
+        "period": src["period"], "first_hour": src["hours"][0], "points": pts,
+    })
+
+
+def build_hubs(codes: list[str], points: dict) -> None:
+    """貨物駅・港・航路（SPEC §15.5）と、出発地・着地ごとの最寄りの拠点（直線距離）。"""
+    st = geo.load_hubs("freight_stations")
+    tm = geo.load_hubs("ferry_terminals")
+    rt = geo.load_hubs("ferry_routes")
+    major = set(geo.major_terminals(tm, rt))
+    long_haul = set(geo.major_terminals(tm, [r for r in rt if r["km"] >= 150]))
+    nearest_ports = sorted(major)
+
+    def near(lon, lat):
+        a = geo.nearest_hub(lon, lat, st)
+        b = geo.nearest_hub(lon, lat, [tm[k] for k in nearest_ports])
+        return a, (nearest_ports[b[0]], b[1])
+
+    org = {}
+    for oc in geo.ORIGINS:
+        a, b = near(points[oc]["lon"], points[oc]["lat"])
+        org[oc] = {"st": [a[0], round(a[1], 1)], "pt": [b[0], round(b[1], 1)]}
+    dst = {"st": [], "st_km": [], "pt": [], "pt_km": []}
+    for c in codes:
+        a, b = near(points[c]["lon"], points[c]["lat"])
+        dst["st"].append(a[0]); dst["st_km"].append(round(a[1], 1))
+        dst["pt"].append(b[0]); dst["pt_km"].append(round(b[1], 1))
+    write_json("hubs.json", {
+        "attribution": "© OpenStreetMap contributors（ODbL 1.0）",
+        "fetched_on": "2026-11-03",
+        "stations": [[h["name"], r4(h["lon"]), r4(h["lat"])] for h in st],
+        "terminals": [[h["name"], r4(h["lon"]), r4(h["lat"]), 2 if i in long_haul else 1 if i in major else 0] for i, h in enumerate(tm)],
+        "routes": [{"n": r["name"], "km": r["km"], "p": [[round(x, 3), round(y, 3)] for x, y in r["path"][::3] + [r["path"][-1]]]} for r in rt],
+        "origin": org, "dest": dst,
+    })
+
+
 def main() -> None:
     points = geo.load_points()
     codes = sorted(points)
@@ -125,6 +208,9 @@ def main() -> None:
         "lat": [round(points[c]["lat"], 5) for c in codes],
     })
     build_origins(codes, tariff_k)
+    build_market()
+    build_jartic()
+    build_hubs(codes, points)
     routes_src = read_json(GEO / "routes.json")["routes"]
     routes = {k: v for k, v in routes_src.items() if v["origin"] in geo.ORIGINS}
     write_json("routes.json", {k: {"route_id": v["route_id"], "km": v["km"], "minutes": v["minutes"],

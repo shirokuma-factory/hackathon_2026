@@ -17,7 +17,9 @@ const FILL_ALPHA = 204;
 const JAPAN_BOUNDS = [[129.2, 31.0], [146.2, 45.8]];
 
 const $ = (s) => document.querySelector(s);
+const App = {}; // 見方の切り替えなど、market.js から呼ぶ入口
 const S = {
+  view: 'market', hubSel: null, hubLineKey: '', hubLine: null,
   origin: '13104', layer: 'km', sel: -1, meta: null, idx: null, muni: null, pref: null, routes: null, estimate: null, estTok: 0, fareStamp: {},
   od: {}, route: null, selFeature: null, t: 0, playing: false, version: 0, selectedAt: 0, lastTick: 0,
   ambient: null, ambientAlpha: 1, hover: -1, byIndex: new Map(),
@@ -365,7 +367,12 @@ function frame(now) {
   const targetAlpha = S.sel >= 0 ? 0.28 : 1;
   S.ambientAlpha += (targetAlpha - S.ambientAlpha) * Math.min(1, dt * 3);
   if (!S.staticLayers) S.staticLayers = staticLayers();
-  overlay.setProps({ layers: [...S.staticLayers, ...dynamicLayers(now)] });
+  const zoom = map.getZoom();
+  let layers;
+  if (S.view === 'market') layers = Market.layers(now, zoom);
+  else if (S.view === 'find') layers = [S.staticLayers[1]]; // 県境だけ（空きを探す画面は次の段階で作る）
+  else layers = [...S.staticLayers, ...Hubs.layers(zoom, { line: currentHubLine() }), ...dynamicLayers(now)];
+  overlay.setProps({ layers });
   placeTruckTag();
   requestAnimationFrame(frame);
 }
@@ -482,7 +489,8 @@ function buildCards(i, est) {
   const srcOf = (r) => (r.source && r.source.name ? [r.source.name, r.source.url || '#'] : null);
   for (const m of MODES) {
     if (m.key === 'rail' || m.key === 'ferry') {
-      cards.push({ label: m.label, status: '計算できない', amount: null, dim: true,
+      const hn = Hubs.nearest(S.origin, i);
+      cards.push({ label: m.label, status: '計算できない', amount: null, dim: true, hub: hn ? { kind: m.key, ...hn[m.key] } : null,
         none: '運賃表を使えません。各社への問い合わせが必要です',
         tip: m.key === 'rail' ? 'JR貨物の運賃は二次利用できないため、金額は出していません' : 'フェリーの運賃は一次資料で確かめられなかったため、金額は出していません' });
       continue;
@@ -511,6 +519,15 @@ function buildCards(i, est) {
   return cards;
 }
 
+// 鉄道とフェリーのカード: 出発地・着地それぞれの最寄りの貨物駅・港と直線距離（Python が計算済み。運賃は出さない）
+function hubHtml(h) {
+  const nm = h.kind === 'rail' ? '貨物駅' : '港';
+  const row = (lbl, x) => `<div class="hrow"><span class="k">${lbl}</span><span class="v">${escapeHtml(x.hub.name)}</span><span class="d num">直線 ${x.km.toFixed(1)}km</span></div>`;
+  return `<div class="hubinfo">${row(`出発地に近い${nm}`, h.o)}${row(`着地に近い${nm}`, h.d)}` +
+    `<button class="hub-btn" data-hub="${h.kind}" aria-pressed="${S.hubSel === h.kind}">地図に点線を出す</button>` +
+    `<div class="hub-note">直線距離で、${h.kind === 'rail' ? '線路' : '航路'}や道路の長さではありません。点線は経路の形ではなく、つなぎ方の目安です。OSM に登録された主な${nm}の中から選んでいます。</div></div>`;
+}
+
 function renderCards(cards) {
   const max = Math.max(0, ...cards.map((c) => c.amount || 0));
   $('#cards').innerHTML = '<p class="cards-note">公開条件に合っても、その会社がこの出荷を受けるかは見積で確かめます。金額は税抜です。</p>' + cards.map((c, n) => {
@@ -525,8 +542,9 @@ function renderCards(cards) {
     const tip = c.tip ? `<span class="tip" title="${escapeHtml(c.tip)}">補足</span>` : '';
     const foot = src || tip ? `<div class="foot">${src}${tip}</div>` : '';
     const none = c.amount === null || c.amount === undefined ? `<span class="amt-none" title="${escapeHtml(c.none)}">${escapeHtml(c.none)}</span>` : '';
+    const hub = c.hub ? hubHtml(c.hub) : '';
     return `<article class="card${c.dim ? ' dim' : ''}${none ? ' none' : ''}" style="--n:${n}"><div class="top"><h3>${c.label}${c.sub ? `<small>${c.sub}</small>` : ''}</h3>` +
-      `${none}<span class="chip ${CHIP[c.status] || 'na'}">${c.status}</span></div>${amt}${note}${meta}${foot}</article>`;
+      `${none}<span class="chip ${CHIP[c.status] || 'na'}">${c.status}</span></div>${amt}${note}${meta}${hub}${foot}</article>`;
   }).join('');
   requestAnimationFrame(() => requestAnimationFrame(() => {
     document.querySelectorAll('#cards .bar i').forEach((el) => { el.style.width = el.dataset.w + '%'; });
@@ -647,7 +665,10 @@ function fitRoute() {
   map.fitBounds([[x0, y0], [x1, y1]], { padding: padding(), maxZoom: 8.6, duration: 2200, essential: true, curve: 1.5 });
 }
 function fitJapan(animate) {
-  map.fitBounds(JAPAN_BOUNDS, { padding: { top: 20, bottom: 110, left: 60, right: 110 }, duration: animate ? 1800 : 0 });
+  const pad = S.view === 'market'
+    ? { top: 165, bottom: 100, left: 400, right: ($('#m-right').offsetWidth || 480) + 90 }
+    : { top: 20, bottom: 110, left: 60, right: 110 };
+  map.fitBounds(JAPAN_BOUNDS, { padding: pad, duration: animate ? 1800 : 0 });
 }
 
 /* ------------------------------------------------------------ 検索 */
@@ -698,7 +719,10 @@ function bindSearch() {
 /* ------------------------------------------------------------ 状態の URL */
 
 function writeHash() {
+  if (S.view === 'market') { Market.syncHash(); return; }
   const p = new URLSearchParams();
+  p.set('v', S.view);
+  if (S.view !== 'compare') { history.replaceState(null, '', '#' + p.toString()); return; }
   p.set('o', S.origin);
   p.set('l', S.layer);
   if (S.sel >= 0) p.set('d', S.idx.codes[S.sel]);
@@ -709,7 +733,7 @@ function writeHash() {
 
 function setLayer(l) {
   S.layer = l;
-  document.querySelectorAll('.lyr').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layer === l)));
+  document.querySelectorAll('.lyr[data-layer]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layer === l)));
   S.version++;
   renderLegend();
   writeHash();
@@ -728,6 +752,13 @@ async function setOrigin(code) {
 function hoverTag(info) {
   const tag = $('#hover-tag');
   const o = info && info.object;
+  const hh = Hubs.on && o ? Hubs.hoverText(info) : null;
+  if (hh) {
+    tag.innerHTML = `<b>${escapeHtml(hh.t)}</b><span>${escapeHtml(hh.s)}</span>`;
+    tag.style.transform = `translate(${Math.min(innerWidth - 300, info.x + 18)}px, ${Math.max(8, info.y - 8)}px)`;
+    tag.classList.add('on');
+    return;
+  }
   if (!o || info.layer.id !== 'muni' || o.properties.i < 0) { tag.classList.remove('on'); return; }
   const i = o.properties.i;
   tag.innerHTML = `<b>${escapeHtml(S.idx.prefs[i])} ${escapeHtml(S.idx.names[i])}</b><span class="num">${escapeHtml(valueText(i))}</span>`;
@@ -736,10 +767,82 @@ function hoverTag(info) {
   tag.classList.add('on');
 }
 
+/* ------------------------------------------------------------ 見方の切り替え（SPEC §16）と拠点の層（SPEC §15.5） */
+
+const DETAIL_FLAGS = ['has-detail', 'has-route', 'has-work'];
+function applyViewClasses() {
+  const c = document.body.classList;
+  for (const v of ['market', 'find', 'compare']) c.toggle('view-' + v, S.view === v);
+  document.querySelectorAll('#views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)));
+}
+function setView(v) {
+  if (v === S.view) return;
+  const prev = S.view, c = document.body.classList;
+  if (prev === 'compare') {
+    S.savedFlags = DETAIL_FLAGS.filter((f) => c.contains(f));
+    if (Work.isOpen()) Work.closeWork();
+    c.remove(...DETAIL_FLAGS);
+    setPlaying(false);
+    $('#truck-tag').classList.remove('on');
+  }
+  if (prev === 'market') Market.setActive(false);
+  $('#hover-tag').classList.remove('on');
+  S.view = v;
+  applyViewClasses();
+  if (v === 'compare') {
+    c.add(...(S.savedFlags || []));
+    if (S.sel >= 0 && S.route) fitRoute(); else fitJapan(true);
+  } else if (v === 'market') {
+    Market.setActive(true);
+    const r = Market.selected();
+    if (r) Market.select(r.k, { fly: true }); else fitJapan(true);
+  } else {
+    $('#fv-pair').textContent = Market.pairText() ? `選んだ区間: ${Market.pairText()}（この向きの帰りの便を探す予定です）` : '';
+    fitJapan(true);
+  }
+  writeHash();
+  setHubLegend();
+}
+App.setView = setView;
+
+function currentHubLine() {
+  if (!S.hubSel || S.sel < 0 || !S.route) { S.hubLine = null; S.hubLineKey = ''; return null; }
+  const key = `${S.hubSel}|${S.origin}|${S.sel}`;
+  if (key !== S.hubLineKey) {
+    const o = S.meta.origins.find((x) => x.code === S.origin);
+    S.hubLine = Hubs.line(S.hubSel, S.origin, S.sel, [o.lon, o.lat], [S.idx.lon[S.sel], S.idx.lat[S.sel]]);
+    S.hubLineKey = key;
+  }
+  return S.hubLine;
+}
+
+function setHubLegend() {
+  const html = '<span><i class="hb-sq"></i>貨物駅</span><span><i class="hb-ci"></i>港</span><span><i class="hb-ds"></i>フェリー航路（30km 以上）</span>' +
+    '<span class="mlg-faint">OpenStreetMap に登録された主なもので、全てではありません</span>';
+  document.querySelectorAll('.lg-hubs').forEach((el) => { el.hidden = !Hubs.on; el.innerHTML = html; });
+}
+function setHubs(on) {
+  Hubs.on = on;
+  document.querySelector('.tgl[data-toggle="hubs"]').setAttribute('aria-pressed', String(on));
+  if (map.getLayer('hub-attr')) map.setLayoutProperty('hub-attr', 'visibility', on ? 'visible' : 'none');
+  setHubLegend();
+}
+function setHubSel(kind) {
+  S.hubSel = S.hubSel === kind ? null : kind;
+  document.querySelectorAll('#cards .hub-btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.hub === S.hubSel)));
+  if (S.hubSel && S.route) {
+    const ln = currentHubLine();
+    if (ln) {
+      const pts = ln.path, xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+      map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: padding(), maxZoom: 8.6, duration: 1600, essential: true, curve: 1.4 });
+    }
+  }
+}
+
 async function main() {
   const [meta, idx, muni, pref, routes, style] = await Promise.all([
     getJSON('data/meta.json'), getJSON('data/index.json'), getJSON('data/muni.geojson'), getJSON('data/pref.geojson'),
-    getJSON('data/routes.json'), getJSON(STYLE_URL),
+    getJSON('data/routes.json'), getJSON(STYLE_URL), Hubs.load(), Market.load(),
   ]);
   Object.assign(S, { meta, idx, muni, pref, routes });
   for (const f of muni.features) S.byIndex.set(f.properties.i, f);
@@ -748,6 +851,8 @@ async function main() {
     '22101', '22130', '23106', '24201', '25201', '26104', '27128', '28110', '29201', '30201', '31201', '32201', '33101', '34101', '35203',
     '36201', '37201', '38201', '39201', '40131', '41201', '42201', '43101', '44201', '45201', '46201', '47201', '27140', '14100', '23101'];
   const p = new URLSearchParams(location.hash.slice(1));
+  S.view = ['market', 'find', 'compare'].includes(p.get('v')) ? p.get('v') : (p.get('o') || p.get('l') || p.get('d')) ? 'compare' : 'market';
+  Market.readHash(p);
   if (p.get('o') && meta.origins.some((o) => o.code === p.get('o'))) S.origin = p.get('o');
   if (['km', 'days', 'fare'].includes(p.get('l'))) S.layer = p.get('l');
   await loadOrigin(S.origin);
@@ -759,7 +864,7 @@ async function main() {
     onWorkToggle: () => {},
     routeLabel: () => S.workLabel || '',
   });
-  document.querySelectorAll('.lyr').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layer === S.layer)));
+  document.querySelectorAll('.lyr[data-layer]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layer === S.layer)));
 
   const st = darkStyle(style);
   firstLabelId = st.layers.find((l) => l.type === 'symbol').id;
@@ -775,21 +880,42 @@ async function main() {
   overlay = new deck.MapboxOverlay({
     interleaved: true, layers: [],
     getCursor: ({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab'),
-    onHover: hoverTag,
-    onClick: (info) => { if (Work.isOpen()) Work.closeWork(); if (info.object && info.layer && info.layer.id === 'muni' && info.object.properties.i >= 0) select(info.object.properties.i); },
+    onHover: (info) => { if (S.view === 'market') Market.hover(info); else if (S.view === 'compare') hoverTag(info); },
+    pickingRadius: 6,
+    onClick: (info) => { if (S.view === 'market') { Market.click(info); return; } if (S.view !== 'compare') return; if (Work.isOpen()) Work.closeWork(); if (info.object && info.layer && info.layer.id === 'muni' && info.object.properties.i >= 0) select(info.object.properties.i); },
   });
   map.addControl(overlay);
   await new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
+  map.addSource('hub-attr', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: '拠点: © OpenStreetMap contributors（ODbL 1.0）' });
+  map.addLayer({ id: 'hub-attr', type: 'line', source: 'hub-attr', layout: { visibility: 'none' } });
+  applyViewClasses();
   fitJapan(false);
   buildAmbient();
   renderLegend();
   bindSearch();
   bindTimebar();
+  Market.setActive(S.view === 'market');
+  Market.init();
+  Market.afterStart();
+  setHubLegend();
+  document.querySelectorAll('#views button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  document.querySelector('.tgl[data-toggle="hubs"]').addEventListener('click', () => setHubs(!Hubs.on));
+  document.querySelector('.tgl[data-toggle="jartic"]').addEventListener('click', (e) => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(on));
+    Market.setJartic(on);
+  });
+  if (p.get('hubs') === '1') setHubs(true);
+  $('#cards').addEventListener('click', (e) => { const b = e.target.closest('.hub-btn'); if (b) setHubSel(b.dataset.hub); });
 
   $('#origin').addEventListener('change', (e) => setOrigin(e.target.value));
-  document.querySelectorAll('.lyr').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.layer)));
+  document.querySelectorAll('.lyr[data-layer]').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.layer)));
   $('#close').addEventListener('click', () => { deselect(); fitJapan(true); });
-  $('#home').addEventListener('click', () => { if (S.sel >= 0) deselect(); fitJapan(true); });
+  $('#home').addEventListener('click', () => {
+    if (S.view === 'market') Market.deselect(false);
+    else if (S.sel >= 0) deselect();
+    fitJapan(true);
+  });
   $('#make-request').addEventListener('click', async () => {
     if (S.sel < 0) return;
     const btn = $('#make-request');
@@ -800,16 +926,16 @@ async function main() {
       await Work.startFromDestination(est);
     } catch (e) { toast(e.message); } finally { btn.disabled = false; }
   });
-  addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.sel >= 0 && !Work.isOpen() && document.activeElement.tagName !== 'INPUT') { deselect(); fitJapan(true); } });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.view === 'compare' && S.sel >= 0 && !Work.isOpen() && document.activeElement.tagName !== 'INPUT') { deselect(); fitJapan(true); } });
 
-  if (p.get('d')) {
+  if (p.get('d') && S.view === 'compare') {
     const i = idx.codes.indexOf(p.get('d'));
     if (i >= 0) select(i, { fly: p.get('fly') !== '0' });
   }
   refreshFareLayer();
   requestAnimationFrame(frame);
   setTimeout(() => $('#loading').classList.add('done'), 400);
-  window.__app = { S, select, setLayer, setOrigin, map: () => map, refreshEstimate };
+  window.__app = { S, Market, Hubs, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }
 
 main().catch((e) => {
