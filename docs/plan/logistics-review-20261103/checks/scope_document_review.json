@@ -1,0 +1,10 @@
+{
+  "review_date_jst": "2026-11-03",
+  "artifact": "11_実装範囲の閲覧用.html",
+  "browser": "Microsoft Edge、1400×1100、外部通信なし",
+  "screenshots_inspected": ["改訂4の推奨範囲と候補比較", "開発3日と動画制作2日の工程表", "動画制作仕様の冒頭と到達条件表", "ComfyUIのAPI操作・確認方法"],
+  "table_count": 5,
+  "page_has_horizontal_overflow": false,
+  "visual_findings": "改訂4をEdgeで再描画し、4枚のスクリーンショットを確認しました。確認した範囲で見出し、本文、表、数値が読め、ページ全体の横方向のはみ出しはありません。",
+  "kind": "資料の表示確認です。製品の動作・安全性・顧客効果の確認ではありません。"
+}

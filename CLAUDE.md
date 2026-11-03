@@ -2,12 +2,13 @@
 
 ハッカソン提出用のリポジトリです。Claude Code が司令塔になり、ローカル GPU（RTX 5080 16GB）上の ComfyUI・ローカル LLM・音声モデルを道具として使います。
 
-テーマと課題: **未定**（決まったらここに1〜3行で書く）
+テーマと課題: 中小荷主のスポット出荷を支援するツール。条件整理、見積依頼、回答比較、選択理由の保存までを開発3日で完成させ、その後2日でデモ動画（ComfyUI・DaVinci Resolve・ElevenLabs）を作る。計画は `docs/plan/logistics-review-20261103/`（改訂4）で、08_作り込む範囲の判断 と 12_デモ動画制作とClaude活用 を先に読む。
 
 ## 最初に読むもの
 
 | ファイル | 内容 |
 |---|---|
+| `docs/plan/logistics-review-20261103/README.md` | 物流ツールの計画資料の目次と読む順 |
 | `docs/DEVLOG.md` | 何を試して何が分かったか。作業の始めに直近の記録を読む |
 | `docs/LOCAL_AI.md` | ローカル AI の構成、役割分担、実測値 |
 | `docs/CLAUDE_USAGE.md` | 使った Skills・MCP・サブエージェント・フックと理由 |

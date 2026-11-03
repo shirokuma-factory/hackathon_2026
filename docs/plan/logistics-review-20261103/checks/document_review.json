@@ -1,0 +1,11 @@
+{
+  "review_date_jst": "2026-11-03",
+  "kind": "同梱資料の表示確認",
+  "artifact": "07_閲覧用.html",
+  "browser": "Microsoft Edge、画面1440×1100",
+  "screenshots_inspected": ["課題文の冒頭", "荷量別早見表の全体", "車両寸法と上部空間の範囲表"],
+  "table_count": 7,
+  "page_has_horizontal_overflow": false,
+  "visual_findings": "確認した範囲で日本語、表の罫線、数値、条件説明を読めます。資料の確認で、製品UIの試験ではありません。",
+  "not_tested": ["スマートフォン全機種", "全ての外部リンクの継続到達性", "製品の動作", "実車の積載安全性"]
+}

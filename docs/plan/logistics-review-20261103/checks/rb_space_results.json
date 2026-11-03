@@ -1,0 +1,618 @@
+{
+  "kind": "寸法と重量の試算・反例の検算",
+  "executed_at": "2026-11-03T10:42:56.486474+09:00",
+  "production_tested": false,
+  "vehicle_safety_certified": false,
+  "assumptions": {
+    "deduction_mm": [
+      200,
+      300
+    ],
+    "lower_cargo_exceeds_rb": false,
+    "range_meaning": "公開例とAIの仮定の組合せ。統計的な範囲ではありません。"
+  },
+  "trucks": [
+    {
+      "id": "ocean_2t",
+      "group": "2t",
+      "length": 3000,
+      "width": 1700,
+      "height": 1700,
+      "payload": 2000,
+      "source": "https://www.oceanlinks.co.jp/domestic/truck/"
+    },
+    {
+      "id": "tesco_2t",
+      "group": "2t",
+      "length": 4200,
+      "width": 1800,
+      "height": 2000,
+      "payload": 2000,
+      "source": "https://www.tescompo.co.jp/business/delivery.html"
+    },
+    {
+      "id": "tesco_4t",
+      "group": "4t",
+      "length": 6200,
+      "width": 2300,
+      "height": 2200,
+      "payload": 2850,
+      "source": "https://www.tescompo.co.jp/business/delivery.html"
+    },
+    {
+      "id": "ocean_4t",
+      "group": "4t",
+      "length": 6200,
+      "width": 2200,
+      "height": 2400,
+      "payload": 2700,
+      "source": "https://www.oceanlinks.co.jp/domestic/truck/"
+    },
+    {
+      "id": "tesco_10t",
+      "group": "10t",
+      "length": 9440,
+      "width": 2350,
+      "height": 2565,
+      "payload": 13000,
+      "source": "https://www.tescompo.co.jp/business/delivery.html"
+    },
+    {
+      "id": "ocean_10t",
+      "group": "10t",
+      "length": 9600,
+      "width": 2400,
+      "height": 2600,
+      "payload": 13500,
+      "source": "https://www.oceanlinks.co.jp/domestic/truck/"
+    }
+  ],
+  "rollboxes": [
+    {
+      "id": "WKP-1180",
+      "width": 1100,
+      "depth": 800,
+      "height": 1700,
+      "tare": 45.5,
+      "source": "https://www.wako-pallet.co.jp/archives/product/carry_basket_list1"
+    },
+    {
+      "id": "JITBOX",
+      "width": 1100,
+      "depth": 1100,
+      "height": 2000,
+      "tare": null,
+      "source": "https://www.jitbox.co.jp/faq/"
+    }
+  ],
+  "calculations": [
+    {
+      "truck": "ocean_2t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 0,
+      "net_height_mm": 0,
+      "raw_volume_m3": 0.0,
+      "net_volume_m3": 0.0
+    },
+    {
+      "truck": "ocean_2t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 0,
+      "net_height_mm": 0,
+      "raw_volume_m3": 0.0,
+      "net_volume_m3": 0.0
+    },
+    {
+      "truck": "tesco_2t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 300,
+      "net_height_mm": 100,
+      "raw_volume_m3": 0.264,
+      "net_volume_m3": 0.088
+    },
+    {
+      "truck": "tesco_2t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 300,
+      "net_height_mm": 0,
+      "raw_volume_m3": 0.264,
+      "net_volume_m3": 0.0
+    },
+    {
+      "truck": "tesco_4t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 500,
+      "net_height_mm": 300,
+      "raw_volume_m3": 0.44,
+      "net_volume_m3": 0.264
+    },
+    {
+      "truck": "tesco_4t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 500,
+      "net_height_mm": 200,
+      "raw_volume_m3": 0.44,
+      "net_volume_m3": 0.176
+    },
+    {
+      "truck": "ocean_4t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 700,
+      "net_height_mm": 500,
+      "raw_volume_m3": 0.616,
+      "net_volume_m3": 0.44
+    },
+    {
+      "truck": "ocean_4t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 700,
+      "net_height_mm": 400,
+      "raw_volume_m3": 0.616,
+      "net_volume_m3": 0.352
+    },
+    {
+      "truck": "tesco_10t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 865,
+      "net_height_mm": 665,
+      "raw_volume_m3": 0.7612,
+      "net_volume_m3": 0.5852
+    },
+    {
+      "truck": "tesco_10t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 865,
+      "net_height_mm": 565,
+      "raw_volume_m3": 0.7612,
+      "net_volume_m3": 0.4972
+    },
+    {
+      "truck": "ocean_10t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 900,
+      "net_height_mm": 700,
+      "raw_volume_m3": 0.792,
+      "net_volume_m3": 0.616
+    },
+    {
+      "truck": "ocean_10t",
+      "rb": "WKP-1180",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 900,
+      "net_height_mm": 600,
+      "raw_volume_m3": 0.792,
+      "net_volume_m3": 0.528
+    },
+    {
+      "truck": "ocean_2t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": true,
+      "deduction_mm": 200,
+      "raw_height_mm": 0,
+      "net_height_mm": 0,
+      "raw_volume_m3": 0.0,
+      "net_volume_m3": 0.0
+    },
+    {
+      "truck": "ocean_2t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": true,
+      "deduction_mm": 300,
+      "raw_height_mm": 0,
+      "net_height_mm": 0,
+      "raw_volume_m3": 0.0,
+      "net_volume_m3": 0.0
+    },
+    {
+      "truck": "tesco_2t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 0,
+      "net_height_mm": 0,
+      "raw_volume_m3": 0.0,
+      "net_volume_m3": 0.0
+    },
+    {
+      "truck": "tesco_2t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 0,
+      "net_height_mm": 0,
+      "raw_volume_m3": 0.0,
+      "net_volume_m3": 0.0
+    },
+    {
+      "truck": "tesco_4t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 200,
+      "net_height_mm": 0,
+      "raw_volume_m3": 0.242,
+      "net_volume_m3": 0.0
+    },
+    {
+      "truck": "tesco_4t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 200,
+      "net_height_mm": 0,
+      "raw_volume_m3": 0.242,
+      "net_volume_m3": 0.0
+    },
+    {
+      "truck": "ocean_4t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 400,
+      "net_height_mm": 200,
+      "raw_volume_m3": 0.484,
+      "net_volume_m3": 0.242
+    },
+    {
+      "truck": "ocean_4t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 400,
+      "net_height_mm": 100,
+      "raw_volume_m3": 0.484,
+      "net_volume_m3": 0.121
+    },
+    {
+      "truck": "tesco_10t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 565,
+      "net_height_mm": 365,
+      "raw_volume_m3": 0.68365,
+      "net_volume_m3": 0.44165
+    },
+    {
+      "truck": "tesco_10t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 565,
+      "net_height_mm": 265,
+      "raw_volume_m3": 0.68365,
+      "net_volume_m3": 0.32065
+    },
+    {
+      "truck": "ocean_10t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 200,
+      "raw_height_mm": 600,
+      "net_height_mm": 400,
+      "raw_volume_m3": 0.726,
+      "net_volume_m3": 0.484
+    },
+    {
+      "truck": "ocean_10t",
+      "rb": "JITBOX",
+      "rb_exceeds_inner_height": false,
+      "deduction_mm": 300,
+      "raw_height_mm": 600,
+      "net_height_mm": 300,
+      "raw_volume_m3": 0.726,
+      "net_volume_m3": 0.363
+    }
+  ],
+  "ranges": [
+    {
+      "rb": "WKP-1180",
+      "group": "2t",
+      "raw_height_mm": [
+        0,
+        300
+      ],
+      "net_height_mm": [
+        0,
+        100
+      ],
+      "raw_volume_m3": [
+        0.0,
+        0.264
+      ],
+      "net_volume_m3": [
+        0.0,
+        0.088
+      ]
+    },
+    {
+      "rb": "WKP-1180",
+      "group": "4t",
+      "raw_height_mm": [
+        500,
+        700
+      ],
+      "net_height_mm": [
+        200,
+        500
+      ],
+      "raw_volume_m3": [
+        0.44,
+        0.616
+      ],
+      "net_volume_m3": [
+        0.176,
+        0.44
+      ]
+    },
+    {
+      "rb": "WKP-1180",
+      "group": "10t",
+      "raw_height_mm": [
+        865,
+        900
+      ],
+      "net_height_mm": [
+        565,
+        700
+      ],
+      "raw_volume_m3": [
+        0.7612,
+        0.792
+      ],
+      "net_volume_m3": [
+        0.4972,
+        0.616
+      ]
+    },
+    {
+      "rb": "JITBOX",
+      "group": "2t",
+      "raw_height_mm": [
+        0,
+        0
+      ],
+      "net_height_mm": [
+        0,
+        0
+      ],
+      "raw_volume_m3": [
+        0.0,
+        0.0
+      ],
+      "net_volume_m3": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "rb": "JITBOX",
+      "group": "4t",
+      "raw_height_mm": [
+        200,
+        400
+      ],
+      "net_height_mm": [
+        0,
+        200
+      ],
+      "raw_volume_m3": [
+        0.242,
+        0.484
+      ],
+      "net_volume_m3": [
+        0.0,
+        0.242
+      ]
+    },
+    {
+      "rb": "JITBOX",
+      "group": "10t",
+      "raw_height_mm": [
+        565,
+        600
+      ],
+      "net_height_mm": [
+        265,
+        400
+      ],
+      "raw_volume_m3": [
+        0.68365,
+        0.726
+      ],
+      "net_volume_m3": [
+        0.32065,
+        0.484
+      ]
+    }
+  ],
+  "total": 18,
+  "passed": 18,
+  "cases": [
+    {
+      "description": "WKP-1180・2tの仮の有効高mm",
+      "actual": [
+        0,
+        100
+      ],
+      "expected": [
+        0,
+        100
+      ],
+      "passed": true
+    },
+    {
+      "description": "WKP-1180・4tの仮の有効高mm",
+      "actual": [
+        200,
+        500
+      ],
+      "expected": [
+        200,
+        500
+      ],
+      "passed": true
+    },
+    {
+      "description": "WKP-1180・10tの仮の有効高mm",
+      "actual": [
+        565,
+        700
+      ],
+      "expected": [
+        565,
+        700
+      ],
+      "passed": true
+    },
+    {
+      "description": "JITBOX・2tの仮の有効高mm",
+      "actual": [
+        0,
+        0
+      ],
+      "expected": [
+        0,
+        0
+      ],
+      "passed": true
+    },
+    {
+      "description": "JITBOX・4tの仮の有効高mm",
+      "actual": [
+        0,
+        200
+      ],
+      "expected": [
+        0,
+        200
+      ],
+      "passed": true
+    },
+    {
+      "description": "JITBOX・10tの仮の有効高mm",
+      "actual": [
+        265,
+        400
+      ],
+      "expected": [
+        265,
+        400
+      ],
+      "passed": true
+    },
+    {
+      "description": "4t・WKPの控除後投影容積m3",
+      "actual": [
+        0.176,
+        0.44
+      ],
+      "expected": [
+        0.176,
+        0.44
+      ],
+      "passed": true
+    },
+    {
+      "description": "10t・WKPの控除後投影容積m3",
+      "actual": [
+        0.4972,
+        0.616
+      ],
+      "expected": [
+        0.4972,
+        0.616
+      ],
+      "passed": true
+    },
+    {
+      "description": "10t・JITBOXの控除後投影容積m3",
+      "actual": [
+        0.32065,
+        0.484
+      ],
+      "expected": [
+        0.32065,
+        0.484
+      ],
+      "passed": true
+    },
+    {
+      "description": "内高1700に外高2000のRBは入らない",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "description": "RBの外高と内高の取り違えによる過大評価mm",
+      "actual": 300,
+      "expected": 300,
+      "passed": true
+    },
+    {
+      "description": "RB10台と各200kgの荷物の残り重量kg",
+      "actual": 395.0,
+      "expected": 395.0,
+      "passed": true
+    },
+    {
+      "description": "未算入の棚80kgを加えた残り重量kg",
+      "actual": 315.0,
+      "expected": 315.0,
+      "passed": true
+    },
+    {
+      "description": "棚1セット300kgで制限した一次重量上限kg",
+      "actual": 300,
+      "expected": 300,
+      "passed": true
+    },
+    {
+      "description": "各300kgを積んだ下段だけで過積載kg",
+      "actual": 605.0,
+      "expected": 605.0,
+      "passed": true
+    },
+    {
+      "description": "個別区画各60kgでも共通余力100kgを2件で超過",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "description": "1m3で実重100kgの一般容積換算課金重量kg",
+      "actual": 280,
+      "expected": 280,
+      "passed": true
+    },
+    {
+      "description": "容積で入っても最大積載5000kgを超える鉄道貨物",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    }
+  ]
+}

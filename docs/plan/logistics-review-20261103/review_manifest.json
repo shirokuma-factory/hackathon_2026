@@ -1,0 +1,254 @@
+{
+  "review_date_jst": "2026-11-03",
+  "original": {
+    "filename": "物流 support tool 2 本の作り方の仕様書 (2026-11-03、非商用).md",
+    "size_bytes": 154986,
+    "sha256": "395cbe30c4d9f32a130f8fd5d1596d8217ef4a5e18225ab81633c3b1e80261f2",
+    "modified": false
+  },
+  "guide_source": "ユーザーが会話へ貼り付けた Built with Claude: Japan 2026 参加者ガイド",
+  "judging_weights": {
+    "impact": 30,
+    "demo": 25,
+    "claude_usage": 25,
+    "depth_execution": 20
+  },
+  "event_url": "https://cerebralvalley.ai/e/built-with-claude-japan2026",
+  "event_url_fetch": "開催期間を確認。作品提出の締切・細則は未確認。",
+  "sources_checked": [
+    {
+      "url": "https://www.mlit.go.jp/statistics/details/t-other-2_tk_000240.html",
+      "supports": "物流時間、推計重量、代表輸送機関、費用の定義"
+    },
+    {
+      "url": "https://www.mlit.go.jp/statistics/details/t-other-2_tk_000197.html",
+      "supports": "調査対象の産業と貨物"
+    },
+    {
+      "url": "https://www.mlit.go.jp/statistics/details/t-other-2_tk_000196.html",
+      "supports": "第12回速報の公表予定日"
+    },
+    {
+      "url": "https://driver-roudou-jikan.mhlw.go.jp/truck/notice",
+      "supports": "運転時間と連続運転の基準"
+    },
+    {
+      "url": "https://www.mlit.go.jp/sogoseisaku/environment/sosei_environment_tk_000007.html",
+      "supports": "旅客・貨物の排出係数の単位を区別。図の係数数値自体は未検証。"
+    },
+    {
+      "url": "https://operations.osmfoundation.org/policies/nominatim/",
+      "supports": "API利用条件。API利用を今回有効化したわけではない。"
+    },
+    {
+      "url": "https://www.rfc-editor.org/rfc/rfc9309.html",
+      "supports": "robots.txtはアクセス認可ではない"
+    },
+    {
+      "url": "https://www.mlit.go.jp/seisakutokatsu/freight/seisakutokatsu_freight_fr3_000002.html",
+      "supports": "利用運送と取次の区別"
+    },
+    {
+      "url": "https://www.jftc.go.jp/dk/guideline/tokuteiunsou/genkou.html",
+      "supports": "現行の物流特殊指定の原文所在"
+    },
+    {
+      "url": "https://www.jftc.go.jp/dk/guideline/tokuteiunsou.html",
+      "supports": "2027年4月1日施行版の原文所在"
+    }
+  ],
+  "performed": [
+    "提供仕様のレビュー",
+    "公式・事業者公開資料の確認",
+    "算式の境界と反例16項目",
+    "RB寸法・重量の試算と反例18項目",
+    "実装範囲の独立レビューと修正",
+    "作業配分の15・35・60時間と架空料金例の算術確認",
+    "開発3日以内と動画制作2日へ更新、制作APIの資料確認、予定と実績の記録を分離"
+  ],
+  "not_performed": [
+    "原資料の64項目の再現",
+    "統計モデルの再推定",
+    "全データ源の権利再確認",
+    "個別案件の法的適用判断",
+    "製品実装",
+    "画面の実演",
+    "公開"
+  ],
+  "findings": {
+    "P0": 9,
+    "P1": 5,
+    "P2": 4,
+    "meaning": "仕様の指摘。ソフトウェアの実装上の欠陥数ではない。"
+  },
+  "files": [
+    {
+      "path": "01_レビューと訂正.md",
+      "bytes": 16998,
+      "sha256": "3d696a38acb3797fed3fd8b231f59c130de03c67d57294390c3c71d06220abee"
+    },
+    {
+      "path": "02_開発用補訂仕様.md",
+      "bytes": 29958,
+      "sha256": "4f4ad0aafed5c70401b77b2e832eea70899ce154016f5bc067307201c3b103ca"
+    },
+    {
+      "path": "03_開発引継ぎ.md",
+      "bytes": 7029,
+      "sha256": "61ea1a1496cd84e5a53963d691039f18ad917b7677b4c2e84bd75fc17df89739"
+    },
+    {
+      "path": "04_中小荷主の課題と事業設計.md",
+      "bytes": 22481,
+      "sha256": "311ddc14d18dd285e30b81574e74187b2f41dd9533728cc0138fb24733125d15"
+    },
+    {
+      "path": "05_RB上部空間の寸法と法令.md",
+      "bytes": 16967,
+      "sha256": "ec8fe3f3845103d1a40f4acf06ab85f0dc16d20e67282e1d336f86ed57591cfd"
+    },
+    {
+      "path": "06_改訂記録_2026-11-03.md",
+      "bytes": 2455,
+      "sha256": "e2635a8ae2fc38899fe2f06b7e58db0aba24c4465fe137b2cb504e0a333ad0f2"
+    },
+    {
+      "path": "07_閲覧用.html",
+      "bytes": 43953,
+      "sha256": "9f7134e7c098c9413de5d592256bf35356845877e1f33577ab22a5f62a042eff"
+    },
+    {
+      "path": "08_作り込む範囲の判断_2026-11-03.md",
+      "bytes": 20557,
+      "sha256": "696abee8df91b40f80f7009e6074b271daa61d903e975ea9216e36c24a72c4e2"
+    },
+    {
+      "path": "09_検証記録_2026-11-03.md",
+      "bytes": 8568,
+      "sha256": "eca67371cd483ac39100bcff1bff0a041b800f625ba26ee014eb0c3c790e4bbb"
+    },
+    {
+      "path": "10_実装後の検証手順.md",
+      "bytes": 4373,
+      "sha256": "f9d23510c561af4f74e0f0b172cdaa1db98c68905a73b83bf0215d00eb732295"
+    },
+    {
+      "path": "11_実装範囲の閲覧用.html",
+      "bytes": 51630,
+      "sha256": "1abd1cd33c74dd8671430cac20ffc856d515c1cf066cdddf0cf674af64a8e9bf"
+    },
+    {
+      "path": "12_デモ動画制作とClaude活用_2026-11-03.md",
+      "bytes": 17709,
+      "sha256": "25bdafcf72ca3a79dd42522d22a5faa19b3379347ff516fd1a9111f42863f1ac"
+    },
+    {
+      "path": "13_Claude利用記録ひな形.md",
+      "bytes": 4596,
+      "sha256": "9250bb91944ab3d9f000a032e5b9c5639d54d315f70fe89a00c7f26359b8c04e"
+    },
+    {
+      "path": "checks/check_rb_space.py",
+      "bytes": 5458,
+      "sha256": "cbf536a187a94475e060931a9e11a2a817aa60adce697a24df054a187b772c3d"
+    },
+    {
+      "path": "checks/check_spec_math.py",
+      "bytes": 4417,
+      "sha256": "3b5c81807046d3353f8bb55e595eaf65f1745353e1b35762b73381e794817702"
+    },
+    {
+      "path": "checks/document_review.json",
+      "bytes": 669,
+      "sha256": "510ca5f94dbeac737a8ffbfa085d816a77800522f26357636894fde4117beffe"
+    },
+    {
+      "path": "checks/production_api_sources.json",
+      "bytes": 2072,
+      "sha256": "333002cc52248d5ec1c6888fd578b0fc5404cf7263fc4f81113b2f6a3e06b577"
+    },
+    {
+      "path": "checks/rb_space_results.json",
+      "bytes": 12987,
+      "sha256": "c13ec3f575dfb5a3beb0905d7e69dcc6b49ec28f7ad27cec425177c2ad9d7659"
+    },
+    {
+      "path": "checks/results.json",
+      "bytes": 3555,
+      "sha256": "8590b154a4c18eaa1782030e2d47a2c46cee11428f91dffb7f4ef498a0b8f6a9"
+    },
+    {
+      "path": "checks/scope_document_review.json",
+      "bytes": 779,
+      "sha256": "4e8dcec031201cf3a993b5edff1896bb09eeab649a96244ce1d94ed736db7cbf"
+    },
+    {
+      "path": "checks/scope_reviews.json",
+      "bytes": 26014,
+      "sha256": "042937b85ab082b0198ed398183456d95157ed8deb726946447234673f9ae63c"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3153,
+      "sha256": "170e0048c68fdf6ceb27b031aed14e4c532cab69f3078b4766e9dfff70a45212"
+    }
+  ],
+  "edition": 4,
+  "revision_date_jst": "2026-11-03",
+  "primary_user": "中小荷主・小規模事業者のスポット輸送",
+  "secondary_user": "特定荷主のCLO等の計画担当者",
+  "implementation_status": "実装範囲の推奨案を独立レビュー。製品実装・顧客検証は未実施。",
+  "new_sources": [
+    "https://sst-green.co.jp/wp-content/uploads/2026/04/%E3%83%91%E3%83%B3%E3%83%95%E3%83%AC%E3%83%83%E3%83%88Ver.1.6-.pdf",
+    "https://www.jitbox.co.jp/faq/",
+    "https://www.jitbox.co.jp/flow/",
+    "https://www.jrfreight.co.jp/service/container/",
+    "https://www.ktr.mlit.go.jp/road/sinsei/road_sinsei00000007.html",
+    "https://www.kuronekoyamato.co.jp/ytc/customer/send/services/takkyubin/",
+    "https://www.meti.go.jp/policy/mono_info_service/mono/automobile/pdf/yusotebiki.pdf",
+    "https://www.mhlw.go.jp/file/06-Seisakujouhou-11300000-Roudoukijunkyokuanzeneiseibu/0000098499.pdf",
+    "https://www.mlit.go.jp/jidosha/content/001998893.pdf",
+    "https://www.mlit.go.jp/jidosha/jidosha_mn4_000014.html",
+    "https://www.mlit.go.jp/road/soudan/soudan_09_02.html",
+    "https://www.mlit.go.jp/seisakutokatsu/freight/seisakutokatsu_freight_fr3_000001.html",
+    "https://www.mlit.go.jp/seisakutokatsu/freight/seisakutokatsu_freight_fr3_000002.html",
+    "https://www.mlit.go.jp/seisakutokatsu/freight/seisakutokatsu_freight_mn3_000002.html?vm=r",
+    "https://www.mlit.go.jp/tochi_fudousan_kensetsugyo/const/butsuryuukouritsukahou.html",
+    "https://www.naltec.go.jp/business/inspection/category.html",
+    "https://www.oceanlinks.co.jp/domestic/truck/",
+    "https://www.police.pref.osaka.lg.jp/kotsu/anzen/5838.html",
+    "https://www.sagawa-exp.co.jp/fare/attention.html",
+    "https://www.seino-tuun.co.jp/service/ferriy/",
+    "https://www.seino.co.jp/seino/service/domestic/express/",
+    "https://www.suzuki.co.jp/car/carry/capacity/",
+    "https://www.tescompo.co.jp/business/delivery.html",
+    "https://www.trabox.ne.jp/carrier/index.html",
+    "https://www.trabox.ne.jp/support/qa_kyuka.html",
+    "https://www.trantechs.co.jp/wp/wp-content/themes/trantechs/assets/doc/csr/csr2018.pdf",
+    "https://www.wako-pallet.co.jp/archives/product/carry_basket_list1",
+    "https://www200.pref.yamagata.jp/800032/seigengai.html",
+    "https://wwws.meti.go.jp/enecho/saveenergy2/enterprise/faq/qa04.html",
+    "https://wwwtb.mlit.go.jp/chugoku/jidousha/truckhazime.html",
+    "https://wwwtb.mlit.go.jp/kanto/jidou_koutu/kamotu/riyou_jigyoukaisi/tetudou.htm"
+  ],
+  "new_sources_checked_on": "2026-11-03",
+  "source_scope": "リンク先の公表内容・制度説明の確認。転載許諾、現車適合、サービスの予約可能性は別途確認。",
+  "verification": {
+    "arithmetic_checks": 34,
+    "original_unchanged": true,
+    "local_markdown_links": "passed",
+    "visual_review": "checks/document_review.jsonを参照。製品画面の試験ではありません。",
+    "scope_reviews": "checks/scope_reviews.json",
+    "scope_visual_review": "checks/scope_document_review.json",
+    "production_api_sources": "checks/production_api_sources.json"
+  },
+  "scope_decision": "08_作り込む範囲の判断_2026-11-03.md",
+  "validation_record": "09_検証記録_2026-11-03.md",
+  "production_plan": "12_デモ動画制作とClaude活用_2026-11-03.md",
+  "claude_usage_template": "13_Claude利用記録ひな形.md",
+  "schedule": {
+    "development_days_max": 3,
+    "subsequent_video_days": 2,
+    "daily_work_hours": null
+  }
+}

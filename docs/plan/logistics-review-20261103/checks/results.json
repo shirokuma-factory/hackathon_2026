@@ -1,0 +1,132 @@
+{
+  "kind": "specification_math_only",
+  "executed_at": "2026-11-03T10:42:56.583294+09:00",
+  "production_tested": false,
+  "original_64_tests_reproduced": false,
+  "total": 16,
+  "passed": 16,
+  "cases": [
+    {
+      "id": "M01",
+      "description": "50 pallets need 3 trailers at 24 pallet slots, despite a 20t payload",
+      "actual": 3,
+      "expected": 3,
+      "passed": true,
+      "original_formula_result": 2
+    },
+    {
+      "id": "M02",
+      "description": "100 pallets need 7 containers at 16 slots; mass-only gives 5",
+      "actual": 7,
+      "expected": 7,
+      "passed": true,
+      "original_formula_result": 5
+    },
+    {
+      "id": "M03",
+      "description": "100 pallets in four 25-pallet dispatches need 8 vehicle trips",
+      "actual": 8,
+      "expected": 8,
+      "passed": true,
+      "original_formula_result": 7
+    },
+    {
+      "id": "M04",
+      "description": "A 100000 estimate with +10 percent relative error implies 90909.09 actual",
+      "actual": 90909.0909090909,
+      "expected": 90909.0909090909,
+      "passed": true,
+      "original_formula_result": 65000.0
+    },
+    {
+      "id": "M05",
+      "description": "A 100000 estimate with -35 percent relative error implies 153846.15 actual",
+      "actual": 153846.15384615384,
+      "expected": 153846.15384615384,
+      "passed": true,
+      "original_formula_result": 110000.00000000001
+    },
+    {
+      "id": "M06",
+      "description": "Intervals [10,20] and [30,40] do not overlap",
+      "actual": false,
+      "expected": false,
+      "passed": true,
+      "original_formula_result": true
+    },
+    {
+      "id": "M07",
+      "description": "Intervals [10,20] and [20,30] touch",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "id": "M08",
+      "description": "Four driving hours need zero intermediate rests in the simplified model",
+      "actual": 0,
+      "expected": 0,
+      "passed": true,
+      "original_formula_result": 1
+    },
+    {
+      "id": "M09",
+      "description": "Eight driving hours need one intermediate rest in the simplified model",
+      "actual": 1,
+      "expected": 1,
+      "passed": true,
+      "original_formula_result": 2
+    },
+    {
+      "id": "M10",
+      "description": "Driving just over four hours needs one intermediate rest",
+      "actual": 1,
+      "expected": 1,
+      "passed": true
+    },
+    {
+      "id": "M11",
+      "description": "A zero-quantity scenario uses zero vehicles",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "id": "M12",
+      "description": "A one-cubic-metre, 100kg slot: 0.8 cubic metres and 110kg need two slots",
+      "actual": 2,
+      "expected": 2,
+      "passed": true
+    },
+    {
+      "id": "M13",
+      "description": "1.5 cubic metres and 500kg can sell only one complete fixed slot",
+      "actual": 1,
+      "expected": 1,
+      "passed": true
+    },
+    {
+      "id": "M14",
+      "description": "Raw cargo fits but two required slots cannot be reserved in 1.5 cubic metres",
+      "actual": false,
+      "expected": false,
+      "passed": true,
+      "original_formula_result": true
+    },
+    {
+      "id": "M15",
+      "description": "Monday dispatches in November 2026 occur five times, not four",
+      "actual": 5,
+      "expected": 5,
+      "passed": true,
+      "original_formula_result": 4
+    },
+    {
+      "id": "M16",
+      "description": "Half yen surcharge uses explicit ceiling to 63 yen",
+      "actual": 63,
+      "expected": 63,
+      "passed": true
+    }
+  ]
+}
