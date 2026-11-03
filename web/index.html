@@ -177,10 +177,58 @@
 <div id="m-credits" class="v-market" aria-label="出典と利用条件"></div>
 
 <section id="find-view" class="glass v-find" aria-label="空きを探す・つなぐ">
-  <div class="m-h">空きを探す・つなぐ</div>
-  <p class="fv-main">次の段階で作ります。</p>
-  <p class="fv-sub">運送会社が便の空きを登録し、荷主が自分の荷に合う空きを探して仮予約するところまでを、架空の運送会社と便で動かす予定です。</p>
-  <p class="fv-pair" id="fv-pair"></p>
+  <div class="m-h">空きを探す・つなぐ<span class="m-tag">架空のデモ</span></div>
+  <div class="m-seg" id="f-role" role="group" aria-label="役">
+    <button data-role="shipper" aria-pressed="true">荷主として探す</button>
+    <button data-role="carrier" aria-pressed="false">運送会社として登録する</button>
+  </div>
+  <div id="f-shipper">
+    <div class="f-row"><span class="lbl">荷物</span><span class="chip-cargo" id="f-cargo"></span>
+      <button type="button" class="btn-link" id="f-change-cargo">送り方を比べるで変える</button></div>
+    <div class="field"><label class="lbl" for="f-dest-q">受け取り場所</label>
+      <input id="f-dest-q" class="ctl sm" type="text" autocomplete="off" placeholder="市区町村名（便の降ろせる地点を先に出します）"
+             role="combobox" aria-expanded="false" aria-controls="f-sug" aria-autocomplete="list">
+      <ul id="f-sug" class="f-sug" role="listbox"></ul></div>
+    <div class="f-grid">
+      <label><span class="lbl">品目</span><select id="f-cat" class="ctl sm"></select></label>
+      <label><span class="lbl">仮予約の期限</span><select id="f-holdmin" class="ctl sm"></select></label>
+    </div>
+    <div class="f-checks">
+      <label class="f-chk"><input type="checkbox" id="f-container"><span>容器に入れた荷</span></label>
+      <label class="f-chk"><input type="checkbox" id="f-fragile"><span>壊れ物</span></label>
+      <label class="f-chk"><input type="checkbox" id="f-box" checked><span>段ボールなどの直方体の箱</span></label>
+    </div>
+  </div>
+  <div id="f-carrier" hidden>
+    <label class="field"><span class="lbl">運送会社の役</span><select id="f-carrier-sel" class="ctl sm"></select></label>
+    <div class="m-h f-sub-h">便の空きと料金を変える<span class="m-tag">画面の中だけ</span></div>
+    <label class="field"><span class="lbl">便</span><select id="f-trip-sel" class="ctl sm"></select></label>
+    <div class="f-grid">
+      <label><span class="lbl">重さの余り（kg）</span><input id="f-slack-in" class="ctl sm num" type="number" min="0" step="any"></label>
+      <label><span class="lbl">1口の料金（円・税抜）</span><input id="f-price-in" class="ctl sm num" type="number" min="0" step="any"></label>
+    </div>
+    <div class="f-btns"><button type="button" class="btn-sm" id="f-apply">画面に反映する</button>
+      <button type="button" class="btn-sm" id="f-dl" disabled>JSON をダウンロード</button></div>
+    <p class="f-edit-note" id="f-edit-note"></p>
+    <p class="f-hint">変えた値はこのページの中にだけあり、サーバーには書きません。荷主側の照合にも使われません。</p>
+  </div>
+  <div class="f-foot"><button type="button" class="btn-link" id="f-reset">仮予約と空きを最初の状態に戻す</button></div>
+</section>
+
+<aside id="find-right" class="glass v-find" aria-label="便の一覧">
+  <header>
+    <div class="m-rh"><b id="f-rtitle">いまの荷に合う便</b><span class="m-rsub num" id="f-rsub"></span></div>
+  </header>
+  <div id="f-pairbar" hidden></div>
+  <div id="f-list"></div>
+</aside>
+
+<section id="find-notes" class="glass v-find" aria-label="注意と凡例">
+  <p class="f-n1" id="f-fiction">架空の運送会社と便です。</p>
+  <p class="f-n2" id="f-booking">積むかどうか、どこにどう積むかは運送会社が決めます。受付で量って条件に合わないときは受け付けません。</p>
+  <p class="f-n3">決済、メール、通知の送信はしません。料金は運送会社が決めた架空の額（税抜）です。</p>
+  <div class="f-lg"><span><i class="f-l-on"></i>荷に合う便</span><span><i class="f-l-off"></i>合わない便・別の区間</span>
+    <span class="mlg-faint">細い線は帰りの空きやすさ（物流センサス 2021、e-Stat を加工）</span></div>
 </section>
 
 <div id="hover-tag"></div>
@@ -192,6 +240,7 @@
 <script src="work.js"></script>
 <script src="hubs.js"></script>
 <script src="market.js"></script>
+<script src="find.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

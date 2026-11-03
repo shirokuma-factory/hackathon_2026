@@ -702,12 +702,111 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 }
 #m-credits::before { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 84px; z-index: -1; pointer-events: none; background: linear-gradient(to top, rgba(5,8,14,.92), rgba(5,8,14,0)); }
 
-/* ---------- 空きを探す・つなぐ（次の段階） ---------- */
-#find-view { position: fixed; left: var(--gutter); top: 76px; width: 372px; z-index: 18; padding: 16px; }
-.fv-main { margin: 0 0 6px; font-size: 20px; font-weight: 700; }
-.fv-sub { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
-.fv-pair { margin: 10px 0 0; font-size: 12.5px; color: var(--accent); }
-.fv-pair:empty { display: none; }
+/* ---------- 空きを探す・つなぐ（SPEC §16.2、架空のデモ） ---------- */
+#find-view { position: fixed; left: var(--gutter); top: 76px; width: 372px; z-index: 19; padding: 14px 16px 10px; max-height: calc(100vh - 300px); overflow: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+#find-view [hidden] { display: none !important; }
+.f-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 10px; }
+.f-row .lbl, #find-view .lbl { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+#find-view .field > .lbl { display: block; margin: 0 0 4px 2px; }
+.f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.f-grid .lbl { display: block; margin: 0 0 4px 2px; }
+.f-checks { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.f-chk { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
+.f-chk input { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; margin: 0; border-radius: 5px; border: 1px solid var(--line-strong); background: rgba(255,255,255,.05); display: grid; place-content: center; cursor: pointer; flex: none; }
+.f-chk input:checked { background: var(--accent); border-color: var(--accent); }
+.f-chk input:checked::after { content: ""; width: 8px; height: 4px; border-left: 2px solid #04131c; border-bottom: 2px solid #04131c; transform: rotate(-45deg) translate(1px, -1px); }
+.f-chk input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.f-sug { list-style: none; margin: 6px 0 0; padding: 4px; position: absolute; left: 0; right: 0; top: 100%; z-index: 30; max-height: 260px; overflow: auto; background: var(--glass-solid); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow); display: none; }
+.f-sug.open { display: block; }
+.f-sug li { padding: 6px 10px; border-radius: 8px; display: flex; justify-content: space-between; gap: 10px; cursor: pointer; font-size: 13px; }
+.f-sug li small { color: var(--muted); white-space: nowrap; }
+.f-sug li.on, .f-sug li:hover { background: var(--accent-soft); }
+.f-sug li.grp { cursor: default; font-size: 10.5px; color: var(--faint); padding: 6px 10px 2px; letter-spacing: .04em; }
+.f-sug li.grp:hover { background: none; }
+.f-sug .empty { color: var(--muted); cursor: default; }
+.f-sub-h { margin-top: 4px; }
+.f-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.f-edit-note { margin: 0 2px 4px; font-size: 11.5px; color: var(--warn); }
+.f-edit-note:empty { display: none; }
+.f-hint { margin: 0 2px; font-size: 11px; color: var(--faint); line-height: 1.6; }
+.f-foot { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+
+#find-right { position: fixed; right: 16px; top: 16px; bottom: 16px; width: var(--m-w); z-index: 18; display: flex; flex-direction: column; overflow: hidden; }
+#find-right header { padding: 14px 18px 10px; border-bottom: 1px solid var(--line); }
+#f-pairbar { padding: 10px 18px; border-bottom: 1px solid var(--line); background: var(--accent-soft); display: grid; gap: 4px 10px; grid-template-columns: 1fr auto; font-size: 12px; }
+#f-pairbar[hidden] { display: none; }
+#f-pairbar div { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 1px; }
+#f-pairbar span { color: var(--muted); font-size: 11.5px; }
+#f-list { flex: 1; overflow: auto; padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+.f-err { margin: 0; color: var(--error); font-size: 12.5px; }
+.f-empty { margin: 8px 4px; color: var(--muted); font-size: 12.5px; }
+.f-split { margin: 6px 2px 0; font-size: 11px; color: var(--faint); letter-spacing: .04em; }
+.f-card { padding: 11px 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.035); display: flex; flex-direction: column; gap: 3px; cursor: pointer; transition: background .15s, border-color .15s, opacity .2s; outline: none; flex: none; }
+.f-card:hover { background: rgba(255,255,255,.06); }
+.f-card:focus-visible { border-color: var(--accent); }
+.f-card.sel { border-color: rgba(92,200,255,.55); background: var(--accent-soft); }
+.f-card.ok { border-left: 3px solid var(--ok); }
+.f-card.off { opacity: .45; }
+.f-card.ng .f-veh { color: var(--muted); }
+.f-top { display: flex; align-items: center; gap: 8px; }
+.f-id { font-size: 11px; font-weight: 700; color: var(--accent); border: 1px solid rgba(92,200,255,.4); border-radius: 6px; padding: 1px 6px; }
+.f-veh { font-size: 13.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f-sub { font-size: 12px; color: var(--muted); }
+.f-sub em { font-style: normal; color: var(--warn); }
+.f-route { font-size: 12px; }
+.f-when { font-size: 11.5px; color: var(--muted); }
+.f-bar { margin-top: 5px; }
+.f-track { position: relative; height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: visible; }
+.f-track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, #3189c0, #77c0ea); transition: width .5s var(--ease); }
+.f-track u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; border-radius: 1px; text-decoration: none; transition: left .4s var(--ease); }
+.f-bar-txt { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+.f-bar-txt b { color: var(--text); font-weight: 700; }
+.f-shelf { font-size: 11px; color: var(--faint); }
+.f-price { display: flex; align-items: baseline; gap: 4px; margin-top: 2px; }
+.f-price b { font-size: 20px; font-weight: 700; }
+.f-price span { font-size: 12px; color: var(--muted); }
+.f-price small { font-size: 11px; color: var(--faint); margin-left: 6px; }
+.f-edited { margin-left: auto; font-style: normal; font-size: 11px; color: var(--warn); }
+.f-why { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.f-why li { font-size: 12px; color: #d7c08a; line-height: 1.55; padding-left: 14px; position: relative; }
+.f-why li::before { content: "×"; position: absolute; left: 0; color: var(--warn); }
+.f-hold { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.f-hold .btn-primary.sm { height: 34px; }
+.f-hold-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; width: 100%; font-size: 13px; }
+.f-hold.accepted .f-hold-row b { color: var(--ok); }
+.f-hold.held .f-hold-row b { color: var(--warn); }
+.f-hold-msg { font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+.f-hold-msg.faint { color: var(--faint); }
+.f-cd { margin-left: auto; font-size: 18px; font-weight: 700; color: var(--text); }
+.f-cd.low { color: var(--warn); }
+.f-holds { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.f-hh { font-size: 11.5px; color: var(--muted); }
+.f-hrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; }
+.f-hrow .f-cd { font-size: 14px; margin-left: 10px; }
+.f-hbtn { display: flex; gap: 6px; }
+.f-hbtn .btn-primary.sm, .f-hbtn .btn-ghost.sm { height: 32px; padding: 0 16px; width: auto; font-size: 13px; }
+.btn-ghost.sm { height: 34px; padding: 0 16px; font-size: 13px; }
+.f-hhist { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.f-hpast { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+.f-detail { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); display: grid; gap: 3px; }
+.f-detail > div { display: grid; grid-template-columns: 9.5em 1fr; gap: 8px; font-size: 12px; }
+.f-detail span { color: var(--muted); }
+.f-detail b { font-weight: 500; }
+
+#find-notes { position: fixed; left: var(--gutter); bottom: 20px; width: 372px; z-index: 15; padding: 12px 16px 12px; display: flex; flex-direction: column; gap: 5px; }
+#find-notes p { margin: 0; line-height: 1.6; }
+.f-n1 { font-size: 13px; font-weight: 700; color: var(--warn); }
+.f-n2 { font-size: 12.5px; }
+.f-n3 { font-size: 11.5px; color: var(--muted); }
+.f-lg { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+.f-lg i { display: inline-block; width: 22px; height: 0; vertical-align: 3px; margin-right: 6px; }
+.f-l-on { border-top: 3px solid #ecfaff; border-radius: 2px; box-shadow: 0 0 8px rgba(92,200,255,.8); }
+.f-l-off { border-top: 2px solid rgba(170,215,250,.3); }
+
+.f-tag { padding: 2px 8px; border-radius: 8px; font-size: 11.5px; font-weight: 700; white-space: nowrap; background: rgba(8,13,22,.9); border: 1px solid rgba(92,200,255,.55); color: #fff; cursor: pointer; transition: opacity .2s, border-color .2s; font-family: inherit; }
+.f-tag.dim { opacity: .4; border-color: var(--line-strong); }
+.f-tag.on { border-color: #fff; opacity: 1; }
+body:not(.view-find) .f-tag { display: none !important; }
 
 /* 地図の上の県名（選んだ区間の両端） */
 .m-end {
@@ -729,7 +828,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 
 @media (max-width: 1500px) {
   :root { --m-w: 440px; }
-  #views, #m-left, #m-legend, #find-view { width: 340px; }
+  #views, #m-left, #m-legend, #find-view, #find-notes { width: 340px; }
   #m-summary { left: 380px; }
   .sum-num { font-size: 25px; }
   .sum-tile { padding: 0 12px; }

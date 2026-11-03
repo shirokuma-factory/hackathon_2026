@@ -370,7 +370,7 @@ function frame(now) {
   const zoom = map.getZoom();
   let layers;
   if (S.view === 'market') layers = Market.layers(now, zoom);
-  else if (S.view === 'find') layers = [S.staticLayers[1]]; // 県境だけ（空きを探す画面は次の段階で作る）
+  else if (S.view === 'find') layers = [S.staticLayers[1], ...Market.flowLayers(now, 0.3), ...Find.layers(now)]; // 県境、帰りの空きやすさ（うすく）、架空の便
   else layers = [...S.staticLayers, ...Hubs.layers(zoom, { line: currentHubLine() }), ...dynamicLayers(now)];
   overlay.setProps({ layers });
   placeTruckTag();
@@ -525,7 +525,7 @@ function hubHtml(h) {
   const row = (lbl, x) => `<div class="hrow"><span class="k">${lbl}</span><span class="v">${escapeHtml(x.hub.name)}</span><span class="d num">直線 ${x.km.toFixed(1)}km</span></div>`;
   return `<div class="hubinfo">${row(`出発地に近い${nm}`, h.o)}${row(`着地に近い${nm}`, h.d)}` +
     `<button class="hub-btn" data-hub="${h.kind}" aria-pressed="${S.hubSel === h.kind}">地図に点線を出す</button>` +
-    `<div class="hub-note">直線距離で、${h.kind === 'rail' ? '線路' : '航路'}や道路の長さではありません。点線は経路の形ではなく、つなぎ方の目安です。OSM に登録された主な${nm}の中から選んでいます。</div></div>`;
+    `<div class="hub-note">直線距離で、${h.kind === 'rail' ? '線路' : '航路'}や道路の長さではありません。点線は経路の形ではなく、つなぎ方の目安です。OSM に登録された${h.kind === 'rail' ? '主な貨物駅' : '100km 以上のフェリー航路の端にある港'}の中から選んでいます。</div></div>`;
 }
 
 function renderCards(cards) {
@@ -667,6 +667,8 @@ function fitRoute() {
 function fitJapan(animate) {
   const pad = S.view === 'market'
     ? { top: 165, bottom: 100, left: 400, right: ($('#m-right').offsetWidth || 480) + 90 }
+    : S.view === 'find'
+      ? { top: 60, bottom: 100, left: 420, right: ($('#find-right').offsetWidth || 480) + 70 }
     : { top: 20, bottom: 110, left: 60, right: 110 };
   map.fitBounds(JAPAN_BOUNDS, { padding: pad, duration: animate ? 1800 : 0 });
 }
@@ -722,6 +724,7 @@ function writeHash() {
   if (S.view === 'market') { Market.syncHash(); return; }
   const p = new URLSearchParams();
   p.set('v', S.view);
+  if (S.view === 'find') Find.hashParams(p);
   if (S.view !== 'compare') { history.replaceState(null, '', '#' + p.toString()); return; }
   p.set('o', S.origin);
   p.set('l', S.layer);
@@ -786,6 +789,7 @@ function setView(v) {
     $('#truck-tag').classList.remove('on');
   }
   if (prev === 'market') Market.setActive(false);
+  if (prev === 'find') Find.leave();
   $('#hover-tag').classList.remove('on');
   S.view = v;
   applyViewClasses();
@@ -797,8 +801,8 @@ function setView(v) {
     const r = Market.selected();
     if (r) Market.select(r.k, { fly: true }); else fitJapan(true);
   } else {
-    $('#fv-pair').textContent = Market.pairText() ? `選んだ区間: ${Market.pairText()}（この向きの帰りの便を探す予定です）` : '';
     fitJapan(true);
+    Find.enter(prev === 'market' ? Market.pairNames() : null);
   }
   writeHash();
   setHubLegend();
@@ -860,7 +864,7 @@ async function main() {
   $('#origin').innerHTML = meta.origins.map((o) => `<option value="${o.code}">${o.name}</option>`).join('');
   $('#origin').value = S.origin;
   await Work.init({
-    onCargoChange,
+    onCargoChange: () => { onCargoChange(); Find.onCargo(); },
     onWorkToggle: () => {},
     routeLabel: () => S.workLabel || '',
   });
@@ -882,7 +886,7 @@ async function main() {
     getCursor: ({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab'),
     onHover: (info) => { if (S.view === 'market') Market.hover(info); else if (S.view === 'compare') hoverTag(info); },
     pickingRadius: 6,
-    onClick: (info) => { if (S.view === 'market') { Market.click(info); return; } if (S.view !== 'compare') return; if (Work.isOpen()) Work.closeWork(); if (info.object && info.layer && info.layer.id === 'muni' && info.object.properties.i >= 0) select(info.object.properties.i); },
+    onClick: (info) => { if (S.view === 'market') { Market.click(info); return; } if (S.view === 'find') { Find.click(info); return; } if (S.view !== 'compare') return; if (Work.isOpen()) Work.closeWork(); if (info.object && info.layer && info.layer.id === 'muni' && info.object.properties.i >= 0) select(info.object.properties.i); },
   });
   map.addControl(overlay);
   await new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
@@ -897,6 +901,9 @@ async function main() {
   Market.setActive(S.view === 'market');
   Market.init();
   Market.afterStart();
+  Find.readHash(p);
+  await Find.init();
+  if (S.view === 'find') Find.enter(null);
   setHubLegend();
   document.querySelectorAll('#views button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
   document.querySelector('.tgl[data-toggle="hubs"]').addEventListener('click', () => setHubs(!Hubs.on));
@@ -935,7 +942,7 @@ async function main() {
   refreshFareLayer();
   requestAnimationFrame(frame);
   setTimeout(() => $('#loading').classList.add('done'), 400);
-  window.__app = { S, Market, Hubs, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
+  window.__app = { S, Market, Hubs, Find, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }
 
 main().catch((e) => {
