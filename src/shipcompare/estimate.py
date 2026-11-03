@@ -30,6 +30,8 @@ ISSUE_PICKUP_UNKNOWN = "pickup_unknown"
 # 利用者が手入力した額から出した行の出典（運送会社の表ではない）
 USER_INPUT_SOURCE = Source("利用者の入力", "", None, "")
 
+ROSEN_LABEL = "路線便（日本通運 積合せ）運送は名鉄NX運輸 こぐまアロー便"
+
 TAX_RATE = Decimal("1.1")
 CM3_PER_M3 = Decimal(1_000_000)
 
@@ -237,7 +239,12 @@ def _oversize_reasons(shipment: Shipment) -> list[str]:
 
 def estimate_rosen(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
                    manual: dict[str, int]) -> EstimateRow:
-    row = EstimateRow("rosen", "路線便（日本通運 積合せ）", ST_OK, source=source_of(tariff))
+    row = EstimateRow("rosen", ROSEN_LABEL, ST_OK, source=source_of(tariff))
+    if shipment.receiver_type == "個人":
+        row.status = ST_UNUSABLE
+        row.reasons = ["使えない（法人向けの商品で、個人あての配送はしていません）"]
+        row.issues.append(Issue(ISSUE_CORPORATE, row.reasons[0]))
+        return row
     if not totals.ok:
         return _nocalc(row, totals)
     row.detail = {
@@ -290,6 +297,11 @@ def estimate_rosen(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
     row.amount = round_yen(amount)
     row.low = round_yen(amount * Decimal("0.9"))
     row.high = round_yen(amount * Decimal("1.1"))
+    if shipment.sender_type == "個人":
+        row.status = ST_CHECK
+        msg = "要確認（法人のお客様が対象の商品です）"
+        row.reasons.append(msg)
+        row.issues.append(Issue(ISSUE_CORPORATE, msg))
     return row
 
 

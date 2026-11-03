@@ -10,7 +10,8 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from shipcompare.estimate import ST_CHECK, ST_OK, EstimateRow, estimate_all, summarize
+from shipcompare.estimate import ST_CHECK, ST_NOCALC, ST_OK, EstimateRow, estimate_all, summarize
+from shipcompare.guide import NO_CONTACT, contacts_for_rows, load_guide, transit_days, transit_days_text
 from shipcompare.models import (
     COST_KEYS,
     KIND_AMOUNT,
@@ -125,7 +126,7 @@ def caution_text(r: EstimateRow) -> str:
     return " / ".join(seen)
 
 
-def estimate_records(rows: list[EstimateRow]) -> pd.DataFrame:
+def estimate_records(rows: list[EstimateRow], route: str | None = None) -> pd.DataFrame:
     """表に出す列。長い根拠・注意は表に入れず、行ごとの折りたたみに出す。"""
     recs = []
     for r in rows:
@@ -137,6 +138,7 @@ def estimate_records(rows: list[EstimateRow]) -> pd.DataFrame:
             "目安額（税抜・円）": fmt_yen(r.amount) if shown else "",
             "最低（円）": fmt_yen(r.low) if shown else "",
             "最高（円）": fmt_yen(r.high) if shown else "",
+            "お届け日数（公表）": transit_days_text(transit_days(r.mode, route)) if r.status != ST_NOCALC else "",
             "出典": src.name if src else "",
             "出典の頁": (src.url or None) if src else None,
             "適用日": ((src.applies_from or "記載なし") if src.url else "") if src else "",
@@ -479,20 +481,38 @@ def section_estimate(case: Case) -> None:
     if not cf.empty:
         st.altair_chart(estimate_chart(cf), width="stretch", height=chart_height(len(cf)) + 110)
     st.dataframe(
-        estimate_records(rows), hide_index=True, width="stretch",
+        estimate_records(rows, shipment.route), hide_index=True, width="stretch",
         column_config={
             "出典の頁": st.column_config.LinkColumn("出典の頁", display_text="開く"),
             "手段": st.column_config.TextColumn("手段", width="large"),
             "目安額（税抜・円）": st.column_config.TextColumn("目安額（税抜・円）", width="medium"),
             "出典": st.column_config.TextColumn("出典", width="large"),
+            "お届け日数（公表）": st.column_config.TextColumn("お届け日数（公表）", width="large"),
         },
     )
     st.caption("金額はすべて税抜です。空欄は不明で、0円ではありません。")
+    st.caption("お届け日数は運送会社が公表した値だけです。宅配の値は代表の郵便番号で照会した値で、"
+               "集荷時間や時期で変わります。路線便と貸切は公表がなく、カゴ台車は公表の規則の文です。")
     st.markdown("**根拠と注意**（「公開条件に合う」以外は開いて表示しています）")
     for r in rows:
         with st.expander(f"{r.label}　{r.status}", expanded=r.status != ST_OK):
             st.markdown("**根拠**: " + (basis_text(r) or "なし"))
             st.markdown("**注意**: " + (caution_text(r) or "なし"))
+    section_guide()
+
+
+def section_guide() -> None:
+    with st.expander("ほかの輸送手段（早見表、計算はしていません）"):
+        st.dataframe(
+            pd.DataFrame([{
+                "手段": g.name, "運べる量": g.capacity, "使える人": g.who,
+                "料金の例（税抜）": g.price_text, "日数の例": g.days,
+                "備考": g.note or "", "出典": g.source_name, "出典の頁": g.source_url, "確認日": g.checked_on,
+            } for g in load_guide()]),
+            hide_index=True, width="stretch",
+            column_config={"出典の頁": st.column_config.LinkColumn("出典の頁", display_text="開く")},
+        )
+        st.caption("荷の量で行を絞っていません。運べるかどうか、使えるかどうかは各社に確かめてください。")
 
 
 def section_request(case: Case) -> None:
@@ -500,6 +520,7 @@ def section_request(case: Case) -> None:
         st.info("先に「出荷条件」で条件を確定してください。")
         return
     draft = build_request(case.versions[-1].shipment, case.scenario)
+    shipment = case.versions[-1].shipment
     st.markdown(f"**状態: {draft.status}**（条件の版 {case.current_version}）")
     c1, c2 = st.columns(2)
     with c1:
@@ -516,6 +537,25 @@ def section_request(case: Case) -> None:
     st.download_button("依頼文を .txt で保存", data=draft.text.encode("utf-8"),
                        file_name="mitsumori_irai.txt", mime="text/plain", key="dl_request")
     st.caption("このツールは依頼文を送信しません。コピーして各社へ送ってください。")
+
+    st.markdown("**問い合わせ先**（いまの条件で「公開条件に合う」か「要確認」の手段だけです）")
+    manual = current_manual_inputs(case).get(case.current_version, {})
+    contacts = contacts_for_rows(estimate_all(shipment, manual))
+    if contacts:
+        st.dataframe(
+            pd.DataFrame([{
+                "手段": c.mode_label,
+                "窓口": c.name if c.has_window else NO_CONTACT,
+                "リンク": c.url,
+                "条件": c.condition,
+                "確認日": c.checked_on,
+            } for c in contacts]),
+            hide_index=True, width="stretch",
+            column_config={"リンク": st.column_config.LinkColumn("リンク", display_text="開く")},
+        )
+    else:
+        st.info("いまの条件で使える手段がないため、問い合わせ先はありません。")
+    st.caption("窓口は各社が公表している頁です。連絡先を推測して足してはいません。")
 
 
 def _next_quote_id(case: Case) -> str:
