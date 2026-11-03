@@ -16,6 +16,7 @@
 - local-ai MCP の接続確認: ComfyUI は応答（RTX 5080、VRAM 空き 15.6GB、キュー 0）。`workflows/comfyui/` はまだ空。Ollama は未導入で 11434 番が拒否。代わりに LM Studio（`lms`）が入っていて、gemma-4-12b-qat / gemma-4-26b-a4b-qat / qwen3.8-27b / nomic-embed が手元にある。
 - 決定: ローカル LLM は当面使わず、ComfyUI だけで進める（作成者の判断）。Ollama の導入と LM Studio への切り替えは見送り。
 - 物流レビュー資料（最初の計画資料）の制作環境を手元と照合: ComfyUI 応答あり、Resolve Studio 21.1.1 は MCP 接続済みだが未起動、ffmpeg 7.1 は `C:iin` にあるが PATH 外で ffprobe なし、ElevenLabs の API キーは環境変数に未設定、Node は未導入（uv / Python 3.13 はあり）。
+- 公開前の確認: 秘密情報・個人情報なし。PC 固有パス3か所を相対パスに修正（68fd89c）。修正前のパスが残る 33260ea の履歴書き換えは、ユーザー名と作業フォルダ ID だけで認証に使えないため行わない（作成者の判断）。
 
 ## コミット（自動記録）
 
