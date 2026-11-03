@@ -1,13 +1,9 @@
 {
-  "score": 81.0,
-  "head": "4cba2e9",
-  "timestamp": "2026-11-03T15:18:13+09:00",
-  "fingerprint": "cd4371501fc26ddd60c9f67cc2e93e5cbc2704fc9460785aa9f85f6276ef47d5",
-  "failed_ids": [
-    "C1",
-    "D1",
-    "E3"
-  ],
+  "score": 100.0,
+  "head": "b92404d",
+  "timestamp": "2026-11-03T15:56:53+09:00",
+  "fingerprint": "80def9185855479f1da26017830fbd8f4763094b1642074fd7df44c00415ec06",
+  "failed_ids": [],
   "items": [
     {
       "group": "A",
@@ -264,9 +260,9 @@
       "id": "C1",
       "text": "画面の証拠",
       "points": 8,
-      "got": 1.0,
-      "passed": false,
-      "reason": "1/8 件。2026-11-03_S2_estimates_chart.jpg: 幅 800, 2026-11-03_S5_quotes_demo_partial.jpg: DEVLOG に未記載 ... 計7件",
+      "got": 8.0,
+      "passed": true,
+      "reason": "",
       "excluded": false
     },
     {
@@ -274,9 +270,9 @@
       "id": "D1",
       "text": "最新のレビューが今のコードに対するもので、P0 と P1 が 0 件",
       "points": 10,
-      "got": 0,
-      "passed": false,
-      "reason": "指紋が今のコードと違う（レビューが古い）",
+      "got": 10,
+      "passed": true,
+      "reason": "",
       "excluded": false
     },
     {
@@ -304,9 +300,9 @@
       "id": "E3",
       "text": "チェックポイントの記録に CP1〜CP5 の行がある",
       "points": 2,
-      "got": 0,
-      "passed": false,
-      "reason": "なし: | CP3 | 済, | CP4 | 済, | CP5 | 済",
+      "got": 2,
+      "passed": true,
+      "reason": "",
       "excluded": false
     },
     {
