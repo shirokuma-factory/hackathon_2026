@@ -273,6 +273,14 @@ FERRY_MIN_SHARE = 0.25  # 航路の長さが、出発地〜着地の直線距離
 FERRY_DETOUR_MAX = 1.6  # 出発地→港→航路→港→着地が、直線距離のこの倍を超えるものは経路にしない
 AIR_MIN_KM = rt.AIR_MIN_KM
 CHAIN_MAX_LEGS = 10  # 1 回の問い合わせにまとめる拠点との区間の数
+# 飛行機の経路に使う空港。OSM の IATA コード付き 102 件には定期便のない小さな空港も含まれるので、
+# 国内の貨物を扱う主な空港に絞った手作業の一覧（作成者の指示、2026-11-04）。最寄りは直線距離で選ぶ
+# （道路距離で選ぶには候補ごとの OSRM の要求が要り、予算に収まらないため）。
+CURATED_AIRPORTS = (
+    "HND", "NRT", "KIX", "ITM", "NGO", "CTS", "FUK", "OKA", "SDJ", "HIJ", "KMJ", "KOJ", "KMQ", "OKJ", "TAK", "MYJ",
+    "KCZ", "NGS", "OIT", "KMI", "AOJ", "AXT", "HKD", "KUH", "AKJ", "OBO", "MMB", "KIJ", "TOY", "FSZ", "IZO", "YGJ",
+    "TKS", "UBJ", "ISG", "MMY",
+)
 TINY_LEG_KM = 0.3  # これより短い第一/最終区間は作らない（2 点の線になるため）
 
 
@@ -303,7 +311,9 @@ class World:
         self.trips = read_json(ROOT / "data" / "demo" / "carriers.json")["trips"]
         sj = read_json(OUT / "rail_stations.json")["stations"]
         self.stations = [s for s in sj if s.get("node_lon") is not None]
-        self.airports = read_json(OUT / "airports.json")["airports"]
+        all_airports = read_json(OUT / "airports.json")["airports"]
+        self.airports = [a for a in all_airports if a["iata"] in CURATED_AIRPORTS]
+        self.airports_missing = sorted(set(CURATED_AIRPORTS) - {a["iata"] for a in self.airports})
         terms = load_hubs("ferry_terminals")
         routes = [r for r in load_hubs("ferry_routes") if r["km"] >= FERRY_MIN_ROUTE_KM]
         port_idx = freight_ferry_ports(terms, routes)
@@ -349,7 +359,11 @@ class World:
             return None, "取得済みのフェリー航路がありません"
         _, d1, d2, l, s, e, path = best
         if d1 > PORT_MAX_KM or d2 > PORT_MAX_KM:
-            return None, f"出発地または着地の近く（{PORT_MAX_KM:.0f}km 以内）に、両端がつながる 100km 以上のフェリー航路がありません"
+            side = "出発地" if d1 > PORT_MAX_KM else "着地"
+            if d1 > PORT_MAX_KM and d2 > PORT_MAX_KM:
+                side = "出発地と着地"
+            return None, (f"{side}の近く（{PORT_MAX_KM:.0f}km 以内）に、両端がつながる 100km 以上のフェリー航路がありません"
+                          "（取得済みの航路に、出発地側と着地側を直通するものがない）")
         if l["km"] < FERRY_MIN_SHARE * direct:
             return None, "つながる航路が出発地〜着地の距離に比べて短すぎます（直通の航路がありません）"
         if d1 + l["km"] + d2 > FERRY_DETOUR_MAX * direct:
@@ -434,8 +448,6 @@ def rail_between(g: rg.Graph, cache: dict[int, Any], s_from: dict[str, Any], s_t
 
 def truck_blocked(world: World, j: dict[str, Any]) -> str | None:
     """OSRM に問い合わせる前に分かる「道がつながっていない」理由。"""
-    if hav(j["o"], j["d"]) < TINY_LEG_KM:
-        return "出発地と着地が同じ場所です"
     if "沖縄県" in (j["o_name"], j["d_name"]):
         return "道路でつながっていません（離島）"
     if j["origin_code"]:
@@ -495,7 +507,8 @@ def plan_all(world: World, g: rg.Graph, jobs: list[dict[str, Any]]) -> Need:
     need = Need()
     cache: dict[int, Any] = {}
     for j in jobs:
-        j["blocked"] = truck_blocked(world, j)
+        j["same"] = hav(j["o"], j["d"]) < TINY_LEG_KM  # 同じ場所はどの手段も作らない
+        j["blocked"] = "出発地と着地が同じ場所です" if j["same"] else truck_blocked(world, j)
         if j["blocked"] is None:
             need.add(j["o"], j["d"], "main")
     for t in world.trips:
@@ -504,7 +517,7 @@ def plan_all(world: World, g: rg.Graph, jobs: list[dict[str, Any]]) -> Need:
         for j in jobs:
             plan = plan_mode(world, g, cache, j, mode)
             j.setdefault("plan", {})[mode] = plan
-            if j["blocked"] is None:
+            if not j["same"]:  # トラックの道路がなくても、島の中の区間と本土側の区間は別に取る
                 for pt, hub in plan.get("hubs", []):
                     need.add(pt, (round(hub[0], 5), round(hub[1], 5)), f"hub_{mode}")
     return need
@@ -646,7 +659,7 @@ def compose_job(cache: dict[str, Any], j: dict[str, Any]) -> dict[str, Any]:
         if plan.get("reason"):
             modes[mode], reasons[mode] = None, plan["reason"]
             continue
-        if j["blocked"]:
+        if j["same"]:
             modes[mode], reasons[mode] = None, j["blocked"]
             continue
         (po, ha), (pd, hb) = plan["hubs"]
