@@ -137,5 +137,6 @@ def build_request(shipment: Shipment, scenario: dict | None = None) -> RequestDr
     lines.append("")
     lines.append("※ 目安額は公表運賃からの計算で、最終の運賃ではありません。")
     if scenario and scenario.get("name"):
-        lines.append(f"※ この条件は{scenario['name']}（{scenario.get('label') or '想定の荷主'}）の例です。")
+        tail = "の例を元に変えたものです" if scenario.get("modified") else "の例です"
+        lines.append(f"※ この条件は{scenario['name']}（{scenario.get('label') or '想定の荷主'}）{tail}。")
     return RequestDraft(status, required, optional, "\n".join(lines) + "\n")

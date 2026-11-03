@@ -13,7 +13,7 @@ from shipcompare.quotes import (
 )
 from shipcompare.request import build_request
 from shipcompare.storage import (
-    ORDER_NOTICE, case_from_dict, case_to_dict, demo_quotes_for, load_case, load_scenario, save_case,
+    ORDER_NOTICE, case_from_dict, case_to_dict, demo_quotes_for, load_case, load_scenario, save_case, scenario_info,
 )
 
 from conftest import make_shipment
@@ -92,15 +92,15 @@ def test_spec13_2_s5_scenario_and_demo_quotes():
 
 def test_spec13_5_json_has_notice_scenario_estimates(tmp_path):
     sc = load_scenario("S5")
-    case = Case(scenario={"id": sc["id"], "name": sc["name"], "label": sc["label"]})
-    case.confirm(sc["shipment"])
+    case = Case()
+    case.confirm(sc["shipment"], scenario=scenario_info(sc))
     case.quotes = demo_quotes_for(sc, 1, TODAY)
     case.quotes[0].id, case.quotes[1].id = "q1", "q2"
     path = tmp_path / "c.json"
     save_case(path, case, now=datetime(2026, 11, 3, 12, 0, 0))
     raw = json.loads(path.read_text(encoding="utf-8"))
     assert raw["schema_version"] == 2 and raw["notice"] == ORDER_NOTICE
-    assert raw["scenario"] == {"id": "S5", "name": "計画の実演例", "label": "想定の荷主"}
+    assert raw["scenario"] == {"id": "S5", "name": "計画の実演例", "label": "想定の荷主", "modified": False}
     est = raw["estimates"]
     assert est[0]["version"] == 1
     rosen = next(r for r in est[0]["rows"] if r["mode"] == "rosen")
@@ -180,9 +180,11 @@ def test_spec13_2_s5_demo_flow():
 
 def test_spec13_5_new_input_clears_scenario_and_hides_demo_button():
     at = confirm(app_load(new_app(), 5))
-    assert at.session_state["scenario_info"]["id"] == "S5"
+    assert at.session_state["case"].scenario["id"] == "S5"
     at.selectbox(key="scenario_select").select("").run()
-    assert at.session_state["scenario_info"] is None
+    assert at.session_state["case"].scenario["id"] == "S5"  # 選択を変えただけでは確定した版は変わらない
+    confirm(at)
+    assert at.session_state["case"].scenario is None
     assert not [b for b in at.button if b.key == "add_demo_quotes"]
 
 
@@ -206,3 +208,88 @@ def test_spec13_4_order_notice(tmp_path):
     save_case(path, case)
     assert json.loads(path.read_text(encoding="utf-8"))["notice"] == ORDER_NOTICE
     assert "発注は運送会社と直接行ってください" in ORDER_NOTICE
+
+
+def df_all(at) -> str:
+    return "\n".join(d.value.to_string() for d in at.dataframe)
+
+
+# ---------------------------------------------------------------- 13.12 (G17, G18, F4)
+def _demo_buttons(at):
+    return [b for b in at.button if b.key == "add_demo_quotes"]
+
+
+def test_spec13_12_g17_selection_without_confirm_keeps_version_scenario():
+    at = confirm(app_load(new_app(), 1))
+    assert not _demo_buttons(at)  # S1 には架空の回答例が無い
+    app_load(at, 5)  # 選んだだけで確定しない
+    assert not at.exception
+    case = at.session_state["case"]
+    assert case.scenario["id"] == "S1" and case.scenario["modified"] is False
+    assert not _demo_buttons(at)
+    assert "S5" not in json.dumps(case_to_dict(case), ensure_ascii=False)
+    assert "計画の実演例" not in build_request(case.versions[-1].shipment, case.scenario).text
+
+
+def test_spec13_12_g17_new_input_after_confirm_keeps_s5():
+    at = confirm(app_load(new_app(), 5))
+    assert _demo_buttons(at)
+    at.selectbox(key="scenario_select").select("").run()
+    case = at.session_state["case"]
+    assert case.scenario["id"] == "S5" and len(case.versions) == 1
+    assert _demo_buttons(at)  # 確定した版は S5 のまま
+    raw = case_to_dict(case)
+    assert raw["scenario"]["id"] == "S5" and raw["versions"][0]["scenario"]["id"] == "S5"
+
+
+def test_spec13_12_modified_flag_hides_button_and_changes_wording():
+    at = app_load(new_app(), 5)
+    at.number_input(key="f_monthly").set_value(7).run()
+    confirm(at)
+    case = at.session_state["case"]
+    assert case.scenario["id"] == "S5" and case.scenario["modified"] is True
+    assert not _demo_buttons(at)
+    text = build_request(case.versions[-1].shipment, case.scenario).text
+    assert "の例を元に変えたものです" in text
+    assert "（想定の荷主）の例です" in build_request(
+        case.versions[-1].shipment, {**case.scenario, "modified": False}).text
+
+
+def test_spec13_12_per_version_scenario_roundtrip_and_old_file():
+    case = Case()
+    case.confirm(make_shipment(), scenario={"id": "S1", "name": "n", "label": "l", "modified": False})
+    case.confirm(make_shipment(monthly_shipments=2), scenario=None)
+    back = case_from_dict(case_to_dict(case))
+    assert back.versions[0].scenario["id"] == "S1" and back.versions[1].scenario is None and back.scenario is None
+    d = case_to_dict(case)
+    for v in d["versions"]:
+        v.pop("scenario")
+    assert case_from_dict(d).versions[0].scenario is None
+
+
+def test_spec13_12_g18_resave_of_schema_v1_is_v2(tmp_path):
+    v1 = {"schema_version": 1, "versions": [{"number": 1, "shipment": {"items": [], "route": None}}],
+          "quotes": [], "chosen_quote_id": None, "reason": "", "open_issues": []}
+    case = case_from_dict(v1)
+    assert case_to_dict(case)["schema_version"] == 2
+    path = tmp_path / "c.json"
+    save_case(path, case)
+    assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == 2
+
+
+def test_spec13_12_f4_demo_checkbox_marks_quote():
+    at = confirm(app_load(new_app(), 5))
+    assert at.checkbox(key="q_is_demo").value is False
+
+    def add(carrier):
+        at.text_input(key="q_carrier").set_value(carrier)
+        at.selectbox(key="q_kind_trunk").select("amount")
+        at.number_input(key="q_amt_trunk").set_value(20000)
+        at.button(key="q_submit").click().run()
+
+    add("手入力A")
+    at.checkbox(key="q_is_demo").check()
+    add("手入力B")
+    qs = {q.carrier: q for q in at.session_state["case"].quotes}
+    assert qs["手入力A"].is_demo is False and qs["手入力B"].is_demo is True
+    assert "手入力B（架空）" in df_all(at) and "手入力A（架空）" not in df_all(at)
