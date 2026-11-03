@@ -1,0 +1,20 @@
+{
+  "carrier": "ヤマト運輸",
+  "service": "JITBOXチャーター便（ボックス1本）",
+  "source_url": "https://business.kuronekoyamato.co.jp/service/lineup/jitbox/pdf/shippingfee_jitbox.pdf",
+  "applies_from": null,
+  "checked_on": "2026-11-03",
+  "tax": "税抜",
+  "scope_note": "デモの3区間だけを抜き出した。区間 ID は代表の発着（東京→大阪府、東京→宮城、道央→東京）に対応させている。",
+  "box": {
+    "inner_mm": [1040, 1040, 1700],
+    "max_kg": 500,
+    "volume_m3": 1.84
+  },
+  "routes": {
+    "kanto_kansai": {"label": "東京→大阪府", "fare_per_box": 23100},
+    "kanto_tohoku": {"label": "東京→宮城", "fare_per_box": 21100},
+    "sapporo_tokyo": {"label": "道央→東京", "fare_per_box": 46200}
+  },
+  "verified_by": "調査担当サブエージェントが一次資料で照合（2026-11-03）"
+}

@@ -1,0 +1,24 @@
+{
+  "id": "S2",
+  "name": "食品加工",
+  "label": "想定の荷主",
+  "assumed_shipper": true,
+  "assumption_note": "発送者・受取人の種別、集荷・配達、届け先の数は仕様 §9 に記載がないため、想定として置いた。",
+  "shipment": {
+    "items": [
+      {
+        "count": 1,
+        "length_cm": 110,
+        "width_cm": 110,
+        "height_cm": 120,
+        "weight_kg": 300
+      }
+    ],
+    "route": "kanto_tohoku",
+    "destinations": 1,
+    "sender_type": "法人",
+    "receiver_type": "法人",
+    "pickup": "集荷",
+    "delivery": "配達"
+  }
+}
