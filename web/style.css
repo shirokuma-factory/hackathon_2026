@@ -153,7 +153,8 @@ body.has-detail #detail { transform: none; opacity: 1; pointer-events: auto; }
 .route-note summary::after { content: "（詳しく）"; color: var(--faint); }
 .route-note[open] summary::after { content: ""; }
 .route-note p { margin: 4px 0 0; }
-#cards { flex: 1; overflow: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+#d-scroll { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+#cards { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
 .card {
   border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px 9px; background: rgba(255, 255, 255, 0.035);
   opacity: 0; transform: translateY(10px); flex: none;
@@ -833,3 +834,44 @@ body:not(.view-find) .f-tag { display: none !important; }
   .sum-num { font-size: 25px; }
   .sum-tile { padding: 0 12px; }
 }
+
+/* ---------- 実際の線の形（SPEC §17）: 手段のカード、凡例、時間の帯 ---------- */
+#rt-modes { padding: 12px 16px 0; }
+#rt-modes:empty { display: none; }
+.rt-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 2px 8px; }
+.rt-head b { font-size: 13px; }
+.rt-head small { font-size: 10.5px; color: var(--faint); }
+.rt-grid { display: flex; flex-direction: column; gap: 6px; }
+.rt-card {
+  display: block; width: 100%; text-align: left; border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 10px;
+  padding: 8px 10px 8px 12px; background: rgba(255, 255, 255, 0.035); color: var(--text); transition: background .2s, opacity .25s, border-color .2s;
+}
+button.rt-card:hover { background: rgba(255, 255, 255, 0.075); }
+.rt-card.on { background: rgba(255, 255, 255, 0.1); border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset, 0 0 18px -6px var(--c); }
+.rt-card.dim { opacity: 0.55; }
+.rt-card.off { opacity: 0.5; border-left-color: var(--line-strong); cursor: default; }
+.rt-top { display: flex; align-items: center; gap: 8px; }
+.rt-top b { font-size: 13px; font-weight: 700; }
+.rt-km { margin-left: auto; font-size: 14px; font-weight: 700; }
+.rt-svg { flex: none; display: block; }
+.rt-time { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+.rt-time b { color: var(--text); font-weight: 500; }
+.rt-why { display: block; margin-top: 3px; font-size: 11px; color: var(--faint); }
+.rt-legs { display: block; margin-top: 4px; font-size: 11.5px; line-height: 1.75; color: var(--text); }
+.rt-legs .ar { color: var(--faint); margin: 0 3px; }
+.rt-legs .lg { display: inline-block; padding: 0 6px; border-radius: 6px; font-size: 10.5px; line-height: 1.6; border: 1px solid currentColor; white-space: nowrap; }
+.lg-truck { color: rgb(255, 152, 38); } .lg-rail { color: rgb(72, 214, 112); } .lg-ferry { color: rgb(58, 196, 255); } .lg-air { color: rgb(210, 192, 255); }
+.rt-note { margin: 8px 2px 0; font-size: 11px; color: var(--muted); }
+.rt-note.busy::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--accent); animation: rtpulse 1s ease-in-out infinite; }
+.rt-note.err { color: var(--warn); }
+@keyframes rtpulse { 50% { opacity: .25; } }
+.rt-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 0; padding: 4px 0 2px; margin-top: 4px; border-top: 1px solid var(--line); }
+.rt-legend .rt-lg-cap { grid-column: 1 / -1; }
+.rt-lg-cap { font-size: 10.5px; color: var(--faint); letter-spacing: .06em; padding: 2px 4px 0; }
+.rt-lg-row { display: flex; flex-direction: column; align-items: center; gap: 0; font-size: 10px; color: var(--muted); padding: 1px 0; white-space: nowrap; }
+.rt-legend-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px 12px; border: 0; margin: 0; padding: 0; }
+.rt-legend-row .rt-lg-row { flex-direction: row; gap: 6px; font-size: 12px; }
+.f-lg-modes { align-items: center; margin-top: 4px; }
+#track .gapband { position: absolute; top: 8px; height: 6px; border-radius: 3px; background: repeating-linear-gradient(135deg, var(--c) 0 3px, transparent 3px 6px); opacity: .85; }
+.daylabels span.gl { transform: translateX(2px); font-size: 10.5px; }
+#m-credits .rt-attr { color: var(--muted); }

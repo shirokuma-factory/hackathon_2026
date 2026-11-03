@@ -167,7 +167,7 @@ function fillColor(f) {
   if (i < 0) return GRAY;
   const c = curOd().cls[S.layer][i];
   if (c === null || c === undefined) return GRAY;
-  return [...paletteColor(c, classCount()), FILL_ALPHA];
+  return [...paletteColor(c, classCount()), Math.round(FILL_ALPHA * Rt.fillScale())]; // 手段を強調しているときは塗りを薄くして、下の道路・線路を見せる
 }
 
 const FERRY_SHORT = '計算できない（海を渡る経路）';
@@ -188,7 +188,7 @@ function staticLayers() {
     id: 'muni', data: S.muni, pickable: true, stroked: true, filled: true, beforeId: firstLabelId,
     getFillColor: fillColor, getLineColor: [8, 12, 20, 120], lineWidthMinPixels: 0.4, lineWidthUnits: 'pixels', getLineWidth: 0.5,
     autoHighlight: true, highlightColor: [255, 255, 255, 54],
-    updateTriggers: { getFillColor: [S.origin, S.layer, S.version] },
+    updateTriggers: { getFillColor: [S.origin, S.layer, S.version, Rt.focus] },
     transitions: { getFillColor: { duration: 650, easing: ease } },
   }));
   list.push(new L.GeoJsonLayer({
@@ -278,67 +278,32 @@ function dynamicLayers(now) {
     }));
   }
   const r = S.route;
-  if (r) {
-    const reveal = ease(clamp01((now - S.selectedAt) / 1100));
-    const dashed = r.kind === 'arc';
-    const shown = reveal < 1 ? slicePath(r, reveal) : r.path;
-    out.push(new L.PathLayer({
-      id: 'route-base', data: [{ p: shown }], getPath: (d) => d.p, getColor: [92, 200, 255, dashed ? 120 : 90], widthMinPixels: dashed ? 1.6 : 2.4,
-      getWidth: 2, widthUnits: 'pixels', capRounded: true, jointRounded: true,
-      getDashArray: dashed ? [5, 4] : [0, 0], dashJustified: false, extensions: dashed ? [new L.PathStyleExtension({ dash: true })] : [],
-      updateTriggers: { getPath: [reveal < 1 ? reveal : 1, S.selectedAt], getColor: [dashed] },
-    }));
-    if (reveal >= 0.98) {
-      const RD = 3.6, TR = 1.3, C = RD + TR + 0.9, N = 3;
-      if (!r.trips) {
-        const ts = r.cum.map((c) => (c / r.total) * RD);
-        r.trips = [];
-        for (let k = 0; k < N; k++) for (const sh of [0, -C]) r.trips.push({ path: r.path, ts: ts.map((v) => v + (k * C) / N + sh) });
-      }
-      const ct = sec % C;
-      out.push(new L.TripsLayer({
-        id: 'route-glow', data: r.trips, getPath: (d) => d.path, getTimestamps: (d) => d.ts, getColor: [92, 200, 255, 120],
-        widthMinPixels: 13, capRounded: true, jointRounded: true, trailLength: TR, currentTime: ct, fadeTrail: true,
-      }));
-      out.push(new L.TripsLayer({
-        id: 'route-core', data: r.trips, getPath: (d) => d.path, getTimestamps: (d) => d.ts, getColor: [235, 250, 255, 255],
-        widthMinPixels: 3.6, capRounded: true, jointRounded: true, trailLength: TR * 0.8, currentTime: ct, fadeTrail: true,
-      }));
-    }
-    // 1日の運転の終わりの印
-    if (r.minutes) {
-      const marks = [];
-      for (let d = 540; d < r.minutes; d += 540) marks.push({ p: pointAt(r, d / r.minutes) });
-      if (marks.length) {
-        out.push(new L.ScatterplotLayer({
-          id: 'daymarks', data: marks, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 6, stroked: true, filled: true,
-          getFillColor: [10, 16, 26, 230], getLineColor: [255, 255, 255, 220], lineWidthUnits: 'pixels', getLineWidth: 1.6,
-        }));
-      }
-    }
+  if (r && Rt.hasSets()) {
+    out.push(...Rt.compareLayers(now, map.getZoom(), S.t));
     // 着地の印（ゆっくり広がる輪つき）
-    const dph = ((sec + 1.3) % 2.6) / 2.6;
+    const dest = [S.idx.lon[S.sel], S.idx.lat[S.sel]], dph = ((sec + 1.3) % 2.6) / 2.6;
     out.push(new L.ScatterplotLayer({
-      id: 'dest-pulse', data: [{ p: r.path[r.path.length - 1] }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 8 + dph * 24, stroked: true,
+      id: 'dest-pulse', data: [{ p: dest }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 8 + dph * 24, stroked: true,
       filled: false, getLineColor: [226, 247, 255, Math.round(190 * (1 - dph))], lineWidthUnits: 'pixels', getLineWidth: 1.6,
       updateTriggers: { getLineColor: [Math.round(dph * 30)], getRadius: [Math.round(dph * 30)] },
+    }));
+    out.push(new L.ScatterplotLayer({
+      id: 'dest', data: [{ p: dest }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 5.5, stroked: true, filled: true,
+      getFillColor: [255, 255, 255, 255], getLineColor: [92, 200, 255, 255], lineWidthUnits: 'pixels', getLineWidth: 2.5,
+    }));
+  } else if (r) {
+    const reveal = ease(clamp01((now - S.selectedAt) / 1100));
+    const shown = reveal < 1 ? slicePath(r, reveal) : r.path;
+    out.push(new L.PathLayer({
+      id: 'route-base', data: [{ p: shown }], getPath: (d) => d.p, getColor: [92, 200, 255, 90], widthMinPixels: 2.4,
+      getWidth: 2, widthUnits: 'pixels', capRounded: true, jointRounded: true,
+      updateTriggers: { getPath: [reveal < 1 ? reveal : 1, S.selectedAt] },
     }));
     const dest = r.path[r.path.length - 1];
     out.push(new L.ScatterplotLayer({
       id: 'dest', data: [{ p: dest }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 5.5, stroked: true, filled: true,
       getFillColor: [255, 255, 255, 255], getLineColor: [92, 200, 255, 255], lineWidthUnits: 'pixels', getLineWidth: 2.5,
     }));
-    // トラック
-    if (r.minutes) {
-      const p = pointAt(r, S.t / r.minutes);
-      out.push(new L.ScatterplotLayer({
-        id: 'truck-halo', data: [{ p }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 17, getFillColor: [92, 200, 255, 70],
-      }));
-      out.push(new L.ScatterplotLayer({
-        id: 'truck', data: [{ p }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 6.5, stroked: true, filled: true,
-        getFillColor: [255, 255, 255, 255], getLineColor: [92, 200, 255, 255], lineWidthUnits: 'pixels', getLineWidth: 3,
-      }));
-    }
   }
   // 出発地（ゆっくり広がる輪）
   const ph = (sec % 2.6) / 2.6;
@@ -358,15 +323,17 @@ function frame(now) {
   // 時間の帯の再生
   const dt = Math.min(0.1, (now - (S.lastTick || now)) / 1000);
   S.lastTick = now;
-  if (S.playing && S.route && S.route.minutes) {
-    const M = S.route.minutes, axis = axisMax();
-    S.t += (M / 12) * dt;
+  const tl = Rt.timeline();
+  if (S.playing && tl) {
+    const axis = axisMax();
+    S.t += (tl.M / 12) * dt;
     if (S.t >= axis) { S.t = 0; }
     updateTime();
   }
   const targetAlpha = S.sel >= 0 ? 0.28 : 1;
   S.ambientAlpha += (targetAlpha - S.ambientAlpha) * Math.min(1, dt * 3);
-  if (!S.staticLayers) S.staticLayers = staticLayers();
+  const sk = `${S.origin}|${S.layer}|${S.version}|${Rt.focus}`; // 値・出発地・手段の強調が変わったときだけ層を作り直す（色が更新される）
+  if (!S.staticLayers || S.staticKey !== sk) { S.staticLayers = staticLayers(); S.staticKey = sk; }
   const zoom = map.getZoom();
   let layers;
   if (S.view === 'market') layers = Market.layers(now, zoom);
@@ -379,36 +346,54 @@ function frame(now) {
 
 /* ------------------------------------------------------------ 時間の帯 */
 
-const axisMax = () => (S.route && S.route.minutes ? S.route.minutes * 1.06 : 1);
+const axisMax = () => { const tl = Rt.timeline(); return tl ? tl.M * 1.06 : 1; };
+const NOTE_TT = '所要時間は時刻表で確認';
+// 時間の帯: トラックの区間だけ分で進む。電車・船・飛行機の区間は固定の幅の帯で、時間は表さない（SPEC §17.2）
 function setupTimebar() {
-  const r = S.route, tb = document.body.classList;
-  if (!r || !r.minutes) { tb.remove('has-route'); return; }
-  const M = r.minutes, axis = axisMax();
-  $('#tb-end').textContent = `到着 運転${fmtMin(M)}`;
-  let t = '';
-  const days = Math.ceil(M / 540);
-  for (let d = 1; d < days; d++) t += `<div class="tick" style="left:${((d * 540) / axis) * 100}%"></div>`;
-  t += `<div class="arrive" style="left:${(M / axis) * 100}%"></div>`;
+  const tl = Rt.timeline(), cb = document.body.classList;
+  if (!tl) { cb.remove('has-route'); $('#truck-tag').classList.remove('on'); return; }
+  const M = tl.M, axis = axisMax();
+  $('#tb-end').textContent = tl.single ? `到着 運転${fmtMin(M)}` : `トラックの区間 計${fmtMin(tl.truckMin)}`;
+  let t = '', lab = '';
+  const pc = (v) => ((v / axis) * 100).toFixed(2);
+  if (tl.single) {
+    const days = Math.ceil(M / 540);
+    for (let d = 1; d < days; d++) t += `<div class="tick" style="left:${pc(d * 540)}%"></div>`;
+    for (let d = 0; d < days; d++) lab += `<span class="st" style="left:${pc(d * 540)}%">${d + 1}日目</span>`;
+  } else {
+    for (const sg of tl.segs) {
+      if (!sg.truck) {
+        const c = rgbCss(Rt.col(sg.leg.mode));
+        t += `<div class="gapband" style="left:${pc(sg.t0)}%;width:${pc(sg.t1 - sg.t0)}%;--c:${c}"></div>`;
+        lab += `<span class="st gl" style="left:${pc(sg.t0)}%;color:${c}">${Rt.LABEL[sg.leg.mode]}の区間: ${NOTE_TT}</span>`;
+      } else lab += `<span class="st" style="left:${pc(sg.t0)}%">トラック</span>`;
+    }
+  }
+  t += `<div class="arrive" style="left:${pc(M)}%"></div>`;
+  lab += `<span class="arr" style="left:${pc(M)}%">到着</span>`;
   $('#tb-ticks').innerHTML = t;
-  let lab = '';
-  for (let d = 0; d < days; d++) lab += `<span class="st" style="left:${((d * 540) / axis) * 100}%">${d + 1}日目</span>`;
-  lab += `<span class="arr" style="left:${(M / axis) * 100}%">到着</span>`;
   $('#tb-days').innerHTML = lab;
-  tb.add('has-route');
+  cb.add('has-route');
   updateTime();
 }
+function truckElapsed(tl, t) {
+  let m = 0;
+  for (const sg of tl.segs) { if (sg.truck) m += Math.max(0, Math.min(t, sg.t1) - sg.t0); }
+  return m;
+}
 function updateTime() {
-  const r = S.route;
-  if (!r || !r.minutes) return;
-  const M = r.minutes, axis = axisMax();
+  const tl = Rt.timeline();
+  if (!tl) return;
+  const M = tl.M, axis = axisMax();
   S.t = Math.max(0, Math.min(axis, S.t));
   const pct = (S.t / axis) * 100;
   $('#tb-fill').style.width = pct + '%';
   $('#tb-handle').style.left = pct + '%';
-  const arrived = S.t >= M;
+  const arrived = S.t >= M, st = Rt.tlState(S.t), gap = st && !st.seg.truck && !arrived;
+  const el = truckElapsed(tl, S.t);
   const day = Math.min(Math.ceil(M / 540), Math.floor(Math.max(0, S.t - 1e-6) / 540) + 1);
-  $('#tb-now').textContent = S.t <= 0 ? '出発' : arrived ? '到着' : `出発から ${fmtMin(S.t)}`;
-  $('#tb-day').textContent = arrived ? '' : `${day}日目`;
+  $('#tb-now').textContent = S.t <= 0 ? '出発' : arrived ? '到着' : gap ? `${Rt.LABEL[st.seg.leg.mode]}の区間（${NOTE_TT}）` : `トラックの運転 ${fmtMin(el)}`;
+  $('#tb-day').textContent = arrived || gap || !tl.single ? '' : `${day}日目`;
   const tr = $('#track');
   tr.setAttribute('aria-valuenow', String(Math.round((S.t / axis) * 100)));
   tr.setAttribute('aria-valuetext', $('#tb-now').textContent);
@@ -419,9 +404,9 @@ function setPlaying(on) {
   $('#play').setAttribute('aria-label', on ? '一時停止' : '再生');
 }
 function placeTruckTag() {
-  const tag = $('#truck-tag'), r = S.route;
-  if (!r || !r.minutes || !document.body.classList.contains('has-route')) { tag.classList.remove('on'); return; }
-  const p = map.project(pointAt(r, S.t / r.minutes));
+  const tag = $('#truck-tag'), st = Rt.tlState(S.t);
+  if (!st || !document.body.classList.contains('has-route')) { tag.classList.remove('on'); return; }
+  const p = map.project([st.p[0], st.p[1]]);
   tag.style.transform = `translate(${Math.round(p.x + 16)}px, ${Math.round(p.y - 34)}px)`;
   tag.textContent = $('#tb-now').textContent + ($('#tb-day').textContent ? ` ・ ${$('#tb-day').textContent}` : '');
   tag.classList.add('on');
@@ -438,13 +423,13 @@ function bindTimebar() {
   track.addEventListener('pointermove', (e) => { if (drag) fromEvent(e); });
   track.addEventListener('pointerup', () => { drag = false; });
   track.addEventListener('keydown', (e) => {
-    const step = (S.route ? S.route.minutes : 100) / 40;
+    const step = (Rt.timeline() ? Rt.timeline().M : 100) / 40;
     if (e.key === 'ArrowRight') { S.t += step; updateTime(); e.preventDefault(); }
     if (e.key === 'ArrowLeft') { S.t -= step; updateTime(); e.preventDefault(); }
     if (e.key === ' ') { setPlaying(!S.playing); e.preventDefault(); }
   });
   $('#play').addEventListener('click', () => {
-    if (!S.playing && S.route && S.t >= axisMax() - 1) S.t = 0;
+    if (!S.playing && Rt.timeline() && S.t >= axisMax() - 1) S.t = 0;
     setPlaying(!S.playing);
   });
 }
@@ -579,11 +564,12 @@ function select(i, { fly = true, fromSearch = false } = {}) {
   if (!fromSearch) $('#q').value = S.idx.names[i];
   else $('#q').value = S.idx.names[i];
   renderDetail(i, demo);
+  S.pendingFit = fly;
+  Rt.setDestination(S.origin, i);
   setupTimebar();
   document.body.classList.add('has-detail');
   $('#detail').setAttribute('aria-hidden', 'false');
   writeHash();
-  if (fly) fitRoute();
 }
 
 function renderDetail(i, demo) {
@@ -597,7 +583,7 @@ function renderDetail(i, demo) {
   $('#s-time').innerHTML = min === null ? '—' : fmtMin(min).replace(/(\d+)(時間|分)/g, '$1<small>$2</small>');
   $('#s-days').innerHTML = days === null ? '—' : `${days}<small>日</small>`;
   $('#route-kind').textContent = ferry ? 'フェリーを含む経路の可能性があります（平均速度 25km/h 未満）。運転日数と貸切の額は出しません'
-    : r.kind === 'road' ? '経路は OSRM の道路の形です' : '経路は直線の目安の弧です（道路の形は未取得）';
+    : '経路の形: 道路は OSRM、線路は国土数値情報（鉄道データ）と OSM の貨物専用線、航路と空港は OSM。手段のカードで選べます';
   S.estimate = null;
   $('#cards').scrollTop = 0;
   refreshEstimate();
@@ -614,8 +600,6 @@ async function refreshEstimate() {
     if (tok !== S.estTok || S.sel !== i) return;
     S.estimate = est;
     renderCards(buildCards(i, est));
-    const kc = [...document.querySelectorAll('#cards .card')].find((el) => el.querySelector('h3').textContent.startsWith('貸切'));
-    if (kc) setTimeout(() => kc.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 900);
   } catch (e) {
     if (tok === S.estTok) $('#cards').innerHTML = `<p class="cards-note err">${escapeHtml(e.message)}</p>`;
   }
@@ -643,7 +627,14 @@ function onCargoChange() {
   if (S.sel >= 0) { S.estimate = null; refreshEstimate(); }
 }
 
+// 手段ごとの経路の読み込み・取得が進んだとき（routes.js から）。帯を作り直し、最初の 1 回は地図を経路に合わせる
+App.onRt = (first) => {
+  setupTimebar();
+  if (first && S.pendingFit && S.view === 'compare' && S.sel >= 0) { S.pendingFit = false; Rt.fit(); }
+};
+
 function deselect() {
+  Rt.clear();
   S.sel = -1; S.selFeature = null; S.route = null; S.t = 0;
   setPlaying(false);
   document.body.classList.remove('has-detail', 'has-route');
@@ -785,6 +776,7 @@ function setView(v) {
     S.savedFlags = DETAIL_FLAGS.filter((f) => c.contains(f));
     if (Work.isOpen()) Work.closeWork();
     c.remove(...DETAIL_FLAGS);
+    Rt.suspend();
     setPlaying(false);
     $('#truck-tag').classList.remove('on');
   }
@@ -795,7 +787,8 @@ function setView(v) {
   applyViewClasses();
   if (v === 'compare') {
     c.add(...(S.savedFlags || []));
-    if (S.sel >= 0 && S.route) fitRoute(); else fitJapan(true);
+    Rt.resume();
+    if (S.sel >= 0 && S.route) { if (Rt.hasSets()) Rt.fit(); else fitRoute(); } else fitJapan(true);
   } else if (v === 'market') {
     Market.setActive(true);
     const r = Market.selected();
@@ -846,7 +839,7 @@ function setHubSel(kind) {
 async function main() {
   const [meta, idx, muni, pref, routes, style] = await Promise.all([
     getJSON('data/meta.json'), getJSON('data/index.json'), getJSON('data/muni.geojson'), getJSON('data/pref.geojson'),
-    getJSON('data/routes.json'), getJSON(STYLE_URL), Hubs.load(), Market.load(),
+    getJSON('data/routes.json'), getJSON(STYLE_URL), Hubs.load(), Rt.loadMeta().then(() => Promise.all([Rt.loadPairs(), Rt.loadTrips()])), Market.load(),
   ]);
   Object.assign(S, { meta, idx, muni, pref, routes });
   for (const f of muni.features) S.byIndex.set(f.properties.i, f);
@@ -879,7 +872,7 @@ async function main() {
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.AttributionControl({
     compact: false,
-    customAttribution: ['国土数値情報（行政区域データ）（国土交通省）を加工して作成', '道路距離: OSRM（© OpenStreetMap contributors, ODbL）'],
+    customAttribution: ['国土数値情報（行政区域データ）（国土交通省）を加工して作成', '国土数値情報（鉄道データ）（国土交通省）を加工して作成', '道路・フェリー・空港: OSRM・OpenStreetMap（© OpenStreetMap contributors, ODbL）'],
   }), 'bottom-right');
   overlay = new deck.MapboxOverlay({
     interleaved: true, layers: [],
@@ -893,6 +886,8 @@ async function main() {
   map.addSource('hub-attr', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: '拠点: © OpenStreetMap contributors（ODbL 1.0）' });
   map.addLayer({ id: 'hub-attr', type: 'line', source: 'hub-attr', layout: { visibility: 'none' } });
   applyViewClasses();
+  Rt.mountLegend();
+  Rt.bind();
   fitJapan(false);
   buildAmbient();
   renderLegend();
@@ -942,7 +937,7 @@ async function main() {
   refreshFareLayer();
   requestAnimationFrame(frame);
   setTimeout(() => $('#loading').classList.add('done'), 400);
-  window.__app = { S, Market, Hubs, Find, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
+  window.__app = { S, Market, Hubs, Find, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }
 
 main().catch((e) => {

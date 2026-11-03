@@ -107,12 +107,14 @@ const Find = (() => {
       if (!a || !b) return;
       const g = groups[`${prefOf(t.origin_code)}>${prefOf(t.dest_code)}`], n = g.indexOf(t.id);
       const bulge = (n % 2 === 0 ? 1 : -1) * (0.11 + 0.05 * Math.floor(n / 2));
-      const rt = makeRoute(arcPath(a, b, bulge, 72), 'arc', null, null);
-      const dur = 4.5 + rt.total / 170;
+      // 架空の便でも道路は実在する。OSRM の道路の経路（SPEC §17.2）。なければ弧
+      const real = Rt.tripPath(t.id);
+      const rt = real && real.length > 2 ? makeRoute(real, 'road', null, null) : makeRoute(arcPath(a, b, bulge, 72), 'arc', null, null);
+      const dur = Math.min(PERIOD - 3, 4.5 + rt.total / 110);
       const ph = (ti * 2.3) % Math.max(1, PERIOD - dur);
       const items = [];
       for (const sh of [0, -PERIOD]) items.push({ id: t.id, path: rt.path, ts: rt.cum.map((c) => (c / rt.total) * dur + ph + sh) });
-      F.geo[t.id] = { a, b, rt, items };
+      F.geo[t.id] = { a, b, rt, items, dur, ph };
     });
   }
 
@@ -144,6 +146,15 @@ const Find = (() => {
     const tp = { data: items, getPath: (d) => d.path, getTimestamps: (d) => d.ts, widthUnits: 'pixels', capRounded: true, jointRounded: true, fadeTrail: true, currentTime: sec % PERIOD };
     out.push(new L.TripsLayer({ ...tp, id: 'f-glow', getWidth: (d) => 9 * emph(d), trailLength: 3.6, getColor: (d) => [92, 200, 255, Math.round(110 * lv(d))], updateTriggers: { getColor: trig, getWidth: trig } }));
     out.push(new L.TripsLayer({ ...tp, id: 'f-core', getWidth: (d) => 3 * emph(d), trailLength: 2.8, getColor: (d) => [236, 250, 255, Math.round(235 * lv(d))], updateTriggers: { getColor: trig, getWidth: trig } }));
+    const cur = sec % PERIOD, veh = [];
+    for (const t of ts) {
+      const g = F.geo[t.id], p = ((((cur - g.ph) % PERIOD) + PERIOD) % PERIOD) / g.dur;
+      if (p >= 1) continue;
+      const pos = pointAt(g.rt, p), nx = pointAt(g.rt, Math.min(1, p + 0.01)), pv = pointAt(g.rt, Math.max(0, p - 0.01));
+      const dx = (nx[0] - pv[0]) * Math.cos((pos[1] * Math.PI) / 180), dy = nx[1] - pv[1];
+      veh.push({ p: pos, ang: -(Math.atan2(dx, dy) * 180) / Math.PI, a: lv(t) * Math.min(1, p * 10, (1 - p) * 10) });
+    }
+    out.push(Rt.iconLayer('f-veh', veh, 'truck', 28));
     const ends = ts.flatMap((t) => [{ id: t.id, p: F.geo[t.id].a, o: true }, { id: t.id, p: F.geo[t.id].b, o: false }]);
     out.push(new L.ScatterplotLayer({
       id: 'f-ends', data: ends, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: (d) => (d.o ? 3.4 : 4.6), filled: true, stroked: true,
