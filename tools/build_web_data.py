@@ -3,7 +3,7 @@
 画面側は運賃を計算しない。ここで作った JSON を読むだけにする。
 使い方: uv run python tools/build_web_data.py
 出力: web/data/ （muni.geojson, pref.geojson, index.json, meta.json,
-      origin_<コード>.json, routes.json, estimates.json）
+      origin_<コード>.json, routes.json）。目安額は /api/estimate が計算するので作らない
 """
 
 from __future__ import annotations
@@ -16,16 +16,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from shipcompare import geo  # noqa: E402
-from shipcompare.estimate import estimate_all  # noqa: E402
-from shipcompare.storage import shipment_from_dict  # noqa: E402
-from shipcompare.tariffs import ROUTES, load_tariff, source_of  # noqa: E402
+from shipcompare.tariffs import load_tariff, source_of  # noqa: E402
 
 OUT = ROOT / "web" / "data"
 GEO = ROOT / "data" / "geo"
 DAYS_BASIS_URL = "https://driver-roudou-jikan.mhlw.go.jp/truck/notice"
-
-STATUS_LABEL = {"公開条件に合う": "使える候補", "要確認": "要確認", "使えない": "使えない", "計算できない": "計算できない"}
-MODE_LABEL = {"takuhai": "宅配", "rosen": "路線便", "jitbox": "カゴ台車", "kashikiri": "貸切"}
 
 
 def write_json(name: str, obj) -> None:
@@ -90,18 +85,21 @@ def build_geometry(codes: list[str]) -> None:
 
 
 def build_origins(codes: list[str], tariff: dict) -> None:
+    """地図の層用の値。荷物が変わったときの貸切の額は /api/layer が同じ関数で計算し直す。
+    フェリーを含む経路の可能性（SPEC §15.3）と経路なしは、日数と額を null にする。距離だけは残す。"""
     for oc, oname in geo.ORIGINS.items():
         osrm = geo.load_osrm(oc)
-        km, mins, days, brk, fare = [], [], [], [], []
+        km, mins, days, brk, ferry = [], [], [], [], []
         for c in codes:
             d = osrm.get(c) or {}
             k, m = d.get("km"), d.get("minutes")
+            f = geo.is_ferry_route(k, m)
             km.append(k)
             mins.append(m)
-            days.append(geo.drive_days(m))
-            brk.append(geo.break_minutes(m))
-            kf = geo.kashikiri_for_distance(k, None, tariff)  # 2t（荷物未入力と同じ扱い）
-            fare.append(kf[1] if kf else None)
+            ferry.append(f)
+            days.append(None if f else geo.drive_days(m))
+            brk.append(None if f else geo.break_minutes(m))
+        fare = geo.fare_layer(oc, None, tariff, codes)  # 2t（荷物未入力と同じ扱い）
         edges, cls_ = {}, {}
         for key, vals in (("km", km), ("days", days), ("fare", fare)):
             present = [v for v in vals if v is not None]
@@ -111,56 +109,7 @@ def build_origins(codes: list[str], tariff: dict) -> None:
                 edges[key] = geo.quantile_edges(present)
             cls_[key] = [geo.class_of(v, edges[key]) if v is not None else None for v in vals]
         write_json(f"origin_{oc}.json", {"code": oc, "name": oname, "km": km, "min": mins, "days": days,
-                                         "brk": brk, "fare": fare, "edges": edges, "cls": cls_})
-
-
-def mode_of(row_mode: str) -> str:
-    return "kashikiri" if row_mode.startswith("kashikiri") else row_mode
-
-
-def build_estimates(routes: dict, tariff_k: dict) -> dict:
-    scn = read_json(ROOT / "data" / "scenarios" / "S1.json")
-    transit = read_json(ROOT / "data" / "transit_days.json")["modes"]
-    out = {}
-    for key, info in geo.DEMO_ROUTES.items():
-        if info["origin"] not in geo.ORIGINS:
-            continue
-        rid = info["route_id"]
-        sd = dict(scn["shipment"])
-        sd["route"] = rid
-        rows = estimate_all(shipment_from_dict(sd))
-        r = routes[key]
-        assumed = ROUTES[rid].km
-        modes = {}
-        for row in rows:
-            m = mode_of(row.mode)
-            if m in modes:
-                continue  # 貸切は載る最小の車格（先頭）だけ
-            t = transit.get(m, {}).get("routes", {}).get(rid, {})
-            days_text = t.get("text")
-            note = row.notes[0] if row.notes else None
-            alt = None
-            if m == "kashikiri":
-                n = geo.drive_days(r["minutes"])
-                days_text = f"運転だけで{n}日（積込み・荷待ちを除く）"
-                kf = geo.kashikiri_for_distance(r["km"], 120, tariff_k)
-                alt = {"km": r["km"], "amount": kf[1]} if kf else None
-                note = f"想定距離 {assumed}km で計算した国の目安です"
-            modes[m] = {
-                "label": MODE_LABEL[m],
-                "vehicle": row.detail.get("vehicle") if m == "kashikiri" else None,
-                "status": STATUS_LABEL.get(row.status, row.status),
-                "amount": row.amount if row.has_amount() else None,
-                "low": row.low, "high": row.high,
-                "days": days_text,
-                "reason": row.reasons[0] if row.reasons else None,
-                "note": note,
-                "alt": alt,
-                "source_name": row.source.name if row.source else None,
-                "source_url": row.source.url if row.source else None,
-            }
-        out[key] = {"route_id": rid, "assumed_km": assumed, "modes": modes}
-    return out
+                                         "brk": brk, "ferry": ferry, "fare": fare, "edges": edges, "cls": cls_})
 
 
 def main() -> None:
@@ -180,18 +129,10 @@ def main() -> None:
     routes = {k: v for k, v in routes_src.items() if v["origin"] in geo.ORIGINS}
     write_json("routes.json", {k: {"route_id": v["route_id"], "km": v["km"], "minutes": v["minutes"],
                                    "coordinates": v["coordinates"]} for k, v in routes.items()})
-    write_json("estimates.json", build_estimates(routes, tariff_k))
     src = source_of(tariff_k)
-    scn = read_json(ROOT / "data" / "scenarios" / "S1.json")
-    items = scn["shipment"]["items"]
-    n = sum(i["count"] for i in items)
-    kg = sum(i["count"] * i["weight_kg"] for i in items)
-    it = items[0]
     write_json("meta.json", {
         "origins": [{"code": c, "name": nm, "lon": round(points[c]["lon"], 5), "lat": round(points[c]["lat"], 5)}
                     for c, nm in geo.ORIGINS.items()],
-        "cargo": {"label": "家具の箱", "count": n, "total_kg": kg,
-                  "detail": f"{it['length_cm']}×{it['width_cm']}×{it['height_cm']}cm、1個 {it['weight_kg']}kg（場面 S1）"},
         "kashikiri_source": {"name": src.name, "url": src.url, "checked_on": src.checked_on},
         "days_rule": {"max_hours_per_day": 9, "url": DAYS_BASIS_URL},
         "layers": {

@@ -1,10 +1,12 @@
 """web/ の地図 UI を、入っている Microsoft Edge（ヘッドレス）で撮る。
 
 標準ライブラリ + websockets + Pillow だけを使う（tools/capture_screens.py の Page を再利用する）。
+配信は tools/serve_web.py（API つき）を自分で起動する。
 使い方:
     uv run python tools/capture_web.py --scene overview
     uv run python tools/capture_web.py --scene selected --size 1280x720 --out tmp/web_1280.jpg
     uv run python tools/capture_web.py --all
+    uv run python tools/capture_web.py --flow     # S5 の筋書きを本物のクリックと入力でたどり、5枚を docs/assets に保存する
 """
 
 from __future__ import annotations
@@ -41,13 +43,114 @@ SCENES = {
     "selected": ("#o=13104&l=fare&d=27128", 9.0, "__app.S.t = __app.S.route.minutes * 0.42; document.querySelector('#track').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight'}))", "2026-11-03_web_map_selected.jpg"),
     "selected_far": ("#o=09201&l=days&d=01101", 9.0, None, "2026-11-03_web_map_selected_far.jpg"),
     "search": ("#o=13104&l=km", 6.0, "(function(){const q=document.querySelector('#q'); q.focus(); q.value='大阪'; q.dispatchEvent(new Event('input'));})()", "2026-11-03_web_map_search.jpg"),
+    "ferry": ("#o=13104&l=days&d=13421", 9.0, None, "2026-11-03_web_map_ferry.jpg"),
     "selected_tohoku": ("#o=13104&l=km&d=04101", 9.0, None, "2026-11-03_web_map_selected_tohoku.jpg"),
 }
 
 
 def serve(port: int) -> subprocess.Popen:
-    return subprocess.Popen([sys.executable, "-m", "http.server", str(port), "--directory", str(ROOT / "web")],
+    return subprocess.Popen([sys.executable, str(ROOT / "tools" / "serve_web.py"), "--port", str(port)],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+# ---------------------------------------------------------------- S5 の筋書き（SPEC §15.4 G29）
+def _center(page, sel: str):
+    return page.js("(function(){const e=document.querySelector(%s); if(!e) return null; e.scrollIntoView({block:'center'});"
+                   "const r=e.getBoundingClientRect(); return [r.x+r.width/2, r.y+r.height/2];})()" % json.dumps(sel))
+
+
+def click(page, sel: str, wait: float = 0.6) -> None:
+    page.wait(lambda: _center(page, sel) is not None, 20, "要素 " + sel)
+    time.sleep(0.25)
+    x, y = _center(page, sel)
+    page.mouse(x, y)
+    time.sleep(wait)
+
+
+def type_into(page, sel: str, text: str) -> None:
+    click(page, sel, 0.2)
+    page.key("a", ctrl=True)
+    page.insert(text)
+    time.sleep(0.2)
+
+
+def set_select(page, sel: str, value: str) -> None:
+    """ネイティブの選択欄はヘッドレスで開けないので、値を入れて change を送る。"""
+    page.js("(function(){const e=document.querySelector(%s); e.value=%s; e.dispatchEvent(new Event('change',{bubbles:true}));})()"
+            % (json.dumps(sel), json.dumps(value)))
+    time.sleep(0.5)
+
+
+def flow_steps(page, base: str, out_dir: Path, dl_dir: Path):
+    """各段の後で (ファイル名) を yield する。呼び出し側が撮る。"""
+    page.send("Page.setDownloadBehavior", behavior="allow", downloadPath=str(dl_dir))
+    page.goto("about:blank")
+    page.goto(base + "#o=13104&l=fare&d=27128")
+    page.wait(lambda: page.js("!!window.__app"), 60, "アプリの起動")
+    time.sleep(8.0)
+    page.wait(lambda: page.js("document.querySelectorAll('#cards .card').length >= 5"), 30, "右のカード")
+    # 1 荷物の欄を開いて場面 S5 を読み込み、確定する
+    click(page, "#cargo-toggle")
+    set_select(page, "#sc-select", "S5")
+    click(page, "#ed-confirm", 2.5)
+    page.wait(lambda: "8個" in (page.js("document.querySelector('#cargo').textContent") or ""), 20, "荷物の更新")
+    time.sleep(2.0)
+    yield "2026-11-03_web_cargo.jpg"
+    # 2 着地のパネルのボタンで作業パネルを開く（依頼文）
+    click(page, "#cargo-toggle")
+    click(page, "#make-request", 2.0)
+    page.wait(lambda: page.js("!!document.querySelector('#req-text')"), 20, "依頼文")
+    time.sleep(1.2)
+    yield "2026-11-03_web_request.jpg"
+    # 3 見積回答: 架空の回答例を入れる
+    click(page, '#w-steps button[data-step="2"]')
+    click(page, "#q-demo", 1.5)
+    page.wait(lambda: page.js("document.querySelectorAll('#q-list .q-card').length == 2"), 20, "架空の回答2件")
+    time.sleep(0.8)
+    yield "2026-11-03_web_quotes.jpg"
+    # 4 A社の追加回答（集荷 6,000・幹線 18,000・配達 5,000・ほかは含む）を手で入れる
+    type_into(page, 'input[name="carrier"]', "架空A社")
+    type_into(page, 'input[name="product"]', "路線便")
+    for k, amt in (("pickup", "6000"), ("trunk", "18000"), ("delivery", "5000")):
+        click(page, f'.cl[data-k="{k}"] button[data-kind="amount"]', 0.2)
+        type_into(page, f'.cl[data-k="{k}"] input', amt)
+    for k in ("handling", "fuel", "highway", "other"):
+        click(page, f'.cl[data-k="{k}"] button[data-kind="included"]', 0.2)
+    click(page, 'input[name="is_demo"]', 0.2)
+    click(page, "#q-add", 1.5)
+    page.wait(lambda: page.js("document.querySelectorAll('#q-list .q-card').length == 3"), 20, "追加後3件")
+    click(page, "#w-next", 1.5)  # 比較へ
+    page.wait(lambda: page.js("!!document.querySelector('.cmp-row')"), 20, "比較")
+    time.sleep(4.0)  # ソフトウェア描画では地図の描き直しが重く、棒の伸びる動きが終わるまで待つ
+    yield "2026-11-03_web_compare.jpg"
+    # 5 判断と保存: B社を選び、理由と確認事項を入れて保存する
+    click(page, "#w-next", 1.2)
+    page.wait(lambda: page.js("!!document.querySelector('#j-save')"), 20, "判断と保存")
+    page.js("(function(){const r=[...document.querySelectorAll('input[name=choice]')].find(x=>x.parentElement.textContent.includes('架空B社')); r.scrollIntoView({block:'center'});})()")
+    click(page, 'label.opt:has(input[value="q2"])', 0.3)
+    type_into(page, "#j-reason", "集荷から配達まで含み、総額が最も低いため。")
+    type_into(page, "#j-issues", "受託の可否を電話で確かめる")
+    page.key("Enter")
+    page.insert("見積の有効期限（14日）内に発注先を決める")
+    click(page, "#j-save", 1.5)
+    page.wait(lambda: page.js("!!document.querySelector('.saved')"), 20, "保存の表示")
+    time.sleep(0.8)
+    yield "2026-11-03_web_save.jpg"
+    # 6 確認（撮らない）: 閉じても入力が残ること、保存したファイルの読み込み
+    click(page, "#w-close", 1.0)
+    resume = page.js("document.querySelector('#work-resume').textContent")
+    print("作業パネルを閉じた後:", resume, "/ 開いているか:", page.js("document.body.classList.contains('has-work')"))
+    click(page, "#work-resume", 1.0)
+    print("開き直した後の表示:", page.js("document.querySelector('#w-state').textContent"))
+    saved = sorted(dl_dir.glob("shipment_case_*.json"))
+    if saved:
+        click(page, '#w-steps button[data-step="4"]', 1.0)
+        doc = page.send("DOM.getDocument", depth=0)
+        nid = page.send("DOM.querySelector", nodeId=doc["root"]["nodeId"], selector="#j-load")["nodeId"]
+        page.send("DOM.setFileInputFiles", files=[str(saved[-1])], nodeId=nid)
+        time.sleep(2.0)
+        print("読み込み後のトースト:", page.js("document.querySelector('#toast').textContent"))
+        print("読み込み後の荷物欄:", page.js("document.querySelector('#cargo-ver').textContent + ' ' + document.querySelector('#cargo').textContent"))
 
 
 def main() -> int:
@@ -56,12 +159,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--scene", action="append", choices=list(SCENES))
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--flow", action="store_true", help="S5 の筋書きをたどって web_cargo / request / quotes / compare / save を撮る")
     ap.add_argument("--size", default="1920x1080")
     ap.add_argument("--out", help="単一の場面のときの出力先（省略すると docs/assets）")
     ap.add_argument("--click", help="経度,緯度。その地点を本物のマウスでクリックしてから撮る")
     ap.add_argument("--port", type=int, default=0, help="既に起動している配信サーバーのポート（省略すると自分で起動）")
     args = ap.parse_args()
-    names = list(SCENES) if args.all else (args.scene or ["overview"])
+    names = list(SCENES) if args.all else ([] if args.flow else (args.scene or ["overview"]))
     w, h = (int(x) for x in args.size.split("x"))
     cs.W, cs.H = w, h
 
@@ -122,6 +226,25 @@ def main() -> int:
             path.parent.mkdir(parents=True, exist_ok=True)
             img.save(path, "JPEG", quality=88)
             print(f"保存: {path}  {img.size[0]}x{img.size[1]}")
+        if args.flow:
+            from PIL import Image
+            dl = Path(tempfile.mkdtemp(prefix="edge_dl_"))
+            try:
+                for fname in flow_steps(page, base, OUT_DIR, dl):
+                    errs = page.js("window.__errs") or []
+                    if errs:
+                        print("ブラウザのエラー:", *errs[:5], sep="\n  ")
+                        rc = 1
+                    r = page.send("Page.captureScreenshot", format="png", fromSurface=True,
+                                  clip={"x": 0, "y": 0, "width": w, "height": h, "scale": 1})
+                    img = Image.open(io.BytesIO(base64.b64decode(r["data"]))).convert("RGB")
+                    path = OUT_DIR / fname
+                    img.save(path, "JPEG", quality=88)
+                    print(f"保存: {path}  {img.size[0]}x{img.size[1]}")
+                saved = sorted(dl.glob("shipment_case_*.json"))
+                print("ダウンロードされた保存ファイル:", [f"{f.name} {f.stat().st_size}B" for f in saved])
+            finally:
+                shutil.rmtree(dl, ignore_errors=True)
     finally:
         cs.stop_tree(edge_proc)
         if own:

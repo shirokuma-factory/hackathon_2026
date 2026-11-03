@@ -138,6 +138,51 @@ def break_minutes(minutes: float | None) -> int | None:
     return BREAK_MIN * max(0, math.ceil(minutes / BREAK_EVERY_MIN) - 1)
 
 
+# 離島・フェリー（SPEC §15.3）。OSRM の車の経路はフェリー航路を含むことがある。
+# 運転時間に対する距離の平均速度がこの値より小さい着地を「フェリーを含む経路の可能性」とする
+FERRY_MAX_AVG_KMH = 25
+
+
+def is_ferry_route(km: float | None, minutes: float | None) -> bool:
+    """平均速度（km ÷ 時間）が 25km/h 未満なら True（ちょうど 25km/h は False）。
+    経路がない（None）、時間が 0 以下（出発地と同じ市区町村）は False。"""
+    if km is None or minutes is None:
+        return False
+    k, m = Decimal(str(km)), Decimal(str(minutes))
+    if m <= 0:
+        return False
+    return k * 60 < FERRY_MAX_AVG_KMH * m
+
+
+def drive_info(origin_code: str, dest_code: str, base: Path | None = None) -> dict[str, Any] | None:
+    """出発地から着地への {km, minutes, no_route, ferry, days}。着地のデータが無ければ None。
+    経路なし・フェリーの可能性のときは days を None にする（運転日数と貸切の額を出さない）。"""
+    d = load_osrm(origin_code, base).get(dest_code)
+    if d is None:
+        return None
+    km, minutes = d.get("km"), d.get("minutes")
+    ferry = is_ferry_route(km, minutes)
+    no_route = km is None
+    return {"km": km, "minutes": minutes, "no_route": no_route, "ferry": ferry,
+            "days": None if (no_route or ferry) else drive_days(minutes)}
+
+
+def fare_layer(origin_code: str, total_kg: float | None, tariff: dict[str, Any],
+               codes: list[str] | None = None, base: Path | None = None) -> list[int | None]:
+    """codes の順に、貸切の目安額（OSRM の距離、載る最小の車格）。
+    経路なし・フェリーの可能性・200km未満・積載量超過は None。"""
+    osrm = load_osrm(origin_code, base)
+    out: list[int | None] = []
+    for c in codes if codes is not None else sorted(load_points(base)):
+        d = osrm.get(c) or {}
+        if is_ferry_route(d.get("km"), d.get("minutes")):
+            out.append(None)
+            continue
+        kf = kashikiri_for_distance(d.get("km"), total_kg, tariff)
+        out.append(kf[1] if kf else None)
+    return out
+
+
 def kashikiri_for_distance(km: float | None, total_kg: float | None, tariff: dict[str, Any]) -> tuple[str, int] | None:
     """道路距離と合計重量から (車格, 額)。載る最小の車格。total_kg が None なら 2t とする。
     km が None、基本距離（200km）未満、最大積載量を超えるときは None。式は estimate.kashikiri_fares と共通。"""

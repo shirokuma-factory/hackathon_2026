@@ -22,11 +22,7 @@
       "runtimeArgs": [
         "run",
         "python",
-        "-m",
-        "http.server",
-        "8600",
-        "--directory",
-        "web"
+        "tools/serve_web.py"
       ],
       "port": 8600
     }
