@@ -8,9 +8,14 @@ from datetime import date, datetime, timedelta
 
 import altair as alt
 import pandas as pd
+import pydeck as pdk
 import streamlit as st
 
 from shipcompare.estimate import ST_CHECK, ST_NOCALC, ST_OK, EstimateRow, estimate_all, summarize
+from shipcompare.geo import (
+    GRAY, ORIGINS, class_color, class_of, drive_days, geo_dir, kashikiri_for_distance, load_osrm, load_points,
+    load_routes, municipality_name, quantile_edges, route_for,
+)
 from shipcompare.guide import NO_CONTACT, contacts_for_rows, load_guide, transit_days, transit_days_text
 from shipcompare.models import (
     COST_KEYS,
@@ -29,7 +34,7 @@ from shipcompare.models import (
 from shipcompare.quotes import STATE_COMPLETE, STATE_HISTORY, STATE_INCOMPLETE, compare_quotes, line_amounts_ex_tax
 from shipcompare.request import CONFIRM_ITEMS, build_request
 from shipcompare.storage import ORDER_NOTICE, case_from_dict, case_to_dict, demo_quotes_for, list_scenarios, scenario_info
-from shipcompare.tariffs import ROUTES
+from shipcompare.tariffs import ROUTES, load_tariff
 
 DISCLAIMER = "公表運賃からの目安です。加算や割増の一部は入っていません。最後は各社の見積で確かめてください。"
 ITEM_COLUMNS = ["個数", "縦(cm)", "横(cm)", "高さ(cm)", "1個の重さ(kg)"]
@@ -761,6 +766,358 @@ def section_judgment(case: Case) -> None:
         st.button("この内容を読み込む", key="restore", on_click=on_restore)
 
 
+# ------------------------------------------------------------------ 地図（SPEC §14）
+
+OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+OSM_ATTRIBUTION_HTML = (
+    '<div class="map-attr"><a href="https://www.openstreetmap.org/copyright" target="_blank" '
+    'rel="noopener noreferrer">© OpenStreetMap contributors</a></div>'
+)
+MAP_CREDIT = ("行政区域: 国土数値情報（行政区域データ）（国土交通省）を加工して作成。"
+              "道路距離: OSRM（© OpenStreetMap contributors, ODbL）")
+ROAD_CAUTION = "OpenStreetMap の道路から計算した乗用車の経路です。大型車が通れるとは限りません。"
+DAYS_BASIS_URL = "https://driver-roudou-jikan.mhlw.go.jp/truck/notice"
+VALUE_DISTANCE = "道路距離（km）"
+VALUE_DAYS = "運転日数の目安（日）"
+VALUE_FARE = "貸切の目安額（円、標準的な運賃）"
+VALUE_CHOICES = [VALUE_DISTANCE, VALUE_DAYS, VALUE_FARE]
+NO_VALUE_NOTE = "灰色: 値なし（経路がない、所属未定地、貸切の表の範囲外）"
+HIGHLIGHT_COLOR = [30, 30, 30, 255]
+ROUTE_COLOR = [30, 30, 30, 220]
+ORIGIN_COLOR = [0, 110, 60, 255]
+MAP_HEIGHT = 700
+# 背景の OSM 公式タイル。pydeck の TileLayer は Streamlit の JSON 変換が画像タイルの描画関数を渡せず
+# 動かないため、OSM のラスタータイルだけを描く地図スタイルを data: URL で渡す（# は URL で切れるので使わない）
+BLANK_MAP_STYLE = (
+    'data:application/json;charset=utf-8,{"version":8,"sources":{"osm":{"type":"raster",'
+    '"tiles":["' + OSM_TILE_URL + '"],"tileSize":256,"maxzoom":19}},'
+    '"layers":[{"id":"bg","type":"background","paint":{"background-color":"rgb(212,218,220)"}},'
+    '{"id":"osm","type":"raster","source":"osm"}]}'
+)
+MAP_CSS = """
+<style>
+.map-attr{position:relative;height:0;overflow:visible;text-align:right;z-index:50;pointer-events:none}
+.map-attr a{pointer-events:auto;position:relative;top:-2.1rem;right:.4rem;background:rgba(255,255,255,.85);
+  padding:1px 6px;font-size:12px;color:#0b4a8a}
+</style>
+"""
+
+
+@st.cache_resource(show_spinner=False)
+def load_boundaries() -> tuple[list[dict], dict, dict[str, list[str]]]:
+    """市区町村の境界（座標は小数4桁）、都道府県の境界、都道府県ごとの市区町村コード。"""
+    def trim(coords):
+        if coords and isinstance(coords[0], (int, float)):
+            return [round(coords[0], 4), round(coords[1], 4)]
+        return [trim(c) for c in coords]
+
+    with open(geo_dir() / "municipalities_N03-21_s0010.geojson", encoding="utf-8") as f:
+        raw = json.load(f)["features"]
+    munis = []
+    by_pref: dict[str, list[str]] = {}
+    for ft in raw:
+        p = ft["properties"]
+        code = p.get("N03_007") or ""
+        name = municipality_name(p)
+        geom = {"type": ft["geometry"]["type"], "coordinates": trim(ft["geometry"]["coordinates"])}
+        munis.append({"geometry": geom, "code": code, "name": name, "pref": p["N03_001"]})
+        if code:
+            by_pref.setdefault(p["N03_001"], []).append(code)
+    with open(geo_dir() / "prefectures_s0010.geojson", encoding="utf-8") as f:
+        prefs = json.load(f)
+    for ft in prefs["features"]:
+        ft["geometry"]["coordinates"] = trim(ft["geometry"]["coordinates"])
+        ft["properties"] = {"pref": ft["properties"]["N03_001"]}
+    return munis, prefs, by_pref
+
+
+@st.cache_resource(show_spinner=False)
+def load_geo_tables(origin: str):
+    """出発地ごとの道路距離（無ければ None）、代表点、デモの区間の線。"""
+    try:
+        osrm = load_osrm(origin)
+    except FileNotFoundError:
+        osrm = None
+    try:
+        routes = load_routes()
+    except FileNotFoundError:
+        routes = {}
+    return osrm, load_points(), routes
+
+
+def hm_text(minutes: float | None) -> str:
+    if minutes is None:
+        return ""
+    total = int(round(minutes))
+    return f"{total // 60}時間{total % 60}分"
+
+
+def map_values(osrm: dict, total_kg: float | None, tariff: dict, kind: str) -> dict[str, float | None]:
+    """塗り分けに使う値（市区町村コード → 値）。"""
+    out: dict[str, float | None] = {}
+    for code, d in osrm.items():
+        if kind == VALUE_DISTANCE:
+            out[code] = d["km"]
+        elif kind == VALUE_DAYS:
+            out[code] = drive_days(d["minutes"])
+        else:
+            fare = kashikiri_for_distance(d["km"], total_kg, tariff)
+            out[code] = fare[1] if fare else None
+    return out
+
+
+def map_features(munis: list[dict], values: dict[str, float | None]) -> tuple[list[dict], list[float]]:
+    """市区町村ごとの塗り色を付けた地物と、分位数の階級の境界（7階級、値がなければ空）。"""
+    edges = quantile_edges([v for v in values.values() if v is not None])
+    n = max(1, len(edges) - 1)
+    feats = []
+    for m in munis:
+        v = values.get(m["code"]) if m["code"] else None
+        fill = list(GRAY) if v is None or not edges else class_color(class_of(v, edges), n)
+        feats.append({"type": "Feature", "geometry": m["geometry"],
+                      "properties": {"code": m["code"], "label": f"{m['pref']} {m['name']}", "fill": fill}})
+    return feats, edges
+
+
+def build_deck(feats: list[dict], prefs: dict, origin_pt: dict | None, dest_pt: dict | None,
+               line: dict | None, selected: dict | None = None) -> pdk.Deck:
+    layers = [
+        pdk.Layer("GeoJsonLayer", data={"type": "FeatureCollection", "features": feats}, id="municipalities",
+                  pickable=True, stroked=True, filled=True, get_fill_color="properties.fill",
+                  get_line_color=[255, 255, 255, 70], line_width_min_pixels=0.3, auto_highlight=True,
+                  highlight_color=[255, 255, 255, 90]),
+        pdk.Layer("GeoJsonLayer", data=prefs, id="prefectures", pickable=False, stroked=True, filled=False,
+                  get_line_color=[60, 60, 60, 200], line_width_min_pixels=0.8),
+    ]
+    if selected is not None:  # 選んだ市区町村は、塗りを変えずに太い濃い枠で示す
+        layers.append(pdk.Layer("GeoJsonLayer", data={"type": "FeatureCollection", "features": [selected]},
+                                id="selected", pickable=False, stroked=True, filled=False,
+                                get_line_color=[20, 20, 20, 255], line_width_min_pixels=4))
+    if line is not None:
+        if line["kind"] == "path":
+            layers.append(pdk.Layer("PathLayer", data=[{"path": line["path"]}], id="route", get_path="path",
+                                    get_color=ROUTE_COLOR, width_min_pixels=3))
+        else:
+            layers.append(pdk.Layer("ArcLayer", data=[line], id="arc", get_source_position="src",
+                                    get_target_position="dst", get_source_color=ROUTE_COLOR,
+                                    get_target_color=ROUTE_COLOR, get_width=3))
+    for mark_id, pt, color, px in (("origin", origin_pt, ORIGIN_COLOR, 9), ("dest", dest_pt, HIGHLIGHT_COLOR, 8)):
+        if pt:
+            # 半径は 1m にして、最小・最大の画素数で大きさを決める（radius_units の指定に頼らない）
+            layers.append(pdk.Layer("ScatterplotLayer", data=[{"pos": [pt["lon"], pt["lat"]]}], id=mark_id,
+                                    get_position="pos", get_fill_color=color, get_radius=1,
+                                    radius_min_pixels=px, radius_max_pixels=px, stroked=True,
+                                    get_line_color=[255, 255, 255, 255], line_width_min_pixels=2))
+    view = pdk.ViewState(latitude=38.3, longitude=137.5, zoom=4.5)
+    return pdk.Deck(layers=layers, initial_view_state=view, map_style=BLANK_MAP_STYLE, tooltip={"text": "{label}"})
+
+
+def legend_html(kind: str, edges: list[float]) -> str:
+    """7階級（分位数）の凡例。階級の境界の値を出す。"""
+    css = lambda c: f"rgb({c[0]},{c[1]},{c[2]})"  # noqa: E731
+    box = "display:inline-block;width:18px;height:14px;border:1px solid #888;vertical-align:middle;margin-right:6px"
+    rows = []
+    if not edges:
+        rows.append("値のある市区町村がありません")
+    else:
+        fmt = (lambda v: f"{v:,.1f}") if kind == VALUE_DISTANCE else (lambda v: f"{v:,.0f}")
+        n = len(edges) - 1
+        for i in range(n):
+            rows.append(f"<div><span style='{box};background:{css(class_color(i, n))}'></span>"
+                        f"{fmt(edges[i])} 〜 {fmt(edges[i + 1])}</div>")
+    return (
+        f"<div style='font-size:14px'><b>{kind}</b>"
+        "<div style='color:#555;margin:2px 0 6px'>市区町村の数が同じになる7階級（薄い = 小さい値）</div>"
+        + "".join(rows) +
+        f"<div style='margin-top:8px'><span style='{box};background:rgb(200,200,200)'></span>{NO_VALUE_NOTE}</div></div>"
+    )
+
+
+def map_chart_key() -> str:
+    return f"map_chart_{st.session_state.get('map_gen', 0)}"
+
+
+def apply_map_click(by_pref: dict[str, list[str]], munis_by_code: dict[str, dict]) -> None:
+    """地図のクリックを着地の選択欄に反映する。選択欄を作る前に呼ぶ。
+
+    Streamlit は pydeck に選択があると、選ばれていない図形の塗りの不透明度を 40% に落として
+    薄く見せる（上書きできない）。そこで、反映したらチャートのキーを替えて選択を捨て、描き直す。
+    選んだ着地は自前の太い枠の層で示す。"""
+    ss = st.session_state
+    event = ss.get(map_chart_key())
+    objs = []
+    if event:
+        try:
+            objs = (event["selection"]["objects"] or {}).get("municipalities") or []
+        except (KeyError, TypeError):
+            objs = []
+    if not objs:
+        return
+    code = ((objs[0] or {}).get("properties") or {}).get("code")
+    if code and code in munis_by_code:
+        ss["map_pref"] = munis_by_code[code]["pref"]
+        ss["map_dest"] = code
+    ss["map_gen"] = ss.get("map_gen", 0) + 1
+    st.rerun()
+
+
+def on_map_pref_change() -> None:
+    st.session_state["map_dest"] = None
+
+
+def on_map_apply() -> None:
+    """着地を選んだ状態で押す。タブ1の区間を 14.5 の対応どおりに設定する（確定はしない）。"""
+    ss = st.session_state
+    origin, dest = ss.get("map_origin"), ss.get("map_dest")
+    rid = route_for(origin, dest)
+    if rid is None:
+        return
+    ss["f_route"] = rid
+    if rid == ROUTE_OTHER:
+        osrm, _, _ = load_geo_tables(origin)
+        km = (osrm or {}).get(dest, {}).get("km")
+        ss["f_dist"] = round(km, 1) if km is not None else None
+        ss["f_kanto"] = True  # 出発地は関東の7か所
+    ss["map_flash"] = (f"タブ1の区間を「{ROUTES[rid].label}」にしました。"
+                       "「1 出荷条件」で内容を見て「この条件で確定」を押すと、目安額と依頼文に反映されます。")
+
+
+def map_line(origin: str, dest: str, points: dict, routes: dict) -> dict | None:
+    demo = routes.get(f"{origin}-{dest}")
+    if demo:
+        return {"kind": "path", "path": demo["coordinates"]}
+    if origin in points and dest in points:
+        o, d = points[origin], points[dest]
+        return {"kind": "arc", "src": [o["lon"], o["lat"]], "dst": [d["lon"], d["lat"]]}
+    return None
+
+
+def section_map(case: Case) -> None:
+    ss = st.session_state
+    munis, prefs, by_pref = load_boundaries()
+    munis_by_code = {m["code"]: m for m in munis if m["code"]}
+    apply_map_click(by_pref, munis_by_code)  # 選択欄より前に、地図のクリックを反映する
+
+    origin = ss.get("map_origin") or next(iter(ORIGINS))
+    kind = ss.get("map_value") or VALUE_DISTANCE
+    osrm, points, routes = load_geo_tables(origin)
+    shipment = case.versions[-1].shipment if case.versions else None
+    totals = summarize(shipment) if shipment else None
+    total_kg = float(totals.weight_kg) if totals is not None and totals.ok else None
+    tariff = load_tariff("kashikiri")
+
+    st.markdown(MAP_CSS, unsafe_allow_html=True)
+    if osrm is None:
+        st.warning("この出発地の道路距離のファイル（data/geo/osrm_＊.json）がありません。"
+                   "`tools/fetch_osrm.py` で取得してください。地図は塗り分けなしで出します。")
+    values = map_values(osrm, total_kg, tariff, kind) if osrm else {}
+    feats, edges = map_features(munis, values)
+    dest = ss.get("map_dest")
+    selected = next((f for f in feats if f["properties"]["code"] == dest), None) if dest else None
+    deck = build_deck(
+        feats, prefs, points.get(origin), points.get(dest) if dest else None,
+        map_line(origin, dest, points, routes) if dest else None, selected,
+    )
+
+    c_left, c_right = st.columns([3, 1])
+    with c_left:
+        st.pydeck_chart(deck, on_select="rerun", selection_mode="single-object", key=map_chart_key(),
+                        height=MAP_HEIGHT)
+        st.markdown(OSM_ATTRIBUTION_HTML, unsafe_allow_html=True)
+        st.caption(MAP_CREDIT)
+    with c_right:
+        st.selectbox("出発地（関東の7か所）", list(ORIGINS), format_func=ORIGINS.get, key="map_origin")
+        st.radio("塗る値", VALUE_CHOICES, key="map_value")
+        st.markdown(legend_html(kind, edges), unsafe_allow_html=True)
+        if kind == VALUE_FARE:
+            kg_text = f"合計重量 {fmt_dec(totals.weight_kg)}kg" if total_kg is not None else "荷物が未入力のため 2t 車"
+            st.caption(f"標準的な運賃の式（SPEC 5.5）に道路距離を入れた額です（{kg_text}）。")
+
+    st.markdown("**着地**（地図の市区町村をクリックするか、下の欄で選びます）")
+    prefs_list = list(by_pref)
+    s1, s2 = st.columns(2)
+    s1.selectbox("都道府県", [None, *prefs_list], format_func=_opt({}, "選んでください"), key="map_pref",
+                 on_change=on_map_pref_change)
+    codes = by_pref.get(ss.get("map_pref") or "", [])
+    if ss.get("map_dest") not in [None, *codes]:
+        ss["map_dest"] = None
+    s2.selectbox("市区町村", [None, *codes],
+                 format_func=_opt({c: munis_by_code[c]["name"] for c in codes}, "選んでください"), key="map_dest")
+
+    flash = ss.pop("map_flash", None)
+    if flash:
+        st.success(flash)
+    dest = ss.get("map_dest")
+    if dest:
+        section_dest_card(case, origin, dest, osrm, points, routes, total_kg, tariff, munis_by_code[dest])
+    else:
+        st.info("着地を選ぶと、出発地からの線と、距離・日数・貸切の目安額のカードを出します。")
+
+
+def section_dest_card(case: Case, origin: str, dest: str, osrm: dict | None, points: dict, routes: dict,
+                      total_kg: float | None, tariff: dict, muni: dict) -> None:
+    d = (osrm or {}).get(dest) or {"km": None, "minutes": None}
+    km, minutes = d["km"], d["minutes"]
+    rid = route_for(origin, dest)
+    st.subheader(f"{ORIGINS[origin]} → {muni['pref']} {muni['name']}")
+
+    rows = []
+    if km is None:
+        rows.append(("道路距離・運転時間", "この着地への経路がありません（OSRM が経路を返しませんでした）。"))
+    else:
+        rows.append(("道路距離・運転時間", f"{km:,.1f}km、{hm_text(minutes)}。{ROAD_CAUTION}"))
+        days = drive_days(minutes)
+        rows.append(("日数の目安（貸切）", f"{days}日（運転 {hm_text(minutes)}。1日の運転を 9 時間までとして数えました。"
+                                         "休憩・積込み・荷待ち・荷下ろしは含みません）  \n"
+                                         f"根拠: 厚生労働省 改善基準告示（トラック） {DAYS_BASIS_URL}"))
+        fare = kashikiri_for_distance(km, total_kg, tariff)
+        kg_text = "荷物が未入力のため 2t 車で見ています" if total_kg is None else f"合計重量 {total_kg:,.0f}kg が載る最小の車格です"
+        if fare:
+            rows.append(("貸切の目安額", f"{fare[0]}車 {fare[1]:,}円（税抜）。{kg_text}。"
+                                       "国の目安で、実際の運賃は会社ごとに違います。"))
+        elif km < tariff["base_km"]:
+            rows.append(("貸切の目安額", f"この表の範囲外（距離{tariff['base_km']}km未満）"))
+        else:
+            rows.append(("貸切の目安額", "合計重量が10tの最大積載量を超えます"))
+    rows.append(("鉄道・フェリー", "運賃表を使えないので金額は出しません（JR貨物の表は二次利用不可）。"
+                                "各社への問い合わせが必要です。下の「ほかの輸送手段」の早見表を見てください。"))
+    demo = rid in ("kanto_kansai", "kanto_tohoku")
+    if demo:
+        r2 = ROUTES[rid]
+        diff = "" if km is None else f"（差 {km - r2.km:+,.1f}km）"
+        rows.append(("版2の区間との差", f"{r2.label}の想定距離は {r2.km:,}km、OSRM の道路距離は "
+                                      f"{'経路なし' if km is None else f'{km:,.1f}km'}{diff}。目安額の表は想定距離で計算しています。"))
+    st.table(pd.DataFrame(rows, columns=["項目", "内容"]).set_index("項目"))
+
+    st.markdown("**宅配・路線便・カゴ台車**")
+    shipment = case.versions[-1].shipment if case.versions else None
+    if shipment is None:
+        st.info("荷物が未入力です。「1 出荷条件」で条件を確定すると、この着地の目安額を出します。")
+    elif demo:
+        est = estimate_all(dataclasses.replace(shipment, route=rid), {})
+        st.dataframe(pd.DataFrame([{
+            "手段": r.label, "状態": r.status, "目安額（税抜・円）": fmt_yen(r.amount) if r.has_amount() else "",
+            "出典": r.source.name if r.source else "",
+        } for r in est if not r.mode.startswith("kashikiri")]), hide_index=True, width="stretch")
+        st.caption("版2の「2 目安額」と同じ計算です（いまの確定した荷物と、この区間で計算）。")
+    else:
+        st.info("この区間の運賃表は持っていません。")
+        other = dataclasses.replace(shipment, route=ROUTE_OTHER, distance_km=km, origin_in_kanto=True)
+        contacts = contacts_for_rows(estimate_all(other, {}))
+        if contacts:
+            st.dataframe(
+                pd.DataFrame([{"手段": c.mode_label, "窓口": c.name if c.has_window else NO_CONTACT,
+                               "リンク": c.url or "", "条件": c.condition, "確認日": c.checked_on} for c in contacts]),
+                hide_index=True, width="stretch",
+                column_config={"リンク": st.column_config.LinkColumn("リンク", display_text="開く")})
+    st.caption("札幌圏 → 東京は出発地が関東ではないので、地図の対象外です。")
+    section_guide()
+
+    if rid is not None:
+        st.button("この着地で目安額と依頼文を作る", key="map_apply", type="primary", on_click=on_map_apply,
+                  help="タブ1の区間をこの着地に対応する区間に設定します（確定は自分で押します）")
+
+
 # ------------------------------------------------------------------ 組み立て
 
 def main() -> None:
@@ -773,7 +1130,9 @@ def main() -> None:
                 "見積依頼文を作り、届いた見積回答を比べて保存します。")
     st.info(DISCLAIMER)
 
-    t1, t2, t3, t4, t5 = st.tabs(["1 出荷条件", "2 目安額", "3 見積依頼文", "4 見積回答", "5 判断と保存"])
+    t0, t1, t2, t3, t4, t5 = st.tabs(["地図", "1 出荷条件", "2 目安額", "3 見積依頼文", "4 見積回答", "5 判断と保存"])
+    with t0:
+        section_map(case)
     with t1:
         section_input(case)
     with t2:

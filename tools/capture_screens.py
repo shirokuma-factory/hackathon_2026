@@ -481,7 +481,48 @@ def scene_request_contacts(p: Page) -> str:
     return "2026-11-03_request_contacts.jpg"
 
 
+def map_open(p: Page) -> None:
+    """地図タブ（最初のタブ）を開き、OSM のタイルと塗り分けが描かれるまで待つ。"""
+    p.goto(BASE)
+    p.wait_text("スポット出荷 比較・依頼", 60)
+    p.hide_chrome()
+    p.idle()
+    p.need("© OpenStreetMap contributors", "国土数値情報（行政区域データ）（国土交通省）を加工して作成", timeout=60)
+    p.wait(lambda: p.js("!!document.querySelector('[data-testid=\"stDeckGlJsonChart\"] canvas')"), 60, "地図の描画")
+    time.sleep(6.0)  # 背景タイルの読み込みを待つ
+
+
+def map_scroll_top(p: Page, offset: int = 24) -> None:
+    """地図の上端が画面の上から offset の位置に来るようにスクロールする。"""
+    p.js(f"""(function(){{const e=document.querySelector('[data-testid="stDeckGlJsonChart"]');
+      e.scrollIntoView({{block:'start'}});
+      const m=document.querySelector('[data-testid="stMain"]'); if (m) m.scrollTop -= {offset};
+      return true;}})()""")
+    time.sleep(1.5)
+
+
+def scene_map_distance(p: Page) -> str:
+    map_open(p)
+    p.need("道路距離（km）", "7階級")
+    map_scroll_top(p, 60)
+    return "2026-11-03_map_distance.jpg"
+
+
+def scene_map_selected_osaka(p: Page) -> str:
+    map_open(p)
+    p.select("都道府県", "大阪府")
+    p.select("市区町村", "大阪市中央区")
+    p.click("text", "貸切の目安額（円")
+    p.idle()
+    p.need("東京都新宿区 → 大阪府 大阪市中央区", "491.8km", timeout=30)
+    time.sleep(14.0)  # 塗り直しとタイルの読み込みを待つ
+    map_scroll_top(p, 20)
+    return "2026-11-03_map_selected_osaka.jpg"
+
+
 SCENES = {
+    "map_distance": scene_map_distance,
+    "map_selected_osaka": scene_map_selected_osaka,
     "S1_estimates": scene_s1_estimates,
     "S2_estimates_chart": scene_s2_estimates_chart,
     "S5_quotes_demo_partial": scene_s5_quotes_demo_partial,
