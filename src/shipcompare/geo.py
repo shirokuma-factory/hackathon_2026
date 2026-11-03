@@ -237,3 +237,48 @@ def class_of(value: float, edges: list[float]) -> int:
 def class_color(index: int, n_classes: int) -> list[int]:
     """階級の色。薄い（小さい階級）から濃い（大きい階級）。"""
     return color_for(index, 0, n_classes - 1)
+
+
+# ---------------------------------------------------------------- 貨物駅・港（SPEC §15.5）
+
+def haversine_km(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
+    """2 点の直線（大圏）距離 km。道路や線路の長さではない。"""
+    r, rad = 6371.0088, math.pi / 180
+    dlat, dlon = (lat2 - lat1) * rad, (lon2 - lon1) * rad
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1 * rad) * math.cos(lat2 * rad) * math.sin(dlon / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(h))
+
+
+def load_hubs(kind: str, base: Path | None = None) -> list[dict[str, Any]]:
+    """OSM から取得した拠点。kind は 'freight_stations' / 'ferry_terminals' / 'ferry_routes'。"""
+    return _read(geo_dir(base) / f"osm_{kind}.json")["items"]
+
+
+def nearest_hub(lon: float, lat: float, hubs: list[dict[str, Any]]) -> tuple[int, float] | None:
+    """最も近い拠点の (hubs の番号, 直線距離 km)。拠点が空なら None。同じ距離なら番号の小さい方。"""
+    best: tuple[int, float] | None = None
+    for i, h in enumerate(hubs):
+        d = haversine_km(lon, lat, h["lon"], h["lat"])
+        if best is None or d < best[1]:
+            best = (i, d)
+    return best
+
+
+PASSENGER_ONLY_WORDS = ("観光", "桟橋", "渡船", "遊覧", "クルーズ", "水上バス")
+
+
+def major_terminals(terminals: list[dict[str, Any]], routes: list[dict[str, Any]], radius_km: float = 5.0,
+                    exclude: tuple[str, ...] = PASSENGER_ONLY_WORDS) -> list[int]:
+    """航路（30km 以上）の端から radius_km 以内にある港の番号。地図の縮小時と最寄りの港の計算に使う。
+    名前に観光・桟橋・渡船などを含むものは除く（名前による目安で、車両を積めるかは確かめていない）。"""
+    ends = []
+    for r in routes:
+        if r.get("path"):
+            ends += [r["path"][0], r["path"][-1]]
+    out = []
+    for i, t in enumerate(terminals):
+        if any(w in (t.get("name") or "") for w in exclude):
+            continue
+        if any(haversine_km(t["lon"], t["lat"], e[0], e[1]) <= radius_km for e in ends):
+            out.append(i)
+    return out

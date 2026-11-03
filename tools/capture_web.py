@@ -45,6 +45,15 @@ SCENES = {
     "search": ("#o=13104&l=km", 6.0, "(function(){const q=document.querySelector('#q'); q.focus(); q.value='大阪'; q.dispatchEvent(new Event('input'));})()", "2026-11-03_web_map_search.jpg"),
     "ferry": ("#o=13104&l=days&d=13421", 9.0, None, "2026-11-03_web_map_ferry.jpg"),
     "selected_tohoku": ("#o=13104&l=km&d=04101", 9.0, None, "2026-11-03_web_map_selected_tohoku.jpg"),
+    # 版3の3段目（SPEC §16）。市場を見る（全国）、兵庫→東京を選んだ画面（JARTIC の折れ線つき）、拠点の層と鉄道カードの点線
+    "market_overview": ("#v=market", 9.0, None, "2026-11-03_market_overview.jpg"),
+    "market_pair": ("#v=market&p=27-12", 11.0,
+                    "(function(){const s=document.querySelector('#ch'); if(!s) return; const b=s.getBoundingClientRect();"
+                    "s.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:b.left+b.width*0.43,clientY:b.top+b.height*0.5}));})()",
+                    "2026-11-03_market_pair.jpg"),
+    "hubs": ("#v=compare&o=13104&l=km&d=27128&hubs=1", 9.0,
+             "(function(){const b=document.querySelector('#cards .hub-btn[data-hub=\"rail\"]'); if(b){b.scrollIntoView({block:'center'}); b.click();}})()",
+             "2026-11-03_hubs.jpg"),
 }
 
 
