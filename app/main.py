@@ -564,7 +564,8 @@ def section_judgment(case: Case) -> None:
             else:
                 st.warning("選んだ回答は、いまは完全な回答ではありません。「4 見積回答」で内容を確かめてください。")
             labels[chosen] = f"{q.carrier} {q.product}（選択済み。いまは完全な回答ではありません）"
-    st.selectbox("選ぶ回答（完全な回答だけ選べます）", list(labels), format_func=labels.get, key="j_choice")
+    st.selectbox("選ぶ回答（完全な回答だけ選べます）", list(labels), format_func=labels.get,
+                 placeholder="選ばない", key="j_choice")
     st.text_area("選んだ理由", key="j_reason", height=100)
     st.text_area("残る確認事項（1行に1つ）", key="j_issues", height=100)
     case.chosen_quote_id = ss["j_choice"]
