@@ -1,0 +1,103 @@
+{
+  "about": "validator（tools/validate.py）が読む採点表。点は機械で確かめられる証拠だけで付ける。AI の印象では付けない（計画 10）。100点はこの表の条件をすべて満たしたという意味で、審査の点数の予測ではない。",
+  "groups": [
+    {
+      "id": "A",
+      "name": "機械試験の全体",
+      "items": [
+        {"id": "A1", "text": "uv run pytest がすべて合格", "points": 10, "check": {"type": "pytest_all_pass"}}
+      ]
+    },
+    {
+      "id": "B",
+      "name": "もともと想定していたもの（計画 08・作成者の構想・SPEC）",
+      "items": [
+        {"id": "R01", "source": "計画08 操作1", "text": "出荷条件を入れて確定できる", "points": 3,
+         "check": {"type": "tests", "tests": ["tests/test_app.py::test_s1_confirm_shows_expected_amounts", "tests/test_app.py::test_confirm_same_content_keeps_version"]}},
+        {"id": "R02", "source": "作成者の構想 / SPEC §9", "text": "S1〜S4 の目安額が作成者の構想の値と一致", "points": 6,
+         "check": {"type": "tests", "tests": ["tests/test_scenarios.py::test_s1", "tests/test_scenarios.py::test_s2", "tests/test_scenarios.py::test_s3", "tests/test_scenarios.py::test_s4"]}},
+        {"id": "R03", "source": "計画08 §3 / G05", "text": "寸法・重量の超過と積付けの要確認を区別する", "points": 3,
+         "check": {"type": "tests", "tests": ["tests/test_boundaries.py::test_loading_check_is_distinct_from_over_limit", "tests/test_boundaries.py::test_takuhai_260cm_ok_and_261cm_unusable", "tests/test_boundaries.py::test_jitbox_piece_fit_by_any_orientation"]}},
+        {"id": "R04", "source": "計画08 §3 / SPEC §13.1", "text": "公開条件への一致と受託の確認を別の状態名で出す", "points": 2,
+         "check": {"type": "test_prefix", "prefix": "test_spec13_1_"}},
+        {"id": "R05", "source": "G06 / SPEC §5.6", "text": "目安額の各行に出典・適用日・確認日", "points": 3,
+         "check": {"type": "tests", "tests": ["tests/test_scenarios.py::test_every_row_has_source", "tests/test_data.py::test_metadata_present"]}},
+        {"id": "R06", "source": "計画08 操作3", "text": "依頼文が不足で下書き、そろえば依頼準備完了", "points": 3,
+         "check": {"type": "tests", "tests": ["tests/test_request.py::test_draft_when_required_missing", "tests/test_request.py::test_ready_when_complete"]}},
+        {"id": "R07", "source": "計画08 操作3 / SPEC §13.7", "text": "問い合わせ先（確認済みの公式窓口、未確認なら窓口確認が必要）", "points": 4,
+         "check": {"type": "test_prefix", "prefix": "test_spec13_7_"}},
+        {"id": "R08", "source": "作成者の構想の tool A / SPEC §13.8", "text": "公表のお届け日数（無ければ公表なしと出す）", "points": 4,
+         "check": {"type": "test_prefix", "prefix": "test_spec13_8_"}},
+        {"id": "R09", "source": "計画08 §1 / SPEC §13.9", "text": "ほかの輸送手段を出典つきの早見表で案内", "points": 3,
+         "check": {"type": "test_prefix", "prefix": "test_spec13_9_"}},
+        {"id": "R10", "source": "作成者の構想 / SPEC §13.6", "text": "月の出荷回数を入れて依頼文に出す", "points": 2,
+         "check": {"type": "test_prefix", "prefix": "test_spec13_6_"}},
+        {"id": "R11", "source": "計画08 操作4 / G02", "text": "完全な見積2件以上でだけ順位と差額", "points": 3,
+         "check": {"type": "tests", "tests": ["tests/test_quotes.py::test_ranking_only_with_two_complete", "tests/test_app.py::test_two_complete_quotes_show_ranking"]}},
+        {"id": "R12", "source": "G03", "text": "不完全な見積は部分合計と不明項目で出し順位に入れない", "points": 3,
+         "check": {"type": "tests", "tests": ["tests/test_quotes.py::test_incomplete_shows_partial_and_unknown_and_not_ranked", "tests/test_app.py::test_incomplete_quote_not_ranked"]}},
+        {"id": "R13", "source": "計画08 §3 / G04", "text": "条件変更で旧回答を履歴へ移し比較に混ぜない", "points": 3,
+         "check": {"type": "tests", "tests": ["tests/test_quotes.py::test_version_change_moves_old_quote_to_history", "tests/test_app.py::test_condition_change_moves_quotes_to_history"]}},
+        {"id": "R14", "source": "G08", "text": "境界（50kg/50.1kg、260/261cm、期限切れ、税込の混在、0円、負数）", "points": 3,
+         "check": {"type": "tests", "tests": ["tests/test_boundaries.py::test_takuhai_50kg_ok_and_50_1kg_unusable", "tests/test_quotes.py::test_expired_quote_incomplete_not_ranked", "tests/test_quotes.py::test_tax_included_converted_before_compare", "tests/test_quotes.py::test_zero_amount_is_not_treated_as_free", "tests/test_quotes.py::test_negative_amount_incomplete"]}},
+        {"id": "R15", "source": "計画10 / SPEC §13.10", "text": "費用の二重計上をしない", "points": 2,
+         "check": {"type": "test_prefix", "prefix": "test_spec13_10_"}},
+        {"id": "R16", "source": "計画08 §3 / SPEC §13.3 / G12", "text": "見積回答の内訳表示（不明を0円にしない、合計と一致）", "points": 4,
+         "check": {"type": "test_prefix", "prefix": "test_spec13_3_"}},
+        {"id": "R17", "source": "計画08 §5 / SPEC §13.2 / G11", "text": "S5 の架空の見積で、幹線だけの見積を最安としない筋書きが再現できる", "points": 5,
+         "check": {"type": "test_prefix", "prefix": "test_spec13_2_"}},
+        {"id": "R18", "source": "計画08 操作5 / SPEC §13.4", "text": "発注は確定していないと出す", "points": 2,
+         "check": {"type": "test_prefix", "prefix": "test_spec13_4_"}},
+        {"id": "R19", "source": "G06 / SPEC §13.5 / G13", "text": "保存の JSON と依頼文に出典と想定の表示", "points": 3,
+         "check": {"type": "test_prefix", "prefix": "test_spec13_5_"}},
+        {"id": "R20", "source": "計画08 操作5 / G09", "text": "保存と読み込みで条件の全版・回答・判断が一致", "points": 3,
+         "check": {"type": "tests", "tests": ["tests/test_storage.py::test_round_trip_equal", "tests/test_app.py::test_judgment_and_restore_roundtrip"]}},
+        {"id": "X01", "source": "G07", "text": "製品内 Claude は今回入れない", "points": 0, "excluded": true,
+         "check": {"type": "grep", "file": "SPEC.md", "pattern": "G07 \\| 製品内の Claude は今回入れない"}},
+        {"id": "X02", "source": "計画08 §1", "text": "RB の上の空き（B）は扱わない", "points": 0, "excluded": true,
+         "check": {"type": "grep", "file": "SPEC.md", "pattern": "RB の上の空き（B） \\| 今回は扱わない"}},
+        {"id": "X03", "source": "作成者の構想", "text": "CLO の層は扱わない", "points": 0, "excluded": true,
+         "check": {"type": "grep", "file": "SPEC.md", "pattern": "CLO の層 \\| 今回は扱わない"}}
+      ]
+    },
+    {
+      "id": "C",
+      "name": "実画面の証拠（1920×1080 の画像が docs/assets にあり、DEVLOG に名前が書かれている）",
+      "items": [
+        {"id": "C1", "text": "画面の証拠", "points": 8, "check": {"type": "evidence_images", "files": [
+          "docs/assets/2026-11-03_S1_estimates.jpg",
+          "docs/assets/2026-11-03_S2_estimates_chart.jpg",
+          "docs/assets/2026-11-03_S5_quotes_demo_partial.jpg",
+          "docs/assets/2026-11-03_S5_quotes_ranked_breakdown.jpg",
+          "docs/assets/2026-11-03_S5_quotes_history.jpg",
+          "docs/assets/2026-11-03_S5_judgment_notice.jpg",
+          "docs/assets/2026-11-03_S5_restored.jpg",
+          "docs/assets/2026-11-03_request_contacts.jpg"
+        ]}}
+      ]
+    },
+    {
+      "id": "D",
+      "name": "独立レビュー（実装担当と別の reviewer）",
+      "items": [
+        {"id": "D1", "text": "最新のレビューが今のコードに対するもので、P0 と P1 が 0 件", "points": 10,
+         "check": {"type": "review", "file": "docs/reviews/latest.md"}}
+      ]
+    },
+    {
+      "id": "E",
+      "name": "記録と公開リポジトリの安全",
+      "items": [
+        {"id": "E1", "text": "README に起動手順・操作の順序・未実装の一覧", "points": 2,
+         "check": {"type": "headings", "file": "README.md", "headings": ["起動方法", "操作の順序", "未実装"]}},
+        {"id": "E2", "text": "CLAUDE_USAGE に coder・reviewer・researcher・validator の記録", "points": 1,
+         "check": {"type": "contains_all", "file": "docs/CLAUDE_USAGE.md", "words": ["coder", "reviewer", "researcher", "validate.py"]}},
+        {"id": "E3", "text": "チェックポイントの記録に CP1〜CP5 の行がある", "points": 2,
+         "check": {"type": "contains_all", "file": "docs/plan/2026-11-03_チェックポイント.md", "words": ["| CP1 | 済", "| CP2 | 済", "| CP3 | 済", "| CP4 | 済", "| CP5 | 済"]}},
+        {"id": "E4", "text": "秘密情報らしい文字列と .env が追跡されていない", "points": 1, "check": {"type": "no_secrets"}},
+        {"id": "E5", "text": "PC 固有の絶対パスと個人名が追跡ファイルにない", "points": 1, "check": {"type": "no_local_paths"}},
+        {"id": "E6", "text": "追跡しているテキストファイルがすべて LF", "points": 1, "check": {"type": "lf_only"}}
+      ]
+    }
+  ]
+}

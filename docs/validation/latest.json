@@ -1,0 +1,337 @@
+{
+  "score": 67.0,
+  "head": "236b912",
+  "timestamp": "2026-11-03T14:59:32+09:00",
+  "fingerprint": "66bd13e9218f5477e287692f225f7314793df747881ba83b241bc564c2fca2ba",
+  "failed_ids": [
+    "R07",
+    "R08",
+    "R09",
+    "C1",
+    "D1",
+    "E1",
+    "E3"
+  ],
+  "items": [
+    {
+      "group": "A",
+      "id": "A1",
+      "text": "uv run pytest がすべて合格",
+      "points": 10,
+      "got": 10,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R01",
+      "text": "出荷条件を入れて確定できる",
+      "points": 3,
+      "got": 3,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R02",
+      "text": "S1〜S4 の目安額が作成者の構想の値と一致",
+      "points": 6,
+      "got": 6,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R03",
+      "text": "寸法・重量の超過と積付けの要確認を区別する",
+      "points": 3,
+      "got": 3,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R04",
+      "text": "公開条件への一致と受託の確認を別の状態名で出す",
+      "points": 2,
+      "got": 2,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R05",
+      "text": "目安額の各行に出典・適用日・確認日",
+      "points": 3,
+      "got": 3,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R06",
+      "text": "依頼文が不足で下書き、そろえば依頼準備完了",
+      "points": 3,
+      "got": 3,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R07",
+      "text": "問い合わせ先（確認済みの公式窓口、未確認なら窓口確認が必要）",
+      "points": 4,
+      "got": 0,
+      "passed": false,
+      "reason": "test_spec13_7_* の試験がない",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R08",
+      "text": "公表のお届け日数（無ければ公表なしと出す）",
+      "points": 4,
+      "got": 0,
+      "passed": false,
+      "reason": "test_spec13_8_* の試験がない",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R09",
+      "text": "ほかの輸送手段を出典つきの早見表で案内",
+      "points": 3,
+      "got": 0,
+      "passed": false,
+      "reason": "test_spec13_9_* の試験がない",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R10",
+      "text": "月の出荷回数を入れて依頼文に出す",
+      "points": 2,
+      "got": 2,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R11",
+      "text": "完全な見積2件以上でだけ順位と差額",
+      "points": 3,
+      "got": 3,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R12",
+      "text": "不完全な見積は部分合計と不明項目で出し順位に入れない",
+      "points": 3,
+      "got": 3,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R13",
+      "text": "条件変更で旧回答を履歴へ移し比較に混ぜない",
+      "points": 3,
+      "got": 3,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R14",
+      "text": "境界（50kg/50.1kg、260/261cm、期限切れ、税込の混在、0円、負数）",
+      "points": 3,
+      "got": 3,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R15",
+      "text": "費用の二重計上をしない",
+      "points": 2,
+      "got": 2,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R16",
+      "text": "見積回答の内訳表示（不明を0円にしない、合計と一致）",
+      "points": 4,
+      "got": 4,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R17",
+      "text": "S5 の架空の見積で、幹線だけの見積を最安としない筋書きが再現できる",
+      "points": 5,
+      "got": 5,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R18",
+      "text": "発注は確定していないと出す",
+      "points": 2,
+      "got": 2,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R19",
+      "text": "保存の JSON と依頼文に出典と想定の表示",
+      "points": 3,
+      "got": 3,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "R20",
+      "text": "保存と読み込みで条件の全版・回答・判断が一致",
+      "points": 3,
+      "got": 3,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "B",
+      "id": "X01",
+      "text": "製品内 Claude は今回入れない",
+      "points": 0,
+      "got": 0,
+      "passed": true,
+      "reason": "",
+      "excluded": true
+    },
+    {
+      "group": "B",
+      "id": "X02",
+      "text": "RB の上の空き（B）は扱わない",
+      "points": 0,
+      "got": 0,
+      "passed": true,
+      "reason": "",
+      "excluded": true
+    },
+    {
+      "group": "B",
+      "id": "X03",
+      "text": "CLO の層は扱わない",
+      "points": 0,
+      "got": 0,
+      "passed": true,
+      "reason": "",
+      "excluded": true
+    },
+    {
+      "group": "C",
+      "id": "C1",
+      "text": "画面の証拠",
+      "points": 8,
+      "got": 0.0,
+      "passed": false,
+      "reason": "0/8 件。2026-11-03_S1_estimates.jpg: 幅 800, 2026-11-03_S2_estimates_chart.jpg: 幅 800 ... 計8件",
+      "excluded": false
+    },
+    {
+      "group": "D",
+      "id": "D1",
+      "text": "最新のレビューが今のコードに対するもので、P0 と P1 が 0 件",
+      "points": 10,
+      "got": 0,
+      "passed": false,
+      "reason": "docs/reviews/latest.md がない",
+      "excluded": false
+    },
+    {
+      "group": "E",
+      "id": "E1",
+      "text": "README に起動手順・操作の順序・未実装の一覧",
+      "points": 2,
+      "got": 0,
+      "passed": false,
+      "reason": "見出しなし: 操作の順序, 未実装",
+      "excluded": false
+    },
+    {
+      "group": "E",
+      "id": "E2",
+      "text": "CLAUDE_USAGE に coder・reviewer・researcher・validator の記録",
+      "points": 1,
+      "got": 1,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "E",
+      "id": "E3",
+      "text": "チェックポイントの記録に CP1〜CP5 の行がある",
+      "points": 2,
+      "got": 0,
+      "passed": false,
+      "reason": "なし: | CP1 | 済, | CP2 | 済, | CP3 | 済, | CP4 | 済, | CP5 | 済",
+      "excluded": false
+    },
+    {
+      "group": "E",
+      "id": "E4",
+      "text": "秘密情報らしい文字列と .env が追跡されていない",
+      "points": 1,
+      "got": 1,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "E",
+      "id": "E5",
+      "text": "PC 固有の絶対パスと個人名が追跡ファイルにない",
+      "points": 1,
+      "got": 1,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    },
+    {
+      "group": "E",
+      "id": "E6",
+      "text": "追跡しているテキストファイルがすべて LF",
+      "points": 1,
+      "got": 1,
+      "passed": true,
+      "reason": "",
+      "excluded": false
+    }
+  ]
+}

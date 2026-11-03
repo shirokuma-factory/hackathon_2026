@@ -17,7 +17,7 @@ def amounts(sid):
 
 def test_scenarios_are_assumed_shippers():
     scs = list_scenarios()
-    assert [s["id"] for s in scs] == ["S1", "S2", "S3", "S4"]
+    assert [s["id"] for s in scs] == ["S1", "S2", "S3", "S4", "S5"]
     for s in scs:
         assert s["assumed_shipper"] is True
         assert s["label"] == "想定の荷主"

@@ -75,10 +75,12 @@ def missing_items(shipment: Shipment, totals: Totals | None = None) -> tuple[lis
         optional.append("品目")
     if not shipment.fragile_note:
         optional.append("壊れ物の扱い")
+    if shipment.monthly_shipments is None:
+        optional.append("月の出荷回数")
     return required, optional
 
 
-def build_request(shipment: Shipment) -> RequestDraft:
+def build_request(shipment: Shipment, scenario: dict | None = None) -> RequestDraft:
     totals = summarize(shipment)
     required, optional = missing_items(shipment, totals)
     status = STATUS_READY if not required else STATUS_DRAFT
@@ -111,6 +113,8 @@ def build_request(shipment: Shipment) -> RequestDraft:
     lines.append(f"  集荷/持込: {shipment.pickup or '未入力'}")
     lines.append(f"  配達/引取: {shipment.delivery or '未入力'}")
     lines.append(f"  届け先の数: {shipment.destinations if shipment.destinations is not None else '未入力'}")
+    if shipment.monthly_shipments is not None:
+        lines.append(f"  月の出荷回数の見込み: {shipment.monthly_shipments} 回")
     lines.append(f"  発送者: {shipment.sender_type or '未入力'} / 受取人: {shipment.receiver_type or '未入力'}")
     lines.append("")
     lines.append("■ 荷役設備・品目")
@@ -132,4 +136,6 @@ def build_request(shipment: Shipment) -> RequestDraft:
             lines.append(f"  - {m}")
     lines.append("")
     lines.append("※ 目安額は公表運賃からの計算で、最終の運賃ではありません。")
+    if scenario and scenario.get("name"):
+        lines.append(f"※ この条件は{scenario['name']}（{scenario.get('label') or '想定の荷主'}）の例です。")
     return RequestDraft(status, required, optional, "\n".join(lines) + "\n")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_FLOOR, Decimal
 
 from .estimate import TAX_RATE, round_yen
 from .models import (
@@ -59,6 +59,43 @@ def to_ex_tax(raw_total: int, tax: str) -> int:
     if tax == TAX_IN:
         return round_yen(Decimal(raw_total) / TAX_RATE)
     return raw_total
+
+
+def _counted_amount_lines(quote: QuoteResponse) -> dict[str, int]:
+    """evaluate_quote が合計に足す項目（金額が正の「金額」行）だけを集める。"""
+    out: dict[str, int] = {}
+    for key in COST_KEYS:
+        line = quote.lines.get(key)
+        if line is None or line.kind != KIND_AMOUNT:
+            continue
+        if line.amount is None or isinstance(line.amount, bool) or line.amount <= 0:
+            continue
+        out[key] = line.amount
+    return out
+
+
+def line_amounts_ex_tax(quote: QuoteResponse) -> dict[str, int]:
+    """内訳の「金額」行を税抜の円に直して返す（SPEC §13.3）。
+
+    「含む」「不明」の行は数値ではないので返さない（呼び出し側が quote.lines の kind で判断する）。
+    税込の回答は各行を 1.1 で割り、端数は最大剰余法で配って、
+    戻り値の合計が evaluate_quote の合計（税抜）と必ず一致するようにする。
+    """
+    raw = _counted_amount_lines(quote)
+    if quote.tax != TAX_IN:
+        return raw
+    target = to_ex_tax(sum(raw.values()), TAX_IN)
+    exact = {k: Decimal(v) / TAX_RATE for k, v in raw.items()}
+    floors = {k: int(x.to_integral_value(rounding=ROUND_FLOOR)) for k, x in exact.items()}
+    remaining = target - sum(floors.values())
+    # 小数部が大きい順（同じなら内訳の並び順）に1円ずつ配る
+    order = sorted(raw, key=lambda k: (-(exact[k] - floors[k]), list(COST_KEYS).index(k)))
+    i = 0
+    while remaining > 0 and order:
+        floors[order[i % len(order)]] += 1
+        remaining -= 1
+        i += 1
+    return floors
 
 
 def evaluate_quote(quote: QuoteResponse, current_version: int, today: date) -> QuoteEvaluation:
