@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スポット出荷マップ</title>
+<meta name="description" content="出発地から全国の市区町村への道路距離・運転日数・貸切の目安額を地図で見て、着地ごとの手段を比べる試作です。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="map"></div>
+
+<section id="panel" class="glass" aria-label="条件">
+  <div class="brand"><b>スポット出荷マップ</b><span>試作</span></div>
+  <label class="field"><span class="lbl">出発地</span>
+    <select id="origin" class="ctl"></select>
+  </label>
+  <div class="field"><label class="lbl" for="q">着地</label>
+    <input id="q" class="ctl" type="text" placeholder="市区町村名で探す（例: 大阪市中央区）" autocomplete="off"
+           role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list">
+    <ul id="suggest" role="listbox"></ul>
+  </div>
+  <div class="cargo"><span class="lbl">荷物</span><span class="chip-cargo" id="cargo"></span></div>
+</section>
+
+<nav id="layers" class="glass" aria-label="表示する値">
+  <div class="cap">表示</div>
+  <button class="lyr" data-layer="km" aria-pressed="true">道路距離</button>
+  <button class="lyr" data-layer="days" aria-pressed="false">運転日数</button>
+  <button class="lyr" data-layer="fare" aria-pressed="false">貸切の<br>目安額</button>
+  <button id="home" title="全国を表示">全国</button>
+</nav>
+
+<section id="legend" class="glass" aria-label="凡例">
+  <div class="lg-head"><span class="lg-title" id="lg-title"></span><span class="lg-unit" id="lg-unit"></span></div>
+  <div class="lg-bar" id="lg-bar"></div>
+  <div class="lg-ticks" id="lg-ticks"></div>
+  <div class="lg-null"><i></i><span id="lg-null">値なし</span></div>
+</section>
+
+<aside id="detail" class="glass" aria-label="着地の詳細" aria-hidden="true">
+  <header>
+    <button id="close" aria-label="閉じる">&#10005;</button>
+    <div class="rt"><div class="from">出発地 <b id="d-from"></b></div><div class="to" id="d-to"></div></div>
+    <div class="stats">
+      <div class="stat"><div class="k">道路距離</div><div class="v num" id="s-km"></div></div>
+      <div class="stat"><div class="k">運転時間</div><div class="v num" id="s-time"></div></div>
+      <div class="stat"><div class="k">運転日数</div><div class="v num" id="s-days"></div></div>
+    </div>
+    <details class="route-note"><summary id="route-kind"></summary>
+      <p>OpenStreetMap の道路から計算した乗用車の経路です。大型車が通れるとは限りません。日数は 1 日の運転 9 時間までで数え、積込み・荷待ち・荷下ろしと休憩は含みません。</p></details>
+  </header>
+  <div id="cards"></div>
+  <footer><button class="btn-primary" id="make-request">この着地で見積依頼文を作る</button></footer>
+</aside>
+
+<section id="timebar" class="glass" aria-label="時間の帯">
+  <button id="play" aria-label="再生">
+    <svg class="i-play" viewBox="0 0 20 20"><path d="M5 3.2v13.6a.8.8 0 0 0 1.2.7l11-6.8a.8.8 0 0 0 0-1.4l-11-6.8A.8.8 0 0 0 5 3.2z"/></svg>
+    <svg class="i-pause" viewBox="0 0 20 20"><rect x="4.5" y="3" width="4" height="14" rx="1"/><rect x="11.5" y="3" width="4" height="14" rx="1"/></svg>
+  </button>
+  <div class="tb-main">
+    <div class="tb-top"><span class="now num"><span id="tb-now">出発</span><em id="tb-day">1日目</em></span><span class="end num" id="tb-end"></span></div>
+    <div id="track" role="slider" tabindex="0" aria-label="出発からの運転時間" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="rail"></div><div class="fill" id="tb-fill"></div><div id="tb-ticks"></div><div class="handle" id="tb-handle"></div>
+    </div>
+    <div class="daylabels" id="tb-days"></div>
+  </div>
+</section>
+
+<div id="truck-tag"></div>
+<div id="hover-tag"></div>
+<div id="toast" role="status"></div>
+<div id="loading">地図を読み込んでいます</div>
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

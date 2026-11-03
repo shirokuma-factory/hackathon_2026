@@ -4,8 +4,31 @@
     {
       "name": "shipcompare",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "streamlit", "run", "app/main.py", "--server.headless", "true", "--server.port", "8501"],
+      "runtimeArgs": [
+        "run",
+        "streamlit",
+        "run",
+        "app/main.py",
+        "--server.headless",
+        "true",
+        "--server.port",
+        "8501"
+      ],
       "port": 8501
+    },
+    {
+      "name": "web-map",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "python",
+        "-m",
+        "http.server",
+        "8600",
+        "--directory",
+        "web"
+      ],
+      "port": 8600
     }
   ]
 }
