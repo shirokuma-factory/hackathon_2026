@@ -318,3 +318,40 @@ def test_spec17_cache_dir_is_git_ignored():
     root = Path(__file__).resolve().parents[1]
     ignore = (root / ".gitignore").read_text(encoding="utf-8")
     assert "data/routes/cache/" in ignore and "data/raw/" in ignore
+
+
+# ---------------------------------------------------------------- 沖縄と空港の一覧（2026-11-04 の追加）
+
+CURATED = {"HND", "NRT", "KIX", "ITM", "NGO", "CTS", "FUK", "OKA", "SDJ", "HIJ", "KMJ", "KOJ", "KMQ", "OKJ", "TAK",
+           "MYJ", "KCZ", "NGS", "OIT", "KMI", "AOJ", "AXT", "HKD", "KUH", "AKJ", "OBO", "MMB", "KIJ", "TOY", "FSZ",
+           "IZO", "YGJ", "TKS", "UBJ", "ISG", "MMY"}
+
+
+def test_spec17_okinawa_has_air_but_no_truck_and_island_legs_are_separate():
+    for code in ("13104", "14104", "11107", "12101", "08201", "09201", "10201"):
+        rec = _read(f"from_{code}.json")["dests"]["沖縄県"]
+        assert rec["modes"]["truck"] is None and "離島" in rec["reasons"]["truck"]
+        air = rec["modes"]["air"]
+        assert air is not None, code
+        modes = [l["mode"] for l in air["legs"]]
+        assert modes == ["truck", "air", "truck"]
+        assert air["legs"][1]["label"].endswith("→OKA")
+        assert air["legs"][2]["label"].startswith("那覇空港")  # 島の中の最終区間
+        assert air["legs"][2]["km"] < 50
+        if rec["modes"]["ferry"] is None:
+            assert rec["reasons"]["ferry"]
+
+
+def test_spec17_chosen_airports_are_in_the_curated_list():
+    n = 0
+    for name, rec in _all_routes():
+        air = rec["modes"].get("air")
+        if not air:
+            continue
+        arc = next(l for l in air["legs"] if l["mode"] == "air")
+        a, b = arc["label"].split("→")
+        assert a in CURATED and b in CURATED, (name, arc["label"])
+        n += 1
+    assert n > 200
+    airports = {a["iata"] for a in _read("airports.json")["airports"]}
+    assert CURATED <= airports  # 一覧の空港はすべて OSM の取得結果にある
