@@ -65,6 +65,7 @@ def evaluate_quote(quote: QuoteResponse, current_version: int, today: date) -> Q
     unknown: list[str] = []
     reasons: list[str] = []
     raw = 0
+    amount_lines = 0
     for key in COST_KEYS:
         line = quote.lines.get(key)
         if line is None or line.kind not in (KIND_AMOUNT, KIND_INCLUDED):
@@ -79,6 +80,7 @@ def evaluate_quote(quote: QuoteResponse, current_version: int, today: date) -> Q
                 unknown.append(key)
             else:
                 raw += line.amount
+                amount_lines += 1
 
     if quote.tax not in (TAX_EX, TAX_IN):
         reasons.append("税区分が不明")
@@ -91,6 +93,9 @@ def evaluate_quote(quote: QuoteResponse, current_version: int, today: date) -> Q
             quote, STATE_HISTORY, partial_ex_tax=partial, unknown_keys=unknown,
             reasons=[f"条件変更前（版{quote.version}、現在は版{current_version}）"],
         )
+
+    if amount_lines == 0:
+        reasons.append("金額の項目がありません")
 
     if quote.valid_until is None:
         reasons.append("有効期限が未入力")

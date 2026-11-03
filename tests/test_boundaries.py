@@ -207,3 +207,30 @@ def test_kashikiri_national_guideline_note():
     for r in rows(one()):
         if r.mode.startswith("kashikiri"):
             assert any("国の目安" in n for n in r.notes)
+
+
+# ---- カゴ台車: 内寸に入らない荷（向きを変えて入るかを見る）
+def test_jitbox_piece_fit_by_any_orientation():
+    # 170×104×104cm ちょうどは入る（3辺を並べ替えてよい）
+    assert row_of(rows([Item(1, 104, 170, 104, 10)]), "jitbox").status == ST_OK
+    # 1辺でも内寸を超えたら要確認。額は出す
+    r = row_of(rows([Item(1, 105, 105, 100, 10)]), "jitbox")
+    assert r.status == ST_CHECK and r.amount == 23100
+    assert any("1個がボックスの内寸を超えます" in x for x in r.reasons)
+    r = row_of(rows([Item(1, 100, 100, 171, 10)]), "jitbox")
+    assert r.status == ST_CHECK
+
+
+def test_no_route_says_route_missing_not_manual_input():
+    for r in rows(one(), route=None):
+        if r.mode in ("takuhai", "rosen"):
+            assert r.status == ST_NOCALC and r.needs_input is None and "区間" in r.missing
+
+
+def test_manual_rows_show_user_input_as_source():
+    r = row_of(estimate_all(make_shipment(one(), route="kanto_tohoku"), manual={"takuhai_ex_tax": 1500}), "takuhai")
+    assert r.source.name == "利用者の入力" and not r.source.url
+    r = row_of(estimate_all(make_shipment(one(), route="other", distance_km=700), manual={"rosen_base_fare": 5000}), "rosen")
+    assert r.source.name == "利用者の入力"
+    # 表から引いた行は運送会社の出典のまま
+    assert row_of(rows(one()), "rosen").source.name != "利用者の入力"

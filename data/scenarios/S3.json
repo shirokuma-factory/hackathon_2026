@@ -3,7 +3,7 @@
   "name": "EC の店",
   "label": "想定の荷主",
   "assumed_shipper": true,
-  "assumption_note": "発送者・受取人の種別、集荷・配達、届け先の数は仕様 §9 に記載がないため、想定として置いた。",
+  "assumption_note": "発送者・受取人の種別、集荷・配達、届け先の数は、この場面の想定として置いた値です。",
   "shipment": {
     "items": [
       {
