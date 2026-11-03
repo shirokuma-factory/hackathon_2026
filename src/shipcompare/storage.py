@@ -255,7 +255,7 @@ def _scenario_from_dict(raw: Any) -> dict[str, str | None] | None:
 
 
 def _case_from_dict(d: dict[str, Any], version: int) -> Case:
-    return Case(
+    case = Case(
         versions=[
             ConditionVersion(v["number"], shipment_from_dict(v["shipment"]), v.get("confirmed_at"),
                              _scenario_from_dict(v.get("scenario")))
@@ -268,6 +268,10 @@ def _case_from_dict(d: dict[str, Any], version: int) -> Case:
         saved_at=d.get("saved_at"),
         schema_version=version,
     )
+    top = _scenario_from_dict(d.get("scenario"))
+    if top is not None and case.versions and not any(v.scenario for v in case.versions):
+        case.versions[-1].scenario = top  # 版ごとの scenario が無い形式は、最上位のものを今の版に写す
+    return case
 
 
 def save_case(path: str | Path, case: Case, now: datetime | None = None) -> Case:
