@@ -1,4 +1,4 @@
-"""スポット出荷 比較・依頼の画面（Streamlit）。計算は src/shipcompare の関数を呼ぶだけにする。"""
+"""Backfull（中小荷主のスポット出荷 比較・依頼）の画面（Streamlit）。計算は src/shipcompare の関数を呼ぶだけにする。"""
 
 from __future__ import annotations
 
@@ -1121,11 +1121,12 @@ def section_dest_card(case: Case, origin: str, dest: str, osrm: dict | None, poi
 # ------------------------------------------------------------------ 組み立て
 
 def main() -> None:
-    st.set_page_config(page_title="スポット出荷 比較・依頼", layout="wide")
+    st.set_page_config(page_title="Backfull", layout="wide")
     init_state()
     case: Case = st.session_state["case"]
 
-    st.title("スポット出荷 比較・依頼")
+    st.title("Backfull")
+    st.caption("帰りの荷台を、中小の荷主の荷で埋める ― スポット出荷 比較・依頼")
     st.markdown("宅配便には大きく、貸切には小さい荷について、使える輸送手段と目安額を同じ条件で並べ、"
                 "見積依頼文を作り、届いた見積回答を比べて保存します。")
     st.info(DISCLAIMER)
