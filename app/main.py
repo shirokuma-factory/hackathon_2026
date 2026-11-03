@@ -563,6 +563,13 @@ def _next_quote_id(case: Case) -> str:
     return f"q{max(nums, default=0) + 1}"
 
 
+def _take_demo_flag() -> None:
+    """追加ボタンの押下時に、架空のチェックの値を取り置いてチェックを外す。"""
+    ss = st.session_state
+    ss["q_demo_taken"] = bool(ss.get("q_is_demo"))
+    ss["q_is_demo"] = False
+
+
 def section_quotes(case: Case) -> None:
     if not case.versions:
         st.info("先に「出荷条件」で条件を確定してください。")
@@ -600,8 +607,8 @@ def section_quotes(case: Case) -> None:
             with col:
                 st.selectbox(name, list(KIND_LABELS), format_func=KIND_LABELS.get, index=2, key=f"q_kind_{k}")
                 st.number_input(f"{name}の金額（円）", min_value=0, step=100, value=0, key=f"q_amt_{k}")
-        is_demo_in = st.checkbox("架空の回答（デモ用）", value=False, key="q_is_demo")
-        submitted = st.form_submit_button("この回答を追加", key="q_submit")
+        st.checkbox("架空の回答（デモ用）", value=False, key="q_is_demo")
+        submitted = st.form_submit_button("この回答を追加", key="q_submit", on_click=_take_demo_flag)
     if submitted:
         if not carrier.strip():
             st.error("会社名を入れてください。")
@@ -618,7 +625,7 @@ def section_quotes(case: Case) -> None:
             case.quotes.append(QuoteResponse(
                 id=_next_quote_id(case), carrier=carrier.strip(), product=product.strip(),
                 version=case.current_version, received_on=received, valid_until=valid, tax=tax, lines=lines,
-                is_demo=bool(is_demo_in),
+                is_demo=bool(st.session_state.pop("q_demo_taken", False)),
             ))
             st.success(f"{carrier.strip()} の回答を追加しました。")
 

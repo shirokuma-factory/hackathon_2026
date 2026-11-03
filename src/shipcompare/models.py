@@ -156,8 +156,7 @@ class Case:
                 scenario: dict[str, str | bool | None] | None = None) -> ConditionVersion:
         """「この条件で確定」。最新の版と内容が同じなら版を増やさない。"""
         if self.versions and self.versions[-1].shipment == shipment:
-            self.versions[-1].scenario = scenario  # 内容が同じなら版は増やさず、場面の情報だけ今回のものにする
-            return self.versions[-1]
+            return self.versions[-1]  # 内容が同じなら版も場面の情報も変えない
         number = (self.versions[-1].number + 1) if self.versions else 1
         version = ConditionVersion(number=number, shipment=shipment, confirmed_at=confirmed_at, scenario=scenario)
         self.versions.append(version)

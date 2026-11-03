@@ -293,3 +293,49 @@ def test_spec13_12_f4_demo_checkbox_marks_quote():
     qs = {q.carrier: q for q in at.session_state["case"].quotes}
     assert qs["手入力A"].is_demo is False and qs["手入力B"].is_demo is True
     assert "手入力B（架空）" in df_all(at) and "手入力A（架空）" not in df_all(at)
+
+
+# ---------------------------------------------------------------- 13.13 (G19, G20, G21)
+def test_spec13_12_g19_confirm_unchanged_after_restore_keeps_scenario(tmp_path):
+    from streamlit.testing.v1 import AppTest
+    from test_app import APP, _restore_script
+
+    src = confirm(app_load(new_app(), 5)).session_state["case"]
+    payload = tmp_path / "case.json"
+    payload.write_text(json.dumps(case_to_dict(src), ensure_ascii=False), encoding="utf-8")
+    at = AppTest.from_function(_restore_script, default_timeout=60)
+    at.session_state["app_path"] = APP
+    at.session_state["payload_path"] = str(payload)
+    at.run()
+    assert not at.exception and at.session_state["case"].scenario["id"] == "S5"
+    confirm(at)  # 選択欄は「新しく入力」のまま、内容を変えずに確定
+    case = at.session_state["case"]
+    assert len(case.versions) == 1 and case.scenario["id"] == "S5" and case.scenario["modified"] is False
+    assert case_to_dict(case)["scenario"]["id"] == "S5"
+
+
+def test_spec13_12_g20_top_level_only_scenario_moves_to_last_version():
+    case = Case()
+    case.confirm(make_shipment())
+    case.confirm(make_shipment(monthly_shipments=2))
+    d = case_to_dict(case)
+    for v in d["versions"]:
+        v.pop("scenario")
+    d["scenario"] = {"id": "S5", "name": "計画の実演例", "label": "想定の荷主"}
+    back = case_from_dict(d)
+    assert back.versions[0].scenario is None
+    assert back.scenario["id"] == "S5" and back.scenario["modified"] is False
+    assert case_to_dict(back)["scenario"]["id"] == "S5"
+
+
+def test_spec13_12_g21_demo_checkbox_resets_after_add():
+    at = confirm(app_load(new_app(), 5))
+    at.checkbox(key="q_is_demo").check()
+    at.text_input(key="q_carrier").set_value("手入力C")
+    at.selectbox(key="q_kind_trunk").select("amount")
+    at.number_input(key="q_amt_trunk").set_value(20000)
+    at.button(key="q_submit").click().run()
+    assert not at.exception
+    qs = at.session_state["case"].quotes
+    assert qs[-1].carrier == "手入力C" and qs[-1].is_demo is True
+    assert at.checkbox(key="q_is_demo").value is False

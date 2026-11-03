@@ -1,13 +1,12 @@
 {
-  "score": 79.0,
-  "head": "75b5d03",
-  "timestamp": "2026-11-03T15:14:11+09:00",
-  "fingerprint": "cf2daa1c952bd79a86a2b7a6ae0201a472730b2d0f052a764b49be6579c573e4",
+  "score": 81.0,
+  "head": "4cba2e9",
+  "timestamp": "2026-11-03T15:18:13+09:00",
+  "fingerprint": "cd4371501fc26ddd60c9f67cc2e93e5cbc2704fc9460785aa9f85f6276ef47d5",
   "failed_ids": [
     "C1",
     "D1",
-    "E3",
-    "E5"
+    "E3"
   ],
   "items": [
     {
@@ -265,9 +264,9 @@
       "id": "C1",
       "text": "画面の証拠",
       "points": 8,
-      "got": 0.0,
+      "got": 1.0,
       "passed": false,
-      "reason": "0/8 件。2026-11-03_S1_estimates.jpg: 幅 800, 2026-11-03_S2_estimates_chart.jpg: 幅 800 ... 計8件",
+      "reason": "1/8 件。2026-11-03_S2_estimates_chart.jpg: 幅 800, 2026-11-03_S5_quotes_demo_partial.jpg: DEVLOG に未記載 ... 計7件",
       "excluded": false
     },
     {
@@ -325,9 +324,9 @@
       "id": "E5",
       "text": "PC 固有の絶対パスと個人名が追跡ファイルにない",
       "points": 1,
-      "got": 0,
-      "passed": false,
-      "reason": "docs/reviews/latest.md:48",
+      "got": 1,
+      "passed": true,
+      "reason": "",
       "excluded": false
     },
     {
