@@ -154,13 +154,14 @@ def estimates_snapshot(c: Case, manual_by_version: dict[int, dict[str, int]] | N
 
 def case_to_dict(c: Case, manual_by_version: dict[int, dict[str, int]] | None = None) -> dict[str, Any]:
     return {
-        "schema_version": c.schema_version,
+        "schema_version": SCHEMA_VERSION,
         "notice": ORDER_NOTICE,
         "saved_at": c.saved_at,
         "scenario": dict(c.scenario) if c.scenario else None,
         "estimates": estimates_snapshot(c, manual_by_version),
         "versions": [
-            {"number": v.number, "confirmed_at": v.confirmed_at, "shipment": shipment_to_dict(v.shipment)}
+            {"number": v.number, "confirmed_at": v.confirmed_at, "shipment": shipment_to_dict(v.shipment),
+             "scenario": dict(v.scenario) if v.scenario else None}
             for v in c.versions
         ],
         "quotes": [quote_to_dict(q) for q in c.quotes],
@@ -218,9 +219,11 @@ def validate_case(c: Case) -> None:
         _check(isinstance(q.version, int) and not isinstance(q.version, bool), "見積回答の版が整数ではありません")
     _check(len(set(ids)) == len(ids), "見積回答の id が重複しています")
     _check(all(isinstance(q.is_demo, bool) for q in c.quotes), "見積回答の is_demo が真偽値ではありません")
-    _check(c.scenario is None or (isinstance(c.scenario, dict) and all(
-        k in c.scenario and (c.scenario[k] is None or isinstance(c.scenario[k], str)) for k in ("id", "name", "label"))),
-        "scenario の形が違います")
+    for v in c.versions:
+        sc = v.scenario
+        _check(sc is None or (isinstance(sc, dict) and all(
+            k in sc and (sc[k] is None or isinstance(sc[k], str)) for k in ("id", "name", "label"))
+            and isinstance(sc.get("modified"), bool)), "scenario の形が違います")
     _check(c.chosen_quote_id is None or c.chosen_quote_id in ids, "選んだ回答が見積回答の一覧にありません")
     _check(isinstance(c.reason, str), "選んだ理由が文字列ではありません")
     _check(all(isinstance(x, str) for x in c.open_issues), "残る確認事項が文字列ではありません")
@@ -246,13 +249,16 @@ def _scenario_from_dict(raw: Any) -> dict[str, str | None] | None:
         return None
     if not isinstance(raw, dict):
         raise TypeError("scenario が辞書ではありません")
-    return {k: raw.get(k) for k in ("id", "name", "label")}
+    out: dict[str, str | bool | None] = {k: raw.get(k) for k in ("id", "name", "label")}
+    out["modified"] = raw.get("modified", False)
+    return out
 
 
 def _case_from_dict(d: dict[str, Any], version: int) -> Case:
     return Case(
         versions=[
-            ConditionVersion(v["number"], shipment_from_dict(v["shipment"]), v.get("confirmed_at"))
+            ConditionVersion(v["number"], shipment_from_dict(v["shipment"]), v.get("confirmed_at"),
+                             _scenario_from_dict(v.get("scenario")))
             for v in d.get("versions", [])
         ],
         quotes=[quote_from_dict(q) for q in d.get("quotes", [])],
@@ -260,7 +266,6 @@ def _case_from_dict(d: dict[str, Any], version: int) -> Case:
         reason=d.get("reason", ""),
         open_issues=list(d.get("open_issues", [])),
         saved_at=d.get("saved_at"),
-        scenario=_scenario_from_dict(d.get("scenario")),
         schema_version=version,
     )
 
@@ -296,9 +301,9 @@ def list_scenarios(base: Path | None = None) -> list[dict[str, Any]]:
     return [load_scenario(p.stem, base) for p in sorted(folder.glob("S*.json"))]
 
 
-def scenario_info(sc: dict[str, Any]) -> dict[str, str | None]:
-    """Case に持たせる場面の情報（id・name・label）。"""
-    return {"id": sc.get("id"), "name": sc.get("name"), "label": sc.get("label")}
+def scenario_info(sc: dict[str, Any], modified: bool = False) -> dict[str, str | bool | None]:
+    """確定した版に持たせる場面の情報（id・name・label・modified）。"""
+    return {"id": sc.get("id"), "name": sc.get("name"), "label": sc.get("label"), "modified": modified}
 
 
 def demo_quotes_for(sc: dict[str, Any], version: int, today: date) -> list[QuoteResponse]:

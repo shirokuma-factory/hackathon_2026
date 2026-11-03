@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .estimate import ST_CHECK, ST_OK, EstimateRow
+from .estimate import ST_CHECK, ST_OK, ST_UNUSABLE, EstimateRow
 from .models import ROUTE_OTHER
 from .tariffs import ROUTES, data_dir
 
@@ -76,12 +76,12 @@ def load_contacts(base: Path | None = None) -> dict[str, list[dict[str, Any]]]:
 
 def contacts_for_rows(rows: list[EstimateRow], contacts: dict[str, list[dict[str, Any]]] | None = None,
                       base: Path | None = None) -> list[Contact]:
-    """状態が「公開条件に合う」か「要確認」の手段だけの窓口。「使えない」「計算できない」の手段は出さない。"""
+    """状態が「使えない」以外の手段の窓口（「計算できない」も含む）。"""
     contacts = contacts if contacts is not None else load_contacts(base)
     seen: list[str] = []
     for r in rows:
         g = mode_group(r.mode)
-        if r.status in USABLE_STATUSES and g in MODE_LABELS and g not in seen:
+        if r.status != ST_UNUSABLE and g in MODE_LABELS and g not in seen:
             seen.append(g)
     return [Contact(g, MODE_LABELS[g], e["name"], e["url"], e["condition"], e["checked_on"])
             for g in seen for e in contacts[g]]

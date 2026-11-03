@@ -315,12 +315,10 @@ def on_scenario_change() -> None:
     if sid == NEW_INPUT:
         set_form(Shipment())
         st.session_state["scenario_note"] = ""
-        st.session_state["scenario_info"] = None
         return
     sc = next(s for s in list_scenarios() if s["id"] == sid)
     set_form(sc["shipment"])
     st.session_state["scenario_note"] = sc.get("assumption_note", "")
-    st.session_state["scenario_info"] = scenario_info(sc)
 
 
 def apply_restore(data: bytes) -> None:
@@ -338,7 +336,6 @@ def apply_restore(data: bytes) -> None:
     set_judgment(case)
     ss["scenario_select"] = NEW_INPUT
     ss["scenario_note"] = ""
-    ss["scenario_info"] = case.scenario
     ss["flash"] = ("success", f"読み込みました（条件の版 {case.current_version or 0}、見積回答 {len(case.quotes)} 件）。")
 
 
@@ -367,7 +364,6 @@ def init_state() -> None:
         set_judgment(ss["case"])
         ss["scenario_select"] = NEW_INPUT
         ss["scenario_note"] = ""
-        ss["scenario_info"] = None
 
 
 # ------------------------------------------------------------------ 画面の各部分
@@ -429,7 +425,11 @@ def section_input(case: Case) -> None:
 
     if st.button("この条件で確定", type="primary", key="confirm"):
         before = case.current_version
-        case.confirm(read_shipment(), datetime.now().isoformat(timespec="seconds"))
+        shipment_now = read_shipment()
+        sid = ss.get("scenario_select")
+        sc = next((s for s in list_scenarios() if s["id"] == sid), None)
+        info = scenario_info(sc, modified=shipment_now != sc["shipment"]) if sc is not None else None
+        case.confirm(shipment_now, datetime.now().isoformat(timespec="seconds"), info)
         if case.current_version == before:
             st.info("内容が前の版と同じなので、版は増やしませんでした。")
 
@@ -538,7 +538,7 @@ def section_request(case: Case) -> None:
                        file_name="mitsumori_irai.txt", mime="text/plain", key="dl_request")
     st.caption("このツールは依頼文を送信しません。コピーして各社へ送ってください。")
 
-    st.markdown("**問い合わせ先**（いまの条件で「公開条件に合う」か「要確認」の手段だけです）")
+    st.markdown("**問い合わせ先**（いまの条件で「使えない」以外の手段です）")
     manual = current_manual_inputs(case).get(case.current_version, {})
     contacts = contacts_for_rows(estimate_all(shipment, manual))
     if contacts:
@@ -570,9 +570,9 @@ def section_quotes(case: Case) -> None:
     today = date.today()
     st.markdown(f"見積回答は、いまの条件の版 {case.current_version} に結び付けて入れます。")
 
-    info = st.session_state.get("scenario_info")
+    info = case.scenario
     sc = next((s for s in list_scenarios() if info and s["id"] == info.get("id")), None)
-    if sc is not None and sc.get("demo_quotes"):
+    if sc is not None and sc.get("demo_quotes") and not info.get("modified"):
         if st.button("架空の回答例を入れる", key="add_demo_quotes"):
             added = 0
             for q in demo_quotes_for(sc, case.current_version, today):
@@ -600,6 +600,7 @@ def section_quotes(case: Case) -> None:
             with col:
                 st.selectbox(name, list(KIND_LABELS), format_func=KIND_LABELS.get, index=2, key=f"q_kind_{k}")
                 st.number_input(f"{name}の金額（円）", min_value=0, step=100, value=0, key=f"q_amt_{k}")
+        is_demo_in = st.checkbox("架空の回答（デモ用）", value=False, key="q_is_demo")
         submitted = st.form_submit_button("この回答を追加", key="q_submit")
     if submitted:
         if not carrier.strip():
@@ -617,6 +618,7 @@ def section_quotes(case: Case) -> None:
             case.quotes.append(QuoteResponse(
                 id=_next_quote_id(case), carrier=carrier.strip(), product=product.strip(),
                 version=case.current_version, received_on=received, valid_until=valid, tax=tax, lines=lines,
+                is_demo=bool(is_demo_in),
             ))
             st.success(f"{carrier.strip()} の回答を追加しました。")
 
@@ -746,7 +748,6 @@ def main() -> None:
     st.set_page_config(page_title="スポット出荷 比較・依頼", layout="wide")
     init_state()
     case: Case = st.session_state["case"]
-    case.scenario = st.session_state.get("scenario_info")
 
     st.title("スポット出荷 比較・依頼")
     st.markdown("宅配便には大きく、貸切には小さい荷について、使える輸送手段と目安額を同じ条件で並べ、"

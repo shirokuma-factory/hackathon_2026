@@ -31,6 +31,12 @@ def test_spec13_7_contacts_only_for_usable_modes():
     assert all(c.checked_on == CHECKED for c in cs)
 
 
+def test_spec13_7_nocalc_mode_has_contact():
+    rows = estimate_all(make_shipment(one(1, 30, 30, 30, 10), route="kanto_tohoku"))
+    nocalc = {r.mode.split("_")[0] for r in rows if r.status == ST_NOCALC}
+    assert nocalc and nocalc <= {c.mode for c in contacts_for_rows(rows)}
+
+
 def test_spec13_7_unusable_mode_has_no_contact():
     # 3辺の合計が160cm超なので宅配は使えない
     rows = estimate_all(make_shipment(one(1, 100, 100, 100, 40)))

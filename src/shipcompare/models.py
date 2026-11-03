@@ -104,6 +104,8 @@ class ConditionVersion:
     number: int
     shipment: Shipment
     confirmed_at: str | None = None
+    # 確定したときの場面の情報 {id, name, label, modified}。場面を使わなければ None
+    scenario: dict[str, str | bool | None] | None = None
 
 
 @dataclass
@@ -139,18 +141,24 @@ class Case:
     reason: str = ""
     open_issues: list[str] = field(default_factory=list)
     saved_at: str | None = None
-    scenario: dict[str, str | None] | None = None  # 読み込んだ場面の id・name・label。手入力なら None
     schema_version: int = 2
+
+    @property
+    def scenario(self) -> dict[str, str | bool | None] | None:
+        """いまの版に記録した場面の情報。"""
+        return self.versions[-1].scenario if self.versions else None
 
     @property
     def current_version(self) -> int | None:
         return self.versions[-1].number if self.versions else None
 
-    def confirm(self, shipment: Shipment, confirmed_at: str | None = None) -> ConditionVersion:
+    def confirm(self, shipment: Shipment, confirmed_at: str | None = None,
+                scenario: dict[str, str | bool | None] | None = None) -> ConditionVersion:
         """「この条件で確定」。最新の版と内容が同じなら版を増やさない。"""
         if self.versions and self.versions[-1].shipment == shipment:
+            self.versions[-1].scenario = scenario  # 内容が同じなら版は増やさず、場面の情報だけ今回のものにする
             return self.versions[-1]
         number = (self.versions[-1].number + 1) if self.versions else 1
-        version = ConditionVersion(number=number, shipment=shipment, confirmed_at=confirmed_at)
+        version = ConditionVersion(number=number, shipment=shipment, confirmed_at=confirmed_at, scenario=scenario)
         self.versions.append(version)
         return version
