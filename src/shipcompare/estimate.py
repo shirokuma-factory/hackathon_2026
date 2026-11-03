@@ -357,6 +357,15 @@ def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
 
 # ---------------------------------------------------------------- 貸切
 
+def kashikiri_fares(km: Decimal, weight_kg: Decimal, tariff: dict[str, Any]) -> list[dict[str, Any]]:
+    """距離 km（base_km 以上）と合計重量に載る車格ごとの額（SPEC §5.5 の式）。小さい車格から並べる。"""
+    steps = ceil_int((km - tariff["base_km"]) / Decimal(tariff["step_km"]))
+    return [
+        {"class": v["class"], "max_kg": v["max_kg"], "steps": steps, "amount": v["base_fare"] + steps * v["add_per_step"]}
+        for v in tariff["vehicles"] if weight_kg <= v["max_kg"]
+    ]
+
+
 def estimate_kashikiri(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
                        manual: dict[str, int]) -> list[EstimateRow]:
     def base_row(mode: str = "kashikiri", label: str = "貸切（標準的な運賃）") -> EstimateRow:
@@ -401,14 +410,11 @@ def estimate_kashikiri(shipment: Shipment, totals: Totals, tariff: dict[str, Any
         r = base_row()
         return [_nocalc(r, totals)]
 
-    steps = ceil_int((km - tariff["base_km"]) / Decimal(tariff["step_km"]))
     rows = []
-    for v in tariff["vehicles"]:
-        if totals.weight_kg > v["max_kg"]:
-            continue
-        r = base_row(f"kashikiri_{v['class']}", f"貸切 {v['class']}車（標準的な運賃）")
-        r.amount = v["base_fare"] + steps * v["add_per_step"]
-        r.detail = {"vehicle": v["class"], "max_kg": v["max_kg"], "steps": steps}
+    for f in kashikiri_fares(km, totals.weight_kg, tariff):
+        r = base_row(f"kashikiri_{f['class']}", f"貸切 {f['class']}車（標準的な運賃）")
+        r.amount = f["amount"]
+        r.detail = {"vehicle": f["class"], "max_kg": f["max_kg"], "steps": f["steps"]}
         r.issues.append(Issue(ISSUE_LOADING, "積めるかどうかは判定していません。積付けは要確認"))
         rows.append(r)
     if not rows:
