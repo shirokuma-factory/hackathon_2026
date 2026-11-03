@@ -8,6 +8,8 @@
 
 | ファイル | 内容 |
 |---|---|
+| `SPEC.md` | アプリの仕様と受入条件 |
+| `docs/plan/2026-11-03_課題の出典.md` | 課題を示す一次資料の数字と照合結果 |
 | `docs/plan/2026-11-03_審査基準と計画の照合.md` | 公式の審査基準（配点と観点）と計画の食い違い |
 | `docs/plan/logistics-review-20261103/README.md` | 物流ツールの計画資料の目次と読む順 |
 | `docs/DEVLOG.md` | 何を試して何が分かったか。作業の始めに直近の記録を読む |
@@ -44,4 +46,9 @@
 
 ## 確認の手順
 
-テーマが決まり、スタックを選んだらここに書く（型検査・テスト・ビルド・E2E のコマンド）。
+Python 3.13 + uv + Streamlit（理由は `SPEC.md` §2）。
+
+```bash
+uv run pytest
+uv run streamlit run app/main.py
+```
