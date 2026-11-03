@@ -24,7 +24,14 @@
            role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list">
     <ul id="suggest" role="listbox"></ul>
   </div>
-  <div class="cargo"><span class="lbl">荷物</span><span class="chip-cargo" id="cargo"></span></div>
+  <div class="cargo">
+    <button id="cargo-toggle" class="cargo-btn" aria-expanded="false" aria-controls="cargo-editor">
+      <span class="lbl">荷物</span><span class="chip-cargo" id="cargo"></span><span class="ver num" id="cargo-ver"></span>
+      <svg class="caret" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5"/></svg>
+    </button>
+  </div>
+  <div id="cargo-editor" hidden></div>
+  <button id="work-resume" class="resume" hidden></button>
 </section>
 
 <nav id="layers" class="glass" aria-label="表示する値">
@@ -58,6 +65,27 @@
   <footer><button class="btn-primary" id="make-request">この着地で見積依頼文を作る</button></footer>
 </aside>
 
+<aside id="work" class="glass" aria-label="見積の作業" aria-hidden="true">
+  <header>
+    <div class="w-head">
+      <div class="w-title"><b>見積の作業</b><span id="w-route" class="num"></span></div>
+      <button id="w-close" aria-label="作業パネルを閉じる（入力は残ります）">&#10005;</button>
+    </div>
+    <div class="steps" id="w-steps" role="tablist" aria-label="作業の段">
+      <button role="tab" data-step="1">依頼文</button>
+      <button role="tab" data-step="2">見積回答</button>
+      <button role="tab" data-step="3">比較</button>
+      <button role="tab" data-step="4">判断と保存</button>
+    </div>
+  </header>
+  <div id="w-body"></div>
+  <footer>
+    <button class="btn-ghost" id="w-prev">戻る</button>
+    <span class="w-state" id="w-state"></span>
+    <button class="btn-primary" id="w-next">次へ</button>
+  </footer>
+</aside>
+
 <section id="timebar" class="glass" aria-label="時間の帯">
   <button id="play" aria-label="再生">
     <svg class="i-play" viewBox="0 0 20 20"><path d="M5 3.2v13.6a.8.8 0 0 0 1.2.7l11-6.8a.8.8 0 0 0 0-1.4l-11-6.8A.8.8 0 0 0 5 3.2z"/></svg>
@@ -79,6 +107,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
+<script src="work.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

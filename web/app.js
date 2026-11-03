@@ -1,5 +1,6 @@
 'use strict';
-/* スポット出荷マップ（試作）。運賃などの値は web/data の JSON を読むだけで、ここでは計算しない。
+/* スポット出荷マップ。運賃・順位などは /api/*（tools/serve_web.py → src/shipcompare）の結果を表示するだけで、ここでは計算しない。
+   web/data の JSON は地図の層（距離・運転日数・貸切の色分け）と経路の線だけに使う。
    例外は地図上の位置の計算（経路の補間、時間の帯の表示用の時刻の割り算）だけ。 */
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
@@ -17,7 +18,7 @@ const JAPAN_BOUNDS = [[129.2, 31.0], [146.2, 45.8]];
 
 const $ = (s) => document.querySelector(s);
 const S = {
-  origin: '13104', layer: 'km', sel: -1, meta: null, idx: null, muni: null, pref: null, routes: null, est: null,
+  origin: '13104', layer: 'km', sel: -1, meta: null, idx: null, muni: null, pref: null, routes: null, estimate: null, estTok: 0, fareStamp: {},
   od: {}, route: null, selFeature: null, t: 0, playing: false, version: 0, selectedAt: 0, lastTick: 0,
   ambient: null, ambientAlpha: 1, hover: -1, byIndex: new Map(),
 };
@@ -167,12 +168,15 @@ function fillColor(f) {
   return [...paletteColor(c, classCount()), FILL_ALPHA];
 }
 
+const FERRY_SHORT = '計算できない（海を渡る経路）';
 function valueText(i) {
   const od = curOd();
-  if (S.layer === 'km') return od.km[i] === null ? '経路なし' : `${od.km[i].toFixed(1)} km`;
-  if (S.layer === 'days') return od.days[i] === null ? '経路なし' : `運転 ${od.days[i]}日`;
   if (od.km[i] === null) return '経路なし';
-  return od.fare[i] === null ? '表の範囲外（200km未満）' : `約${fmt(od.fare[i])}円（2t・税抜）`;
+  const ferry = od.ferry && od.ferry[i];
+  if (S.layer === 'km') return `${od.km[i].toFixed(1)} km${ferry ? '（フェリーを含む経路の可能性）' : ''}`;
+  if (ferry) return FERRY_SHORT;
+  if (S.layer === 'days') return `運転 ${od.days[i]}日`;
+  return od.fare[i] === null ? '表の範囲外（200km未満）または積載量超過' : `約${fmt(od.fare[i])}円（${S.fareVehicleNote || '2t・税抜'}）`;
 }
 
 function staticLayers() {
@@ -443,7 +447,7 @@ function bindTimebar() {
 function renderLegend() {
   const od = curOd(), m = S.meta.layers[S.layer], edges = od.edges[S.layer], n = edges.length - 1;
   $('#lg-title').textContent = m.label;
-  $('#lg-unit').textContent = S.layer === 'km' ? 'km' : S.layer === 'days' ? '日（運転のみ・1日9時間まで）' : '円（2t車・税抜）';
+  $('#lg-unit').textContent = S.layer === 'km' ? 'km' : S.layer === 'days' ? '日（運転のみ・1日9時間まで）' : '円（載る最小の車格・税抜）';
   $('#lg-bar').innerHTML = Array.from({ length: n }, (_, i) => `<i style="background:${rgbCss(paletteColor(i, n))}"></i>`).join('');
   const t = $('#lg-ticks');
   t.className = 'lg-ticks' + (S.layer === 'days' ? ' discrete' : '');
@@ -459,7 +463,8 @@ function renderLegend() {
       return `<span style="position:absolute;left:${pos}%;transform:${tf};flex:none">${fmtB(v)}</span>`;
     }).join('');
   }
-  $('#lg-null').textContent = S.layer === 'fare' ? '値なし（経路なし、または200km未満で表の範囲外）' : '値なし（経路がない着地）';
+  $('#lg-null').textContent = S.layer === 'fare' ? '値なし（経路なし・フェリーの可能性・表の範囲外）'
+    : S.layer === 'days' ? '値なし（経路なし・フェリーの可能性）' : '値なし（経路がない着地）';
 }
 
 /* ------------------------------------------------------------ 選択と詳細パネル */
@@ -468,46 +473,47 @@ const MODES = [
   { key: 'takuhai', label: '宅配' }, { key: 'rosen', label: '路線便' }, { key: 'jitbox', label: 'カゴ台車' },
   { key: 'kashikiri', label: '貸切' }, { key: 'rail', label: '鉄道' }, { key: 'ferry', label: 'フェリー' },
 ];
-const CHIP = { '使える候補': 'ok', '要確認': 'check', '使えない': 'no', '計算できない': 'na' };
+const CHIP = { '公開条件に合う': 'ok', '要確認': 'check', '使えない': 'no', '計算できない': 'na' };
+const SHORT_LABEL = { takuhai: '宅配', rosen: '路線便', jitbox: 'カゴ台車' };
 
-function buildCards(i) {
-  const od = curOd(), code = S.idx.codes[i], key = `${S.origin}-${code}`, est = S.est[key];
+// /api/estimate の行からカードを作る。金額・状態・理由・出典・日数はすべて API の値。
+function buildCards(i, est) {
   const cards = [];
-  const NOTABLE = '運賃表なし・問い合わせ', NOTABLE_NOTE = 'この区間の運賃表は持っていません';
+  const srcOf = (r) => (r.source && r.source.name ? [r.source.name, r.source.url || '#'] : null);
   for (const m of MODES) {
-    if (est && est.modes[m.key]) {
-      const e = est.modes[m.key];
-      let tip = e.note || '';
-      if (m.key === 'kashikiri' && e.alt) tip = `${tip}。OSRM の道路距離 ${e.alt.km}km で計算すると ${fmt(e.alt.amount)}円です`;
-      if (e.amount === null) {
-        cards.push({ label: m.label, status: e.status, amount: null, none: NOTABLE, tip: e.reason || '', days: e.days,
-          src: e.source_name ? [e.source_name, e.source_url] : null });
-      } else {
-        cards.push({ label: m.label, sub: e.vehicle ? `${e.vehicle}車` : '', status: e.status, amount: e.amount, low: e.low, high: e.high,
-          days: e.days, tip, src: e.source_name ? [e.source_name, e.source_url] : null });
-      }
-    } else if (m.key === 'kashikiri') {
-      const km = od.km[i], fare = od.fare[i], d = od.days[i];
-      const src = S.meta.kashikiri_source;
-      if (km === null) {
-        cards.push({ label: m.label, status: '計算できない', amount: null, none: '道路の経路がありません（離島など）', src: [src.name, src.url] });
-      } else if (fare === null) {
-        cards.push({ label: m.label, sub: '2t車', status: '使えない', amount: null, none: 'この表の範囲外（距離200km未満）', days: `運転だけで${d}日`,
-          tip: '標準的運賃の表は200km以上です', src: [src.name, src.url] });
-      } else {
-        cards.push({ label: m.label, sub: '2t車', status: '使える候補', amount: fare, days: `運転だけで${d}日（積込み・荷待ちを除く）`,
-          tip: `OSRM の道路距離 ${od.km[i].toFixed(1)}km で計算した国の目安です。会社ごとに違います`, src: [src.name, src.url] });
-      }
-    } else {
-      cards.push({ label: m.label, status: '計算できない', amount: null, none: est ? NOTABLE : NOTABLE_NOTE, dim: true });
+    if (m.key === 'rail' || m.key === 'ferry') {
+      cards.push({ label: m.label, status: '計算できない', amount: null, dim: true,
+        none: '運賃表を使えません。各社への問い合わせが必要です',
+        tip: m.key === 'rail' ? 'JR貨物の運賃は二次利用できないため、金額は出していません' : 'フェリーの運賃は一次資料で確かめられなかったため、金額は出していません' });
+      continue;
     }
+    const r = est.rows.find((x) => x.group === m.key);
+    if (!r) continue;
+    const notes = [].concat(r.notes, r.issues.map((x) => x.message).filter((x) => !r.notes.includes(x)));
+    const days = r.transit ? (r.transit.published || m.key === 'jitbox' ? r.transit.display : r.transit.text) : null;
+    if (r.amount === null || r.amount === undefined) {
+      cards.push({ label: m.label, status: r.status, amount: null, none: r.reasons[0] || '運賃表なし・問い合わせ', days,
+        tip: r.reasons.concat(notes).join(' / '), src: srcOf(r) });
+      continue;
+    }
+    let tip = notes.join('。');
+    let dayText = days;
+    if (m.key === 'kashikiri') {
+      const g = est.geo, o = est.osrm_kashikiri;
+      if (est.route !== 'other') tip = `想定距離 ${est.assumed_km}km で計算した国の目安です` + (tip ? `。${tip}` : '');
+      else tip = `OSRM の道路距離 ${g.km}km で計算した国の目安です。会社ごとに違います`;
+      if (o && est.route !== 'other' && o.amount !== r.amount) tip += `。OSRM の道路距離 ${o.km}km で計算すると ${fmt(o.amount)}円です`;
+      if (g && g.days) dayText = `運転だけで${g.days}日（積込み・荷待ちを除く）`;
+    }
+    cards.push({ label: m.label, sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, amount: r.amount,
+      low: r.low, high: r.high, days: dayText, tip, src: srcOf(r) });
   }
   return cards;
 }
 
 function renderCards(cards) {
   const max = Math.max(0, ...cards.map((c) => c.amount || 0));
-  $('#cards').innerHTML = cards.map((c, n) => {
+  $('#cards').innerHTML = '<p class="cards-note">公開条件に合っても、その会社がこの出荷を受けるかは見積で確かめます。金額は税抜です。</p>' + cards.map((c, n) => {
     const amt = c.amount !== null && c.amount !== undefined
       ? `<div class="amt"><b class="num" data-to="${c.amount}">${fmt(c.amount)}</b><span>円（税抜）</span>` +
         (c.low && c.high ? `<span class="range num">${fmt(c.low)}〜${fmt(c.high)}円の幅</span>` : '') + '</div>' +
@@ -545,7 +551,8 @@ function select(i, { fly = true, fromSearch = false } = {}) {
   S.selFeature = S.byIndex.get(i) || null;
   const o = S.meta.origins.find((x) => x.code === S.origin), a = [o.lon, o.lat], b = [S.idx.lon[i], S.idx.lat[i]];
   const demo = S.routes[`${S.origin}-${code}`];
-  const minutes = od.min[i], km = od.km[i];
+  const ferry = !!(od.ferry && od.ferry[i]);
+  const minutes = ferry ? null : od.min[i], km = od.km[i]; // フェリーを含む経路は、運転時間と日数の帯を出さない（SPEC §15.3）
   if (demo) S.route = makeRoute(densify(demo.coordinates, 2), 'road', demo.minutes, demo.km);
   else S.route = makeRoute(arcPath(a, b, 0.1, 80), 'arc', minutes, km);
   S.t = 0;
@@ -563,18 +570,59 @@ function select(i, { fly = true, fromSearch = false } = {}) {
 
 function renderDetail(i, demo) {
   const od = curOd(), r = S.route;
+  const ferry = !!(od.ferry && od.ferry[i]);
   const km = demo ? demo.km : od.km[i], min = demo ? demo.minutes : od.min[i];
-  const days = demo ? Math.max(1, Math.ceil(demo.minutes / 540)) : od.days[i];
+  const days = ferry ? null : demo ? Math.max(1, Math.ceil(demo.minutes / 540)) : od.days[i];
   $('#d-from').textContent = od.name;
   $('#d-to').innerHTML = `<span class="ar">→</span><small>${escapeHtml(S.idx.prefs[i])}</small> ${escapeHtml(S.idx.names[i])}`;
   $('#s-km').innerHTML = km === null ? '—' : `${km.toFixed(1)}<small>km</small>`;
   $('#s-time').innerHTML = min === null ? '—' : fmtMin(min).replace(/(\d+)(時間|分)/g, '$1<small>$2</small>');
   $('#s-days').innerHTML = days === null ? '—' : `${days}<small>日</small>`;
-  $('#route-kind').textContent = r.kind === 'road' ? '経路は OSRM の道路の形です' : '経路は直線の目安の弧です（道路の形は未取得）';
-  renderCards(buildCards(i));
+  $('#route-kind').textContent = ferry ? 'フェリーを含む経路の可能性があります（平均速度 25km/h 未満）。運転日数と貸切の額は出しません'
+    : r.kind === 'road' ? '経路は OSRM の道路の形です' : '経路は直線の目安の弧です（道路の形は未取得）';
+  S.estimate = null;
   $('#cards').scrollTop = 0;
-  const kc = [...document.querySelectorAll('#cards .card')].find((el) => el.querySelector('h3').textContent.startsWith('貸切'));
-  if (kc) setTimeout(() => kc.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 900);
+  refreshEstimate();
+}
+
+const estimateBody = () => ({ shipment: Work.confirmedShipment(), origin_code: S.origin, dest_code: S.idx.codes[S.sel] });
+// 右のカードは、確定した荷物と着地で /api/estimate を呼び直して作る。荷物・出発地・着地が変わるたびに呼ぶ。
+async function refreshEstimate() {
+  if (S.sel < 0) return;
+  const i = S.sel, tok = ++S.estTok;
+  if (!document.querySelector('#cards .card')) $('#cards').innerHTML = '<p class="cards-note">目安額を計算しています</p>';
+  try {
+    const est = await Work.api('/api/estimate', estimateBody());
+    if (tok !== S.estTok || S.sel !== i) return;
+    S.estimate = est;
+    renderCards(buildCards(i, est));
+    const kc = [...document.querySelectorAll('#cards .card')].find((el) => el.querySelector('h3').textContent.startsWith('貸切'));
+    if (kc) setTimeout(() => kc.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 900);
+  } catch (e) {
+    if (tok === S.estTok) $('#cards').innerHTML = `<p class="cards-note err">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+// 貸切の層（荷物の合計重量に載る最小の車格）を、確定した荷物で計算し直す
+async function refreshFareLayer() {
+  const o = S.origin, stamp = JSON.stringify(Work.confirmedShipment());
+  if (S.fareStamp[o] === stamp) return;
+  try {
+    const r = await Work.api('/api/layer', { origin_code: o, shipment: Work.confirmedShipment() });
+    const od = S.od[o];
+    od.fare = r.fare;
+    od.cls.fare = r.cls;
+    if (r.edges.length) od.edges.fare = r.edges;
+    S.fareStamp[o] = stamp;
+    S.fareVehicleNote = r.total_kg === null ? '2t・税抜' : `合計${Math.round(r.total_kg)}kg が載る最小の車格・税抜`;
+    if (o === S.origin) { S.version++; renderLegend(); }
+  } catch (e) { toast('貸切の層を計算し直せませんでした: ' + e.message); }
+}
+
+function onCargoChange() {
+  S.fareStamp = {};
+  refreshFareLayer();
+  if (S.sel >= 0) { S.estimate = null; refreshEstimate(); }
 }
 
 function deselect() {
@@ -615,7 +663,7 @@ function bindSearch() {
     for (let i = 0; i < S.idx.names.length; i++) {
       const n = S.idx.names[i], pn = S.idx.prefs[i] + n;
       let k = n.startsWith(v) ? 0 : n.includes(v) ? 1 : pn.includes(v) ? 2 : -1;
-      if (k >= 0 && S.est[`${S.origin}-${S.idx.codes[i]}`]) k = -1; // デモの区間を先頭に
+      if (k >= 0 && S.routes[`${S.origin}-${S.idx.codes[i]}`]) k = -1; // デモの区間を先頭に
       if (k >= 0) res.push([k, i]);
     }
     res.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -673,6 +721,7 @@ async function setOrigin(code) {
   S.version++;
   buildAmbient();
   renderLegend();
+  refreshFareLayer();
   if (S.sel >= 0) { const i = S.sel; select(i, { fly: true }); } else writeHash();
 }
 
@@ -688,11 +737,11 @@ function hoverTag(info) {
 }
 
 async function main() {
-  const [meta, idx, muni, pref, routes, est, style] = await Promise.all([
+  const [meta, idx, muni, pref, routes, style] = await Promise.all([
     getJSON('data/meta.json'), getJSON('data/index.json'), getJSON('data/muni.geojson'), getJSON('data/pref.geojson'),
-    getJSON('data/routes.json'), getJSON('data/estimates.json'), getJSON(STYLE_URL),
+    getJSON('data/routes.json'), getJSON(STYLE_URL),
   ]);
-  Object.assign(S, { meta, idx, muni, pref, routes, est });
+  Object.assign(S, { meta, idx, muni, pref, routes });
   for (const f of muni.features) S.byIndex.set(f.properties.i, f);
   // 大きな都市（各都道府県の代表）。ゆるやかな流れの行き先
   meta.ambient = ['01101', '02201', '03201', '04101', '05201', '06201', '07201', '15103', '16201', '17201', '18201', '19201', '20201', '21201',
@@ -705,8 +754,11 @@ async function main() {
 
   $('#origin').innerHTML = meta.origins.map((o) => `<option value="${o.code}">${o.name}</option>`).join('');
   $('#origin').value = S.origin;
-  $('#cargo').innerHTML = `<span>${meta.cargo.label} ${meta.cargo.count}個</span><span class="num">${meta.cargo.total_kg}kg</span>`;
-  $('#cargo').title = meta.cargo.detail;
+  await Work.init({
+    onCargoChange,
+    onWorkToggle: () => {},
+    routeLabel: () => S.workLabel || '',
+  });
   document.querySelectorAll('.lyr').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layer === S.layer)));
 
   const st = darkStyle(style);
@@ -724,7 +776,7 @@ async function main() {
     interleaved: true, layers: [],
     getCursor: ({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab'),
     onHover: hoverTag,
-    onClick: (info) => { if (info.object && info.layer && info.layer.id === 'muni' && info.object.properties.i >= 0) select(info.object.properties.i); },
+    onClick: (info) => { if (Work.isOpen()) Work.closeWork(); if (info.object && info.layer && info.layer.id === 'muni' && info.object.properties.i >= 0) select(info.object.properties.i); },
   });
   map.addControl(overlay);
   await new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
@@ -738,16 +790,26 @@ async function main() {
   document.querySelectorAll('.lyr').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.layer)));
   $('#close').addEventListener('click', () => { deselect(); fitJapan(true); });
   $('#home').addEventListener('click', () => { if (S.sel >= 0) deselect(); fitJapan(true); });
-  $('#make-request').addEventListener('click', () => toast('次の段階でつなぎます'));
-  addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.sel >= 0 && document.activeElement.tagName !== 'INPUT') { deselect(); fitJapan(true); } });
+  $('#make-request').addEventListener('click', async () => {
+    if (S.sel < 0) return;
+    const btn = $('#make-request');
+    btn.disabled = true;
+    try {
+      const est = await Work.api('/api/estimate', estimateBody());
+      S.workLabel = `${curOd().name.replace(/^.+?[都道府県]/, '')} → ${S.idx.names[S.sel]}`;
+      await Work.startFromDestination(est);
+    } catch (e) { toast(e.message); } finally { btn.disabled = false; }
+  });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.sel >= 0 && !Work.isOpen() && document.activeElement.tagName !== 'INPUT') { deselect(); fitJapan(true); } });
 
   if (p.get('d')) {
     const i = idx.codes.indexOf(p.get('d'));
     if (i >= 0) select(i, { fly: p.get('fly') !== '0' });
   }
+  refreshFareLayer();
   requestAnimationFrame(frame);
   setTimeout(() => $('#loading').classList.add('done'), 400);
-  window.__app = { S, select, setLayer, setOrigin, map: () => map };
+  window.__app = { S, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }
 
 main().catch((e) => {
