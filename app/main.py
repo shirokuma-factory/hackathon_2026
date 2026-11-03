@@ -497,7 +497,8 @@ def section_estimate(case: Case) -> None:
             "出典の頁": st.column_config.LinkColumn("出典の頁", display_text="開く"),
             "手段": st.column_config.TextColumn("手段", width="large"),
             "目安額（税抜・円）": st.column_config.TextColumn("目安額（税抜・円）", width="medium"),
-            "出典": st.column_config.TextColumn("出典", width="large"),
+            "出典": st.column_config.TextColumn("出典", width="medium"),
+            # 宅配は注意書き、カゴ台車は規則の文が入るので広く取る
             "お届け日数（公表）": st.column_config.TextColumn("お届け日数（公表）", width="large"),
         },
     )
@@ -557,7 +558,7 @@ def section_request(case: Case) -> None:
             pd.DataFrame([{
                 "手段": c.mode_label,
                 "窓口": c.name if c.has_window else NO_CONTACT,
-                "リンク": c.url,
+                "リンク": c.url or "",  # 窓口が無い手段は空欄（None と出さない）
                 "条件": c.condition,
                 "確認日": c.checked_on,
             } for c in contacts]),
