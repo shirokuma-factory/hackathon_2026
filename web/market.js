@@ -206,6 +206,23 @@ const Market = (() => {
     return out;
   }
 
+  // 空きを探す・つなぐの地図の下に、帰りの空きやすさの流れだけをうすく重ねる（k = 全体の濃さ）
+  function flowLayers(now, k) {
+    const L = deck, F = M.flows, out = [];
+    if (!F || !F.routes.length) return out;
+    const cur = (now / 1000) % PERIOD;
+    out.push(new L.PathLayer({
+      id: 'f-flow-base', data: F.base, getPath: (d) => d.pts, widthUnits: 'pixels', getWidth: (d) => Math.max(1, d.route.w * 0.4),
+      getColor: (d) => [...d.route.col, 70 * k * dimOf(d.route)], capRounded: true, updateTriggers: { getColor: [M.sel, M.mode], getWidth: [M.mode] },
+    }));
+    out.push(new L.TripsLayer({
+      id: 'f-flow-core', data: F.items, getPath: (d) => d.pts, getTimestamps: (d) => d.ts, widthUnits: 'pixels', capRounded: true, jointRounded: true,
+      currentTime: cur, fadeTrail: true, getWidth: (d) => d.route.w * 0.7, trailLength: 2.6,
+      getColor: (d) => [...d.route.col, 150 * k * dimOf(d.route)], updateTriggers: { getColor: [M.sel, M.mode], getWidth: [M.mode] },
+    }));
+    return out;
+  }
+
   /* ------------------------------------------------------------ JARTIC の点 */
 
   function jColor(p) {
@@ -532,6 +549,7 @@ const Market = (() => {
   function setJartic(on) { M.jartic = on; renderLegend(); }
   const selected = () => (M.sel ? M.rows.find((x) => x.k === M.sel) : null);
   const pairText = () => { const r = selected(); return r ? `${M.d.prefs[r.fi]}→${M.d.prefs[r.ti]}` : null; };
+  const pairNames = () => { const r = selected(); return r ? { from: M.d.prefs[r.fi], to: M.d.prefs[r.ti] } : null; };
 
-  return { load, init, layers, hover, click, setActive, syncHash, readHash, afterStart, setJartic, select, deselect, selected, pairText, state: M, refresh };
+  return { load, init, layers, flowLayers, hover, click, setActive, syncHash, readHash, afterStart, setJartic, select, deselect, selected, pairText, pairNames, state: M, refresh };
 })();

@@ -282,3 +282,20 @@ def major_terminals(terminals: list[dict[str, Any]], routes: list[dict[str, Any]
         if any(haversine_km(t["lon"], t["lat"], e[0], e[1]) <= radius_km for e in ends):
             out.append(i)
     return out
+
+
+# フェリーのカードの「最寄りの港」の候補（貨物を載せる長距離航路の端の港だけ）。
+# 旅客・遊覧・イベント用の船着場が航路の端の近くにあるため、名前でも除く（名前による目安）。
+FERRY_PORT_MIN_ROUTE_KM = 100.0
+FERRY_PORT_RADIUS_KM = 3.0
+NON_FREIGHT_PORT_WORDS = PASSENGER_ONLY_WORDS + ("客船", "竹芝", "ウォーターズ", "ユニバーサル", "船着場", "水上バス", "乗り場", "のりば")
+# 航路の端の近くには駅名や建物名の点も多いので、港・ターミナルを名乗る名前だけを残す
+FERRY_PORT_NAME_WORDS = ("フェリー", "港", "ターミナル", "埠頭", "さんふらわあ")
+
+
+def freight_ferry_ports(terminals: list[dict[str, Any]], routes: list[dict[str, Any]]) -> list[int]:
+    """100km 以上の航路の端から 3km 以内にある港の番号。名前に旅客・遊覧などの語を含むものは除き、
+    港・ターミナルなどを名乗る名前だけを残す（名前による目安で、車両を積めるかは確かめていない）。"""
+    long_routes = [r for r in routes if r.get("km", 0) >= FERRY_PORT_MIN_ROUTE_KM]
+    ok = major_terminals(terminals, long_routes, radius_km=FERRY_PORT_RADIUS_KM, exclude=NON_FREIGHT_PORT_WORDS)
+    return [i for i in ok if any(w in (terminals[i].get("name") or "") for w in FERRY_PORT_NAME_WORDS)]

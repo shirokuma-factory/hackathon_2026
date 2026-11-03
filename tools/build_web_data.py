@@ -169,7 +169,7 @@ def build_hubs(codes: list[str], points: dict) -> None:
     rt = geo.load_hubs("ferry_routes")
     major = set(geo.major_terminals(tm, rt))
     long_haul = set(geo.major_terminals(tm, [r for r in rt if r["km"] >= 150]))
-    nearest_ports = sorted(major)
+    nearest_ports = sorted(geo.freight_ferry_ports(tm, rt))  # 最寄りの港は貨物を載せる長距離航路の端だけ
 
     def near(lon, lat):
         a = geo.nearest_hub(lon, lat, st)

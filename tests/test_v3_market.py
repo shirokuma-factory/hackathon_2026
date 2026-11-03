@@ -155,7 +155,8 @@ def test_spec16_view_switcher_in_page():
     labels = re.findall(r'<button data-view="(\w+)"[^>]*>([^<]+)</button>', html)
     assert labels == [("market", "市場を見る"), ("find", "空きを探す・つなぐ"), ("compare", "送り方を比べる")]
     assert '<body class="view-market">' in html  # 最初に開く見方は市場を見る
-    assert "次の段階で作ります" in html
+    assert "次の段階で作ります" not in html  # 空きを探す・つなぐは作り込み済み（tests/test_v3_spaceb_ui.py）
+    assert 'id="find-right"' in html
 
 
 # ---------------------------------------------------------------- SPEC §15.5: 最寄りの貨物駅・港
@@ -207,6 +208,32 @@ def test_spec15_5_major_terminals_exclude_sightseeing_piers():
     assert not any(w in n for n in names for w in geo.PASSENGER_ONLY_WORDS)
 
 
+def test_spec15_5_freight_ferry_ports_are_long_route_ends_only():
+    """最寄りの港の候補は 100km 以上の航路の端の 3km 以内。竹芝のウォーターズ・ユニバーサルシティポートなどの旅客・遊覧の点を含まない。"""
+    terminals = geo.load_hubs("ferry_terminals")
+    routes = geo.load_hubs("ferry_routes")
+    ports = geo.freight_ferry_ports(terminals, routes)
+    names = {terminals[i]["name"] for i in ports}
+    assert 0 < len(ports) < len(geo.major_terminals(terminals, routes))
+    assert not names & {"ウォーターズ竹芝前", "ユニバーサルシティポート", "Hi-NODE", "明石町・聖路加ガーデン前", "東京"}
+    assert {"東京港フェリーターミナル", "大阪港国際フェリーターミナル", "南港フェリーターミナル"} <= names
+    ends = [e for r in routes if r["km"] >= 100 for e in (r["path"][0], r["path"][-1])]
+    for i in ports:
+        assert min(geo.haversine_km(terminals[i]["lon"], terminals[i]["lat"], e[0], e[1]) for e in ends) <= 3.0
+
+
+def test_spec15_5_nearest_port_for_tokyo_and_osaka():
+    """OSM のデータに実際にある港のうち、新宿区は東京港フェリーターミナル（有明の東、約 12km）、大阪市中央区は大阪南港の港。"""
+    terminals = geo.load_hubs("ferry_terminals")
+    ports = geo.freight_ferry_ports(terminals, geo.load_hubs("ferry_routes"))
+    cand = [terminals[i] for i in ports]
+    pts = geo.load_points()
+    i, km = geo.nearest_hub(pts["13104"]["lon"], pts["13104"]["lat"], cand)
+    assert cand[i]["name"] == "東京港フェリーターミナル" and km == pytest.approx(12.2, abs=0.2)
+    i, km = geo.nearest_hub(pts["27128"]["lon"], pts["27128"]["lat"], cand)
+    assert cand[i]["name"] in ("大阪港国際フェリーターミナル", "南港フェリーターミナル") and km < 12
+
+
 def test_spec15_5_web_hubs_json_matches_python():
     w = _web("hubs.json")
     stations = geo.load_hubs("freight_stations")
@@ -221,4 +248,7 @@ def test_spec15_5_web_hubs_json_matches_python():
     assert (w["dest"]["st"][k], w["dest"]["st_km"][k]) == (i, round(km, 1))
     # 最寄りの港は、航路の端の港（レベル 1 以上）の中から選んでいる
     assert w["terminals"][w["dest"]["pt"][k]][3] >= 1
+    # 新宿区の最寄りの港は、旅客用の竹芝ではなく東京港フェリーターミナル
+    assert w["terminals"][w["origin"]["13104"]["pt"][0]][0] == "東京港フェリーターミナル"
+    assert w["terminals"][w["dest"]["pt"][k]][0] in ("大阪港国際フェリーターミナル", "南港フェリーターミナル")
     assert "OpenStreetMap contributors" in w["attribution"] and "ODbL" in w["attribution"]

@@ -51,6 +51,10 @@ SCENES = {
                     "(function(){const s=document.querySelector('#ch'); if(!s) return; const b=s.getBoundingClientRect();"
                     "s.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:b.left+b.width*0.43,clientY:b.top+b.height*0.5}));})()",
                     "2026-11-03_market_pair.jpg"),
+    # 市場を見るで兵庫→東京を選んでから「この区間の空き便を探す」を押した画面（逆向きの便を強調）
+    "b_from_market": ("#v=market&p=27-12", 10.0,
+                      "(function(){const b=document.querySelector('#m-pair [data-act=\"find\"]'); if(b) b.click();})()",
+                      "2026-11-03_b_from_market.jpg"),
     "hubs": ("#v=compare&o=13104&l=km&d=27128&hubs=1", 9.0,
              "(function(){const b=document.querySelector('#cards .hub-btn[data-hub=\"rail\"]'); if(b){b.scrollIntoView({block:'center'}); b.click();}})()",
              "2026-11-03_hubs.jpg"),
@@ -162,6 +166,32 @@ def flow_steps(page, base: str, out_dir: Path, dl_dir: Path):
         print("読み込み後の荷物欄:", page.js("document.querySelector('#cargo-ver').textContent + ' ' + document.querySelector('#cargo').textContent"))
 
 
+def bflow_steps(page, base: str, out_dir: Path, dl_dir: Path):
+    """空きを探す・つなぐ（SPEC §16.2、G39）の筋書き。S1 の荷物で照合 → 仮予約 → 運送会社の役 → 承諾。"""
+    page.goto("about:blank")
+    page.goto(base + "#v=find")
+    page.wait(lambda: page.js("!!window.__app"), 60, "アプリの起動")
+    page.wait(lambda: page.js("document.querySelectorAll('#f-list .f-card').length >= 6"), 30, "便の一覧")
+    time.sleep(7.0)
+    yield "2026-11-03_b_match.jpg"
+    # 載る便（T6）を仮予約する
+    click(page, '#f-list .f-card[data-t="T6"] [data-act="hold"]', 1.5)
+    page.wait(lambda: page.js("!!document.querySelector('#f-list .f-hold.held')"), 20, "仮予約中の表示")
+    time.sleep(3.0)
+    yield "2026-11-03_b_hold.jpg"
+    # 運送会社の役に切り替える（T6 は C2 の便）
+    click(page, '#f-role button[data-role="carrier"]', 0.8)
+    set_select(page, "#f-carrier-sel", "C2")
+    page.wait(lambda: page.js("!!document.querySelector('#f-list [data-act=accept]')"), 20, "承諾のボタン")
+    time.sleep(3.0)
+    yield "2026-11-03_b_carrier.jpg"
+    click(page, '#f-list [data-act="accept"]', 1.5)
+    click(page, '#f-role button[data-role="shipper"]', 0.8)
+    page.wait(lambda: page.js("!!document.querySelector('#f-list .f-hold.accepted')"), 20, "承諾の表示")
+    time.sleep(3.0)
+    yield "2026-11-03_b_accepted.jpg"
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -169,12 +199,13 @@ def main() -> int:
     ap.add_argument("--scene", action="append", choices=list(SCENES))
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--flow", action="store_true", help="S5 の筋書きをたどって web_cargo / request / quotes / compare / save を撮る")
+    ap.add_argument("--bflow", action="store_true", help="空きを探す・つなぐの筋書きをたどって b_match / b_hold / b_carrier / b_accepted を撮る")
     ap.add_argument("--size", default="1920x1080")
     ap.add_argument("--out", help="単一の場面のときの出力先（省略すると docs/assets）")
     ap.add_argument("--click", help="経度,緯度。その地点を本物のマウスでクリックしてから撮る")
     ap.add_argument("--port", type=int, default=0, help="既に起動している配信サーバーのポート（省略すると自分で起動）")
     args = ap.parse_args()
-    names = list(SCENES) if args.all else ([] if args.flow else (args.scene or ["overview"]))
+    names = list(SCENES) if args.all else ([] if (args.flow or args.bflow) else (args.scene or ["overview"]))
     w, h = (int(x) for x in args.size.split("x"))
     cs.W, cs.H = w, h
 
@@ -235,11 +266,11 @@ def main() -> int:
             path.parent.mkdir(parents=True, exist_ok=True)
             img.save(path, "JPEG", quality=88)
             print(f"保存: {path}  {img.size[0]}x{img.size[1]}")
-        if args.flow:
+        if args.flow or args.bflow:
             from PIL import Image
             dl = Path(tempfile.mkdtemp(prefix="edge_dl_"))
             try:
-                for fname in flow_steps(page, base, OUT_DIR, dl):
+                for fname in (flow_steps if args.flow else bflow_steps)(page, base, OUT_DIR, dl):
                     errs = page.js("window.__errs") or []
                     if errs:
                         print("ブラウザのエラー:", *errs[:5], sep="\n  ")
