@@ -94,6 +94,7 @@ class Shipment:
     manual_load: bool | None = None
     cargo_name: str | None = None
     fragile_note: str | None = None
+    monthly_shipments: int | None = None  # 月の出荷回数（任意、目安額の計算には使わない）
 
 
 @dataclass
@@ -125,6 +126,7 @@ class QuoteResponse:
     valid_until: date | None = None
     tax: str = TAX_EX
     lines: dict[str, CostLine] = field(default_factory=dict)
+    is_demo: bool = False  # 場面の架空の回答例
 
 
 @dataclass
@@ -137,7 +139,8 @@ class Case:
     reason: str = ""
     open_issues: list[str] = field(default_factory=list)
     saved_at: str | None = None
-    schema_version: int = 1
+    scenario: dict[str, str | None] | None = None  # 読み込んだ場面の id・name・label。手入力なら None
+    schema_version: int = 2
 
     @property
     def current_version(self) -> int | None:

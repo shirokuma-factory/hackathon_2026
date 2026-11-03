@@ -270,7 +270,7 @@ def test_estimate_tab_has_chart_and_notes():
     assert all("宅配" not in r["手段"] for r in data)  # 使えないものは入れない
     amounts = [r["目安額"] for r in data]
     assert amounts == sorted(amounts)
-    assert {r["状態"] for r in data} == {"候補", "要確認"}
+    assert {r["状態"] for r in data} == {"公開条件に合う", "要確認"}
     assert next(r for r in data if "JITBOX" in r["手段"])["状態"] == "要確認"
     md = " ".join(m.value for m in at.markdown)
     assert "1個がボックスの内寸を超えます" in md

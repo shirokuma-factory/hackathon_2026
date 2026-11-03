@@ -10,7 +10,7 @@ from .models import Shipment, to_decimal
 from .tariffs import ROUTES, Source, load_all_tariffs, source_of
 
 # 判定の状態
-ST_OK = "候補"
+ST_OK = "公開条件に合う"
 ST_CHECK = "要確認"
 ST_UNUSABLE = "使えない"
 ST_NOCALC = "計算できない"

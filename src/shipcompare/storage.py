@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from .estimate import estimate_all
 from .models import (
     COST_KEYS,
     Case,
@@ -18,7 +19,10 @@ from .models import (
 )
 from .tariffs import data_dir
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+SUPPORTED_SCHEMA_VERSIONS = (1, 2)
+# 回答を選んでも発注は確定しないことの表示。保存する JSON にも入れる（SPEC §13.4）
+ORDER_NOTICE = "ここで回答を選んでも、運送の発注は確定していません。発注は運送会社と直接行ってください。"
 
 
 def _d(value: date | None) -> str | None:
@@ -58,6 +62,7 @@ def shipment_to_dict(s: Shipment) -> dict[str, Any]:
         "manual_load": s.manual_load,
         "cargo_name": s.cargo_name,
         "fragile_note": s.fragile_note,
+        "monthly_shipments": s.monthly_shipments,
     }
 
 
@@ -90,6 +95,7 @@ def shipment_from_dict(d: dict[str, Any]) -> Shipment:
         manual_load=d.get("manual_load"),
         cargo_name=d.get("cargo_name"),
         fragile_note=d.get("fragile_note"),
+        monthly_shipments=d.get("monthly_shipments"),
     )
 
 
@@ -102,6 +108,7 @@ def quote_to_dict(q: QuoteResponse) -> dict[str, Any]:
         "received_on": _d(q.received_on),
         "valid_until": _d(q.valid_until),
         "tax": q.tax,
+        "is_demo": q.is_demo,
         "lines": {k: {"kind": v.kind, "amount": v.amount} for k, v in q.lines.items()},
     }
 
@@ -115,15 +122,43 @@ def quote_from_dict(d: dict[str, Any]) -> QuoteResponse:
         received_on=_pd(d.get("received_on")),
         valid_until=_pd(d.get("valid_until")),
         tax=d["tax"],
+        is_demo=d.get("is_demo", False),
         lines={k: CostLine(kind=v["kind"], amount=v.get("amount")) for k, v in d.get("lines", {}).items()
                if k in COST_KEYS},
     )
 
 
-def case_to_dict(c: Case) -> dict[str, Any]:
+def estimates_snapshot(c: Case, manual_by_version: dict[int, dict[str, int]] | None = None) -> list[dict[str, Any]]:
+    """確定した版ごとの目安額の記録（保存の時点で計算。読み込みでは使わない）。
+
+    manual_by_version は版の番号ごとの手入力額。無い版は手入力なしで計算する。
+    """
+    out: list[dict[str, Any]] = []
+    for v in c.versions:
+        rows = []
+        for r in estimate_all(v.shipment, (manual_by_version or {}).get(v.number)):
+            src = r.source
+            rows.append({
+                "mode": r.mode,
+                "label": r.label,
+                "status": r.status,
+                "amount_ex_tax": r.amount if r.has_amount() else None,
+                "source_name": src.name if src else None,
+                "source_url": (src.url or None) if src else None,
+                "applies_from": src.applies_from if src else None,
+                "checked_on": src.checked_on if src else None,
+            })
+        out.append({"version": v.number, "rows": rows})
+    return out
+
+
+def case_to_dict(c: Case, manual_by_version: dict[int, dict[str, int]] | None = None) -> dict[str, Any]:
     return {
         "schema_version": c.schema_version,
+        "notice": ORDER_NOTICE,
         "saved_at": c.saved_at,
+        "scenario": dict(c.scenario) if c.scenario else None,
+        "estimates": estimates_snapshot(c, manual_by_version),
         "versions": [
             {"number": v.number, "confirmed_at": v.confirmed_at, "shipment": shipment_to_dict(v.shipment)}
             for v in c.versions
@@ -155,6 +190,9 @@ def validate_shipment(s: Shipment) -> None:
             _check(v is None or _is_num(v), f"荷物{n}行目の {name} が数値ではありません")
     _check(s.route is None or s.route in ROUTES, f"区間 {s.route!r} は対応していません")
     _check(s.distance_km is None or (_is_num(s.distance_km) and s.distance_km >= 0), "距離が不正です")
+    _check(s.monthly_shipments is None or (isinstance(s.monthly_shipments, int)
+                                            and not isinstance(s.monthly_shipments, bool)
+                                            and s.monthly_shipments >= 1), "月の出荷回数が 1 以上の整数ではありません")
     _check(s.destinations is None or (isinstance(s.destinations, int) and not isinstance(s.destinations, bool)
                                        and s.destinations >= 1), "届け先の数が 1 以上の整数ではありません")
     for name, allowed in (("sender_type", ("法人", "個人事業主", "個人")), ("receiver_type", ("法人", "個人事業主", "個人")),
@@ -179,6 +217,10 @@ def validate_case(c: Case) -> None:
                "見積回答の id・会社名・商品名が文字列ではありません")
         _check(isinstance(q.version, int) and not isinstance(q.version, bool), "見積回答の版が整数ではありません")
     _check(len(set(ids)) == len(ids), "見積回答の id が重複しています")
+    _check(all(isinstance(q.is_demo, bool) for q in c.quotes), "見積回答の is_demo が真偽値ではありません")
+    _check(c.scenario is None or (isinstance(c.scenario, dict) and all(
+        k in c.scenario and (c.scenario[k] is None or isinstance(c.scenario[k], str)) for k in ("id", "name", "label"))),
+        "scenario の形が違います")
     _check(c.chosen_quote_id is None or c.chosen_quote_id in ids, "選んだ回答が見積回答の一覧にありません")
     _check(isinstance(c.reason, str), "選んだ理由が文字列ではありません")
     _check(all(isinstance(x, str) for x in c.open_issues), "残る確認事項が文字列ではありません")
@@ -189,14 +231,22 @@ def case_from_dict(d: dict[str, Any]) -> Case:
     if not isinstance(d, dict):
         raise ValueError("保存ファイルの形式が違います")
     version = d.get("schema_version")
-    if version != SCHEMA_VERSION:
-        raise ValueError(f"対応していないスキーマの版です: {version}（対応: {SCHEMA_VERSION}）")
+    if version not in SUPPORTED_SCHEMA_VERSIONS:
+        raise ValueError(f"対応していないスキーマの版です: {version}（対応: {'、'.join(map(str, SUPPORTED_SCHEMA_VERSIONS))}）")
     try:
         case = _case_from_dict(d, version)
     except (KeyError, TypeError, AttributeError) as e:
         raise ValueError(f"保存ファイルの項目が足りないか、形が違います（{type(e).__name__}: {e}）") from e
     validate_case(case)
     return case
+
+
+def _scenario_from_dict(raw: Any) -> dict[str, str | None] | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise TypeError("scenario が辞書ではありません")
+    return {k: raw.get(k) for k in ("id", "name", "label")}
 
 
 def _case_from_dict(d: dict[str, Any], version: int) -> Case:
@@ -210,6 +260,7 @@ def _case_from_dict(d: dict[str, Any], version: int) -> Case:
         reason=d.get("reason", ""),
         open_issues=list(d.get("open_issues", [])),
         saved_at=d.get("saved_at"),
+        scenario=_scenario_from_dict(d.get("scenario")),
         schema_version=version,
     )
 
@@ -243,3 +294,26 @@ def load_scenario(scenario_id: str, base: Path | None = None) -> dict[str, Any]:
 def list_scenarios(base: Path | None = None) -> list[dict[str, Any]]:
     folder = (base or data_dir()) / "scenarios"
     return [load_scenario(p.stem, base) for p in sorted(folder.glob("S*.json"))]
+
+
+def scenario_info(sc: dict[str, Any]) -> dict[str, str | None]:
+    """Case に持たせる場面の情報（id・name・label）。"""
+    return {"id": sc.get("id"), "name": sc.get("name"), "label": sc.get("label")}
+
+
+def demo_quotes_for(sc: dict[str, Any], version: int, today: date) -> list[QuoteResponse]:
+    """場面の demo_quotes から架空の見積回答を作る（id は空。呼び出し側で付ける）。
+
+    受領日は today、有効期限は today + valid_days（既定 14 日）。
+    """
+    out: list[QuoteResponse] = []
+    for raw in sc.get("demo_quotes", []):
+        days = raw.get("valid_days", 14)
+        out.append(QuoteResponse(
+            id="", carrier=raw["carrier"], product=raw.get("product", ""), version=version,
+            received_on=today, valid_until=today + timedelta(days=days), tax=raw.get("tax", "税抜"),
+            lines={k: CostLine(kind=v["kind"], amount=v.get("amount")) for k, v in raw.get("lines", {}).items()
+                   if k in COST_KEYS},
+            is_demo=True,
+        ))
+    return out

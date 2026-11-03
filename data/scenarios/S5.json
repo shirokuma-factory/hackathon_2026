@@ -1,0 +1,56 @@
+{
+  "id": "S5",
+  "name": "計画の実演例",
+  "label": "想定の荷主",
+  "assumed_shipper": true,
+  "assumption_note": "計画 08 の実演例に合わせた想定です。荷物、区間、発送者・受取人の種別、集荷・配達、届け先の数は、この場面の想定として置いた値です。",
+  "shipment": {
+    "items": [
+      {
+        "count": 8,
+        "length_cm": 80,
+        "width_cm": 60,
+        "height_cm": 40,
+        "weight_kg": 20
+      }
+    ],
+    "route": "kanto_kansai",
+    "destinations": 1,
+    "sender_type": "法人",
+    "receiver_type": "法人",
+    "pickup": "集荷",
+    "delivery": "配達"
+  },
+  "demo_quotes": [
+    {
+      "carrier": "架空A社",
+      "product": "路線便",
+      "tax": "税抜",
+      "valid_days": 14,
+      "lines": {
+        "pickup": {"kind": "unknown"},
+        "trunk": {"kind": "amount", "amount": 18000},
+        "delivery": {"kind": "unknown"},
+        "handling": {"kind": "unknown"},
+        "fuel": {"kind": "unknown"},
+        "highway": {"kind": "unknown"},
+        "other": {"kind": "unknown"}
+      }
+    },
+    {
+      "carrier": "架空B社",
+      "product": "路線便",
+      "tax": "税抜",
+      "valid_days": 14,
+      "lines": {
+        "pickup": {"kind": "included"},
+        "trunk": {"kind": "amount", "amount": 26000},
+        "delivery": {"kind": "included"},
+        "handling": {"kind": "included"},
+        "fuel": {"kind": "included"},
+        "highway": {"kind": "included"},
+        "other": {"kind": "included"}
+      }
+    }
+  ]
+}
