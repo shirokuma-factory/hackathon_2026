@@ -48,6 +48,7 @@
   <div class="cap">重ねる</div>
   <button class="lyr tgl" data-toggle="hubs" aria-pressed="false" title="貨物駅・港・フェリー航路（OpenStreetMap）">拠点<small>駅・港</small></button>
   <button class="lyr tgl v-market" data-toggle="jartic" aria-pressed="true" title="国の常設観測点の大型車（JARTIC）">大型車<small>観測点</small></button>
+  <div class="rt-legend" aria-label="手段の凡例"></div>
   <button id="home" title="全国を表示">全国</button>
 </nav>
 
@@ -71,7 +72,10 @@
     <details class="route-note"><summary id="route-kind"></summary>
       <p>OpenStreetMap の道路から計算した乗用車の経路です。大型車が通れるとは限りません。日数は 1 日の運転 9 時間までで数え、積込み・荷待ち・荷下ろしと休憩は含みません。</p></details>
   </header>
-  <div id="cards"></div>
+  <div id="d-scroll">
+    <div id="rt-modes" aria-label="送り方の経路"></div>
+    <div id="cards"></div>
+  </div>
   <footer><button class="btn-primary" id="make-request">この着地で見積依頼文を作る</button></footer>
 </aside>
 
@@ -165,9 +169,9 @@
     <div class="mlg-ticks" id="mlg-ticks"></div>
     <div class="mlg-cap"><span><i class="sw sw-in"></i>入荷が多い県（荷を受け取る）</span><span><i class="sw sw-out"></i>出荷が多い県（荷を送り出す）</span></div>
   </div>
-  <div class="mlg-sec"><div class="mlg-t">動く矢印<small>区間ごと</small></div>
+  <div class="mlg-sec"><div class="mlg-t">動く線と乗り物<small>区間ごと</small></div>
     <div class="mlg-row"><svg class="mlg-ar" viewBox="0 0 60 14" aria-hidden="true"><path d="M2 7h40" stroke="#cfeaff" stroke-width="2" stroke-linecap="round"/><path d="M42 2l14 5-14 5z" fill="#eaf6ff"/></svg>
-      <span>向き = 荷が多い向き ／ 太さ = 不足量 ／ 明るさ = 偏りの比が小さいほど明るい</span></div></div>
+      <span>向き = 荷が多い向き（乗り物の進む向き） ／ 太さ = 不足量 ／ 明るさ = 偏りの比が小さいほど明るい ／ 下の細い線の色 = 手段</span></div></div>
   <div class="mlg-sec" id="mlg-jartic"><div class="mlg-t">今週の大型車の点<small>国の観測点（JARTIC）</small></div>
     <div class="mlg-row"><i class="dot dot-up"></i><span>上りが多い</span><i class="dot dot-down"></i><span>下りが多い</span><span class="mlg-faint">濃いほど差が大きい。▲▼は多い側</span></div>
     <div class="mlg-note">上り・下りは道路の定義で、区間の行き帰りとは一致しません。</div></div>
@@ -229,6 +233,7 @@
   <p class="f-n3">決済、メール、通知の送信はしません。料金は運送会社が決めた架空の額（税抜）です。</p>
   <div class="f-lg"><span><i class="f-l-on"></i>荷に合う便</span><span><i class="f-l-off"></i>合わない便・別の区間</span>
     <span class="mlg-faint">細い線は帰りの空きやすさ（物流センサス 2021、e-Stat を加工）</span></div>
+  <div class="f-lg f-lg-modes"><span class="rt-legend rt-legend-row"></span></div>
 </section>
 
 <div id="hover-tag"></div>
@@ -239,6 +244,7 @@
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
 <script src="work.js"></script>
 <script src="hubs.js"></script>
+<script src="routes.js"></script>
 <script src="market.js"></script>
 <script src="find.js"></script>
 <script src="app.js"></script>

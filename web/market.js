@@ -43,6 +43,7 @@ const Market = (() => {
       `${esc(d.source)}。${esc(d.unit)}`,
       '営業用普通車の積載効率・実車率: 国土交通省「自動車輸送統計年報」2025 年度（e-Stat 統計表 ID 000040511074 ほか）。出典は e-Stat、政府標準利用規約（第 2.0 版）に従って加工しています',
       `${esc(M.j.attribution)}。台数は参考値です。積荷の有無は分かりません`,
+      '動く線の形: 国土数値情報（鉄道データ）（国土交通省）を加工して作成。道路は OSRM、フェリー航路・貨物専用線・空港は OpenStreetMap（© OpenStreetMap contributors, ODbL 1.0）',
       '拠点（貨物駅・港・フェリー航路）: © OpenStreetMap contributors（ODbL 1.0）／地図: OpenFreeMap © OpenMapTiles Data from OpenStreetMap／行政区域: 国土数値情報（国土交通省）を加工',
     ].map((t) => `<div>${t}</div>`).join('');
     q('#m-mode').addEventListener('click', (e) => { const b = e.target.closest('button[data-mode]'); if (b) setMode(b.dataset.mode); });
@@ -155,11 +156,13 @@ const Market = (() => {
   const clampI = (v, a, b) => Math.max(a, Math.min(b, v));
 
   function buildFlows() {
-    const cap = M.d.cap, maxShort = Math.max(1, ...M.rows.map((r) => r.short));
+    const cap = M.d.cap, P = M.d.prefs, maxShort = Math.max(1, ...M.rows.map((r) => r.short));
     const items = [], base = [], routes = [];
     M.rows.forEach((r, ri) => {
       const a = cap[r.fi], b = cap[r.ti];
-      const pts = arcPath(a, b, 0.14, 48);
+      // 実際の線（営業用トラックは道路、フェリーは航路を含む経路、鉄道コンテナは線路を含む経路）。作っていない区間は弧
+      const real = Rt.pairPath(P[r.fi], P[r.ti], M.mode, 0.02);
+      const pts = real && real.length > 2 ? real : arcPath(a, b, 0.14, 48);
       const cum = [0];
       for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + hav(pts[k - 1], pts[k]));
       const total = cum[cum.length - 1] || 1;
@@ -169,7 +172,7 @@ const Market = (() => {
       const col = mix([88, 150, 205], [236, 249, 255], Math.pow(bright, 0.6));
       const reps = clampI(Math.round(PERIOD / (6 + r.km / 100)), 1, 4), dur = PERIOD / reps;
       const ph = ((ri * 0.6180339) % 1) * dur;
-      const route = { r, rt, w, col, dur, starts: [] };
+      const route = { r, rt, w, col, dur, starts: [], real: pts === real };
       for (let k = 0; k < 2; k++) {
         for (let rep = 0; rep < reps; rep++) {
           const s = (ph + (k * dur) / 2 + rep * dur) % PERIOD;
@@ -248,7 +251,7 @@ const Market = (() => {
     if (F && F.routes.length) {
       out.push(new L.PathLayer({
         id: 'm-flow-base', data: F.base, getPath: (d) => d.pts, widthUnits: 'pixels', getWidth: (d) => Math.max(1, d.route.w * 0.5),
-        getColor: (d) => [...d.route.col, 52 * dimOf(d.route)], capRounded: true,
+        getColor: (d) => (d.route.real ? [...Rt.col(M.mode), 92 * dimOf(d.route)] : [...d.route.col, 52 * dimOf(d.route)]), capRounded: true,
         updateTriggers: { getColor: [M.sel, M.hover, M.mode], getWidth: [M.mode] },
       }));
       out.push(new L.PathLayer({
@@ -268,8 +271,9 @@ const Market = (() => {
         getColor: (d) => [...d.route.col, 215 * dimOf(d.route)], updateTriggers: { getColor: [M.sel, M.hover, M.mode], getWidth: [M.mode] },
       }));
       out.push(new L.IconLayer({
-        id: 'm-flow-head', data: headData(sec), getPosition: (d) => d.p, getIcon: () => ARROW, getAngle: (d) => d.ang,
-        getSize: (d) => 9 + d.route.w * 1.5, sizeUnits: 'pixels', getColor: (d) => [240, 250, 255, 250 * d.dim * d.fade], billboard: true,
+        id: 'm-flow-head', data: headData(sec), getPosition: (d) => d.p, getIcon: () => Rt.icons()[M.mode === 'truck' ? 'truck' : M.mode], getAngle: (d) => d.ang,
+        getSize: (d) => (M.mode === 'truck' ? 15 : 20) + d.route.w * 1.9, sizeUnits: 'pixels', getColor: (d) => [255, 255, 255, 255 * d.dim * d.fade], billboard: false,
+        updateTriggers: { getIcon: [M.mode], getSize: [M.mode] },
       }));
       out.push(new L.ScatterplotLayer({
         id: 'm-ends', data: M.endpoints, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 2.6, filled: true, getFillColor: [225, 240, 255, 150],
@@ -313,7 +317,8 @@ const Market = (() => {
 
   function fitPair(r) {
     const a = M.d.cap[r.fi], b = M.d.cap[r.ti];
-    const mid = arcPath(a, b, 0.14, 24);
+    const fr = M.flows && M.flows.routes.find((x) => x.r.k === r.k);
+    const mid = fr ? fr.rt.path : arcPath(a, b, 0.14, 24);
     const xs = mid.map((p) => p[0]), ys = mid.map((p) => p[1]);
     map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: padding(), maxZoom: 7.4, duration: 2000, essential: true, curve: 1.5 });
   }

@@ -3,7 +3,9 @@
 画面側は運賃を計算しない。ここで作った JSON を読むだけにする。
 使い方: uv run python tools/build_web_data.py
 出力: web/data/ （muni.geojson, pref.geojson, index.json, meta.json,
-      origin_<コード>.json, routes.json, market.json, hubs.json, jartic.json）。
+      origin_<コード>.json, routes.json, market.json, hubs.json, jartic.json,
+      routes_meta.json, routes_<出発地>.json, routes_pairs.json, routes_trips.json, routes_rail.json）。
+      routes_*（SPEC §17）は data/routes/ の実際の線（道路・線路・航路・空の弧）を、座標を 1e-4 度の整数の差分にして小さくしたもの。
       目安額は /api/estimate が計算するので作らない。市場を見る（SPEC §16）の数字と、最寄りの拠点（SPEC §15.5）は
       ここで Python が計算して書き、画面は表示するだけにする
 """
@@ -195,6 +197,87 @@ def build_hubs(codes: list[str], points: dict) -> None:
     })
 
 
+# ---------------------------------------------------------------- 実際の線の形（SPEC §17）
+
+ROUTES_SRC = ROOT / "data" / "routes"
+# 4 手段の色（画面もここから読む）。赤は使わない（SPEC §17.2）。橙・緑・水色・白に近い薄紫
+MODE_COLORS = {"truck": [255, 152, 38], "rail": [72, 214, 112], "ferry": [58, 196, 255], "air": [210, 192, 255]}
+MODE_LABELS = {"truck": "トラック", "rail": "電車", "ferry": "船", "air": "飛行機"}
+LEG_CODE = {"truck": "t", "rail": "r", "ferry": "f", "air": "a"}
+
+
+def enc_line(coords) -> list[int]:
+    """座標の列を 1e-4 度の整数にして、最初の点だけ絶対値、あとは前の点との差分の平らな列にする。"""
+    out: list[int] = []
+    px = py = 0
+    for x, y in coords:
+        X, Y = round(x * 1e4), round(y * 1e4)
+        out += [X - px, Y - py]
+        px, py = X, Y
+    return out
+
+
+def dec_line(flat) -> list[list[float]]:
+    """enc_line の逆（試験用。画面の JS も同じ計算をする）。"""
+    out, x, y = [], 0, 0
+    for i in range(0, len(flat), 2):
+        x += flat[i]
+        y += flat[i + 1]
+        out.append([x / 1e4, y / 1e4])
+    return out
+
+
+def slim_leg(leg: dict) -> dict:
+    o = {"m": LEG_CODE[leg["mode"]], "km": leg["km"], "c": enc_line(leg["coordinates"])}
+    if leg.get("minutes") is not None:
+        o["min"] = leg["minutes"]
+    if leg.get("label"):
+        o["l"] = leg["label"]
+    return o
+
+
+def slim_mode(m: dict | None) -> dict | None:
+    if not m:
+        return None
+    o = {"km": m["km"], "tm": m["truck_minutes"], "legs": [slim_leg(l) for l in m["legs"]]}
+    if m.get("hubs"):
+        o["hubs"] = m["hubs"]
+    if m.get("via_ferry_possible"):
+        o["vfp"] = True
+    return o
+
+
+def slim_modes(modes: dict, reasons: dict, which=("truck", "rail", "ferry", "air")) -> dict:
+    return {"m": {k: slim_mode(modes.get(k)) for k in which}, "why": {k: v for k, v in (reasons or {}).items() if k in which}}
+
+
+def build_real_routes() -> None:
+    manifest = read_json(ROUTES_SRC / "manifest.json") if (ROUTES_SRC / "manifest.json").exists() else {}
+    meta = read_json(ROUTES_SRC / "pairs.json")
+    write_json("routes_meta.json", {
+        "colors": MODE_COLORS, "labels": MODE_LABELS, "built_on": meta.get("built_on"),
+        "attribution": meta.get("attribution"), "license": meta.get("license"), "sources": meta.get("sources"),
+        "total_bytes_source": manifest.get("total_bytes"),
+    })
+    for oc in geo.ORIGINS:
+        src = ROUTES_SRC / f"from_{oc}.json"
+        if not src.exists():
+            print(f"routes_{oc}.json: 元の {src.name} がないので作りません")
+            continue
+        d = read_json(src)
+        dests = {}
+        for pref, x in d["dests"].items():
+            dests[pref] = {"ll": [round(x["lonlat"][0], 4), round(x["lonlat"][1], 4)], **slim_modes(x["modes"], x.get("reasons"))}
+        write_json(f"routes_{oc}.json", {"o": oc, "name": d["origin"]["name"], "dests": dests})
+    pairs = read_json(ROUTES_SRC / "pairs.json")["pairs"]
+    write_json("routes_pairs.json", {k: {"from": v["from"], "to": v["to"], **slim_modes(v["modes"], v.get("reasons"), ("truck", "rail", "ferry"))}
+                                     for k, v in pairs.items()})
+    trips = read_json(ROUTES_SRC / "trips.json")["trips"]
+    write_json("routes_trips.json", {k: {"o": v["origin_code"], "d": v["dest_code"], "truck": slim_mode(v["truck"])} for k, v in trips.items()})
+    net = read_json(ROUTES_SRC / "rail_network.json")
+    write_json("routes_rail.json", {"attribution": net["attribution"], "lines": [enc_line(l) for l in net["lines"]]})
+
+
 def main() -> None:
     points = geo.load_points()
     codes = sorted(points)
@@ -211,6 +294,7 @@ def main() -> None:
     build_market()
     build_jartic()
     build_hubs(codes, points)
+    build_real_routes()
     routes_src = read_json(GEO / "routes.json")["routes"]
     routes = {k: v for k, v in routes_src.items() if v["origin"] in geo.ORIGINS}
     write_json("routes.json", {k: {"route_id": v["route_id"], "km": v["km"], "minutes": v["minutes"],

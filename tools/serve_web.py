@@ -21,6 +21,9 @@ API（POST は Content-Type: application/json の JSON。入力の誤りは 400 
     POST /api/add_quote        {case, quote}                   id と版を付けて追加 → {case, quote_id}
     POST /api/add_demo_quotes  {case, today?}                  場面の架空の回答を追加 → {case, added}
   B 空きを探す・つなぐ（SPEC §16.2、架空のデモ。状態はメモリで、再起動か reset で初期に戻る）:
+    GET  /api/route?from=<出発地の市区町村コード>&to=<着地の市区町村コード>[&from_ll=経度,緯度]
+                                         トラックの道路の経路（SPEC §17.1）。その場で OSRM に問い合わせ、data/routes/cache/ に保存する
+                                         （1 秒 1 件）。取れなければ直線の弧と「経路を取得できませんでした」（fallback: true）
     GET  /api/b/trips                   架空の運送会社と便（いまの重さの余りと仮予約つき）
     POST /api/b/match   {shipment, dest_code, category?, in_container?, fragile?, is_box?}  便ごとの合否と理由
     POST /api/b/hold    {trip_id, shipment, dest_code, ..., hold_minutes?}   期限付きの仮予約（余りを減らす）
@@ -46,6 +49,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from shipcompare import geo, spaceb  # noqa: E402
+from shipcompare import routes as route_lib  # noqa: E402
 from shipcompare.estimate import ST_NOCALC, estimate_all, summarize  # noqa: E402
 from shipcompare.guide import contacts_for_rows, load_transit_days, mode_group, transit_days, transit_days_text  # noqa: E402
 from shipcompare.models import COST_KEYS, KIND_AMOUNT, KIND_INCLUDED, KIND_UNKNOWN  # noqa: E402
@@ -448,6 +452,51 @@ def _b_notices() -> dict[str, Any]:
     return {"fiction_notice": spaceb.FICTION_NOTICE, "booking_notice": spaceb.BOOKING_NOTICE}
 
 
+ROUTE_BASE = None  # 試験で data_dir の代わりを指す（cache の置き場所）
+ROUTE_FAIL_MESSAGE = "経路を取得できませんでした"
+
+
+def _lonlat_param(text: str, name: str) -> tuple[float, float]:
+    try:
+        lon, lat = (float(v) for v in text.split(","))
+    except ValueError as e:
+        raise BadRequest(f"{name}は 経度,緯度 の形で渡してください") from e
+    if not (120.0 <= lon <= 155.0 and 20.0 <= lat <= 50.0):
+        raise BadRequest(f"{name}が日本の範囲の外です")
+    return lon, lat
+
+
+def api_route(query: dict[str, list[str]]) -> dict[str, Any]:
+    """トラックの道路の経路。from は出発地の市区町村コード（from_ll があれば、その地点＝貨物駅などから）、to は着地のコード。"""
+    def one(key: str) -> str:
+        v = (query.get(key) or [""])[0]
+        if not v:
+            raise BadRequest(f"{key} がありません")
+        return v
+
+    points = geo.load_points()
+    to_code = one("to")
+    if to_code not in points:
+        raise BadRequest(f"着地のコード {to_code!r} が見つかりません")
+    dest = (points[to_code]["lon"], points[to_code]["lat"])
+    if query.get("from_ll"):
+        origin = _lonlat_param(query["from_ll"][0], "from_ll")
+    else:
+        from_code = one("from")
+        if from_code not in points:
+            raise BadRequest(f"出発地のコード {from_code!r} が見つかりません")
+        origin = (points[from_code]["lon"], points[from_code]["lat"])
+    if abs(origin[0] - dest[0]) < 1e-6 and abs(origin[1] - dest[1]) < 1e-6:
+        raise BadRequest("出発地と着地が同じ場所です")
+    r = route_lib.route_on_demand(origin, dest, base=ROUTE_BASE)
+    if r is None:
+        fb = route_lib.fallback_arc(origin, dest)
+        return {"ok": False, "fallback": True, "message": ROUTE_FAIL_MESSAGE, "km": fb["km"], "minutes": None,
+                "coordinates": fb["coordinates"], "cached": False}
+    return {"ok": True, "fallback": False, "message": None, "km": r["km"], "minutes": r["minutes"],
+            "coordinates": r["coordinates"], "cached": bool(r.get("cached"))}
+
+
 def api_b_trips(query: dict[str, list[str]]) -> dict[str, Any]:
     demo = spaceb.load_demo()
     return {"note": demo["note"], "carriers": demo["carriers"], "trips": BOARD_B.trips(),
@@ -485,7 +534,7 @@ def api_b_reset(body: Any) -> dict[str, Any]:
 
 
 GET_ROUTES = {"/api/scenarios": lambda q: api_scenarios(), "/api/demo_quotes": api_demo_quotes,
-              "/api/b/trips": api_b_trips}
+              "/api/b/trips": api_b_trips, "/api/route": api_route}
 POST_ROUTES = {
     "/api/estimate": api_estimate, "/api/layer": api_layer, "/api/request": api_request,
     "/api/compare": api_compare, "/api/save": api_save, "/api/load": api_load,

@@ -58,6 +58,14 @@ SCENES = {
     "hubs": ("#v=compare&o=13104&l=km&d=27128&hubs=1", 9.0,
              "(function(){const b=document.querySelector('#cards .hub-btn[data-hub=\"rail\"]'); if(b){b.scrollIntoView({block:'center'}); b.click();}})()",
              "2026-11-03_hubs.jpg"),
+    # 版3の実際の線の形（SPEC §17.3 G43）。新宿区 → 福岡市中央区で 4 手段を同時に、飛行機を立体で、電車を線路つきで
+    "modes_all": ("#v=compare&o=13104&l=km&d=40133", 16.0, None, "2026-11-04_modes_all.jpg"),
+    "modes_plane_3d": ("#v=compare&o=13104&l=km&d=40133", 12.0,
+                       "__app.Rt.setFocus('air')", "2026-11-04_modes_plane_3d.jpg"),
+    "modes_rail": ("#v=compare&o=13104&l=km&d=40133", 12.0,
+                   "__app.Rt.setFocus('rail')", "2026-11-04_modes_rail.jpg"),
+    "market_real": ("#v=market&p=27-12", 12.0, None, "2026-11-04_market_real.jpg"),
+    "b_real": ("#v=find", 13.6, None, "2026-11-04_b_real.jpg"),
 }
 
 
@@ -248,7 +256,12 @@ def main() -> int:
             time.sleep(wait)
             if pre:
                 page.js(pre)
-                time.sleep(1.0)
+                time.sleep(5.0 if n.startswith('modes') else 1.0)  # 地図の移動（約 2.4 秒）が終わるまで
+            if n == "b_real":  # 架空の便の乗り物が線の上にいる時刻（find.js の周期 14 秒のうち 7〜9 秒）まで待つ
+                for _ in range(60):
+                    if 7.0 <= (page.js("(performance.now()/1000)%14") or 0) <= 9.0:
+                        break
+                    time.sleep(0.25)
             if args.click:
                 lon, lat = (float(v) for v in args.click.split(","))
                 x, y = page.js(f"(function(){{const p=__app.map().project([{lon},{lat}]);return [p.x,p.y];}})()")
