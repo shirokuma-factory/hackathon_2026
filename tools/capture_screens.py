@@ -295,7 +295,8 @@ class Page:
         spec = dict(kind="text", text=text)
         self.wait(lambda: self.exists(spec), 10, f"文字「{text}」")
         self.js(f"{self._find(spec)}.scrollIntoView({{block:'{block}'}})")
-        time.sleep(0.8)
+        # 表（canvas）はスクロールで画面に入ってから列を描くので、描き終わるまで待つ
+        time.sleep(3.0)
 
     def shot(self, name: str) -> Path:
         from PIL import Image
