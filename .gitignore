@@ -20,3 +20,5 @@ node_modules/
 # Claude Code の個人設定（共有する設定は .claude/settings.json）
 .claude/settings.local.json
 data/traffic/raw/
+data/raw/
+data/routes/cache/
