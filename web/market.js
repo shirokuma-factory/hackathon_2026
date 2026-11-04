@@ -276,7 +276,7 @@ const Market = (() => {
         getColor: (d) => [...d.route.col, 215 * dimOf(d.route)], updateTriggers: { getColor: [M.sel, M.hover, M.mode], getWidth: [M.mode] },
       }));
       // 帰り便の先頭の乗り物。ズームが小さいときは 2D アイコン、大きいときは 3D モデル（models3d.js の LOD）
-      const heads = headData(sec), mx3 = M3D.mix(zoom);
+      const heads = headData(sec), mx3 = M3D.mixFor(M.mode, zoom);
       if (mx3 < 0.999) {
         out.push(new L.IconLayer({
           id: 'm-flow-head', data: heads, getPosition: (d) => d.p, getIcon: () => Rt.icons()[M.mode === 'truck' ? 'truck' : M.mode], getAngle: (d) => d.ang,

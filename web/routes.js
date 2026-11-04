@@ -428,7 +428,7 @@ const Rt = (() => {
 
   // 乗り物の層。ズームが小さいときは 2D アイコン、大きいときは 3D モデル、間は交差（models3d.js の LOD）
   function vehLayers(id, data, mode, size, zoom, extra = {}, k = 1) {
-    const out = [], mx = M3D.mix(zoom);
+    const out = [], mx = M3D.mixFor(mode, zoom);
     if (mx < 0.999) out.push(iconLayer(id, mx > 0.001 ? data.map((d) => ({ ...d, a: (d.a ?? 1) * (1 - mx) })) : data, mode, size, extra));
     const l3 = M3D.vehicles(id + '-3d', mode, data, zoom, { k });
     if (l3) out.push(l3);

@@ -258,16 +258,44 @@ function prefRings() {
   return S.prefRings;
 }
 
+// 内容が変わらない間は同じ層のインスタンスを返す。ref: 内容を決める参照、sig: 値の署名
+const LMEMO = new Map();
+function memoLayer(id, ref, sig, make) {
+  const m = LMEMO.get(id);
+  // deck.gl に片付けられた層（画面の層から一度外れたもの）は使い回せない（初期化の assert で落ちる）
+  const live = m && (m.l.lifecycle === 'Initialized' || String(m.l.lifecycle).startsWith('Matched') || m.l.lifecycle === 'Awaiting state');
+  if (live && m.ref === ref && m.sig === sig) return m.l;
+  const l = make();
+  LMEMO.set(id, { ref, sig, l });
+  return l;
+}
+/* ゆるやかな流れ（飾りの動き）。画質が低いときは本数を減らし、動きを減らす設定（prefers-reduced-motion）のときは動く層を出さない。
+   frac: 0 = 動く層なし（背景の線だけ）、1 = すべて。経路は pi の順に並んでおり、items は 1 本につき 2 つ（時間をずらしたもの）なので、先頭から frac の分だけを使う。 */
+function ambientFor(frac) {
+  const a = S.ambient;
+  if (!a || frac >= 1) return a;
+  if (!a.sub) a.sub = new Map();
+  let s = a.sub.get(frac);
+  if (!s) {
+    s = { paths: a.paths, PERIOD: a.PERIOD, items: frac <= 0 ? [] : a.items.filter((_, i) => { const j = i >> 1; return Math.floor((j + 1) * frac) > Math.floor(j * frac); }) };
+    a.sub.set(frac, s);
+  }
+  return s;
+}
+
 function dynamicLayers(now) {
   const L = deck, out = [];
   const o = S.meta.origins.find((x) => x.code === S.origin);
   const sec = now / 1000;
-  const amb = S.ambient, aA = S.ambientAlpha;
+  const amb = ambientFor(PERF.ambientMul()), aA = S.ambientAlpha;
   if (amb) {
-    out.push(new L.PathLayer({
+    // 濃さが変わらない間は同じ層を返す（毎フレーム作り直さない）
+    out.push(memoLayer('amb-base', amb.paths, aA.toFixed(3), () => new L.PathLayer({
       id: 'amb-base', data: amb.paths, getPath: (d) => d, getColor: [170, 205, 245, 34 * aA], widthMinPixels: 0.8, getWidth: 1,
       widthUnits: 'pixels', updateTriggers: { getColor: [aA] },
-    }));
+    })));
+  }
+  if (amb && amb.items.length) {
     out.push(new L.TripsLayer({
       id: 'amb-glow', data: amb.items, getPath: (d) => d.path, getTimestamps: (d) => d.ts, getColor: [120, 185, 255, 60 * aA],
       widthMinPixels: 5, capRounded: true, jointRounded: true, trailLength: 4.5, currentTime: sec % amb.PERIOD, fadeTrail: true,
@@ -334,6 +362,7 @@ function dynamicLayers(now) {
 }
 
 function frame(now) {
+  PERF.tick(now);
   // 時間の帯の再生
   const dt = Math.min(0.1, (now - (S.lastTick || now)) / 1000);
   S.lastTick = now;
@@ -348,16 +377,25 @@ function frame(now) {
   S.ambientAlpha += (targetAlpha - S.ambientAlpha) * Math.min(1, dt * 3);
   const zoom = map.getZoom();
   // 市区町村・県境は画面に入る分だけを層に渡す（画面の外の頂点を毎フレーム処理しない。SPEC §19.5）
+  const tc = performance.now();
   const cm = S.view === 'market' ? null : Cull.view('muni', S.muni.features, Cull.featureBox, map);
   const cp = S.view === 'market' ? null : Cull.view('pref', prefRings(), Cull.bboxOfCoords, map);
+  PERF.mark('cull', tc);
   const sk = `${S.origin}|${S.layer}|${S.version}|${Rt.focus}|${cm ? cm.v : 0}|${cp ? cp.v : 0}`; // 値・出発地・手段の強調・絞り込みが変わったときだけ層を作り直す（色が更新される）
   if (cm && (!S.staticLayers || S.staticKey !== sk)) { S.staticLayers = staticLayers(cm.items, cp.items); S.staticKey = sk; }
   let layers;
+  const tl0 = performance.now();
   if (S.view === 'market') layers = Market.layers(now, zoom);
   else if (S.view === 'find') layers = [S.staticLayers[1], ...Market.flowLayers(now, 0.3), ...Find.layers(now)]; // 県境、帰りの空きやすさ（うすく）、架空の便
   else layers = [...S.staticLayers, ...Hubs.layers(zoom, { line: currentHubLine() }), ...Muni.compareFac(zoom), ...dynamicLayers(now)];
+  const warm = M3D.warm(zoom);
+  if (warm) layers.push(warm);
+  PERF.mark('layers', tl0);
+  const ts0 = performance.now();
   overlay.setProps({ layers });
+  PERF.mark('setProps', ts0);
   placeTruckTag();
+  PERF.endFrame();
   requestAnimationFrame(frame);
 }
 
@@ -858,7 +896,15 @@ function setHubSel(kind) {
   }
 }
 
+// 画質の段が変わったとき（と起動時）: 描画の解像度比を合わせる
+function applyQuality() {
+  const r = PERF.pixelRatio();
+  try { if (map && map.getPixelRatio && map.getPixelRatio() !== r && map.setPixelRatio) map.setPixelRatio(r); } catch (e) { console.error(e); }
+  if (overlay) overlay.setProps({ useDevicePixels: r });
+}
+
 async function main() {
+  PERF.init();
   const [meta, idx, muni, pref, routes, style] = await Promise.all([
     getJSON('data/meta.json'), getJSON('data/index.json'), getJSON('data/muni.geojson'), getJSON('data/pref.geojson'),
     getJSON('data/routes.json'), getJSON(STYLE_URL), Hubs.load(), Rt.loadMeta().then(() => Promise.all([Rt.loadPairs(), Rt.loadTrips()])), Market.load(), Muni.load(),
@@ -891,6 +937,7 @@ async function main() {
   map = new maplibregl.Map({
     container: 'map', style: st, center: [137.5, 37.2], zoom: 4.6, minZoom: 3.4, maxZoom: 16, attributionControl: false,
     dragRotate: false, pitchWithRotate: false, touchPitch: false, fadeDuration: 0, maxBounds: [[110, 15], [165, 55]],
+    pixelRatio: PERF.pixelRatio(), // 高解像度の画面で画素数が増えすぎないようにする（画質の段で変わる）
   });
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.AttributionControl({
@@ -905,6 +952,8 @@ async function main() {
     onClick: (info) => { if (S.view === 'market') { Market.click(info); return; } if (S.view === 'find') { Find.click(info); return; } if (S.view !== 'compare') return; if (Work.isOpen()) Work.closeWork(); if (info.object && info.layer && info.layer.id === 'muni' && info.object.properties.i >= 0) select(info.object.properties.i); },
   });
   map.addControl(overlay);
+  PERF.onChange(applyQuality);
+  applyQuality();
   await new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
   map.addSource('hub-attr', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: '拠点: © OpenStreetMap contributors（ODbL 1.0）' });
   map.addLayer({ id: 'hub-attr', type: 'line', source: 'hub-attr', layout: { visibility: 'none' } });
@@ -963,6 +1012,8 @@ async function main() {
   }
   refreshFareLayer();
   requestAnimationFrame(frame);
+  M3D.preload();
+  if (new URLSearchParams(location.search).get('perf')) { const sc = document.createElement('script'); sc.src = 'perfprobe.js'; document.head.appendChild(sc); }
   setTimeout(() => $('#loading').classList.add('done'), 400);
   window.__app = { S, Market, Muni, Hubs, Find, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }

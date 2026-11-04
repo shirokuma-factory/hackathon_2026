@@ -155,7 +155,7 @@ const Find = (() => {
       veh.push({ p: pos, ang: -(Math.atan2(dx, dy) * 180) / Math.PI, a: lv(t) * Math.min(1, p * 10, (1 - p) * 10), model: M3D.byVehicle(t.vehicle) });
     }
     // 2D アイコンと 3D モデルの切り替え（models3d.js の LOD）。3D は車種ごとのモデルに分けて出す
-    const zm = map.getZoom(), mx3 = M3D.mix(zm);
+    const zm = map.getZoom(), mx3 = M3D.mixFor(['truck', 'truck_4t', 'box_2t', 'kei_van'], zm);
     out.push(Rt.iconLayer('f-veh', mx3 > 0.001 ? veh.map((d) => ({ ...d, a: d.a * (1 - mx3) })) : veh, 'truck', 28));
     if (mx3 > 0.001) {
       for (const key of ['truck', 'truck_4t', 'box_2t', 'kei_van']) {

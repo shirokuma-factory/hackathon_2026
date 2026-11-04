@@ -29,6 +29,10 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 GLB_DIR = os.path.join(ROOT, "web", "models")
 BLEND = os.path.join(HERE, "vehicles.blend")
 SHARP_DEG = 35.0
+# 低ポリ版（build_lod.py が True にして作り直す）。面取りをやめ、円柱の分割数を減らす
+LOD = False
+LOD_SEG = 8
+LOD_MIN = 0.0  # 低ポリ版で、外形の対角線がこれ（m）より短い部品は作らない
 
 # ---------------------------------------------------------------- 材質
 # 名前: (色, metallic, roughness)。手段の色は SPEC §17.2 に合わせる（赤は使わない）。
@@ -115,6 +119,8 @@ class Mdl:
         return s.mats.index(n)
 
     def add(s, verts, faces, m, bevel=0.0, matrix=None):
+        if LOD:
+            bevel = 0.0
         bm = bmesh.new()
         vs = [bm.verts.new(v) for v in verts]
         for f in faces:
@@ -129,6 +135,12 @@ class Mdl:
                             segments=1, affect='EDGES', clamp_overlap=True)
         if matrix is not None:
             bmesh.ops.transform(bm, matrix=matrix, verts=list(bm.verts))
+        if LOD and LOD_MIN > 0 and bm.verts:
+            lo = [min(v.co[k] for v in bm.verts) for k in range(3)]
+            hi = [max(v.co[k] for v in bm.verts) for k in range(3)]
+            if math.dist(lo, hi) < LOD_MIN:
+                bm.free()
+                return
         bm.verts.index_update()
         base = len(s.V)
         for v in bm.verts:
@@ -151,6 +163,8 @@ class Mdl:
         s.bx(m, -x1, -x0, *a, **k)
 
     def cyl(s, m, c, r, length, axis='z', seg=16, r2=None):
+        if LOD:
+            seg = min(seg, LOD_SEG)
         r2 = max(r if r2 is None else r2, 0.01)
         h = length / 2
         v = [(r * math.cos(2 * math.pi * k / seg), r * math.sin(2 * math.pi * k / seg), -h) for k in range(seg)]
@@ -202,8 +216,11 @@ class Mdl:
         s.bx(m, -t / 2, t / 2, -h, h, -t / 2, t / 2, bevel, M)
 
     def wheel(s, x, y, z, r, w, seg=14, hub=True):
+        global LOD_MIN
+        keep, LOD_MIN = LOD_MIN, 0.0  # 車輪は小さくても省かない
         s.cyl("rubber", (x, y, z), r, w, 'x', seg)
-        if hub:
+        LOD_MIN = keep
+        if hub and not LOD:
             s.cyl("hub", (x, y, z), r * 0.55, w + 0.06, 'x', seg)
 
     def finish(s):
@@ -532,13 +549,13 @@ def tilt_glass(m, y0, z0, y1, z1, xh, t=0.03):
 def box_container(m, x0, x1, y0, y1, z0, z1, body, rib=None, rib_pitch=0.55, doors=False):
     """40ft 級の箱。rib を渡すと長側面（±X）に縦リブ、doors で +Y 端に扉の線を付ける。"""
     m.bx(body, x0, x1, y0, y1, z0, z1, 0.03)
-    if rib:
+    if rib and not LOD:
         k = y0 + 0.4
         while k + 0.12 < y1 - 0.3:
             m.bx(rib, x1, x1 + 0.04, k, k + 0.12, z0 + 0.15, z1 - 0.15, 0.0)
             m.bx(rib, x0 - 0.04, x0, k, k + 0.12, z0 + 0.15, z1 - 0.15, 0.0)
             k += rib_pitch
-    if doors:
+    if doors and not LOD:
         xc = (x0 + x1) / 2
         for dx in (-0.45, -0.15, 0.15, 0.45):
             m.bx("grey", xc + dx - 0.03, xc + dx + 0.03, y1, y1 + 0.05, z0 + 0.2, z1 - 0.2, 0.0)
@@ -715,6 +732,10 @@ def build_container_ship():
         for r in range(rows):
             xc = (r - (rows - 1) / 2) * 2.5
             n = max(1, min(5, base_h[k] + (k * 3 + r * 5) % 3 - 1))
+            if LOD:  # 低ポリ版は 1 列の積み重ねを 1 つの箱にする（色は一番上の段）
+                m.bx(cols[(k * 5 + r * 3 + (n - 1) * 7) % len(cols)], xc - 1.2, xc + 1.2, y0, y1,
+                     DEP + 0.1, DEP + 0.1 + (n - 1) * 2.6 + 2.5, 0.0)
+                continue
             for lv in range(n):
                 z0 = DEP + 0.1 + lv * 2.6
                 m.bx(cols[(k * 5 + r * 3 + lv * 7) % len(cols)], xc - 1.2, xc + 1.2, y0, y1, z0, z0 + 2.5, 0.0)
@@ -853,7 +874,8 @@ def build_cold_storage():
         for y in (-12, 12):
             m.bx("light", x - 6, x + 6, y - 3, y + 3, 25.4, 28.0, 0.08)
             for fx in (-3, 3):
-                m.cyl("charcoal", (x + fx, y, 28.08), 2.0, 0.16, 'z', 12)
+                if not LOD:
+                    m.cyl("charcoal", (x + fx, y, 28.08), 2.0, 0.16, 'z', 12)
     m.bx("grey", -50, 50, -0.5, 0.5, 25.4, 26.4, 0.0)
     m.bx("white", -8, 8, -2, 14, 25.4, 28.5, 0.15)                  # 機械室
     # 搬入口（-Y 側の長辺）
@@ -923,6 +945,10 @@ def build_container_yard():
                 if (c + r * 2 + blk) % 7 == 0:
                     continue
                 x0 = -44.1 + c * 12.6
+                if LOD:  # 低ポリ版は 1 列の積み重ねを 1 つの箱にする（色は一番上の段）
+                    m.bx(cols[(c * 3 + r * 7 + (h - 1) * 5 + blk) % len(cols)], x0, x0 + 12.2,
+                         y0 + r * 2.7, y0 + r * 2.7 + 2.45, 0.3, 0.3 + (h - 1) * 2.6 + 2.5, 0.0)
+                    continue
                 for lv in range(h):
                     z0 = 0.3 + lv * 2.6
                     m.bx(cols[(c * 3 + r * 7 + lv * 5 + blk) % len(cols)], x0, x0 + 12.2,
@@ -1235,5 +1261,5 @@ def main():
                      frames={n: fr(t) for n, t in ANIM_MID.items()})
 
 
-if bpy.app.background:
+if bpy.app.background and __name__ == "__main__":
     main()
