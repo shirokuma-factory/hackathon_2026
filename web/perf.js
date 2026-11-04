@@ -11,7 +11,9 @@
      ・直近 2 秒の p95 が 25ms を超えたら 1 段下げる。直近 5 秒の p95 が 14ms 未満なら 1 段上げる。
      ・切り替えのあとは 5 秒たつまで次の切り替えをしない（履歴も捨てる）。上げたあと 20 秒以内にまた下げたら、次に上げるまでの待ちを倍にする（15 秒から最大 120 秒）。
      ・最初の段は GPU の名前で決める（SwiftShader・Basic Render・llvmpipe は低、Intel・AMD の内蔵は中、それ以外は高）。
+     ・下げる判定では、100ms を超えるフレームが直近 2 秒に 3 個以下なら、それらを数えない（シェーダーのコンパイルやタイルの読み込みで 1 回止まっただけで段を下げないため）。4 個以上あれば数える。
    ■ その他
+     ・起動時のシェーダーの先読み中（warmup.js）は、フレーム時間を判定に使わない（PERF.hold）。終わって 2 秒あけてから集め始める。
      ・起動から 6 秒は自動の判定をしない（データの読み込みとモデルの先読みで一時的に重くなるため）。
      ・prefers-reduced-motion が有効なときは、ゆるやかな流れ（飾りの動き）を止める。
      ・frame() の JS 時間（長いフレームの原因の切り分け用）を PERF.js に残す。 */
@@ -20,11 +22,12 @@ const PERF = (() => {
   const LV = ['high', 'mid', 'low'];
   const LABEL = { auto: '自動', high: '高', mid: '中', low: '低' };
   const KEY = 'quality';
-  const DROP_MS = 25, DROP_WIN = 2000, RAISE_MS = 14, RAISE_WIN = 5000, MIN_GAP = 5000, START_GRACE = 6000;
+  const DROP_MS = 25, DROP_WIN = 2000, RAISE_MS = 14, RAISE_WIN = 5000, MIN_GAP = 5000, START_GRACE = 6000, SPIKE_MS = 100, SKIP_MAX = 3;
   const P = {
     pref: 'auto', // auto | high | mid | low
     level: 0, // 0 高, 1 中, 2 低
     gpu: '', gpuLevel: 0, reduced: false,
+    holdUntil: 0, // この時刻まで（起動時のシェーダーの先読みなど）はフレーム時間を判定に使わない
     frameNo: 0, frameStart: 0, // frame() の最初の時刻（予算の判定に使う）
     last: 0, lastSwitch: -1e9, raiseWait: 15000, lastRaise: -1e9, raiseBlock: 0,
     changes: [], // [{t, from, to, why}]
@@ -83,9 +86,10 @@ const PERF = (() => {
     for (const f of P.listeners) { try { f(P.level); } catch (e) { console.error(e); } }
   }
 
-  // 直近 win ms の p95（足りないときは null）
-  function p95(win, now, minN) {
-    const vals = [];
+  // 直近 win ms の p95（足りないときは null）。skipOver を渡すと、それより長いフレームが SKIP_MAX 個以下のとき（シェーダーのコンパイルやタイルの読み込みによる単発の止まり）は数えない。
+  // 長いフレームが続くとき（本当に重いとき）は、数えて段を下げる
+  function p95(win, now, minN, skipOver) {
+    let vals = [];
     let span = 0;
     for (let i = 0; i < count; i++) {
       const k = (head - 1 - i + N) % N;
@@ -93,6 +97,10 @@ const PERF = (() => {
       vals.push(dts[k]); span += dts[k];
     }
     if (vals.length < minN || span < win * 0.85) return null;
+    if (skipOver) {
+      const kept = vals.filter((v) => v <= skipOver);
+      if (vals.length - kept.length <= SKIP_MAX && kept.length >= minN) vals = kept;
+    }
     vals.sort((a, b) => a - b);
     return vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.95))];
   }
@@ -101,6 +109,7 @@ const PERF = (() => {
   function tick(now) {
     P.frameNo++;
     P.frameStart = performance.now();
+    if (now < P.holdUntil) { P.last = now; count = 0; head = 0; return; }
     if (P.last) {
       const dt = now - P.last;
       if (dt < 1000 && !document.hidden) { dts[head] = dt; ts[head] = now; head = (head + 1) % N; if (count < N) count++; }
@@ -111,7 +120,7 @@ const PERF = (() => {
     if (P.pref !== 'auto' || now - lastEval < 250 || now - P.t0 < START_GRACE) return;
     lastEval = now;
     if (now - P.lastSwitch < MIN_GAP) return;
-    const d = p95(DROP_WIN, now, 3); // 1 秒に 1 フレームのような重さでも判定できるよう、下げるほうは 3 フレームから見る
+    const d = p95(DROP_WIN, now, 3, SPIKE_MS); // 1 秒に 1 フレームのような重さでも判定できるよう、下げるほうは 3 フレームから見る
     if (d !== null && d > DROP_MS && P.level < 2) { // 上げたすぐあとにまた下げたら、次に上げるまでを倍に待つ
       if (now - P.lastRaise < 20000) P.raiseWait = Math.min(120000, P.raiseWait * 2);
       P.raiseBlock = now + P.raiseWait;
@@ -143,6 +152,9 @@ const PERF = (() => {
   }
   function resetStats() { P.js = { n: 0, sum: 0, max: 0, over8: 0 }; P.jsMarks = {}; }
 
+  // ms の間は判定に使わない（Infinity なら hold(0) で解くまで）。履歴も捨てる
+  function hold(ms) { P.holdUntil = ms === Infinity ? Infinity : performance.now() + ms; if (!ms) P.holdUntil = 0; }
+
   function onChange(f) { P.listeners.push(f); }
 
   // 画質の選択欄（#quality）。index.html の中にあるものに結びつける
@@ -166,7 +178,7 @@ const PERF = (() => {
   }
 
   return {
-    P, LV, LABEL, init, tick, endFrame, mark, canSpend, setPref, setLevel, snapshot, resetStats, onChange,
+    P, LV, LABEL, init, tick, hold, endFrame, mark, canSpend, setPref, setLevel, snapshot, resetStats, onChange,
     get level() { return P.level; }, get name() { return LV[P.level]; }, get reduced() { return P.reduced; },
     pixelRatio, capMul, facilities3d, loFacilities, loVehicles, ambientMul, pauseFacilityAnim,
   };

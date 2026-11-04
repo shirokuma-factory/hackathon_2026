@@ -388,8 +388,7 @@ function frame(now) {
   if (S.view === 'market') layers = Market.layers(now, zoom);
   else if (S.view === 'find') layers = [S.staticLayers[1], ...Market.flowLayers(now, 0.3), ...Find.layers(now)]; // 県境、帰りの空きやすさ（うすく）、架空の便
   else layers = [...S.staticLayers, ...Hubs.layers(zoom, { line: currentHubLine() }), ...Muni.compareFac(zoom), ...dynamicLayers(now)];
-  const warm = M3D.warm(zoom);
-  if (warm) layers.push(warm);
+  if (WARM.running) layers.push(...WARM.layers(now)); // 起動時のシェーダーの先読み（warmup.js）。読み込み画面の裏で、種類ごとに 1 個ずつ描く
   PERF.mark('layers', tl0);
   const ts0 = performance.now();
   overlay.setProps({ layers });
@@ -955,6 +954,9 @@ async function main() {
   PERF.onChange(applyQuality);
   applyQuality();
   await new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
+  PERF.hold(Infinity); // 先読みが終わるまで、画質の自動判定にフレーム時間を使わない
+  $('#loading').textContent = '描画の準備をしています';
+  await WARM.warmMap(map); // 地図の描画の種類を先にコンパイルさせる（読み込み画面の裏）
   map.addSource('hub-attr', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: '拠点: © OpenStreetMap contributors（ODbL 1.0）' });
   map.addLayer({ id: 'hub-attr', type: 'line', source: 'hub-attr', layout: { visibility: 'none' } });
   applyViewClasses();
@@ -1011,11 +1013,12 @@ async function main() {
     if (i >= 0) select(i, { fly: p.get('fly') !== '0' });
   }
   refreshFareLayer();
+  WARM.start(map, overlay);
+  WARM.onDone(() => { PERF.hold(2000); setTimeout(() => $('#loading').classList.add('done'), 150); });
   requestAnimationFrame(frame);
   M3D.preload();
   if (new URLSearchParams(location.search).get('perf')) { const sc = document.createElement('script'); sc.src = 'perfprobe.js'; document.head.appendChild(sc); }
-  setTimeout(() => $('#loading').classList.add('done'), 400);
-  window.__app = { S, Market, Muni, Hubs, Find, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
+  window.__app = { WARM, S, Market, Muni, Hubs, Find, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }
 
 main().catch((e) => {
