@@ -1,4 +1,4 @@
-"""物流の地図用 3D モデル 7 種を bpy だけで作り、glb に書き出す台本。
+"""物流の地図用 3D モデル 18 種を bpy だけで作り、glb に書き出す台本。
 
 使い方（画面なし）:
     blender --background --python assets3d/source/build_models.py -- [--tiles <dir>]
@@ -477,9 +477,456 @@ def build_crane():
     return m
 
 
+#
+# ---- ここから 8 番以降（車両・コンテナ・船・旅客機・施設）。1〜7 番の関数は変更しない。----
+#
+def tilt_glass(m, y0, z0, y1, z1, xh, t=0.03):
+    """傾いた窓ガラス（幅 ±xh）。(y0,z0)-(y1,z1) の面から外向きに t だけ出す。"""
+    d = Vector((0, y1 - y0, z1 - z0)).normalized()
+    n = Vector((0, -d.z, d.y))  # 前面の外向き（-Y 側）
+    P = [(-xh, y0, z0), (xh, y0, z0), (xh, y1, z1), (-xh, y1, z1)]
+    A = [(x, y - n.y * 0.03, z - n.z * 0.03) for x, y, z in P]
+    B = [(x, y + n.y * t, z + n.z * t) for x, y, z in P]
+    m.ext("glass", A, B)
+
+
+def box_container(m, x0, x1, y0, y1, z0, z1, body, rib=None, rib_pitch=0.55, doors=False):
+    """40ft 級の箱。rib を渡すと長側面（±X）に縦リブ、doors で +Y 端に扉の線を付ける。"""
+    m.bx(body, x0, x1, y0, y1, z0, z1, 0.03)
+    if rib:
+        k = y0 + 0.4
+        while k + 0.12 < y1 - 0.3:
+            m.bx(rib, x1, x1 + 0.04, k, k + 0.12, z0 + 0.15, z1 - 0.15, 0.0)
+            m.bx(rib, x0 - 0.04, x0, k, k + 0.12, z0 + 0.15, z1 - 0.15, 0.0)
+            k += rib_pitch
+    if doors:
+        xc = (x0 + x1) / 2
+        for dx in (-0.45, -0.15, 0.15, 0.45):
+            m.bx("grey", xc + dx - 0.03, xc + dx + 0.03, y1, y1 + 0.05, z0 + 0.2, z1 - 0.2, 0.0)
+        m.bx("charcoal", xc - 0.01, xc + 0.01, y1, y1 + 0.06, z0 + 0.1, z1 - 0.1, 0.0)
+
+
+# ---------------------------------------------------------------- 8 軽バン
+def build_kei_van():
+    m = Mdl("kei_van")
+    W = 0.74
+    m.prism("white", [(-1.70, 0.32), (-1.72, 0.88), (-1.45, 1.02), (-0.78, 1.80), (1.66, 1.88),
+                      (1.70, 1.80), (1.70, 0.32)], 'yz', -W, W, 0.04)
+    m.bxm("truck", 0.73, 0.76, -1.5, 1.5, 0.55, 0.80, 0.0)           # 側面の橙帯
+    m.bx("truck", -0.74, 0.74, -1.74, -1.66, 0.55, 0.80, 0.0)         # 前面の橙帯
+    tilt_glass(m, -1.43, 1.06, -0.80, 1.77, 0.62)
+    m.bxm("glass", 0.73, 0.76, -0.78, 0.18, 1.12, 1.66, 0.0)
+    m.bxm("charcoal", 0.735, 0.755, 0.2, 0.23, 0.45, 1.75, 0.0)       # ドアの継ぎ目
+    m.bx("glass", -0.55, 0.55, 1.70, 1.74, 1.15, 1.62, 0.0)
+    m.bx("charcoal", -0.72, 0.72, -1.80, -1.62, 0.30, 0.52, 0.04)
+    m.bx("charcoal", -0.35, 0.35, -1.75, -1.69, 0.62, 0.80, 0.0)
+    m.bxm("lamp", 0.45, 0.68, -1.76, -1.69, 0.66, 0.82, 0.0)
+    m.bx("charcoal", -0.72, 0.72, 1.66, 1.78, 0.30, 0.52, 0.04)
+    for sx in (-1, 1):
+        for y in (-1.05, 1.05):
+            m.wheel(sx * 0.64, y, 0.28, 0.28, 0.2, 12)
+    return m
+
+
+# ---------------------------------------------------------------- 9 2t 箱車
+def build_box2t():
+    m = Mdl("box_2t")
+    m.bx("charcoal", -0.6, 0.6, -2.3, 2.3, 0.5, 0.78, 0.04)
+    # キャブオーバー
+    m.prism("white", [(-2.35, 0.55), (-2.35, 1.4), (-2.25, 2.15), (-1.25, 2.2), (-1.25, 0.55)],
+            'yz', -0.83, 0.83, 0.08)
+    m.bx("truck", -0.845, 0.845, -2.37, -1.24, 1.12, 1.34, 0.03)
+    tilt_glass(m, -2.34, 1.5, -2.26, 2.08, 0.7)
+    m.bxm("glass", 0.82, 0.85, -2.1, -1.45, 1.5, 2.05, 0.0)
+    m.bxm("lamp", 0.5, 0.75, -2.38, -2.33, 0.82, 1.0, 0.0)
+    m.bx("charcoal", -0.4, 0.4, -2.38, -2.33, 0.82, 1.0, 0.0)
+    m.bx("charcoal", -0.8, 0.8, -2.4, -2.28, 0.5, 0.78, 0.04)
+    # 荷台（箱）
+    m.bx("white", -0.85, 0.85, -1.15, 2.3, 0.8, 3.0, 0.08)
+    m.bxm("truck", 0.84, 0.87, -0.95, 2.1, 1.35, 1.85, 0.0)
+    m.bx("light", -0.8, 0.8, 2.3, 2.35, 0.95, 2.9, 0.02)
+    m.bx("charcoal", -0.8, 0.8, 2.2, 2.35, 0.5, 0.78, 0.04)
+    m.bxm("grey", 0.6, 0.86, -0.6, 0.5, 0.6, 0.85, 0.0)
+    for sx in (-1, 1):
+        m.wheel(sx * 0.72, -1.6, 0.37, 0.37, 0.24, 12)
+        m.wheel(sx * 0.72, 1.2, 0.37, 0.37, 0.24, 12)
+    return m
+
+
+# ---------------------------------------------------------------- 10 4t ウイング車
+def build_truck4t():
+    m = Mdl("truck_4t")
+    m.bx("charcoal", -0.9, 0.9, -4.1, 4.25, 0.85, 1.1, 0.05)
+    # キャブ
+    m.prism("white", [(-4.25, 0.9), (-4.25, 1.9), (-4.12, 2.7), (-2.5, 2.7), (-2.4, 0.9)],
+            'yz', -1.05, 1.05, 0.1)
+    m.bx("truck", -1.065, 1.065, -4.27, -2.38, 1.2, 1.45, 0.03)
+    m.bx("truck", -0.95, 0.95, -3.7, -2.5, 2.7, 3.0, 0.15)          # ルーフデフレクタ
+    tilt_glass(m, -4.24, 1.75, -4.13, 2.58, 0.88)
+    m.bxm("glass", 1.04, 1.08, -3.95, -2.85, 1.8, 2.55, 0.0)
+    m.bx("charcoal", -0.6, 0.6, -4.28, -4.22, 1.5, 1.7, 0.0)
+    m.bxm("lamp", 0.7, 1.0, -4.28, -4.2, 1.5, 1.7, 0.02)
+    m.bx("charcoal", -1.05, 1.05, -4.4, -4.2, 0.7, 1.0, 0.05)
+    # 荷台（ウイングボディ）
+    m.bx("white", -1.1, 1.1, -2.2, 4.25, 1.1, 3.3, 0.1)
+    m.bxm("truck", 1.09, 1.12, -2.0, 4.05, 1.85, 2.45, 0.0)
+    m.bx("light", -1.05, 1.05, 4.25, 4.31, 1.3, 3.2, 0.03)
+    m.bx("charcoal", -1.0, 1.0, 4.1, 4.3, 0.7, 0.95, 0.04)
+    m.bxm("grey", 0.9, 1.12, -1.8, -0.5, 0.65, 1.0, 0.05)
+    for sx in (-1, 1):
+        m.wheel(sx * 0.98, -3.2, 0.43, 0.43, 0.26, 14)
+        for xo in (0.76, 1.0):
+            m.wheel(sx * xo, 2.4, 0.43, 0.43, 0.22, 14)
+    return m
+
+
+# ---------------------------------------------------------------- 11 トレーラー（トラクター + 40ft 海上コンテナ）
+def build_trailer():
+    m = Mdl("trailer")
+    # トラクター
+    m.bx("charcoal", -0.95, 0.95, -8.1, -3.0, 0.85, 1.15, 0.05)
+    m.bx("truck", -1.2, 1.2, -8.25, -5.9, 1.0, 1.95, 0.12)
+    m.bx("white", -1.18, 1.18, -8.2, -5.9, 1.95, 3.2, 0.12)
+    m.bx("truck", -1.1, 1.1, -7.2, -5.85, 3.2, 3.9, 0.2)            # ルーフデフレクタ
+    tilt_glass(m, -8.2, 2.1, -8.2, 3.0, 1.0)
+    m.bxm("glass", 1.17, 1.21, -7.9, -6.4, 2.1, 3.0, 0.0)
+    m.bxm("lamp", 0.7, 1.05, -8.3, -8.2, 1.25, 1.55, 0.02)
+    m.bx("charcoal", -0.6, 0.6, -8.3, -8.2, 1.2, 1.6, 0.0)
+    m.bx("charcoal", -1.15, 1.15, -8.4, -8.15, 0.75, 1.05, 0.05)
+    for sx in (-1, 1):
+        m.cyl("light", (sx * 1.3, -5.7, 2.5), 0.1, 3.2, 'z', 8)  # 排気管
+    m.bx("charcoal", -1.0, 1.0, -5.3, -3.5, 1.15, 1.42, 0.04)      # 第五輪
+    # 車輪（トラクター）
+    for sx in (-1, 1):
+        m.wheel(sx * 1.05, -7.0, 0.5, 0.5, 0.3, 14)
+        for y in (-4.85, -3.65):
+            for xo in (0.8, 1.07):
+                m.wheel(sx * xo, y, 0.5, 0.5, 0.24, 14)
+    # トレーラーのシャーシ
+    m.bxm("charcoal", 0.45, 0.65, -4.6, 8.0, 1.05, 1.4, 0.03)
+    for y in (-3.0, 0.0, 3.0, 6.0):
+        m.bx("charcoal", -0.65, 0.65, y, y + 0.25, 1.05, 1.3, 0.0)
+    m.bx("charcoal", -1.1, 1.1, 8.0, 8.25, 0.85, 1.3, 0.04)
+    for sx in (-1, 1):
+        for y in (4.8, 6.0, 7.2):
+            for xo in (0.8, 1.07):
+                m.wheel(sx * xo, y, 0.5, 0.5, 0.24, 14)
+        m.bx("charcoal", sx * 1.2 - 0.06, sx * 1.2 + 0.06, 4.4, 7.6, 0.95, 1.1, 0.0)
+    # 40ft コンテナ（中立色。リブ付き、後端に扉）
+    box_container(m, -1.22, 1.22, -4.4, 7.792, 1.4, 4.0, "light", "white", 0.6, True)
+    return m
+
+
+# ---------------------------------------------------------------- 12 12ft コンテナ（鉄道）
+def build_container12():
+    m = Mdl("container_12ft")
+    m.bx("charcoal", -1.2, 1.2, -1.8, 1.8, 0.0, 0.14, 0.02)
+    m.bx("rail", -1.2, 1.2, -1.82, 1.82, 0.14, 2.45, 0.03)
+    m.bx("rail_dk", -1.2, 1.2, -1.82, 1.82, 2.45, 2.5, 0.02)       # 屋根
+    # 長側面の波板（縦リブ）
+    k = -1.54
+    while k < 1.5:
+        for x0, x1 in ((1.2, 1.225), (-1.225, -1.2)):
+            m.bx("rail_dk", x0, x1, k, k + 0.12, 0.3, 2.35, 0.0)
+        k += 0.3
+    # 前端（-Y）の平板、後端（+Y）の観音扉
+    m.bx("rail_dk", -1.12, 1.12, -1.8575, -1.82, 0.25, 2.4, 0.0)
+    for x0, x1 in ((-1.12, -0.01), (0.01, 1.12)):
+        m.bx("rail_dk", x0, x1, 1.82, 1.845, 0.25, 2.4, 0.0)
+    for xc in (-0.85, -0.35, 0.35, 0.85):
+        m.bx("light", xc - 0.03, xc + 0.03, 1.84, 1.8575, 0.35, 2.3, 0.0)
+    for xc in (-0.1, 0.1):
+        m.bx("grey", xc - 0.04, xc + 0.04, 1.84, 1.8575, 0.9, 1.5, 0.0)
+    # 隅金具
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            for z0 in (0.0, 2.32):
+                x0, x1 = sorted((sx * 1.04, sx * 1.225))
+                y0, y1 = sorted((sy * 1.67, sy * 1.8575))
+                m.bx("charcoal", x0, x1, y0, y1, z0, z0 + 0.18, 0.02)
+    return m
+
+
+# ---------------------------------------------------------------- 13 内航コンテナ船
+def build_container_ship():
+    m = Mdl("container_ship")
+    L, HB, DEP = 115.0, 9.0, 9.5
+    S = [0, .03, .1, .3, .6, .8, .88, .94, .98, 1.0]
+    FB = [(0, .82), (.03, .92), (.1, 1), (.8, 1), (.88, .92), (.94, .72), (.98, .42), (1.0, .08)]
+    rings = []
+    for s in S:
+        hw = HB * interp(s, FB)
+        y = L / 2 - L * s  # 船尾 = +Y、船首 = -Y
+        zb = 2.2 * smooth(.82, 1, s) ** 1.3
+        zt = DEP + 1.6 * smooth(.9, 1, s)
+        bw = hw * (0.9 - 0.3 * smooth(.8, 1, s))
+        zs = zb + 3.0
+        rings.append([(-bw, y, zb), (bw, y, zb), (hw, y, zs), (hw, y, zt), (-hw, y, zt), (-hw, y, zs)])
+    m.loft(["ship_dk", "ship_dk", "ship_dk", "deck", "ship_dk", "ship_dk"], rings, "ship_dk", "ship_dk")
+    m.bxm("ship", 8.97, 9.06, -34, 46, 5.8, 7.4, 0.0)          # 舷側の帯
+    m.bxm("light", 8.75, 9.0, -34, 46, DEP, DEP + 0.9, 0.0)    # ブルワーク
+    # 甲板のコンテナ（ベイごとに段数を変える）
+    cols = ["ship", "grey", "white", "ship", "light", "ship_dk", "grey", "truck", "white", "rail"]
+    base_h = [3, 4, 4, 4, 3, 3, 2]
+    for k in range(7):
+        y1 = 38 - 12.5 * k
+        y0 = y1 - 12.1
+        hwm = min(HB * interp((L / 2 - y) / L, FB) for y in (y0, y1))
+        rows = max(1, int((2 * hwm * 0.9) // 2.5))
+        for r in range(rows):
+            xc = (r - (rows - 1) / 2) * 2.5
+            n = max(1, min(5, base_h[k] + (k * 3 + r * 5) % 3 - 1))
+            for lv in range(n):
+                z0 = DEP + 0.1 + lv * 2.6
+                m.bx(cols[(k * 5 + r * 3 + lv * 7) % len(cols)], xc - 1.2, xc + 1.2, y0, y1, z0, z0 + 2.5, 0.0)
+    # 船橋（船尾）
+    for y0, y1, hw, z0, z1 in ((41, 55, 7.6, DEP, 13.5), (42, 54, 7.4, 13.5, 17.0), (43, 53, 7.2, 17.0, 20.5)):
+        m.bx("white", -hw, hw, y0, y1, z0, z1, 0.3)
+        zc = (z0 + z1) / 2 + 0.2
+        m.bx("glass", -hw + 1.0, hw - 1.0, y0 - 0.08, y0 + 0.15, zc, zc + 0.8, 0.0)
+        m.bxm("glass", hw - 0.1, hw + 0.08, y0 + 2, y1 - 2, zc, zc + 0.8, 0.0)
+    m.bx("white", -8.8, 8.8, 43.5, 49, 20.5, 23.5, 0.2)
+    m.bx("glass", -8.6, 8.6, 43.4, 43.65, 21.3, 22.9, 0.0)
+    m.bxm("glass", 8.7, 8.9, 44.5, 48.5, 21.3, 22.9, 0.0)
+    m.bx("light", -8.9, 8.9, 43.3, 49.1, 23.5, 23.8, 0.05)
+    m.bx("ship", -2.6, 2.6, 49.5, 53.5, 20.5, 27.0, 0.3)           # 煙突
+    m.bx("white", -2.65, 2.65, 49.45, 53.55, 24.0, 25.0, 0.0)
+    m.bx("charcoal", -2.4, 2.4, 49.7, 53.3, 27.0, 27.4, 0.05)
+    m.cyl("light", (0, 46, 26.0), 0.25, 5.0, 'z', 8)
+    m.bx("light", -1.2, 1.2, 45.6, 46.4, 28.2, 28.5, 0.02)
+    m.cyl("light", (0, -52, 13.5), 0.2, 6.0, 'z', 8)                # 船首のマスト
+    m.bx("light", -2.0, 2.0, -53.5, -50, 10.7, 12.2, 0.1)           # ウインドラス
+    return m
+
+
+# ---------------------------------------------------------------- 14 貨物専用 RORO 船
+def build_roro_ship():
+    m = Mdl("roro_ship")
+    HB, ZT = 13.5, 22.0
+    S = [0, .06, .3, .6, .8, .88, .94, .98, 1.0]
+    FB = [(0, 1), (.8, 1), (.88, .9), (.94, .7), (.98, .4), (1.0, .1)]
+    rings = []
+    for s in S:
+        hw = HB * interp(s, FB)
+        y = 75 - 160 * s  # 船尾の面 = +Y 75 m、船首 = -Y 85 m
+        zb = 4.0 * smooth(.85, 1, s) ** 1.3
+        zt = ZT + 1.8 * smooth(.85, 1, s)
+        bw = hw * 0.93
+        zs = zb + 5.0
+        rings.append([(-bw, y, zb), (bw, y, zb), (hw, y, zs), (hw, y, zt), (-hw, y, zt), (-hw, y, zs)])
+    m.loft(["ship_dk", "ship_dk", "ship", "deck", "ship", "ship_dk"], rings, "ship_dk", "ship_dk")
+    m.bxm("white", 13.45, 13.6, -60, 70, 13.5, 14.6, 0.0)           # 舷側の白帯
+    m.bxm("charcoal", 13.45, 13.62, 34, 60, 6.0, 17.0, 0.0)         # 舷側ランプドア
+    m.bxm("light", 13.0, 13.45, -68, 74, ZT - 0.2, ZT + 0.9, 0.0)
+    # 船尾ランプ
+    m.bx("charcoal", -10.5, 10.5, 75.0, 75.2, 5.0, 19.0, 0.0)
+    m.prism("light", [(75, 7.0), (85, 3.0), (85, 3.6), (75, 7.6)], 'yz', -9.5, 9.5, 0.0)
+    for sx in (-1, 1):
+        m.beam("charcoal", (sx * 9.2, 75.2, 19.0), (sx * 9.2, 84.5, 3.6), 0.3)
+    # 甲板上の通風筒と荷役機器
+    for i in range(10):
+        y = 60 - i * 13
+        m.bxm("light", 4.0, 7.0, y, y + 4.0, ZT, ZT + 2.4, 0.1)
+    m.bx("light", -2.0, 2.0, 30, 60, ZT, ZT + 0.5, 0.05)
+    # 船首の小さな船橋
+    m.bx("white", -8.5, 8.5, -76, -62, 23.2, 27.4, 0.3)
+    m.bx("white", -9.4, 9.4, -74, -64, 27.4, 30.6, 0.2)
+    m.bx("glass", -9.2, 9.2, -74.1, -73.85, 28.2, 30.0, 0.0)
+    m.bxm("glass", 9.3, 9.46, -73, -65, 28.2, 30.0, 0.0)
+    m.bx("glass", -7.5, 7.5, -76.1, -75.85, 24.5, 26.2, 0.0)
+    m.bx("light", -9.5, 9.5, -74.2, -63.8, 30.6, 30.9, 0.05)
+    m.bx("ship", -2.0, 2.0, -70, -66, 30.9, 33.5, 0.2)
+    m.cyl("light", (0, -68, 34.5), 0.25, 6.0, 'z', 8)
+    m.bx("light", -1.5, 1.5, -68.4, -67.6, 36.5, 36.8, 0.02)
+    # 船尾の煙突（細い）
+    m.bx("ship", -1.8, 1.8, 40, 44, ZT, ZT + 7.0, 0.2)
+    m.bx("charcoal", -1.6, 1.6, 40.2, 43.8, ZT + 7.0, ZT + 7.4, 0.05)
+    return m
+
+
+# ---------------------------------------------------------------- 15 旅客機（床下貨物を運ぶ）
+def build_passenger_jet():
+    m = Mdl("passenger_jet")
+    st = [(-28.5, .4, 3.9), (-27.5, 1.4, 4.0), (-25.5, 2.2, 4.2), (-22, 2.7, 4.4), (-18, 2.8, 4.4),
+          (15, 2.8, 4.4), (20, 2.6, 4.7), (24, 2.0, 5.4), (27, 1.2, 6.0), (28.5, .5, 6.3)]
+    n = 16
+    rings = []
+    for y, r, zc in st:
+        rings.append([(r * math.sin(2 * math.pi * k / n), y, zc - r * math.cos(2 * math.pi * k / n)) for k in range(n)])
+    segm = []
+    for k in range(n):
+        zrel = -math.cos((k + .5) * 2 * math.pi / n)
+        segm.append("plane" if zrel < -0.4 else "white")
+    m.loft(segm, rings, "white", "white")
+    # 操縦席の窓と客室窓の列（窓あり。貨物機との違い）
+    m.bx("glass", -1.3, 1.3, -26.8, -25.7, 4.75, 5.35, 0.0)
+    ys = -21.0
+    while ys < 16.5:
+        r = interp(ys, [(a, b) for a, b, _ in st])
+        zc = interp(ys, [(a, c) for a, _, c in st])
+        for sx in (-1, 1):
+            x0, x1 = sorted((sx * r * 0.93, sx * (r * 0.975)))
+            m.bx("glass", x0, x1, ys, ys + 0.45, zc + 0.35, zc + 0.75, 0.0)
+        ys += 0.9
+    # 乗降ドアの線
+    for yd in (-23.5, -8.0, 14.0):
+        r = interp(yd, [(a, b) for a, b, _ in st])
+        zc = interp(yd, [(a, c) for a, _, c in st])
+        for sx in (-1, 1):
+            x0, x1 = sorted((sx * r * 0.94, sx * (r * 0.985)))
+            m.bx("light", x0, x1, yd, yd + 1.1, zc - 1.0, zc + 0.9, 0.0)
+    # 垂直尾翼・水平尾翼
+    m.prism("plane", [(13.5, 6.8), (21, 16.5), (25.8, 16.5), (27.2, 6.4)], 'yz', -0.25, 0.25, 0.08)
+    for sx in (1, -1):
+        m.slab("white", [(sx * 1.2, 20.0, 6.0), (sx * 10.5, 25.0, 6.0), (sx * 10.5, 26.8, 6.0), (sx * 1.2, 27.0, 6.0)], 0.3)
+        # 主翼（低翼）とウイングレット
+        m.slab("white", [(sx * 2.5, -4.0, 3.4), (sx * 28.5, 8.5, 4.3), (sx * 28.5, 12.0, 4.3), (sx * 2.5, 8.0, 3.4)], 0.6)
+        wl0, wl1 = sorted((sx * 28.2, sx * 28.6))
+        m.bx("plane", wl0, wl1, 8.6, 12.0, 4.3, 6.4, 0.04)
+        # エンジン（翼の下）
+        x = sx * 9.5
+        m.bx("light", x - 0.25, x + 0.25, -3.5, 0.5, 2.7, 3.4, 0.04)
+        m.cyl("plane", (x, -5.2, 1.9), 1.3, 0.6, 'y', 16)
+        m.cyl("white", (x, -2.6, 1.9), 1.22, 5.0, 'y', 16)
+        m.cyl("grey", (x, 0.9, 1.9), 1.22, 2.0, 'y', 16, r2=0.8)
+        m.cyl("charcoal", (x, 1.9, 1.9), 0.5, 0.8, 'y', 10, r2=0.15)
+        m.cyl("charcoal", (x, -5.55, 1.9), 1.05, 0.1, 'y', 12)
+        # 主脚
+        for xo in (3.6, 4.3):
+            m.wheel(sx * xo, 3.4, 0.55, 0.55, 0.38, 12)
+        m.bx("charcoal", sx * 3.95 - 0.15, sx * 3.95 + 0.15, 3.2, 3.6, 0.5, 2.9, 0.03)
+        m.wheel(sx * 0.35, -21, 0.4, 0.4, 0.22, 10)
+    m.cyl("charcoal", (0, -21, 1.15), 0.1, 1.3, 'z', 8)
+    return m
+
+
+# ---------------------------------------------------------------- 16 冷凍冷蔵倉庫
+def build_cold_storage():
+    m = Mdl("cold_storage")
+    m.bx("asphalt", -62, 62, -48, -33, 0, 0.25, 0.05)
+    m.bx("concrete", -60.3, 60.3, -33, 30.3, 0, 1.2, 0.05)         # 基礎とドックの床
+    m.bx("white", -60, 60, -30, 30, 1.2, 25, 0.4)                  # 窓なしの断熱パネル壁
+    m.bx("light", -60.15, 60.15, -30.15, 30.15, 12.0, 12.6, 0.0)   # パネル継ぎ目の帯
+    m.bx("grey", -60.3, 60.3, -30.3, 30.3, 24.2, 25.4, 0.1)        # 屋根の縁
+    # 屋上の凝縮ユニット
+    for ix in range(5):
+        x = -44 + 22 * ix
+        for y in (-12, 12):
+            m.bx("light", x - 6, x + 6, y - 3, y + 3, 25.4, 28.0, 0.08)
+            for fx in (-3, 3):
+                m.cyl("charcoal", (x + fx, y, 28.08), 2.0, 0.16, 'z', 12)
+    m.bx("grey", -50, 50, -0.5, 0.5, 25.4, 26.4, 0.0)
+    m.bx("white", -8, 8, -2, 14, 25.4, 28.5, 0.15)                  # 機械室
+    # 搬入口（-Y 側の長辺）
+    for i in range(10):
+        c = -49.5 + 11 * i
+        m.bx("charcoal", c - 2.2, c + 2.2, -30.4, -29.9, 1.2, 5.2, 0.03)
+        m.bx("grey", c - 2.6, c - 2.3, -33.0, -30.0, 1.2, 5.6, 0.0)
+        m.bx("grey", c + 2.3, c + 2.6, -33.0, -30.0, 1.2, 5.6, 0.0)
+        m.bx("grey", c - 2.6, c + 2.6, -33.0, -30.0, 5.4, 5.7, 0.0)
+    # トラックの高さの庇（2 ドア分ずつ 3 か所）
+    for i in (0, 4, 8):
+        cx = -49.5 + 11 * i + 5.5
+        m.bx("truck", cx - 10, cx + 10, -42, -30, 5.0, 5.3, 0.04)
+        for sx in (-1, 1):
+            m.bx("charcoal", cx + sx * 10 - 0.2, cx + sx * 10 + 0.2, -42.2, -41.8, 0.25, 5.0, 0.0)
+    return m
+
+
+# ---------------------------------------------------------------- 17 空港貨物ターミナル
+def build_air_terminal():
+    m = Mdl("air_cargo_terminal")
+    m.bx("asphalt", -100, 100, -40, -5, 0, 0.25, 0.05)             # 空側のエプロン
+    m.bx("asphalt", -100, 100, 30, 40, 0, 0.25, 0.05)              # 陸側の車寄せ
+    m.bx("white", -100, 100, -5, 30, 0.25, 9.0, 0.3)
+    m.prism("light", [(-5.3, 9.0), (30.3, 9.0), (27.0, 12.2), (12.5, 14.8), (-2.0, 12.2)],
+            'yz', -100.3, 100.3, 0.0)
+    m.bx("plane", -100.2, 100.2, -5.3, 30.3, 7.2, 8.2, 0.0)        # 薄紫の帯
+    # 空側: 大扉と貨物の搬入口
+    m.bx("grey", -35, 35, -5.25, -4.9, 0.25, 8.0, 0.02)
+    for sx in (-1, 1):
+        for c in (45, 60, 75, 90):
+            cx = sx * c
+            m.bx("charcoal", cx - 5, cx + 5, -5.3, -4.9, 0.25, 5.2, 0.03)
+            m.bx("plane", cx - 6, cx + 6, -11, -5, 6.0, 6.3, 0.0)
+    # 陸側: トラック搬入口
+    for i in range(10):
+        c = -81 + 18 * i
+        m.bx("charcoal", c - 2.2, c + 2.2, 29.8, 30.3, 0.25, 4.6, 0.03)
+        m.bx("truck", c - 3, c + 3, 30, 36, 5.0, 5.3, 0.0)
+    # エプロンの目印線
+    m.bx("lamp", -100, 100, -32, -31.8, 0.25, 0.28, 0.0)
+    m.bx("lamp", -0.15, 0.15, -40, -32, 0.25, 0.28, 0.0)
+    # ULD ドーリー（台車 + コンテナ）の列
+    uld = ["light", "white", "grey", "plane", "light", "white"]
+    for row, (y, x0, n) in enumerate(((-16.0, -88, 25), (-23.5, -62, 18))):
+        for i in range(n):
+            x = x0 + i * 7.0
+            m.bx("charcoal", x - 1.6, x + 1.6, y - 1.25, y + 1.25, 0.25, 0.55, 0.0)
+            if (i + row) % 5 != 4:
+                m.bx(uld[(i * 2 + row) % len(uld)], x - 1.5, x + 1.5, y - 1.1, y + 1.1, 0.55, 2.15, 0.0)
+        # 牽引車
+        m.bx("truck", x0 - 5.0, x0 - 2.6, y - 0.9, y + 0.9, 0.25, 1.5, 0.04)
+    return m
+
+
+# ---------------------------------------------------------------- 18 コンテナヤード
+def build_container_yard():
+    m = Mdl("container_yard")
+    m.bx("asphalt", -75, 75, -30, 30, 0, 0.3, 0.05)
+    cols = ["ship", "grey", "white", "light", "ship_dk", "truck", "rail", "grey", "white", "ship"]
+    for blk, y0 in enumerate((-25.0, 5.0)):
+        for r in range(5):
+            for c in range(7):
+                h = 1 + (c * 3 + r * 5 + blk * 2) % 4
+                if (c + r * 2 + blk) % 7 == 0:
+                    continue
+                x0 = -44.1 + c * 12.6
+                for lv in range(h):
+                    z0 = 0.3 + lv * 2.6
+                    m.bx(cols[(c * 3 + r * 7 + lv * 5 + blk) % len(cols)], x0, x0 + 12.2,
+                         y0 + r * 2.7, y0 + r * 2.7 + 2.45, z0, z0 + 2.5, 0.0)
+    # 走行レーンの線
+    m.bx("lamp", -72, 72, -6.9, -6.8, 0.3, 0.32, 0.0)
+    m.bx("lamp", -72, 72, 1.8, 1.9, 0.3, 0.32, 0.0)
+    # タイヤ式門型クレーン（RTG）。ブロック A の 5 列をまたぐ
+    gx = -12.0
+    ylo, yhi = -27.4, -4.4
+    for xf in (gx - 4.5, gx + 4.5):
+        for yl in (ylo, yhi):
+            m.bx("light", xf - 0.5, xf + 0.5, yl - 0.5, yl + 0.5, 0.9, 17.0, 0.08)
+            m.bx("charcoal", xf - 0.9, xf + 0.9, yl - 0.7, yl + 0.7, 0.3, 0.9, 0.04)
+            for dx in (-0.6, 0.6):
+                m.cyl("rubber", (xf + dx, yl, 0.85), 0.55, 0.5, 'y', 10)
+        m.bx("ship", xf - 0.7, xf + 0.7, ylo - 0.8, yhi + 0.8, 17.0, 18.4, 0.1)
+    m.bx("ship", gx - 4.5, gx + 4.5, ylo - 0.4, ylo + 0.4, 16.2, 17.0, 0.05)
+    m.bx("ship", gx - 4.5, gx + 4.5, yhi - 0.4, yhi + 0.4, 16.2, 17.0, 0.05)
+    m.bx("white", gx - 3.0, gx + 3.0, -17.4, -12.6, 18.4, 19.8, 0.1)    # トロリー
+    m.bx("white", gx + 4.9, gx + 7.1, yhi - 2.2, yhi + 0.8, 12.0, 14.6, 0.1)  # 運転室
+    m.bx("glass", gx + 4.85, gx + 4.95, yhi - 1.9, yhi + 0.5, 12.6, 14.2, 0.0)
+    m.bx("light", gx - 4.0, gx - 1.0, yhi - 2.0, yhi, 17.0, 18.6, 0.1)  # 機械室
+    # 吊り具と吊っているコンテナ（上空を通る高さ）
+    m.bx("grey", gx - 6.1, gx + 6.1, -16.2, -13.8, 14.4, 14.9, 0.03)
+    m.bx("ship", gx - 6.1, gx + 6.1, -16.2, -13.8, 11.8, 14.4, 0.03)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            m.bx("charcoal", gx + sx * 5.5 - 0.04, gx + sx * 5.5 + 0.04, -15 + sy * 1.0 - 0.04,
+                 -15 + sy * 1.0 + 0.04, 14.9, 18.4, 0.0)
+    # 照明塔
+    for x, y in ((-70, -26), (70, -26), (-70, 26), (70, 26)):
+        m.bx("light", x - 0.25, x + 0.25, y - 0.25, y + 0.25, 0.3, 22, 0.02)
+        m.bx("lamp", x - 1.2, x + 1.2, y - 0.5, y + 0.5, 22, 22.5, 0.05)
+    return m
+
 MODELS = [("truck", build_truck), ("freight_train", build_train), ("ferry", build_ferry),
           ("cargo_plane", build_plane), ("warehouse", build_warehouse),
-          ("terminal", build_terminal), ("port_crane", build_crane)]
+          ("terminal", build_terminal), ("port_crane", build_crane),
+          ("kei_van", build_kei_van), ("box_2t", build_box2t), ("truck_4t", build_truck4t),
+          ("trailer", build_trailer), ("container_12ft", build_container12),
+          ("container_ship", build_container_ship), ("roro_ship", build_roro_ship),
+          ("passenger_jet", build_passenger_jet), ("cold_storage", build_cold_storage),
+          ("air_cargo_terminal", build_air_terminal), ("container_yard", build_container_yard)]
+NEW_MODELS = [n for n, _ in MODELS[7:]]  # 今回足した 11 種（コンタクトシートの 2 枚目）
 
 
 # ---------------------------------------------------------------- 全体
@@ -532,8 +979,9 @@ def export_all(outdir=GLB_DIR):
     return sizes
 
 
-def render_tiles(outdir, w=960, h=1080):
-    """各モデルを 3/4 視点（前方右上）から直交カメラで撮る。"""
+def render_tiles(outdir, w=960, h=1080, names=None):
+    """各モデルを 3/4 視点（前方右上）から直交カメラで撮る。names を渡すとその分だけ撮る。"""
+    names = names or [n for n, _ in MODELS]
     os.makedirs(outdir, exist_ok=True)
     sc = bpy.context.scene
     sc.render.engine = 'BLENDER_EEVEE'
@@ -570,7 +1018,7 @@ def render_tiles(outdir, w=960, h=1080):
     cam.rotation_euler = (-back).to_track_quat('-Z', 'Y').to_euler()
     R = cam.rotation_euler.to_matrix()
     right, up = R @ Vector((1, 0, 0)), R @ Vector((0, 1, 0))
-    for n, _ in MODELS:
+    for n in names:
         for k, _f in MODELS:
             bpy.data.objects[k].hide_render = (k != n)
         ob = bpy.data.objects[n]
@@ -584,7 +1032,10 @@ def render_tiles(outdir, w=960, h=1080):
         ys = [c.dot(up) for c in cs]
         cr, cu = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
         cam.location = right * cr + up * cu + back * (ctr.dot(back) + ext * 2)
-        cam_d.ortho_scale = max((max(xs) - min(xs)) * h / w, max(ys) - min(ys)) * 1.12  # 縦長の画面では高さの寸法
+        if w >= h:  # 横長の画面では ortho_scale が幅の寸法になる
+            cam_d.ortho_scale = max(max(xs) - min(xs), (max(ys) - min(ys)) * w / h) * 1.12
+        else:
+            cam_d.ortho_scale = max((max(xs) - min(xs)) * h / w, max(ys) - min(ys)) * 1.12  # 縦長の画面では高さの寸法
         sc.render.filepath = os.path.join(outdir, n + ".png")
         bpy.ops.render.render(write_still=True)
     with open(os.path.join(outdir, "stats.json"), "w", encoding="utf-8", newline="\n") as fp:
@@ -606,7 +1057,9 @@ def main():
     for n in st:
         print(n, st[n], sizes[n], "bytes")
     if "--tiles" in argv:
-        render_tiles(argv[argv.index("--tiles") + 1])
+        tdir = argv[argv.index("--tiles") + 1]
+        render_tiles(tdir, names=[n for n, _ in MODELS if n not in NEW_MODELS])  # 1 枚目（縦長タイル）
+        render_tiles(tdir, 960, 720, names=NEW_MODELS)  # 2 枚目（4:3 タイル）
 
 
 if bpy.app.background:
