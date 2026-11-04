@@ -1,0 +1,241 @@
+{
+  "note": "dims_m / inner_m は [L(前後=Y), W(左右=X), H]。単位 m。原点は床の中心、前 = glTF +Z。",
+  "props": [
+    {
+      "name": "pallet_t11",
+      "label_ja": "T11 パレット",
+      "file": "pallet_t11.glb",
+      "dims_m": [
+        1.1,
+        1.1,
+        0.144
+      ],
+      "glb_bytes": 22516,
+      "tris": 364,
+      "deck_top_m": 0.144
+    },
+    {
+      "name": "roll_cage",
+      "label_ja": "カゴ台車",
+      "file": "roll_cage.glb",
+      "dims_m": [
+        0.8,
+        0.6,
+        1.7
+      ],
+      "glb_bytes": 32252,
+      "tris": 760,
+      "inner_m": [
+        0.76,
+        0.56,
+        1.52
+      ],
+      "inner_floor_z_m": 0.18
+    },
+    {
+      "name": "box_60",
+      "label_ja": "段ボール 60サイズ",
+      "file": "box_60.glb",
+      "dims_m": [
+        0.25,
+        0.2,
+        0.15
+      ],
+      "glb_bytes": 6336,
+      "tris": 80
+    },
+    {
+      "name": "box_80",
+      "label_ja": "段ボール 80サイズ",
+      "file": "box_80.glb",
+      "dims_m": [
+        0.35,
+        0.25,
+        0.2
+      ],
+      "glb_bytes": 6336,
+      "tris": 80
+    },
+    {
+      "name": "box_100",
+      "label_ja": "段ボール 100サイズ",
+      "file": "box_100.glb",
+      "dims_m": [
+        0.4,
+        0.35,
+        0.25
+      ],
+      "glb_bytes": 6352,
+      "tris": 80
+    },
+    {
+      "name": "box_120",
+      "label_ja": "段ボール 120サイズ",
+      "file": "box_120.glb",
+      "dims_m": [
+        0.5,
+        0.4,
+        0.3
+      ],
+      "glb_bytes": 6332,
+      "tris": 80
+    },
+    {
+      "name": "box_140",
+      "label_ja": "段ボール 140サイズ",
+      "file": "box_140.glb",
+      "dims_m": [
+        0.55,
+        0.45,
+        0.4
+      ],
+      "glb_bytes": 6356,
+      "tris": 80
+    },
+    {
+      "name": "box_160",
+      "label_ja": "段ボール 160サイズ",
+      "file": "box_160.glb",
+      "dims_m": [
+        0.6,
+        0.55,
+        0.45
+      ],
+      "glb_bytes": 6364,
+      "tris": 80
+    },
+    {
+      "name": "forklift",
+      "label_ja": "フォークリフト 2.5t",
+      "file": "forklift.glb",
+      "dims_m": [
+        3.6,
+        1.2,
+        2.1
+      ],
+      "glb_bytes": 53612,
+      "tris": 1032
+    },
+    {
+      "name": "uld_ld3",
+      "label_ja": "航空コンテナ LD3",
+      "file": "uld_ld3.glb",
+      "dims_m": [
+        1.53,
+        1.56,
+        1.63
+      ],
+      "glb_bytes": 14984,
+      "tris": 216,
+      "inner_m": [
+        1.43,
+        1.4,
+        1.45
+      ],
+      "inner_floor_z_m": 0.1
+    },
+    {
+      "name": "container_20ft",
+      "label_ja": "20ft 海上コンテナ",
+      "file": "container_20ft.glb",
+      "dims_m": [
+        6.058,
+        2.438,
+        2.591
+      ],
+      "glb_bytes": 47376,
+      "tris": 1424,
+      "inner_m": [
+        5.9,
+        2.35,
+        2.39
+      ],
+      "inner_floor_z_m": 0.14
+    },
+    {
+      "name": "container_31ft",
+      "label_ja": "31ft 鉄道コンテナ",
+      "file": "container_31ft.glb",
+      "dims_m": [
+        9.41,
+        2.49,
+        2.62
+      ],
+      "glb_bytes": 36068,
+      "tris": 856,
+      "inner_m": [
+        9.25,
+        2.35,
+        2.4
+      ],
+      "inner_floor_z_m": 0.14
+    },
+    {
+      "name": "reefer_12ft",
+      "label_ja": "12ft 冷凍コンテナ",
+      "file": "reefer_12ft.glb",
+      "dims_m": [
+        3.72,
+        2.45,
+        2.6
+      ],
+      "glb_bytes": 33284,
+      "tris": 524,
+      "inner_m": [
+        3.2,
+        2.3,
+        2.2
+      ],
+      "inner_floor_z_m": 0.14
+    },
+    {
+      "name": "koki_wagon",
+      "label_ja": "コキ コンテナ貨車",
+      "file": "koki_wagon.glb",
+      "dims_m": [
+        20.4,
+        2.64,
+        1.14
+      ],
+      "glb_bytes": 51988,
+      "tris": 1028,
+      "deck_top_m": 1.0
+    },
+    {
+      "name": "dock_leveler",
+      "label_ja": "ドックレベラー（搬入口）",
+      "file": "dock_leveler.glb",
+      "dims_m": [
+        1.5,
+        4.0,
+        4.5
+      ],
+      "glb_bytes": 47796,
+      "tris": 712
+    },
+    {
+      "name": "road_cone",
+      "label_ja": "カラーコーン",
+      "file": "road_cone.glb",
+      "dims_m": [
+        0.36,
+        0.36,
+        0.7
+      ],
+      "glb_bytes": 10176,
+      "tris": 200
+    },
+    {
+      "name": "pallet_stack",
+      "label_ja": "パレット積み（段ボール 30 個）",
+      "file": "pallet_stack.glb",
+      "dims_m": [
+        1.1,
+        1.1,
+        1.598
+      ],
+      "glb_bytes": 54528,
+      "tris": 940
+    }
+  ]
+}
