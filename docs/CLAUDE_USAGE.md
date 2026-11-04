@@ -12,6 +12,7 @@
 |---|---|---|
 | `local-ai`（自作、`tools/local_ai_mcp/server.py`） | ComfyUI のワークフロー実行、VRAM 解放、Ollama での生成 | ローカル GPU を Claude から直接使い、処理時間と VRAM を毎回記録するため |
 | Blender MCP（Blender 5.2 の拡張機能 `mcp`。`--online-mode` で起動し、タイマーで `bpy.ops.blmcp.server_start` を呼ぶ。127.0.0.1:9876） | 対話中の Blender で Python（bpy）を実行し、画面を確認しながら 3D モデル 7 種（トラック・貨物列車・フェリー・貨物機・倉庫・ターミナル・ガントリークレーン）を作って glTF に書き出す | 形を見て直す往復を Claude が回すため。同じ作業は `assets3d/source/build_models.py` で MCP なしでも再現できる |
+| Blender MCP → glTF → deck.gl `ScenegraphLayer`（`web/models3d.js`） | Blender で作った `web/models/*.glb` を、地図を拡大したときだけ 3D で出す（縮小時は 2D アイコン、SPEC §19） | 作った形を別のツールに移さず、同じ glb をそのまま地図に載せられるため。向きは `roll = 90`、`yaw = ang + 180` で合わせた |
 
 ## サブエージェント
 
