@@ -98,6 +98,16 @@ class Mdl:
     def __init__(s, name):
         s.name = name
         s.V, s.F, s.M, s.mats = [], [], [], []
+        s.parts = []               # アニメーション用に分けた子の部品（Mdl）
+        s.pivot = Vector((0, 0, 0))  # 部品の回転・移動の基準点（モデル座標）
+
+    def part(s, name, pivot):
+        """動く部品を別オブジェクトにするための入れ物。座標はモデル座標のまま書き、
+        finish で pivot を原点に付け替えて、ルートの子にする。"""
+        p = Mdl(s.name + "_" + name)
+        p.pivot = Vector(pivot)
+        s.parts.append(p)
+        return p
 
     def _mi(s, n):
         if n not in s.mats:
@@ -197,8 +207,16 @@ class Mdl:
             s.cyl("hub", (x, y, z), r * 0.55, w + 0.06, 'x', seg)
 
     def finish(s):
+        ob = s._obj(Vector((0, 0, 0)))
+        for p in s.parts:
+            po = p._obj(p.pivot)
+            po.parent = ob
+            po.location = p.pivot
+        return ob
+
+    def _obj(s, pivot):
         me = bpy.data.meshes.new(s.name)
-        me.from_pydata(s.V, [], s.F)
+        me.from_pydata([tuple(Vector(v) - pivot) for v in s.V], [], s.F)
         for n in s.mats:
             me.materials.append(mat(n))
         me.polygons.foreach_set("material_index", s.M)
@@ -222,6 +240,24 @@ class Mdl:
 
 
 # ---------------------------------------------------------------- 1 トラック
+def wing_body(m, hx, y0, y1, zf, zt, stripe):
+    """ウイングボディの荷台。床と中身は本体に、左右の翼（側面 + 屋根の半分）は別部品にする。
+    翼の回転軸は屋根の中心線（x=0, z=zt, y 方向）。閉じた状態は従来の白い箱と同じ見た目。
+    stripe = (y0, y1, z0, z1) は翼の外側に付ける橙帯。"""
+    t = 0.1
+    zw = zf + 0.3
+    m.bx("white", -hx, hx, y0, y1, zf, zw, 0.05)                      # 床
+    m.bx("light", -hx + t, hx - t, y0, y1, zw, zt - t, 0.0)           # 荷室の中身
+    m.bx("white", -hx, hx, y0 - 0.06, y0, zf, zt, 0.03)               # 前面の板（翼が回る範囲の外）
+    for sx, nm in ((1, "wing_r"), (-1, "wing_l")):
+        w = m.part(nm, (0, (y0 + y1) / 2, zt))
+        pts = [(0, zt), (sx * hx, zt), (sx * hx, zw), (sx * (hx - t), zw), (sx * (hx - t), zt - t), (0, zt - t)]
+        w.prism("white", pts, 'xz', y0, y1, 0.05)
+        xa, xb = sorted((sx * (hx - 0.01), sx * (hx + 0.02)))
+        w.bx("truck", xa, xb, stripe[0], stripe[1], stripe[2], stripe[3], 0.0)
+
+
+# ---------------------------------------------------------------- 1 トラック
 def build_truck():
     m = Mdl("truck")
     m.bx("charcoal", -1.0, 1.0, -5.5, 5.9, 0.85, 1.15, 0.05)
@@ -236,8 +272,7 @@ def build_truck():
     m.bx("charcoal", -1.15, 1.15, -6.12, -5.92, 0.7, 1.05, 0.05)
     m.bxm("charcoal", 1.25, 1.5, -5.6, -5.45, 2.0, 2.55, 0.03)
     # 荷台（ウイングボディ）
-    m.bx("white", -1.25, 1.25, -3.5, 5.9, 1.2, 3.85, 0.1)
-    m.bxm("truck", 1.24, 1.27, -3.3, 5.7, 1.85, 2.45, 0.0)
+    wing_body(m, 1.25, -3.5, 5.9, 1.2, 3.85, (-3.3, 5.7, 1.85, 2.45))
     m.bx("light", -1.2, 1.2, 5.9, 5.97, 1.4, 3.75, 0.03)
     m.bx("charcoal", -1.15, 1.15, 5.7, 6.0, 0.75, 1.0, 0.04)
     m.bxm("grey", 1.0, 1.28, -2.8, -1.2, 0.7, 1.1, 0.05)
@@ -460,12 +495,16 @@ def build_crane():
     m.bxm("ship", 2.0, 4.4, -62, 32, 34, 37.2, 0.15)
     for y in range(-60, 31, 10):
         m.bx("white", -4.4, 4.4, y, y + 0.8, 34.3, 36.9, 0.05)
-    m.bx("white", -4.6, 4.6, -34, -27.5, 37.2, 39.5, 0.2)
-    m.bx("charcoal", -6.1, 6.1, -32.2, -29.8, 21.0, 21.5, 0.05)
-    m.bx("ship_dk", -6.1, 6.1, -32.1, -29.9, 18.4, 21.0, 0.08)
+    # 動く部品: トロリー、吊り具（コンテナ付き）、巻き上げワイヤ（上端 37.2 m に固定して縦に伸縮）
+    tr = m.part("trolley", (0, -31, 37.2))
+    sp = m.part("spreader", (0, -31, 21.5))
+    cb = m.part("cables", (0, -31, 37.2))
+    tr.bx("white", -4.6, 4.6, -34, -27.5, 37.2, 39.5, 0.2)
+    sp.bx("charcoal", -6.1, 6.1, -32.2, -29.8, 21.0, 21.5, 0.05)
+    sp.bx("ship_dk", -6.1, 6.1, -32.1, -29.9, 18.4, 21.0, 0.08)
     for sx in (-1, 1):
         for y in (-32.0, -30.0):
-            m.bx("charcoal", sx * 5.5 - 0.06, sx * 5.5 + 0.06, y - 0.06, y + 0.06, 21.5, 37.2, 0.0)
+            cb.bx("charcoal", sx * 5.5 - 0.06, sx * 5.5 + 0.06, y - 0.06, y + 0.06, 21.5, 37.2, 0.0)
     m.bx("white", -5, 5, 8, 24, 37.2, 44, 0.5)
     m.bx("glass", -5.05, 5.05, 8.6, 12, 40, 42.5, 0.0)
     for sx in (-1, 1):
@@ -568,8 +607,7 @@ def build_truck4t():
     m.bxm("lamp", 0.7, 1.0, -4.28, -4.2, 1.5, 1.7, 0.02)
     m.bx("charcoal", -1.05, 1.05, -4.4, -4.2, 0.7, 1.0, 0.05)
     # 荷台（ウイングボディ）
-    m.bx("white", -1.1, 1.1, -2.2, 4.25, 1.1, 3.3, 0.1)
-    m.bxm("truck", 1.09, 1.12, -2.0, 4.05, 1.85, 2.45, 0.0)
+    wing_body(m, 1.1, -2.2, 4.25, 1.1, 3.3, (-2.0, 4.05, 1.85, 2.45))
     m.bx("light", -1.05, 1.05, 4.25, 4.31, 1.3, 3.2, 0.03)
     m.bx("charcoal", -1.0, 1.0, 4.1, 4.3, 0.7, 0.95, 0.04)
     m.bxm("grey", 0.9, 1.12, -1.8, -0.5, 0.65, 1.0, 0.05)
@@ -666,7 +704,8 @@ def build_container_ship():
     m.bxm("ship", 8.97, 9.06, -34, 46, 5.8, 7.4, 0.0)          # 舷側の帯
     m.bxm("light", 8.75, 9.0, -34, 46, DEP, DEP + 0.9, 0.0)    # ブルワーク
     # 甲板のコンテナ（ベイごとに段数を変える）
-    cols = ["ship", "grey", "white", "ship", "light", "ship_dk", "grey", "truck", "white", "rail"]
+    # 地図では橙=トラック、緑=鉄道の意味なので、船のコンテナには使わない
+    cols = ["ship", "grey", "white", "ship", "light", "ship_dk", "grey", "light", "white", "ship_dk"]
     base_h = [3, 4, 4, 4, 3, 3, 2]
     for k in range(7):
         y1 = 38 - 12.5 * k
@@ -860,13 +899,14 @@ def build_air_terminal():
     # ULD ドーリー（台車 + コンテナ）の列
     uld = ["light", "white", "grey", "plane", "light", "white"]
     for row, (y, x0, n) in enumerate(((-16.0, -88, 25), (-23.5, -62, 18))):
+        r = m.part("uld_row%d" % (row + 1), (0, y, 0))  # 列ごとに x 方向へ往復する
         for i in range(n):
             x = x0 + i * 7.0
-            m.bx("charcoal", x - 1.6, x + 1.6, y - 1.25, y + 1.25, 0.25, 0.55, 0.0)
+            r.bx("charcoal", x - 1.6, x + 1.6, y - 1.25, y + 1.25, 0.25, 0.55, 0.0)
             if (i + row) % 5 != 4:
-                m.bx(uld[(i * 2 + row) % len(uld)], x - 1.5, x + 1.5, y - 1.1, y + 1.1, 0.55, 2.15, 0.0)
+                r.bx(uld[(i * 2 + row) % len(uld)], x - 1.5, x + 1.5, y - 1.1, y + 1.1, 0.55, 2.15, 0.0)
         # 牽引車
-        m.bx("truck", x0 - 5.0, x0 - 2.6, y - 0.9, y + 0.9, 0.25, 1.5, 0.04)
+        r.bx("truck", x0 - 5.0, x0 - 2.6, y - 0.9, y + 0.9, 0.25, 1.5, 0.04)
     return m
 
 
@@ -874,7 +914,8 @@ def build_air_terminal():
 def build_container_yard():
     m = Mdl("container_yard")
     m.bx("asphalt", -75, 75, -30, 30, 0, 0.3, 0.05)
-    cols = ["ship", "grey", "white", "light", "ship_dk", "truck", "rail", "grey", "white", "ship"]
+    # 橙・緑は輸送手段の色なので使わない（灰・白・水色系のみ）
+    cols = ["ship", "grey", "white", "light", "ship_dk", "light", "grey", "grey", "white", "ship"]
     for blk, y0 in enumerate((-25.0, 5.0)):
         for r in range(5):
             for c in range(7):
@@ -889,29 +930,33 @@ def build_container_yard():
     # 走行レーンの線
     m.bx("lamp", -72, 72, -6.9, -6.8, 0.3, 0.32, 0.0)
     m.bx("lamp", -72, 72, 1.8, 1.9, 0.3, 0.32, 0.0)
-    # タイヤ式門型クレーン（RTG）。ブロック A の 5 列をまたぐ
+    # タイヤ式門型クレーン（RTG）。ブロック A の 5 列をまたぐ。
+    # 動く部品: 門型本体（x 方向に走行）、トロリー（本体上で y 方向に横行）、吊り具とコンテナ（両方に追従）
     gx = -12.0
     ylo, yhi = -27.4, -4.4
+    gt = m.part("gantry", (gx, -15, 0))
+    tr = m.part("trolley", (gx, -15, 18.4))
+    sp = m.part("spreader", (gx, -15, 14.9))
     for xf in (gx - 4.5, gx + 4.5):
         for yl in (ylo, yhi):
-            m.bx("light", xf - 0.5, xf + 0.5, yl - 0.5, yl + 0.5, 0.9, 17.0, 0.08)
-            m.bx("charcoal", xf - 0.9, xf + 0.9, yl - 0.7, yl + 0.7, 0.3, 0.9, 0.04)
+            gt.bx("light", xf - 0.5, xf + 0.5, yl - 0.5, yl + 0.5, 0.9, 17.0, 0.08)
+            gt.bx("charcoal", xf - 0.9, xf + 0.9, yl - 0.7, yl + 0.7, 0.3, 0.9, 0.04)
             for dx in (-0.6, 0.6):
-                m.cyl("rubber", (xf + dx, yl, 0.85), 0.55, 0.5, 'y', 10)
-        m.bx("ship", xf - 0.7, xf + 0.7, ylo - 0.8, yhi + 0.8, 17.0, 18.4, 0.1)
-    m.bx("ship", gx - 4.5, gx + 4.5, ylo - 0.4, ylo + 0.4, 16.2, 17.0, 0.05)
-    m.bx("ship", gx - 4.5, gx + 4.5, yhi - 0.4, yhi + 0.4, 16.2, 17.0, 0.05)
-    m.bx("white", gx - 3.0, gx + 3.0, -17.4, -12.6, 18.4, 19.8, 0.1)    # トロリー
-    m.bx("white", gx + 4.9, gx + 7.1, yhi - 2.2, yhi + 0.8, 12.0, 14.6, 0.1)  # 運転室
-    m.bx("glass", gx + 4.85, gx + 4.95, yhi - 1.9, yhi + 0.5, 12.6, 14.2, 0.0)
-    m.bx("light", gx - 4.0, gx - 1.0, yhi - 2.0, yhi, 17.0, 18.6, 0.1)  # 機械室
+                gt.cyl("rubber", (xf + dx, yl, 0.85), 0.55, 0.5, 'y', 10)
+        gt.bx("ship", xf - 0.7, xf + 0.7, ylo - 0.8, yhi + 0.8, 17.0, 18.4, 0.1)
+    gt.bx("ship", gx - 4.5, gx + 4.5, ylo - 0.4, ylo + 0.4, 16.2, 17.0, 0.05)
+    gt.bx("ship", gx - 4.5, gx + 4.5, yhi - 0.4, yhi + 0.4, 16.2, 17.0, 0.05)
+    tr.bx("white", gx - 3.0, gx + 3.0, -17.4, -12.6, 18.4, 19.8, 0.1)    # トロリー
+    gt.bx("white", gx + 4.9, gx + 7.1, yhi - 2.2, yhi + 0.8, 12.0, 14.6, 0.1)  # 運転室
+    gt.bx("glass", gx + 4.85, gx + 4.95, yhi - 1.9, yhi + 0.5, 12.6, 14.2, 0.0)
+    gt.bx("light", gx - 4.0, gx - 1.0, yhi - 2.0, yhi, 17.0, 18.6, 0.1)  # 機械室
     # 吊り具と吊っているコンテナ（上空を通る高さ）
-    m.bx("grey", gx - 6.1, gx + 6.1, -16.2, -13.8, 14.4, 14.9, 0.03)
-    m.bx("ship", gx - 6.1, gx + 6.1, -16.2, -13.8, 11.8, 14.4, 0.03)
+    sp.bx("grey", gx - 6.1, gx + 6.1, -16.2, -13.8, 14.4, 14.9, 0.03)
+    sp.bx("ship", gx - 6.1, gx + 6.1, -16.2, -13.8, 11.8, 14.4, 0.03)
     for sx in (-1, 1):
         for sy in (-1, 1):
-            m.bx("charcoal", gx + sx * 5.5 - 0.04, gx + sx * 5.5 + 0.04, -15 + sy * 1.0 - 0.04,
-                 -15 + sy * 1.0 + 0.04, 14.9, 18.4, 0.0)
+            sp.bx("charcoal", gx + sx * 5.5 - 0.04, gx + sx * 5.5 + 0.04, -15 + sy * 1.0 - 0.04,
+                  -15 + sy * 1.0 + 0.04, 14.9, 18.4, 0.0)
     # 照明塔
     for x, y in ((-70, -26), (70, -26), (-70, 26), (70, 26)):
         m.bx("light", x - 0.25, x + 0.25, y - 0.25, y + 0.25, 0.3, 22, 0.02)
@@ -929,58 +974,179 @@ MODELS = [("truck", build_truck), ("freight_train", build_train), ("ferry", buil
 NEW_MODELS = [n for n, _ in MODELS[7:]]  # 今回足した 11 種（コンタクトシートの 2 枚目）
 
 
+# ---------------------------------------------------------------- アニメーション
+# 動く部品は子オブジェクト（ノード）にして、オブジェクトのキーで動かす（ボーンなし）。
+# 24 fps、ループ。glTF にはループ指定がないので、最後のキーを最初と同じにしてある。
+# deck.gl の ScenegraphLayer では _animations: {'*': {playing: true}} で再生できる。
+FPS = 24
+ANIM_RANGE = {}  # モデル名: (開始フレーム, 終了フレーム)
+
+
+def fr(t):
+    return 1 + round(t * FPS)
+
+
+def keys(ob, prop, idx, base, series):
+    """series = [(秒, 変化量), ...]。base + 変化量 を idx 番の成分のキーにする。"""
+    for t, v in series:
+        getattr(ob, prop)[idx] = base + v
+        ob.keyframe_insert(prop, index=idx, frame=fr(t))
+
+
+def bake(objs, name, dur):
+    """各オブジェクトのアクションを同じ名前の NLA トラックに移す（書き出しで 1 本のアニメーションにまとまる）。"""
+    for o in objs:
+        ad = o.animation_data
+        a = ad.action
+        a.name = name
+        tr = ad.nla_tracks.new()
+        tr.name = name
+        tr.strips.new(a.name, fr(0), a)
+        ad.action = None
+    return (fr(0), fr(dur))
+
+
+def part(n, nm):
+    return bpy.data.objects[n + "_" + nm]
+
+
+def anim_crane(n):
+    """トロリーが海側へ出て、吊り具が降りて戻り、元の位置へ帰る。12 秒。"""
+    tr, sp, cb = part(n, "trolley"), part(n, "spreader"), part(n, "cables")
+    dy = [(0, 0), (1, 0), (4, -22), (9.5, -22), (11.5, 0), (12, 0)]
+    dz = [(0, 0), (4, 0), (6.5, -9), (7, -9), (9.5, 0), (12, 0)]
+    for o in (tr, sp, cb):
+        keys(o, "location", 1, -31, dy)
+    keys(sp, "location", 2, 21.5, dz)
+    keys(cb, "location", 2, 37.2, [(t, 0) for t, _ in dz])
+    keys(cb, "scale", 2, 1.0, [(t, -v / 15.7) for t, v in dz])  # ワイヤ長 15.7 m の (1 + 降下量/15.7) 倍
+    return [tr, sp, cb], "crane_cycle", 12
+
+
+def anim_yard(n):
+    """RTG が列に沿ってゆっくり走り、トロリーが横行し、戻る。16 秒。"""
+    gt, tr, sp = part(n, "gantry"), part(n, "trolley"), part(n, "spreader")
+    dx = [(0, 0), (1, 0), (7, 18), (9, 18), (15, 0), (16, 0)]
+    dy = [(0, 0), (3, 5), (6, -5), (9, 5), (12, -5), (16, 0)]
+    for o in (gt, tr, sp):
+        keys(o, "location", 0, -12.0, dx)
+    for o in (tr, sp):
+        keys(o, "location", 1, -15.0, dy)
+    return [gt, tr, sp], "rtg_cycle", 16
+
+
+WING_OPEN_DEG = 80.0
+
+
+def anim_wings(n):
+    """左右の翼が屋根の中心線を軸に上へ開いて閉じる。8 秒（閉じて止まる・開いて止まる）。"""
+    wl, wr = part(n, "wing_l"), part(n, "wing_r")
+    th = math.radians(WING_OPEN_DEG)
+    keys(wr, "rotation_euler", 1, 0.0, [(0, 0), (1.5, 0), (3.0, -th), (5.0, -th), (6.5, 0), (8, 0)])
+    keys(wl, "rotation_euler", 1, 0.0, [(0, 0), (1.5, 0), (3.0, th), (5.0, th), (6.5, 0), (8, 0)])
+    return [wl, wr], "wing_open_close", 8
+
+
+def anim_uld(n):
+    """ULD ドーリーの 2 列が逆向きに少し往復する。10 秒。"""
+    r1, r2 = part(n, "uld_row1"), part(n, "uld_row2")
+    keys(r1, "location", 0, 0.0, [(0, 0), (1, 0), (4.5, 10), (5.5, 10), (9, 0), (10, 0)])
+    keys(r2, "location", 0, 0.0, [(0, 0), (1, 0), (4.5, -10), (5.5, -10), (9, 0), (10, 0)])
+    return [r1, r2], "uld_shuttle", 10
+
+
+# 書き出しのサンプル間隔（フレーム）。コンテナヤードは形状が大きく、200 KB に収めるため粗くする
+ANIM_STEP = {"container_yard": 4}
+ANIMS = {"port_crane": anim_crane, "container_yard": anim_yard, "truck": anim_wings,
+         "truck_4t": anim_wings, "air_cargo_terminal": anim_uld}
+# 中間の姿勢を撮る時刻（秒）
+ANIM_MID = {"port_crane": 6.75, "container_yard": 8.0, "truck": 4.0, "truck_4t": 4.0, "air_cargo_terminal": 5.0}
+
+
 # ---------------------------------------------------------------- 全体
 def reset():
     for ob in list(bpy.data.objects):
         bpy.data.objects.remove(ob)
-    for coll in (bpy.data.meshes, bpy.data.materials, bpy.data.lights, bpy.data.cameras):
+    for coll in (bpy.data.meshes, bpy.data.materials, bpy.data.lights, bpy.data.cameras, bpy.data.actions):
         for d in list(coll):
             coll.remove(d)
 
 
 def build_all():
     reset()
+    sc = bpy.context.scene
+    sc.render.fps = FPS
     for i, (n, f) in enumerate(MODELS):
         ob = f().finish()
         ob.location = (0, i * 260.0, 0)  # 見やすいように並べる。書き出し時は原点に戻す
+    for n, fn in ANIMS.items():
+        objs, name, dur = fn(n)
+        ANIM_RANGE[n] = bake(objs, name, dur)
+    sc.frame_set(1)
     return stats()
+
+
+def family(ob):
+    return [ob] + list(ob.children_recursive)
+
+
+def world_corners(ob):
+    """子の部品も含めた外形の角（ワールド座標）。"""
+    bpy.context.view_layer.update()
+    return [o.matrix_world @ Vector(c) for o in family(ob) for c in o.bound_box]
 
 
 def stats():
     out = {}
-    dg = bpy.context.evaluated_depsgraph_get()
     for n, _ in MODELS:
         ob = bpy.data.objects[n]
-        me = ob.data
-        me.calc_loop_triangles()
-        out[n] = {"dims_m": [round(v, 1) for v in ob.dimensions], "faces": len(me.polygons),
-                  "tris": len(me.loop_triangles), "verts": len(me.vertices), "materials": len(me.materials)}
+        cs = world_corners(ob)
+        dims = [max(c[k] for c in cs) - min(c[k] for c in cs) for k in range(3)]
+        tris = faces = verts = 0
+        for o in family(ob):
+            o.data.calc_loop_triangles()
+            tris += len(o.data.loop_triangles)
+            faces += len(o.data.polygons)
+            verts += len(o.data.vertices)
+        out[n] = {"dims_m": [round(v, 1) for v in dims], "faces": faces,
+                  "tris": tris, "verts": verts, "materials": len(ob.data.materials)}
     return out
 
 
 def export_all(outdir=GLB_DIR):
     os.makedirs(outdir, exist_ok=True)
     sizes = {}
+    sc = bpy.context.scene
     for n, _ in MODELS:
         ob = bpy.data.objects[n]
         loc = ob.location.copy()
         ob.location = (0, 0, 0)
         for o in [x for x in bpy.context.view_layer.objects if x is not None]:
             o.select_set(False)
-        ob.select_set(True)
+        for o in family(ob):
+            o.select_set(True)
         bpy.context.view_layer.objects.active = ob
+        if n in ANIM_RANGE:
+            sc.frame_start, sc.frame_end = ANIM_RANGE[n]
+        sc.frame_set(1)
         p = os.path.join(outdir, n + ".glb")
         bpy.ops.export_scene.gltf(filepath=p, export_format='GLB', use_selection=True,
                                   export_draco_mesh_compression_enable=False,
                                   export_apply=True, export_yup=True,
-                                  export_cameras=False, export_lights=False)
+                                  export_cameras=False, export_lights=False,
+                                  export_animations=(n in ANIM_RANGE),
+                                  export_animation_mode='NLA_TRACKS',
+                                  export_force_sampling=True,
+                                  export_frame_step=ANIM_STEP.get(n, 1))
         ob.location = loc
         sizes[n] = os.path.getsize(p)
+    sc.frame_set(1)
     return sizes
 
 
-def render_tiles(outdir, w=960, h=1080, names=None):
-    """各モデルを 3/4 視点（前方右上）から直交カメラで撮る。names を渡すとその分だけ撮る。"""
+def render_tiles(outdir, w=960, h=1080, names=None, frames=None):
+    """各モデルを 3/4 視点（前方右上）から直交カメラで撮る。names を渡すとその分だけ撮る。
+    frames = {名前: フレーム} を渡すと、そのフレームの姿勢で撮る（省略時は 1 = 閉じた姿勢）。"""
     names = names or [n for n, _ in MODELS]
     os.makedirs(outdir, exist_ok=True)
     sc = bpy.context.scene
@@ -1019,13 +1185,15 @@ def render_tiles(outdir, w=960, h=1080, names=None):
     R = cam.rotation_euler.to_matrix()
     right, up = R @ Vector((1, 0, 0)), R @ Vector((0, 1, 0))
     for n in names:
+        sc.frame_set((frames or {}).get(n, 1))
         for k, _f in MODELS:
-            bpy.data.objects[k].hide_render = (k != n)
+            for o in family(bpy.data.objects[k]):
+                o.hide_render = (k != n)
         ob = bpy.data.objects[n]
         loc = ob.location.copy()
-        cs = [loc + Vector(c) for c in ob.bound_box]
-        ctr = sum(cs, Vector()) / 8
-        ext = max(ob.dimensions)
+        cs = world_corners(ob)
+        ctr = sum(cs, Vector()) / len(cs)
+        ext = max(max(c[k] for c in cs) - min(c[k] for c in cs) for k in range(3))
         gr.location = (loc.x, loc.y, -0.03)
         gr.scale = (ext * 6, ext * 6, 1)
         xs = [c.dot(right) for c in cs]
@@ -1041,7 +1209,9 @@ def render_tiles(outdir, w=960, h=1080, names=None):
     with open(os.path.join(outdir, "stats.json"), "w", encoding="utf-8", newline="\n") as fp:
         json.dump(stats(), fp, ensure_ascii=False)
     for k, _f in MODELS:
-        bpy.data.objects[k].hide_render = False
+        for o in family(bpy.data.objects[k]):
+            o.hide_render = False
+    sc.frame_set(1)
     for o in (sun, cam, gr):
         bpy.data.objects.remove(o)
     for d in (sun_d,):
@@ -1060,6 +1230,9 @@ def main():
         tdir = argv[argv.index("--tiles") + 1]
         render_tiles(tdir, names=[n for n, _ in MODELS if n not in NEW_MODELS])  # 1 枚目（縦長タイル）
         render_tiles(tdir, 960, 720, names=NEW_MODELS)  # 2 枚目（4:3 タイル）
+        # アニメーションの中間の姿勢（contact_sheet.py --anim 用）
+        render_tiles(os.path.join(tdir, "anim"), 640, 540, names=list(ANIMS),
+                     frames={n: fr(t) for n, t in ANIM_MID.items()})
 
 
 if bpy.app.background:
