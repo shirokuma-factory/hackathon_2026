@@ -303,18 +303,33 @@ const M3D = (() => {
     return layer(id, key, c.data, { ...opts, zoom, opacity: 1, fac: true });
   }
 
-  // 3D の層を最初に出す瞬間のカクつきを避けるための見えない層（シェーダーの作成と GPU への転送を先に済ませる。画面の外に 1 個だけ置く）
-  let warmUntil = 0;
-  function warm(zoom) {
-    if (!hasDeck()) return null;
-    const key = ['kei_van', 'truck_4t', 'truck'].find((k) => ready(urlOf(k, hasLo(k)))) || null;
-    if (!key) return null;
-    const now = performance.now();
-    if (!warmUntil) warmUntil = now + 1500;
-    if (now > warmUntil) return null;
-    return new deck.ScenegraphLayer({ id: 'warm-3d', data: WARM_DATA, scenegraph: GL.get(urlOf(key, hasLo(key))).gltf, getPosition: GETPOS, getOrientation: ORIENT, sizeScale: 1, _lighting: 'pbr', opacity: 0.02, parameters: PARAMS });
+  /* 起動時のシェーダーの先読み（warmup.js）用。元のモデルと低ポリゴン版は材質の持ち物が違い（低ポリゴン版は色と粗さのテクスチャつき）、
+     シェーダーが別になるので、それぞれ 1 つずつ描く。どちらも層の作りは layer() と同じ（_lighting、parameters、色の指定）にそろえる。
+     lo: true で低ポリゴン版。読み込みが済んでいなければ null（先に warmNeed() で読み込みを始めておく） */
+  // lo: true なら低ポリゴン版のあるモデルだけ。ANGLE（Windows の WebGL）は、頂点の並び（添字の型など）が違うと、初めて描くときに頂点シェーダーを作り直すので、モデルごとに 1 回ずつ描く
+  const warmKeys = (lo) => Object.keys(MODELS).filter((k) => MODELS[k].f && (lo ? hasLo(k) : true));
+  function warmNeed(lo) {
+    if (!hasDeck()) return true;
+    let all = true;
+    for (const k of warmKeys(lo)) {
+      const u = urlOf(k, lo), e = ensure(u);
+      if (e.st === 1) all = false;
+    }
+    return all;
   }
-  const WARM_DATA = [{ p: [0, 0, 0], ang: 0 }];
+  function warmLayers(lo, p) {
+    if (!hasDeck()) return [];
+    const out = [];
+    for (const k of warmKeys(lo)) {
+      const u = urlOf(k, lo), e = GL.get(u);
+      if (!e || e.st !== 2) continue;
+      out.push(new deck.ScenegraphLayer({
+        id: `warm-sg-${lo ? 'lo' : 'hi'}-${k}`, data: [{ p, ang: 0 }], scenegraph: e.gltf, getPosition: GETPOS, getOrientation: ORIENT, getColor: GETCOL_W, sizeScale: 1,
+        _lighting: 'pbr', _animations: MODELS[k].anim ? ANIM : undefined, opacity: 1, pickable: true, parameters: PARAMS,
+      }));
+    }
+    return out;
+  }
 
-  return { cfg, mixFor, modelReady, preload, warm, loadLod, ready, ensure, urlOf, hasLo, GL, LOD, capFor, MODELS, MODE_MODEL, Z_ON, Z_FULL, Z_FAC, MAXZ, CAP, mix, iconAlpha, facilityOn, sizeScale, mpp, yawOf, layer, vehicles, facility, inView, byVehicle, hasDeck, thumb, thumbAlt, THUMB_ALT };
+  return { cfg, mixFor, modelReady, preload, warmNeed, warmLayers, loadLod, ready, ensure, urlOf, hasLo, GL, LOD, capFor, MODELS, MODE_MODEL, Z_ON, Z_FULL, Z_FAC, MAXZ, CAP, mix, iconAlpha, facilityOn, sizeScale, mpp, yawOf, layer, vehicles, facility, inView, byVehicle, hasDeck, thumb, thumbAlt, THUMB_ALT };
 })();
