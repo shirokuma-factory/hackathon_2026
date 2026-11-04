@@ -85,7 +85,15 @@ const Rt = (() => {
   async function loadRail() {
     if (!R.rail) {
       R.rail = true;
-      try { const d = await getj('data/routes_rail.json'); R.railPaths = d.lines.map((l) => dec(l).map((p) => [p[0], p[1], 0])); } catch (e) { R.railPaths = []; }
+      try {
+        const d = await getj('data/routes_rail.json');
+        // 画面の外を描かないように、線を 48 点ずつに分ける（隣の部分と 1 点重ねる）。cull.js で画面に入る部分だけを層に渡す
+        R.railPaths = [];
+        for (const l of d.lines) {
+          const pts = dec(l).map((p) => [p[0], p[1], 0]);
+          for (let a = 0; a < pts.length - 1; a += 47) R.railPaths.push(pts.slice(a, Math.min(pts.length, a + 48)));
+        }
+      } catch (e) { R.railPaths = []; }
     }
   }
 
@@ -430,8 +438,9 @@ const Rt = (() => {
   function railLayer(alpha) {
     if (!R.railPaths) { loadRail(); return null; }
     if (!R.railPaths.length || alpha <= 0) return null;
+    const cv = Cull.view('rail', R.railPaths, Cull.bboxOfCoords, typeof map !== 'undefined' ? map : null);
     return new deck.PathLayer({
-      id: 'rt-railnet', data: R.railPaths, getPath: (d) => d, getColor: withA(col('rail'), alpha), widthUnits: 'pixels', getWidth: 1, widthMinPixels: 0.7,
+      id: 'rt-railnet', data: cv.items, getPath: (d) => d, getColor: withA(col('rail'), alpha), widthUnits: 'pixels', getWidth: 1, widthMinPixels: 0.7,
       updateTriggers: { getColor: [alpha] },
     });
   }

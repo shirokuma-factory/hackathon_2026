@@ -181,19 +181,20 @@ function valueText(i) {
   return od.fare[i] === null ? '表の範囲外（200km未満）または積載量超過' : `約${fmt(od.fare[i])}円（${S.fareVehicleNote || '2t・税抜'}）`;
 }
 
-function staticLayers() {
+// munis: 画面に入る分だけに絞った市区町村の地物、prefs: 同じく県境の輪（cull.js）の配列。画面が動いて余白を出るまでは同じ参照
+function staticLayers(munis, prefs) {
   const L = deck;
   const list = [];
   list.push(new L.GeoJsonLayer({
-    id: 'muni', data: S.muni, pickable: true, stroked: true, filled: true, beforeId: firstLabelId,
+    id: 'muni', data: munis, pickable: true, stroked: true, filled: true, beforeId: firstLabelId,
     getFillColor: fillColor, getLineColor: [8, 12, 20, 120], lineWidthMinPixels: 0.4, lineWidthUnits: 'pixels', getLineWidth: 0.5,
     autoHighlight: true, highlightColor: [255, 255, 255, 54],
     updateTriggers: { getFillColor: [S.origin, S.layer, S.version, Rt.focus] },
     transitions: { getFillColor: { duration: 650, easing: ease } },
   }));
-  list.push(new L.GeoJsonLayer({
-    id: 'pref', data: S.pref, stroked: true, filled: false, beforeId: firstLabelId,
-    getLineColor: [210, 226, 255, 74], lineWidthMinPixels: 0.8, getLineWidth: 0.8, lineWidthUnits: 'pixels',
+  list.push(new L.PathLayer({
+    id: 'pref', data: prefs, getPath: (d) => d, beforeId: firstLabelId,
+    getColor: [210, 226, 255, 74], widthMinPixels: 0.8, getWidth: 0.8, widthUnits: 'pixels',
   }));
   return list;
 }
@@ -239,6 +240,24 @@ function buildAmbient() {
   S.ambient = { paths: paths.map((p) => p.pts), items, PERIOD };
 }
 
+const SEL_FILL = [92, 200, 255, 255], SEL_LINE = [226, 247, 255, 255];
+// 選んだ着地の形（塗り用のポリゴンと、縁用の輪）。選び直したときだけ作る。縁は、光る縁（太い）を先に、線（細い）を後に並べて、線が上に重なるようにする
+function selShape(f) {
+  if (S.selShapeSrc === f) return S.selShape;
+  const g = f.geometry, polys = g.type === 'MultiPolygon' ? g.coordinates : [g.coordinates], rings = polys.flatMap((p) => p);
+  S.selShapeSrc = f;
+  S.selShape = { polys, edges: [...rings.map((p) => ({ p, w: 11, glow: true })), ...rings.map((p) => ({ p, w: 3, glow: false }))] };
+  return S.selShape;
+}
+// 県境の輪（cull.js で画面に入る分だけを層に渡す）
+function prefRings() {
+  if (S.prefRingsSrc !== S.pref) {
+    S.prefRingsSrc = S.pref;
+    S.prefRings = S.pref.features.flatMap((f) => (f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates.flat() : f.geometry.coordinates));
+  }
+  return S.prefRings;
+}
+
 function dynamicLayers(now) {
   const L = deck, out = [];
   const o = S.meta.origins.find((x) => x.code === S.origin);
@@ -260,21 +279,16 @@ function dynamicLayers(now) {
       updateTriggers: { getColor: [aA] },
     }));
   }
-  // 選択した着地
+  // 選択した着地。GeoJsonLayer は 1 つで 3 層に分かれるので、塗り 1 層と、光る縁・縁の線 1 層の計 2 層にする
+  // 塗りの濃さは層の opacity（定数）で動かし、頂点の色の再計算をしない
   if (S.selFeature) {
-    const pulse = 0.55 + 0.45 * Math.sin(sec * 2.4);
-    out.push(new L.GeoJsonLayer({
-      id: 'sel-fill', data: S.selFeature, filled: true, stroked: false, getFillColor: [92, 200, 255, 38 + 34 * pulse], opacity: 1,
-      updateTriggers: { getFillColor: [Math.round(pulse * 20)] },
+    const pulse = 0.55 + 0.45 * Math.sin(sec * 2.4), sh = selShape(S.selFeature), step = Math.round(pulse * 20);
+    out.push(new L.SolidPolygonLayer({
+      id: 'sel-fill', data: sh.polys, getPolygon: (d) => d, getFillColor: SEL_FILL, opacity: (38 + 34 * pulse) / 255,
     }));
-    out.push(new L.GeoJsonLayer({
-      id: 'sel-glow', data: S.selFeature, filled: false, stroked: true, getLineColor: [92, 200, 255, 70 + 50 * pulse],
-      lineWidthMinPixels: 11, getLineWidth: 8, lineWidthUnits: 'pixels', lineJointRounded: true,
-      updateTriggers: { getLineColor: [Math.round(pulse * 20)] },
-    }));
-    out.push(new L.GeoJsonLayer({
-      id: 'sel-line', data: S.selFeature, filled: false, stroked: true, getLineColor: [226, 247, 255, 255],
-      lineWidthMinPixels: 3, getLineWidth: 3, lineWidthUnits: 'pixels', lineJointRounded: true,
+    out.push(new L.PathLayer({
+      id: 'sel-edge', data: sh.edges, getPath: (d) => d.p, widthUnits: 'pixels', getWidth: (d) => d.w, capRounded: true, jointRounded: true,
+      getColor: (d) => (d.glow ? [92, 200, 255, 70 + 50 * pulse] : SEL_LINE), updateTriggers: { getColor: [step] },
     }));
   }
   const r = S.route;
@@ -332,9 +346,12 @@ function frame(now) {
   }
   const targetAlpha = S.sel >= 0 ? 0.28 : 1;
   S.ambientAlpha += (targetAlpha - S.ambientAlpha) * Math.min(1, dt * 3);
-  const sk = `${S.origin}|${S.layer}|${S.version}|${Rt.focus}`; // 値・出発地・手段の強調が変わったときだけ層を作り直す（色が更新される）
-  if (!S.staticLayers || S.staticKey !== sk) { S.staticLayers = staticLayers(); S.staticKey = sk; }
   const zoom = map.getZoom();
+  // 市区町村・県境は画面に入る分だけを層に渡す（画面の外の頂点を毎フレーム処理しない。SPEC §19.5）
+  const cm = S.view === 'market' ? null : Cull.view('muni', S.muni.features, Cull.featureBox, map);
+  const cp = S.view === 'market' ? null : Cull.view('pref', prefRings(), Cull.bboxOfCoords, map);
+  const sk = `${S.origin}|${S.layer}|${S.version}|${Rt.focus}|${cm ? cm.v : 0}|${cp ? cp.v : 0}`; // 値・出発地・手段の強調・絞り込みが変わったときだけ層を作り直す（色が更新される）
+  if (cm && (!S.staticLayers || S.staticKey !== sk)) { S.staticLayers = staticLayers(cm.items, cp.items); S.staticKey = sk; }
   let layers;
   if (S.view === 'market') layers = Market.layers(now, zoom);
   else if (S.view === 'find') layers = [S.staticLayers[1], ...Market.flowLayers(now, 0.3), ...Find.layers(now)]; // 県境、帰りの空きやすさ（うすく）、架空の便
