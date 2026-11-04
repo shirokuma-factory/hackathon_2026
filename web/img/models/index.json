@@ -1,0 +1,215 @@
+{
+  "note": "サムネイル 320x200 透過 WebP。render_media.py が作る。",
+  "items": [
+    {
+      "name": "truck",
+      "label_ja": "10t ウイングボディ",
+      "file": "truck.webp",
+      "bytes": 13934
+    },
+    {
+      "name": "freight_train",
+      "label_ja": "EF210 + コンテナ車3両",
+      "file": "freight_train.webp",
+      "bytes": 11898
+    },
+    {
+      "name": "ferry",
+      "label_ja": "長距離 RORO フェリー",
+      "file": "ferry.webp",
+      "bytes": 12468
+    },
+    {
+      "name": "cargo_plane",
+      "label_ja": "双発 広胴貨物機",
+      "file": "cargo_plane.webp",
+      "bytes": 10492
+    },
+    {
+      "name": "warehouse",
+      "label_ja": "マルチ型倉庫 + ランプウェイ",
+      "file": "warehouse.webp",
+      "bytes": 15256
+    },
+    {
+      "name": "terminal",
+      "label_ja": "トラックターミナル/貨物駅",
+      "file": "terminal.webp",
+      "bytes": 9530
+    },
+    {
+      "name": "port_crane",
+      "label_ja": "ガントリークレーン",
+      "file": "port_crane.webp",
+      "bytes": 14462
+    },
+    {
+      "name": "kei_van",
+      "label_ja": "軽バン",
+      "file": "kei_van.webp",
+      "bytes": 12648
+    },
+    {
+      "name": "box_2t",
+      "label_ja": "2t 箱車（キャブオーバー）",
+      "file": "box_2t.webp",
+      "bytes": 12224
+    },
+    {
+      "name": "truck_4t",
+      "label_ja": "4t ウイング車",
+      "file": "truck_4t.webp",
+      "bytes": 14458
+    },
+    {
+      "name": "trailer",
+      "label_ja": "トラクター + 40ft 海上コンテナ",
+      "file": "trailer.webp",
+      "bytes": 13742
+    },
+    {
+      "name": "container_12ft",
+      "label_ja": "12ft 鉄道コンテナ",
+      "file": "container_12ft.webp",
+      "bytes": 11764
+    },
+    {
+      "name": "container_ship",
+      "label_ja": "内航コンテナ船",
+      "file": "container_ship.webp",
+      "bytes": 13490
+    },
+    {
+      "name": "roro_ship",
+      "label_ja": "貨物専用 RORO 船",
+      "file": "roro_ship.webp",
+      "bytes": 12358
+    },
+    {
+      "name": "passenger_jet",
+      "label_ja": "旅客機（床下貨物）",
+      "file": "passenger_jet.webp",
+      "bytes": 10834
+    },
+    {
+      "name": "cold_storage",
+      "label_ja": "冷凍冷蔵倉庫",
+      "file": "cold_storage.webp",
+      "bytes": 13822
+    },
+    {
+      "name": "air_cargo_terminal",
+      "label_ja": "空港貨物ターミナル",
+      "file": "air_cargo_terminal.webp",
+      "bytes": 9294
+    },
+    {
+      "name": "container_yard",
+      "label_ja": "コンテナヤード + RTG",
+      "file": "container_yard.webp",
+      "bytes": 11896
+    },
+    {
+      "name": "pallet_t11",
+      "label_ja": "T11 パレット",
+      "file": "pallet_t11.webp",
+      "bytes": 16162
+    },
+    {
+      "name": "roll_cage",
+      "label_ja": "カゴ台車",
+      "file": "roll_cage.webp",
+      "bytes": 21518
+    },
+    {
+      "name": "box_60",
+      "label_ja": "段ボール 60サイズ",
+      "file": "box_60.webp",
+      "bytes": 10326
+    },
+    {
+      "name": "box_80",
+      "label_ja": "段ボール 80サイズ",
+      "file": "box_80.webp",
+      "bytes": 10322
+    },
+    {
+      "name": "box_100",
+      "label_ja": "段ボール 100サイズ",
+      "file": "box_100.webp",
+      "bytes": 10292
+    },
+    {
+      "name": "box_120",
+      "label_ja": "段ボール 120サイズ",
+      "file": "box_120.webp",
+      "bytes": 10198
+    },
+    {
+      "name": "box_140",
+      "label_ja": "段ボール 140サイズ",
+      "file": "box_140.webp",
+      "bytes": 9758
+    },
+    {
+      "name": "box_160",
+      "label_ja": "段ボール 160サイズ",
+      "file": "box_160.webp",
+      "bytes": 9812
+    },
+    {
+      "name": "forklift",
+      "label_ja": "フォークリフト 2.5t",
+      "file": "forklift.webp",
+      "bytes": 13376
+    },
+    {
+      "name": "uld_ld3",
+      "label_ja": "航空コンテナ LD3",
+      "file": "uld_ld3.webp",
+      "bytes": 10298
+    },
+    {
+      "name": "container_20ft",
+      "label_ja": "20ft 海上コンテナ",
+      "file": "container_20ft.webp",
+      "bytes": 11866
+    },
+    {
+      "name": "container_31ft",
+      "label_ja": "31ft 鉄道コンテナ",
+      "file": "container_31ft.webp",
+      "bytes": 13108
+    },
+    {
+      "name": "reefer_12ft",
+      "label_ja": "12ft 冷凍コンテナ",
+      "file": "reefer_12ft.webp",
+      "bytes": 12496
+    },
+    {
+      "name": "koki_wagon",
+      "label_ja": "コキ コンテナ貨車",
+      "file": "koki_wagon.webp",
+      "bytes": 12994
+    },
+    {
+      "name": "dock_leveler",
+      "label_ja": "ドックレベラー（搬入口）",
+      "file": "dock_leveler.webp",
+      "bytes": 12088
+    },
+    {
+      "name": "road_cone",
+      "label_ja": "カラーコーン",
+      "file": "road_cone.webp",
+      "bytes": 7150
+    },
+    {
+      "name": "pallet_stack",
+      "label_ja": "パレット積み（段ボール 30 個）",
+      "file": "pallet_stack.webp",
+      "bytes": 10378
+    }
+  ]
+}
