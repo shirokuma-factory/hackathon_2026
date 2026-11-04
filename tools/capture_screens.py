@@ -89,6 +89,21 @@ def stop_tree(proc: subprocess.Popen) -> None:
         proc.kill()
 
 
+def stop_edge_profile(profile: str) -> None:
+    """指定したプロファイルの Edge を全部止める。
+
+    Edge は起動用のプロセスがすぐ終わり、本体は別の親を持たないプロセスとして残るので、
+    stop_tree（起動したプロセスの子を止める）だけでは本体が残る。プロファイルのパスで探して止める。
+    """
+    if os.name != "nt":
+        return
+    key = os.path.basename(os.path.normpath(profile)).replace("'", "")
+    ps = ("Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\" | "
+          f"Where-Object {{ $_.CommandLine -like '*{key}*' }} | "
+          "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }")
+    subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True)
+
+
 # ------------------------------------------------------------------ CDP
 
 FIND_JS = r"""
@@ -609,6 +624,7 @@ def main() -> int:
     finally:
         if edge_proc is not None:
             stop_tree(edge_proc)
+        stop_edge_profile(profile)
         stop_tree(st_proc)
         shutil.rmtree(profile, ignore_errors=True)
     print("=== 結果")
