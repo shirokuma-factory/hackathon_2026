@@ -1,6 +1,7 @@
 """build_models.py --tiles で出した画像を 1920x1080 の一覧にまとめる（Pillow）。
 
-使い方: python assets3d/source/contact_sheet.py <tiles_dir> <out.png>
+使い方: python assets3d/source/contact_sheet.py <tiles_dir> <out.png> [--set 2]
+  --set を省くと 1 枚目（最初の 7 種）、--set 2 で 2 枚目（あとから足した 11 種）。
 """
 import json
 import os
@@ -14,7 +15,15 @@ ORDER = ["truck", "freight_train", "ferry", "cargo_plane", "warehouse", "termina
 LABEL = {"truck": "truck  10t ウイングボディ", "freight_train": "freight_train  EF210 + コンテナ車3両",
          "ferry": "ferry  長距離 RORO フェリー", "cargo_plane": "cargo_plane  双発 広胴貨物機",
          "warehouse": "warehouse  マルチ型倉庫 + ランプウェイ", "terminal": "terminal  トラックターミナル/貨物駅",
-         "port_crane": "port_crane  ガントリークレーン"}
+         "port_crane": "port_crane  ガントリークレーン",
+         "kei_van": "kei_van  軽バン", "box_2t": "box_2t  2t 箱車（キャブオーバー）",
+         "truck_4t": "truck_4t  4t ウイング車", "trailer": "trailer  トラクター + 40ft 海上コンテナ",
+         "container_12ft": "container_12ft  12ft 鉄道コンテナ", "container_ship": "container_ship  内航コンテナ船",
+         "roro_ship": "roro_ship  貨物専用 RORO 船", "passenger_jet": "passenger_jet  旅客機（床下貨物）",
+         "cold_storage": "cold_storage  冷凍冷蔵倉庫", "air_cargo_terminal": "air_cargo_terminal  空港貨物ターミナル",
+         "container_yard": "container_yard  コンテナヤード + RTG"}
+ORDER2 = ["kei_van", "box_2t", "truck_4t", "trailer", "container_12ft", "container_ship", "roro_ship",
+          "passenger_jet", "cold_storage", "air_cargo_terminal", "container_yard"]
 BG = (11, 18, 32)
 W, H, COLS = 1920, 1080, 4
 
@@ -26,13 +35,14 @@ def font(size):
     return ImageFont.load_default()
 
 
-def main(tiles, out):
+def main(tiles, out, order=ORDER):
     st = json.load(open(os.path.join(tiles, "stats.json"), encoding="utf-8"))
-    cw, ch = W // COLS, H // 2
+    rows = -(-(len(order) + 1) // COLS)  # 凡例用に 1 マス余らせる
+    cw, ch = W // COLS, H // rows
     sheet = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(sheet)
     f1, f2 = font(21), font(16)
-    for i, n in enumerate(ORDER):
+    for i, n in enumerate(order):
         x, y = (i % COLS) * cw, (i // COLS) * ch
         im = Image.open(os.path.join(tiles, n + ".png")).convert("RGB").resize((cw, ch), Image.LANCZOS)
         sheet.paste(im, (x, y))
@@ -42,7 +52,7 @@ def main(tiles, out):
         d.text((x + 14, y + 12), LABEL[n], fill=(241, 245, 249), font=f1)
         d.text((x + 14, y + 40), f"幅{dm[0]:.0f} x 長{dm[1]:.0f} x 高{dm[2]:.0f} m   {s['tris']:,} 三角形   {kb:.0f} KB",
                fill=(148, 163, 184), font=f2)
-    x, y = 3 * cw, ch
+    x, y = 3 * cw, (rows - 1) * ch
     d.text((x + 14, y + 12), "色と向き", fill=(241, 245, 249), font=f1)
     for j, (c, t) in enumerate([("#f59e0b", "トラック 橙"), ("#22c55e", "鉄道 緑"), ("#38bdf8", "船 水色"), ("#c4b5fd", "飛行機 薄紫")]):
         yy = y + 56 + j * 34
@@ -54,9 +64,10 @@ def main(tiles, out):
         d.text((x + 14, y + 210 + j * 26), t, fill=(148, 163, 184), font=f2)
     for k in range(1, COLS):
         d.line((k * cw, 0, k * cw, H), fill=(30, 41, 59))
-    d.line((0, ch, W, ch), fill=(30, 41, 59))
+    for k in range(1, rows):
+        d.line((0, k * ch, W, k * ch), fill=(30, 41, 59))
     sheet.save(out)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], ORDER2 if "--set" in sys.argv and sys.argv[sys.argv.index("--set") + 1] == "2" else ORDER)
