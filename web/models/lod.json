@@ -1,0 +1,182 @@
+{
+ "truck": {
+  "hi": {
+   "tris": 2048,
+   "bytes": 104472
+  },
+  "lo": {
+   "tris": 300,
+   "bytes": 33712
+  }
+ },
+ "freight_train": {
+  "hi": {
+   "tris": 3196,
+   "bytes": 179528
+  },
+  "lo": {
+   "tris": 798,
+   "bytes": 53784
+  }
+ },
+ "ferry": {
+  "hi": {
+   "tris": 836,
+   "bytes": 48996
+  },
+  "lo": {
+   "tris": 208,
+   "bytes": 13416
+  }
+ },
+ "cargo_plane": {
+  "hi": {
+   "tris": 2644,
+   "bytes": 95936
+  },
+  "lo": {
+   "tris": 660,
+   "bytes": 40996
+  }
+ },
+ "warehouse": {
+  "hi": {
+   "tris": 2712,
+   "bytes": 161504
+  },
+  "lo": {
+   "tris": 663,
+   "bytes": 50036
+  }
+ },
+ "terminal": {
+  "hi": {
+   "tris": 2768,
+   "bytes": 166692
+  },
+  "lo": {
+   "tris": 688,
+   "bytes": 50628
+  }
+ },
+ "port_crane": {
+  "hi": {
+   "tris": 1548,
+   "bytes": 110216
+  },
+  "lo": {
+   "tris": 382,
+   "bytes": 44844
+  }
+ },
+ "kei_van": {
+  "hi": {
+   "tris": 664,
+   "bytes": 31336
+  },
+  "lo": {
+   "tris": 164,
+   "bytes": 12804
+  }
+ },
+ "box_2t": {
+  "hi": {
+   "tris": 792,
+   "bytes": 41764
+  },
+  "lo": {
+   "tris": 198,
+   "bytes": 15324
+  }
+ },
+ "truck_4t": {
+  "hi": {
+   "tris": 1428,
+   "bytes": 79316
+  },
+  "lo": {
+   "tris": 298,
+   "bytes": 32452
+  }
+ },
+ "trailer": {
+  "hi": {
+   "tris": 3508,
+   "bytes": 140684
+  },
+  "lo": {
+   "tris": 448,
+   "bytes": 38308
+  }
+ },
+ "container_12ft": {
+  "hi": {
+   "tris": 856,
+   "bytes": 52524
+  },
+  "lo": {
+   "tris": 214,
+   "bytes": 17548
+  }
+ },
+ "container_ship": {
+  "hi": {
+   "tris": 2368,
+   "bytes": 132608
+  },
+  "lo": {
+   "tris": 579,
+   "bytes": 42968
+  }
+ },
+ "roro_ship": {
+  "hi": {
+   "tris": 1532,
+   "bytes": 91236
+  },
+  "lo": {
+   "tris": 375,
+   "bytes": 27740
+  }
+ },
+ "passenger_jet": {
+  "hi": {
+   "tris": 2808,
+   "bytes": 126544
+  },
+  "lo": {
+   "tris": 702,
+   "bytes": 41124
+  }
+ },
+ "cold_storage": {
+  "hi": {
+   "tris": 2568,
+   "bytes": 130332
+  },
+  "lo": {
+   "tris": 642,
+   "bytes": 48556
+  }
+ },
+ "air_cargo_terminal": {
+  "hi": {
+   "tris": 2260,
+   "bytes": 143192
+  },
+  "lo": {
+   "tris": 532,
+   "bytes": 46340
+  }
+ },
+ "container_yard": {
+  "hi": {
+   "tris": 3316,
+   "bytes": 198200
+  },
+  "lo": {
+   "tris": 820,
+   "bytes": 71308
+  }
+ }
+}

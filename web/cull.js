@@ -35,7 +35,10 @@ const Cull = (() => {
     const b = map.getBounds(), w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth();
     const vw = e - w, vh = n - s;
     const k = c.cov;
-    if (!k || w < k[0] || s < k[1] || e > k[2] || n > k[3] || k[2] - k[0] > vw * 6) {
+    const need = !k || w < k[0] || s < k[1] || e > k[2] || n > k[3] || k[2] - k[0] > vw * 6;
+    // 作り直しが重なったときは、このフレームで 5ms 使っていたら次のフレームにまわす（余白が 1 画面分あるので 1 フレーム遅れても端は欠けない）
+    if (need && (!k || typeof PERF === 'undefined' || PERF.canSpend(5))) {
+      const t0 = performance.now();
       const cw = w - vw, cs = s - vh, ce = e + vw, cn = n + vh;
       const items = [];
       for (let i = 0; i < src.length; i++) {
@@ -45,6 +48,7 @@ const Cull = (() => {
       c.cov = [cw, cs, ce, cn];
       c.items = items.length === src.length ? src : items;
       c.v++;
+      if (typeof PERF !== 'undefined') PERF.mark('cullRebuild', t0);
     }
     return c;
   }

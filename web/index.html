@@ -52,6 +52,10 @@
   <button class="lyr tgl v-market" data-toggle="conc" aria-pressed="false" title="道路貨物運送業（44）と倉庫業（47）の従業者数（令和6年経済センサス‐基礎調査）">物流の<br>集積<small>44・47</small></button>
   <button class="lyr tgl v-market" data-toggle="fac" aria-pressed="false" title="トラックターミナル・貨物駅・空港・倉庫などの施設">施設<small>空港・倉庫ほか</small></button>
   <div class="rt-legend" aria-label="手段の凡例"></div>
+  <label class="cap" for="quality" title="動きがカクつくときは、低にしてください。自動は、画面の動きの滑らかさを見て切り替えます">画質</label>
+  <select id="quality" class="ctl xs q-sel" aria-label="画質">
+    <option value="auto">自動</option><option value="high">高</option><option value="mid">中</option><option value="low">低</option>
+  </select>
   <button id="home" title="全国を表示">全国</button>
 </nav>
 
@@ -268,6 +272,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
+<script src="perf.js"></script>
 <script src="work.js"></script>
 <script src="loadview.js"></script>
 <script src="hubs.js"></script>
