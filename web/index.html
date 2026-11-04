@@ -224,13 +224,14 @@
       <ul id="f-sug" class="f-sug" role="listbox"></ul></div>
     <div class="f-grid">
       <label><span class="lbl">品目</span><select id="f-cat" class="ctl sm"></select></label>
-      <label><span class="lbl">仮予約の期限</span><select id="f-holdmin" class="ctl sm"></select></label>
+      <label><span class="lbl">仮予約の締切</span><select id="f-holdmin" class="ctl sm"></select></label>
     </div>
     <div class="f-checks">
       <label class="f-chk"><input type="checkbox" id="f-container"><span>容器に入れた荷</span></label>
       <label class="f-chk"><input type="checkbox" id="f-fragile"><span>壊れ物</span></label>
       <label class="f-chk"><input type="checkbox" id="f-box" checked><span>段ボールなどの直方体の箱</span></label>
     </div>
+    <p class="f-hint" id="f-bh" hidden></p>
   </div>
   <div id="f-carrier" hidden>
     <label class="field"><span class="lbl">運送会社の役</span><select id="f-carrier-sel" class="ctl sm"></select></label>
@@ -263,6 +264,18 @@
   <div class="f-lg"><span><i class="f-l-on"></i>荷に合う便</span><span><i class="f-l-off"></i>合わない便・別の区間</span>
     <span class="mlg-faint">細い線は帰りの空きやすさ（物流センサス 2021、e-Stat を加工）</span></div>
   <div class="f-lg f-lg-modes"><span class="rt-legend rt-legend-row"></span></div>
+</section>
+
+<section id="f-contract" class="glass v-find" role="dialog" aria-label="書面の下書き" hidden>
+  <div class="fc-head"><b>書面の下書き</b><span class="m-tag">架空のデモ</span></div>
+  <p class="fc-notice">この書面は運送会社と荷主の間で交わすものです。Backfull は運送の当事者ではなく、運賃を受け取りません。</p>
+  <p class="fc-fiction">架空の運送会社・荷主・番号です。実在のものではありません。</p>
+  <div id="fc-body"></div>
+  <div class="fc-btns no-print">
+    <button type="button" class="btn-primary sm" id="fc-confirm" disabled>確定する</button>
+    <button type="button" class="btn-ghost sm" id="fc-print">印刷して残す</button>
+    <button type="button" class="btn-ghost sm" id="fc-close">閉じる</button>
+  </div>
 </section>
 
 <div id="hover-tag"></div>

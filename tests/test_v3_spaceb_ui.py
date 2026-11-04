@@ -56,15 +56,15 @@ def test_spec16_2_ui_every_trip_is_the_reverse_of_a_backhaul_pair(index):
 
 
 def test_spec16_2_ui_reverse_trips_of_hyogo_to_tokyo(index):
-    """画面の isReverse と同じ規則（荷が多い向き from→to の、to→from を走る便）。兵庫→東京なら T1 と T2。"""
+    """画面の isReverse と同じ規則（荷が多い向き from→to の、to→from を走る便）。兵庫→東京なら T1・T2・T7（T7 は SPEC §21 で足した）。"""
     rev = [t["id"] for t in spaceb.load_trips()
            if index[t["origin_code"]][0] == "東京都" and index[t["dest_code"]][0] == "兵庫県"]
-    assert rev == ["T1", "T2"]
+    assert rev == ["T1", "T2", "T7"]
 
 
 def test_spec16_2_ui_drop_points_for_search_are_union_of_trips(index):
     drops = {c for t in spaceb.load_trips() for c in t["drop_points"]}
-    assert len(drops) == 13 and "28110" in drops
+    assert len(drops) == 17 and "28110" in drops
     assert all(index[c][1] for c in drops)  # 検索の候補に市区町村名が出せる
 
 
@@ -107,5 +107,6 @@ def test_spec16_2_ui_notices_always_in_page():
 def test_spec16_2_ui_find_js_uses_only_the_b_endpoints():
     js = (WEB / "find.js").read_text(encoding="utf-8")
     used = set(re.findall(r"'(/api/[^']+)'", js))
-    assert used == {"/api/b/trips", "/api/b/match", "/api/b/hold", "/api/b/decide", "/api/b/reset"}
+    # /api/scenarios は場面の追加項目（SPEC §21 の backhaul）を読むだけ。書き込みは b の API だけ
+    assert used == {"/api/b/trips", "/api/b/match", "/api/b/hold", "/api/b/decide", "/api/b/reset", "/api/b/contract", "/api/scenarios"}
     assert "is_demo" not in js and "fetch(" not in js  # 通信は Work.api だけを通す（サーバーに書くのは b の API だけ）

@@ -10,11 +10,12 @@ from __future__ import annotations
 import json
 import threading
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable
 
+from . import geo
 from .models import to_decimal
 from .tariffs import data_dir
 
@@ -22,7 +23,8 @@ SPACE_TYPES = ("free_bed", "inside_rb_upper", "above_rb_rear", "shelf_container"
 SHELF_TYPES = ("above_rb_rear", "shelf_container")  # 棚の耐荷重を持つ形（形 2・3）
 HEIGHT_MARGIN_MM = Decimal(50)  # 箱の高さは空きの高さ − 50mm まで
 DEFAULT_HOLD_MINUTES = 30
-MAX_HOLD_MINUTES = 24 * 60
+DEFAULT_PICKUP_RADIUS_KM = 20  # 便に pickup_radius_km が無いときの集荷の上限（SPEC §21.2）
+MAX_HOLD_MINUTES = 72 * 60  # 仮予約の期限（締切）の上限。SPEC §21.2
 FICTION_NOTICE = "架空の運送会社と便です。"
 BOOKING_NOTICE = "積むかどうか、どこにどう積むかは運送会社が決めます。受付で量って条件に合わないときは受け付けません。"
 
@@ -52,10 +54,18 @@ class BShipment:
     in_container: bool = False
     fragile: bool = False
     is_box: bool = True  # 段ボールなどの直方体の箱か
+    origin_code: str | None = None  # 集荷の地点の市区町村コード（SPEC §21.2、集荷の距離の照合）
+    window_from: date | None = None  # 届けばよい日の幅（SPEC §21.2）
+    window_to: date | None = None
 
     @property
     def total_kg(self) -> Decimal:
         return sum((p.weight_kg * p.count for p in self.pieces), Decimal(0))
+
+    @property
+    def total_floor_m2(self) -> Decimal:
+        """各個の縦 × 横 × 個数の合計（m²）。"""
+        return sum((p.length_mm * p.width_mm * p.count for p in self.pieces), Decimal(0)) / Decimal(1_000_000)
 
 
 # ---------------------------------------------------------------- 読み込み
@@ -120,7 +130,27 @@ def parse_shipment(body: dict[str, Any]) -> BShipment:
         if not isinstance(v, bool):
             raise ValueError(f"{key} は true か false で入れてください")
         flags[key] = v
-    return BShipment(tuple(pieces), dest, (category or "").strip() or None, **flags)
+    origin = pick("origin_code", None)
+    if origin is not None and (not isinstance(origin, str) or not origin):
+        raise ValueError("origin_code（集荷の地点の市区町村コード）は文字列で入れてください")
+    wf, wt = _parse_day(pick("window_from", None), "window_from"), _parse_day(pick("window_to", None), "window_to")
+    if (wf is None) != (wt is None):
+        raise ValueError("届けばよい日の幅は window_from と window_to を両方入れてください")
+    if wf and wt and wf > wt:
+        raise ValueError("window_from は window_to より前の日にしてください")
+    return BShipment(tuple(pieces), dest, (category or "").strip() or None, origin_code=origin,
+                     window_from=wf, window_to=wt, **flags)
+
+
+def _parse_day(v: Any, name: str) -> date | None:
+    if v is None or v == "":
+        return None
+    try:
+        if not isinstance(v, str):
+            raise ValueError
+        return date.fromisoformat(v[:10])
+    except ValueError:
+        raise ValueError(f"{name} は YYYY-MM-DD の日付で入れてください") from None
 
 
 # ---------------------------------------------------------------- 照合
@@ -136,10 +166,21 @@ def _fmt(d: Decimal) -> str:
     return format(d.normalize(), "f")
 
 
-def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf_kg: Any = None) -> tuple[bool, list[str]]:
+def _md(d: date) -> str:
+    return f"{d.month}/{d.day}"
+
+
+def _arrive_day(trip: dict[str, Any]) -> date | None:
+    v = trip.get("arrive_at")
+    return date.fromisoformat(v[:10]) if isinstance(v, str) and v else None
+
+
+def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf_kg: Any = None,
+          floor_m2: Any = None) -> tuple[bool, list[str]]:
     """荷物が便の空きに載るか。(合否, 合わない理由の一覧)。理由は日本語で、合えば空。
 
-    slack_kg・shelf_kg は盤が持つ「いまの残り」。省略すると便の登録値を使う。
+    slack_kg・shelf_kg・floor_m2 は盤が持つ「いまの残り」。省略すると便の登録値を使う。
+    SPEC §21.2: 日の幅と集荷の距離は荷物に日の幅・出発地があれば全便で調べる。床の合計は便に floor_free_m2 があるときだけ。
     """
     reasons: list[str] = []
     st = trip["space_type"]
@@ -179,6 +220,30 @@ def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf
     if shipment.dest_code not in trip["drop_points"]:
         reasons.append("受け取り場所がこの便の降ろせる地点にありません")
 
+    # 届けばよい日の幅（到着日で比べる）
+    arrive = _arrive_day(trip)
+    if shipment.window_from and shipment.window_to and arrive:
+        if not shipment.window_from <= arrive <= shipment.window_to:
+            reasons.append(f"この便は {_md(arrive)} 着で、届けばよい日の幅 {_md(shipment.window_from)}〜{_md(shipment.window_to)} に入りません")
+
+    # 集荷の地点（市区町村の代表点どうしの直線距離）。便の pickup_code が無ければ出発地、上限が無ければ 20km。
+    # 荷物に出発地（origin_code）が無いときだけ調べない
+    if shipment.origin_code:
+        pts = geo.load_points()
+        a, b = pts.get(shipment.origin_code), pts.get(trip.get("pickup_code") or trip.get("origin_code"))
+        if a and b:
+            km = geo.haversine_km(a["lon"], a["lat"], b["lon"], b["lat"])
+            radius = _dec(trip["pickup_radius_km"] if trip.get("pickup_radius_km") is not None else DEFAULT_PICKUP_RADIUS_KM)
+            if km > float(radius):
+                reasons.append(f"集荷の地点が便の空く地点から {km:.1f}km で、この便の上限 {_fmt(radius)}km を超えます")
+
+    # 床の合計
+    if trip.get("floor_free_m2") is not None:
+        free = _dec(trip["floor_free_m2"] if floor_m2 is None else floor_m2)
+        need = shipment.total_floor_m2
+        if need > free:
+            reasons.append(f"床の合計 {need:.2f}m² がこの便の床の空き {free:.2f}m² を超えます")
+
     # 容器
     if trip["container_required"] and not shipment.in_container:
         reasons.append("この便は容器に入れた荷だけを受けます")
@@ -192,7 +257,7 @@ def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf
             reasons.append(f"1口の重さ {_fmt(total)}kg が RB 1台の上段の上限 {_fmt(per_rb)}kg を超えます")
 
     # 形と品目
-    if not shipment.is_box:
+    if not shipment.is_box and not trip.get("accepts_unboxed"):
         reasons.append("段ボールなどの直方体の箱だけを受けます（袋物・筒物・はみ出す物は受けません）")
     if shipment.fragile:
         reasons.append("壊れ物は受けません")
@@ -212,12 +277,16 @@ class _Hold:
     created_at: datetime
     expires_at: datetime
     state: str = HELD
+    floor_m2: Decimal = Decimal(0)
+    shipment: BShipment | None = None
+    shipper: dict[str, Any] | None = None  # 荷主の名称・住所・法人番号（架空、書面の下書きに使う）
 
 
 @dataclass
 class _Cap:
     slack: Decimal
     shelf: Decimal | None
+    floor: Decimal | None = None  # 床の空き m²（便に floor_free_m2 があるときだけ）
 
 
 class Board:
@@ -232,7 +301,8 @@ class Board:
 
     def _reset_locked(self) -> None:
         self._cap = {t["id"]: _Cap(_dec(t["weight_slack_kg"]),
-                                   _dec(t["shelf_rated_kg"]) if t["space_type"] in SHELF_TYPES else None)
+                                   _dec(t["shelf_rated_kg"]) if t["space_type"] in SHELF_TYPES else None,
+                                   _dec(t["floor_free_m2"]) if t.get("floor_free_m2") is not None else None)
                      for t in self._trips}
         self._holds: dict[str, _Hold] = {}
         self._seq = 0
@@ -254,6 +324,8 @@ class Board:
         cap.slack += h.weight_kg
         if cap.shelf is not None:
             cap.shelf += h.weight_kg
+        if cap.floor is not None:
+            cap.floor += h.floor_m2
 
     def _trip(self, trip_id: Any) -> dict[str, Any]:
         t = self._by_id.get(trip_id) if isinstance(trip_id, str) else None
@@ -264,6 +336,7 @@ class Board:
     @staticmethod
     def _hold_dict(h: _Hold) -> dict[str, Any]:
         return {"hold_id": h.id, "trip_id": h.trip_id, "state": h.state, "weight_kg": float(h.weight_kg),
+                "floor_m2": float(h.floor_m2),
                 "created_at": h.created_at.isoformat(timespec="seconds"),
                 "expires_at": h.expires_at.isoformat(timespec="seconds")}
 
@@ -272,6 +345,7 @@ class Board:
         d = dict(t)
         d["remaining_slack_kg"] = float(cap.slack)
         d["remaining_shelf_kg"] = float(cap.shelf) if cap.shelf is not None else None
+        d["remaining_floor_m2"] = float(cap.floor) if cap.floor is not None else None
         return d
 
     # --- 公開
@@ -293,31 +367,57 @@ class Board:
             out = []
             for t in self._trips:
                 cap = self._cap[t["id"]]
-                ok, reasons = match(shipment, t, cap.slack, cap.shelf)
+                ok, reasons = match(shipment, t, cap.slack, cap.shelf, cap.floor)
                 out.append({"trip_id": t["id"], "ok": ok, "reasons": reasons})
             return out
 
-    def hold(self, trip_id: Any, shipment: BShipment, hold_minutes: Any = DEFAULT_HOLD_MINUTES) -> dict[str, Any]:
-        """期限付きの仮予約。照合と残りの減らしを1つの Lock の中で行う。合わなければ BoardError。"""
-        if isinstance(hold_minutes, bool) or not isinstance(hold_minutes, (int, float)) \
-                or not 0 < hold_minutes <= MAX_HOLD_MINUTES:
+    def hold(self, trip_id: Any, shipment: BShipment, hold_minutes: Any = DEFAULT_HOLD_MINUTES,
+             hold_until: Any = None, shipper: dict[str, Any] | None = None) -> dict[str, Any]:
+        """期限付きの仮予約。照合と残りの減らしを1つの Lock の中で行う。合わなければ BoardError。
+
+        期限は hold_minutes（分）か hold_until（現地時刻の ISO 日時）。hold_until があればそちらを使う。
+        どちらも仮予約の時刻から MAX_HOLD_MINUTES（72 時間）まで。
+        """
+        if hold_until is None and (isinstance(hold_minutes, bool) or not isinstance(hold_minutes, (int, float))
+                                   or not 0 < hold_minutes <= MAX_HOLD_MINUTES):
             raise BoardError(f"仮予約の期限（hold_minutes）は 0 より大きく {MAX_HOLD_MINUTES} 分以下で入れてください")
         with self._lock:
             self._sweep()
             trip = self._trip(trip_id)
+            now = self._clock()
+            expires = self._parse_until(hold_until, now) if hold_until is not None \
+                else now + timedelta(minutes=hold_minutes)
             cap = self._cap[trip["id"]]
-            ok, reasons = match(shipment, trip, cap.slack, cap.shelf)
+            ok, reasons = match(shipment, trip, cap.slack, cap.shelf, cap.floor)
             if not ok:
                 raise BoardError("この便には仮予約できません: " + "。".join(reasons))
-            weight = shipment.total_kg
+            weight, floor = shipment.total_kg, shipment.total_floor_m2
             cap.slack -= weight
             if cap.shelf is not None:
                 cap.shelf -= weight
-            now = self._clock()
+            if cap.floor is not None:
+                cap.floor -= floor
             self._seq += 1
-            h = _Hold(f"H{self._seq}", trip["id"], weight, now, now + timedelta(minutes=hold_minutes))
+            h = _Hold(f"H{self._seq}", trip["id"], weight, now, expires,
+                      floor_m2=floor if cap.floor is not None else Decimal(0), shipment=shipment, shipper=shipper)
             self._holds[h.id] = h
             return self._hold_dict(h)
+
+    @staticmethod
+    def _parse_until(v: Any, now: datetime) -> datetime:
+        try:
+            if not isinstance(v, str):
+                raise ValueError
+            t = datetime.fromisoformat(v)
+        except ValueError:
+            raise BoardError("締切（hold_until）は 2026-11-10T17:00 のような日時で入れてください") from None
+        if t.tzinfo is not None:
+            t = t.astimezone().replace(tzinfo=None)
+        if t <= now:
+            raise BoardError("締切（hold_until）は仮予約の時刻より後にしてください")
+        if t - now > timedelta(minutes=MAX_HOLD_MINUTES):
+            raise BoardError(f"締切（hold_until）は仮予約の時刻から {MAX_HOLD_MINUTES // 60} 時間以内にしてください")
+        return t
 
     def decide(self, hold_id: Any, decision: Any) -> dict[str, Any]:
         """運送会社の役の承諾（accept）か辞退（decline）。辞退で重さの余りを戻す。"""
@@ -338,3 +438,86 @@ class Board:
                 self._restore(h)
                 h.state = DECLINED
             return self._hold_dict(h)
+
+    # --- 書面の下書き（SPEC §21.3）
+    def contract(self, hold_id: Any, fuel_surcharge: Any = None, payment_method: Any = None) -> dict[str, Any]:
+        """承諾済みの仮予約から、運送会社と荷主の間の書面の下書きを作る。承諾前は BoardError。
+
+        燃料サーチャージなどの料金と支払方法は運送会社の役が選ぶ。選ばれていない項目は missing に入れ、ready を false にする。
+        """
+        with self._lock:
+            self._sweep()
+            h = self._holds.get(hold_id) if isinstance(hold_id, str) else None
+            if h is None:
+                raise BoardError(f"仮予約 {hold_id!r} が見つかりません")
+            if h.state != ACCEPTED:
+                raise BoardError("運送会社が承諾した仮予約だけ、書面の下書きを作れます")
+            trip = self._by_id[h.trip_id]
+            carrier = next((c for c in load_demo()["carriers"] if c["id"] == trip["carrier_id"]), {})
+            options = carrier.get("payment_options") or []
+            fuel = _text_or_none(fuel_surcharge, "fuel_surcharge")
+            pay = _text_or_none(payment_method, "payment_method")
+            if pay is not None and options and pay not in options:
+                raise BoardError("支払方法は運送会社が示した選択肢から選んでください")
+            return _contract_draft(h, trip, carrier, fuel, pay, self._clock().date())
+
+
+def _text_or_none(v: Any, name: str) -> str | None:
+    if v is None or v == "":
+        return None
+    if not isinstance(v, str) or len(v) > 200:
+        raise BoardError(f"{name} は 200 文字以内の文字列で入れてください")
+    return v.strip() or None
+
+
+# 改正法の書面の項目（SPEC §21.3）。画面の並びもこの順
+LEGAL_KEYS = ("transport", "ancillary", "surcharge", "parties", "payment", "issued_on")
+CONTRACT_NOTICE = "この書面は運送会社と荷主の間で交わすものです。Backfull は運送の当事者ではなく、運賃を受け取りません。"
+
+
+def muni_name(code: str) -> str:
+    p = geo.load_points().get(code)
+    return f"{p['pref']}{p['name']}" if p else code
+
+
+def _contract_draft(h: _Hold, trip: dict[str, Any], carrier: dict[str, Any], fuel: str | None, pay: str | None,
+                    today: date) -> dict[str, Any]:
+    s, sh = h.shipment, (h.shipper or {})
+    pieces = s.pieces if s else ()
+
+    def hm(v: str) -> str:
+        d = datetime.fromisoformat(v)
+        return f"{d.month}/{d.day} {d:%H:%M}"
+
+    cargo = "、".join(f"{_fmt(p.length_mm / 10)}×{_fmt(p.width_mm / 10)}×{_fmt(p.height_mm / 10)}cm {_fmt(p.weight_kg)}kg を {p.count} 点"
+                      for p in pieces)
+    price = f"{trip['price_ex_tax_yen']:,}円（税抜）／{trip['price_unit']}"
+    transport = (f"{muni_name(trip['origin_code'])} から {muni_name(trip['dest_code'])} まで。{hm(trip['depart_at'])} 発、"
+                 f"{hm(trip['arrive_at'])} 着の予定。荷物: {cargo}。対価: {price}")
+    heavy = max((p.weight_kg for p in pieces), default=Decimal(0))
+    handling = ("1個 %skg の荷があるため、積む側と降ろす側がそれぞれ 2 人を出す" % _fmt(heavy)) if heavy >= 100 \
+        else "積み降ろしは運送会社と荷主で当日に決める"
+    carrier_party = f"運送会社: {carrier.get('name', '')}"
+    if carrier.get("address"):
+        carrier_party += f"（{carrier['address']}）"
+    shipper_party = f"荷主: {sh['name']}（{sh['address']}）" if sh.get("name") and sh.get("address") else None
+    items = [
+        {"key": "transport", "legal": True, "label": "運送の内容と対価", "value": transport},
+        {"key": "ancillary", "legal": True, "label": "附帯業務の対価",
+         "value": trip.get("ancillary_note") or "別料金なし（積み込み・荷降ろしの人手は荷役の欄のとおり）"},
+        {"key": "surcharge", "legal": True, "label": "燃料サーチャージなどの料金", "value": fuel, "by": "carrier"},
+        {"key": "parties", "legal": True, "label": "当事者の名称と住所",
+         "value": f"{carrier_party}／{shipper_party}" if carrier.get("address") and shipper_party else None},
+        {"key": "payment", "legal": True, "label": "支払方法", "value": pay, "by": "carrier",
+         "options": carrier.get("payment_options") or []},
+        {"key": "issued_on", "legal": True, "label": "交付日", "value": f"{today.year}/{today.month}/{today.day}"},
+        {"key": "handling", "legal": False, "label": "荷役の人手", "value": handling},
+        {"key": "cancel", "legal": False, "label": "取消しの条件", "value": carrier.get("cancel_terms")},
+        {"key": "terms", "legal": False, "label": "運送約款", "value": carrier.get("terms")},
+        {"key": "insurance", "legal": False, "label": "貨物保険", "value": carrier.get("insurance")},
+        {"key": "license", "legal": False, "label": "許可番号", "value": carrier.get("license_no")},
+        {"key": "corp_no", "legal": False, "label": "荷主の法人番号（架空の番号）", "value": sh.get("corporate_number")},
+    ]
+    missing = [i["label"] for i in items if not i["value"]]
+    return {"hold_id": h.id, "trip_id": h.trip_id, "state": h.state, "items": items, "missing": missing,
+            "ready": not missing, "notice": CONTRACT_NOTICE, "fiction_notice": FICTION_NOTICE}

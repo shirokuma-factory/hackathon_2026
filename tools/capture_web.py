@@ -7,6 +7,7 @@
     uv run python tools/capture_web.py --scene selected --size 1280x720 --out tmp/web_1280.jpg
     uv run python tools/capture_web.py --all
     uv run python tools/capture_web.py --flow     # S5 の筋書きを本物のクリックと入力でたどり、5枚を docs/assets に保存する
+    uv run python tools/capture_web.py --v21flow  # S6（SPEC §21）の照合・仮予約・承諾・書面・締切のカードを撮る
 """
 
 from __future__ import annotations
@@ -209,6 +210,77 @@ def bflow_steps(page, base: str, out_dir: Path, dl_dir: Path):
     yield "2026-11-03_b_accepted.jpg"
 
 
+def v21flow_steps(page, base: str, out_dir: Path, dl_dir: Path):
+    """帰り便で 1 件をつなぐ（SPEC §21、G65）。S6 の荷物で T7 だけが載る → 締切つきの仮予約 → 運送会社の承諾 → 書面 → 締切を過ぎたカード。"""
+    page.goto("about:blank")
+    page.goto(base + "#o=13104&l=fare&d=27128")
+    page.wait(lambda: page.js("!!window.__app"), 60, "アプリの起動")
+    time.sleep(8.0)
+    click(page, "#cargo-toggle")
+    set_select(page, "#sc-select", "S6")
+    for _ in range(4):  # 重いときは 1 回目のクリックが効かないことがある。S6 になるまで押し直す
+        page.js("document.querySelector('#ed-confirm').click()")
+        time.sleep(3.0)
+        if page.js("Work.scenarioId() === 'S6'"):
+            break
+        set_select(page, "#sc-select", "S6")
+    page.wait(lambda: page.js("Work.scenarioId() === 'S6'"), 30, "場面 S6 の確定")
+    page.js("__app.setView('find')")
+    page.wait(lambda: page.js("document.querySelectorAll('#f-list .f-card').length >= 7"), 30, "便の一覧")
+    page.wait(lambda: page.js("!!document.querySelector('#f-list .f-card.ok')"), 30, "照合の結果")
+    page.js("__app.Find.select('T7', {fly: true})")
+    time.sleep(8.0)
+    # 締切を 24 時間にして仮予約する
+    set_select(page, "#f-holdmin", "1440")
+    for _ in range(3):  # 重いときは押した直後に一覧が作り直されて効かないことがある
+        page.wait(lambda: page.js("!!document.querySelector('#f-list .f-card[data-t=\"T7\"] [data-act=hold]')"), 40, "仮予約のボタン")
+        page.js("document.querySelector('#f-list .f-card[data-t=\"T7\"] [data-act=hold]').click()")
+        time.sleep(3.0)
+        if page.js("!!document.querySelector('#f-list .f-hold.held')"):
+            break
+    page.wait(lambda: page.js("!!document.querySelector('#f-list .f-hold.held')"), 40, "仮予約中の表示")
+    time.sleep(3.0)
+    yield "2026-11-05_v21_hold.jpg"
+    # 運送会社の役（C4）が承諾する
+    click(page, '#f-role button[data-role="carrier"]', 0.8)
+    set_select(page, "#f-carrier-sel", "C4")
+    page.wait(lambda: page.js("!!document.querySelector('#f-list [data-act=accept]')"), 20, "承諾のボタン")
+    time.sleep(2.0)
+    yield "2026-11-05_v21_carrier.jpg"
+    click(page, '#f-list [data-act="accept"]', 1.5)
+    page.wait(lambda: page.js("!!document.querySelector('#f-list [data-act=contract]')"), 20, "書面のボタン")
+    click(page, '#f-list [data-act="contract"]', 1.5)
+    page.wait(lambda: page.js("!document.querySelector('#f-contract').hidden"), 20, "書面の下書き")
+    time.sleep(1.0)
+    yield "2026-11-05_v21_contract_missing.jpg"
+    set_select(page, '#fc-body [data-ct="fuel"]', "なし")
+    page.wait(lambda: page.js("!!document.querySelector('#fc-body [data-ct=pay]')"), 20, "支払方法の選択欄")
+    set_select(page, '#fc-body [data-ct="pay"]', "請求書払い（月末締め翌月末）")
+    page.wait(lambda: page.js("!document.querySelector('#fc-confirm').disabled"), 20, "確定のボタン")
+    time.sleep(1.0)
+    yield "2026-11-05_v21_contract.jpg"
+    click(page, "#fc-close", 0.5)
+    # 締切を過ぎたカード: 盤を初期に戻し、数秒後が締切の仮予約を入れて待つ
+    page.js("""(async function(){
+      await fetch('/api/b/reset', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+      const until = new Date(Date.now() + 4000), z = (n) => String(n).padStart(2, '0');
+      const iso = `${until.getFullYear()}-${z(until.getMonth() + 1)}-${z(until.getDate())}T${z(until.getHours())}:${z(until.getMinutes())}:${z(until.getSeconds())}`;
+      const r = await fetch('/api/b/hold', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+        shipment: {items: Work.confirmedShipment().items}, dest_code: '27128', is_box: false, origin_code: '13108',
+        window_from: '2026-11-13', window_to: '2026-11-16', trip_id: 'T7', hold_until: iso})});
+      const j = await r.json(); Find.state.mine.add(j.hold.hold_id); window.__f = j;
+    })()""")
+    click(page, '#f-role button[data-role="shipper"]', 0.8)
+    page.wait(lambda: page.js("!!document.querySelector('#f-list .f-hold.lost')"), 40, "締切を過ぎたカード")
+    time.sleep(2.5)
+    yield "2026-11-05_v21_deadline.jpg"
+    # 最後に盤を初期に戻し、S6 の照合（T7 だけが ○）を撮る。起動直後は先読みで画面が隠れていることがあるので最後に撮る
+    page.js("document.querySelector('#f-reset').click()")
+    page.wait(lambda: page.js("!document.querySelector('#f-list .f-hold.lost') && !!document.querySelector('#f-list .f-card.ok [data-act=hold]')"), 30, "初期の状態")
+    time.sleep(6.0)
+    yield "2026-11-05_v21_match.jpg"
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -217,12 +289,13 @@ def main() -> int:
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--flow", action="store_true", help="S5 の筋書きをたどって web_cargo / request / quotes / compare / save を撮る")
     ap.add_argument("--bflow", action="store_true", help="空きを探す・つなぐの筋書きをたどって b_match / b_hold / b_carrier / b_accepted を撮る")
+    ap.add_argument("--v21flow", action="store_true", help="S6（SPEC §21）の筋書きをたどって v21_* を撮る")
     ap.add_argument("--size", default="1920x1080")
     ap.add_argument("--out", help="単一の場面のときの出力先（省略すると docs/assets）")
     ap.add_argument("--click", help="経度,緯度。その地点を本物のマウスでクリックしてから撮る")
     ap.add_argument("--port", type=int, default=0, help="既に起動している配信サーバーのポート（省略すると自分で起動）")
     args = ap.parse_args()
-    names = list(SCENES) if args.all else ([] if (args.flow or args.bflow) else (args.scene or ["overview"]))
+    names = list(SCENES) if args.all else ([] if (args.flow or args.bflow or args.v21flow) else (args.scene or ["overview"]))
     w, h = (int(x) for x in args.size.split("x"))
     cs.W, cs.H = w, h
 
@@ -288,11 +361,11 @@ def main() -> int:
             path.parent.mkdir(parents=True, exist_ok=True)
             img.save(path, "JPEG", quality=88)
             print(f"保存: {path}  {img.size[0]}x{img.size[1]}")
-        if args.flow or args.bflow:
+        if args.flow or args.bflow or args.v21flow:
             from PIL import Image
             dl = Path(tempfile.mkdtemp(prefix="edge_dl_"))
             try:
-                for fname in (flow_steps if args.flow else bflow_steps)(page, base, OUT_DIR, dl):
+                for fname in (flow_steps if args.flow else v21flow_steps if args.v21flow else bflow_steps)(page, base, OUT_DIR, dl):
                     errs = page.js("window.__errs") or []
                     if errs:
                         print("ブラウザのエラー:", *errs[:5], sep="\n  ")
