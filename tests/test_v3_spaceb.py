@@ -55,7 +55,7 @@ class Clock:
 def test_spec16_2_carriers_json_is_fictional_and_well_formed():
     data = json.loads((ROOT / "data" / "demo" / "carriers.json").read_text(encoding="utf-8"))
     assert "架空" in data["note"] and data["fictional"] is True
-    assert len(data["carriers"]) == 3
+    assert len(data["carriers"]) == 4  # C4 は SPEC §21.1 で足した
     assert all("架空" in c["name"] for c in data["carriers"])
     ids = {c["id"] for c in data["carriers"]}
     trips = data["trips"]
