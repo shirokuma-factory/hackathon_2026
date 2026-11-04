@@ -7,8 +7,8 @@
   },
   "claude_input": "Claude に送る記録の形。列名、行数、空欄でない割合、値の形の説明の割合だけ。実際の値・氏名・荷主名・地点名は含めない（SPEC §22 G71）"
  },
- "claude_model": null,
- "claude_created_at": null,
+ "claude_model": "claude-opus-5-5（Claude Code の本線のセッション）",
+ "claude_created_at": "2026-11-05",
  "dictionary": {
   "digitaco": {
    "KBN": "kind",
@@ -46,12 +46,15 @@
    "shape_expected": "4 桁の番号をふくむ車番",
    "shape_ratio": 1.0,
    "shape_best_role": null,
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
-   "claude_agrees": false,
+   "claude_proposal": {
+    "role": "plate",
+    "reason": "列名が「車番」で、4 桁の番号をふくむ値が 75%。残りは数字だけの書き方と読める"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
+   "claude_agrees": true,
    "confidence": 1.0,
    "color": "green",
-   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "formula": "0.5 × max(辞書 1, Claude 1) + 0.5 × 値の形 1.000 = 1.000",
    "claude_input": {
     "source": "配車表",
     "column": "車番",
@@ -72,12 +75,15 @@
    "shape_expected": "「大型」か「数字 + t」",
    "shape_ratio": 0.75,
    "shape_best_role": null,
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
-   "claude_agrees": false,
+   "claude_proposal": {
+    "role": "vehicle_type",
+    "reason": "列名が「車種」で、「大型」か「数字 + t」の値が 75%"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
+   "claude_agrees": true,
    "confidence": 0.875,
    "color": "yellow",
-   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 0.750 = 0.875",
+   "formula": "0.5 × max(辞書 1, Claude 1) + 0.5 × 値の形 0.750 = 0.875",
    "claude_input": {
     "source": "配車表",
     "column": "車種",
@@ -98,12 +104,15 @@
    "shape_expected": "月/日 の日付の見出し",
    "shape_ratio": 0.9688,
    "shape_best_role": null,
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
-   "claude_agrees": false,
+   "claude_proposal": {
+    "role": "date",
+    "reason": "見出しの 97% が「月/日」の形。1 列だけ形が違うので、その列は人に確かめてもらう"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
+   "claude_agrees": true,
    "confidence": 0.984375,
    "color": "green",
-   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 0.969 = 0.984",
+   "formula": "0.5 × max(辞書 1, Claude 1) + 0.5 × 値の形 0.969 = 0.984",
    "claude_input": {
     "source": "配車表",
     "column": "日付の見出し（32 列）",
@@ -124,12 +133,15 @@
    "shape_expected": "1 か 2",
    "shape_ratio": 1.0,
    "shape_best_role": null,
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
-   "claude_agrees": false,
+   "claude_proposal": {
+    "role": "kind",
+    "reason": "KBN は「区分」の略と読める。値は数字だけで空欄が無いので、行ごとの走行・停車の区分と考えた"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
+   "claude_agrees": true,
    "confidence": 1.0,
    "color": "green",
-   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "formula": "0.5 × max(辞書 1, Claude 1) + 0.5 × 値の形 1.000 = 1.000",
    "claude_input": {
     "source": "デジタコ",
     "column": "KBN",
@@ -149,12 +161,15 @@
    "shape_expected": "YYYY-MM-DD HH:MM の日時",
    "shape_ratio": 1.0,
    "shape_best_role": null,
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
-   "claude_agrees": false,
+   "claude_proposal": {
+    "role": "start_time",
+    "reason": "START TIME の略と読め、値がすべて日時の形"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
+   "claude_agrees": true,
    "confidence": 1.0,
    "color": "green",
-   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "formula": "0.5 × max(辞書 1, Claude 1) + 0.5 × 値の形 1.000 = 1.000",
    "claude_input": {
     "source": "デジタコ",
     "column": "ST_TIME",
@@ -174,12 +189,15 @@
    "shape_expected": "YYYY-MM-DD HH:MM の日時",
    "shape_ratio": 1.0,
    "shape_best_role": null,
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
-   "claude_agrees": false,
+   "claude_proposal": {
+    "role": "end_time",
+    "reason": "END TIME の略と読め、値がすべて日時の形"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
+   "claude_agrees": true,
    "confidence": 1.0,
    "color": "green",
-   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "formula": "0.5 × max(辞書 1, Claude 1) + 0.5 × 値の形 1.000 = 1.000",
    "claude_input": {
     "source": "デジタコ",
     "column": "ED_TIME",
@@ -199,12 +217,15 @@
    "shape_expected": "小数まじりの数字",
    "shape_ratio": 1.0,
    "shape_best_role": null,
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
-   "claude_agrees": false,
+   "claude_proposal": {
+    "role": "distance_km",
+    "reason": "ODO は距離計の意味。km の単位。半分の行が空欄なので走行の行だけの値と考えた。区間の距離か積算の値かは、値の増え方で確かめてほしい"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
+   "claude_agrees": true,
    "confidence": 1.0,
    "color": "green",
-   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "formula": "0.5 × max(辞書 1, Claude 1) + 0.5 × 値の形 1.000 = 1.000",
    "claude_input": {
     "source": "デジタコ",
     "column": "ODO_KM",
@@ -224,12 +245,15 @@
    "shape_expected": "0 か 1",
    "shape_ratio": 1.0,
    "shape_best_role": null,
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
-   "claude_agrees": false,
+   "claude_proposal": {
+    "role": "loaded_flag",
+    "reason": "JK は「実車・空車」の略と読め、FLG は区分の印。走行の行だけに値がある"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
+   "claude_agrees": true,
    "confidence": 1.0,
    "color": "green",
-   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "formula": "0.5 × max(辞書 1, Claude 1) + 0.5 × 値の形 1.000 = 1.000",
    "claude_input": {
     "source": "デジタコ",
     "column": "JK_FLG",
@@ -249,12 +273,15 @@
    "shape_expected": "漢字・かなだけの名称",
    "shape_ratio": 0.7778,
    "shape_best_role": null,
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
-   "claude_agrees": false,
+   "claude_proposal": {
+    "role": "place_name",
+    "reason": "POSITION NAME の略と読める。漢字・かなの名称が 78%"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
+   "claude_agrees": true,
    "confidence": 0.888888889,
    "color": "yellow",
-   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 0.778 = 0.889",
+   "formula": "0.5 × max(辞書 1, Claude 1) + 0.5 × 値の形 0.778 = 0.889",
    "claude_input": {
     "source": "デジタコ",
     "column": "POS_NAME",
@@ -275,12 +302,15 @@
    "shape_expected": "英大文字 1 字と数字 2 桁",
    "shape_ratio": 1.0,
    "shape_best_role": null,
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
-   "claude_agrees": false,
+   "claude_proposal": {
+    "role": "driver_code",
+    "reason": "DRIVER CODE の略と読め、英大文字 1 字と数字 2 桁の形がそろっている"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
+   "claude_agrees": true,
    "confidence": 1.0,
    "color": "green",
-   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "formula": "0.5 × max(辞書 1, Claude 1) + 0.5 × 値の形 1.000 = 1.000",
    "claude_input": {
     "source": "デジタコ",
     "column": "DRV_CD",
@@ -300,8 +330,11 @@
    "shape_expected": "小数まじりの数字",
    "shape_ratio": 1.0,
    "shape_best_role": "distance_km",
-   "claude_proposal": null,
-   "claude_note": "未作成（本線が作る）",
+   "claude_proposal": {
+    "role": null,
+    "reason": "列名から意味が読めない。小数まじりの数字で半分が空欄。走行距離か燃料などか区別できないので、人に確かめてほしい"
+   },
+   "claude_note": "Claude の提案（開発のセッション）",
    "claude_agrees": false,
    "confidence": 0.5,
    "color": "red",
