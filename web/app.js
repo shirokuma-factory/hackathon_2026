@@ -556,6 +556,7 @@ function buildCards(i, est) {
       else tip = `OSRM の道路距離 ${g.km}km で計算した国の目安です。会社ごとに違います`;
       if (o && est.route !== 'other' && o.amount !== r.amount) tip += `。OSRM の道路距離 ${o.km}km で計算すると ${fmt(o.amount)}円です`;
       if (g && g.days) dayText = `運転だけで${g.days}日（積込み・荷待ちを除く）`;
+      if (g && g.origin_note) tip += `。${g.origin_note}`;
     }
     cards.push({ label: m.label, model: cardModel(m.key, r), sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, amount: r.amount,
       low: r.low, high: r.high, days: dayText, tip, src: srcOf(r) });

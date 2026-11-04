@@ -1,0 +1,33 @@
+{
+  "id": "S6",
+  "name": "木工所（架空）",
+  "label": "想定の荷主",
+  "assumed_shipper": true,
+  "assumption_note": "解決の筋書き（2026-11-05）の荷主「東雲木工」に合わせた想定です。荷物、日の幅、集荷・配達、発送者・受取人の種別は、この場面の想定として置いた値です。会社名と法人番号は架空です。",
+  "shipment": {
+    "items": [
+      {"count": 2, "length_cm": 240, "width_cm": 60, "height_cm": 200, "weight_kg": 140},
+      {"count": 2, "length_cm": 100, "width_cm": 60, "height_cm": 80, "weight_kg": 60}
+    ],
+    "route": "kanto_kansai",
+    "destinations": 1,
+    "sender_type": "法人",
+    "receiver_type": "法人",
+    "pickup": "集荷",
+    "delivery": "配達",
+    "cargo_name": "陳列棚と什器"
+  },
+  "backhaul": {
+    "origin_code": "13108",
+    "dest_code": "27128",
+    "window_from": "2026-11-13",
+    "window_to": "2026-11-16",
+    "is_box": false,
+    "unboxed_note": "陳列棚は木枠だけの梱包です（箱ではありません）",
+    "shipper": {
+      "name": "東雲木工（架空）",
+      "address": "東京都江東区（架空の番地）",
+      "corporate_number": "1234567890123"
+    }
+  }
+}
