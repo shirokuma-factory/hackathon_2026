@@ -39,7 +39,7 @@ const Market = (() => {
     q('#sum-rate').textContent = d.summary.actual_rate_pct.toFixed(2);
     q('#sum-share').textContent = d.summary.shortfall_share_pct;
     q('#calc-formula').textContent = `実車率(後) = 実車率(今) × (1 + X × S)。S = Σ(不足量 × 直線距離) ÷ Σ(両向きの量 × 直線距離) = ${d.scale_s.toFixed(4)}（営業用トラックの全区間、物流センサス 2021 から計算）。`;
-    q('#m-credits').innerHTML = [
+    q('#m-credits-body').innerHTML = [
       `${esc(d.source)}。${esc(d.unit)}`,
       '営業用普通車の積載効率・実車率: 国土交通省「自動車輸送統計年報」2025 年度（e-Stat 統計表 ID 000040511074 ほか）。出典は e-Stat、政府標準利用規約（第 2.0 版）に従って加工しています',
       `${esc(M.j.attribution)}。台数は参考値です。積荷の有無は分かりません`,
@@ -130,25 +130,28 @@ const Market = (() => {
   const css = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
 
   function renderLegend() {
+    const mu = Muni.isMuni(), maxBal = mu ? Muni.maxBal() : M.maxBal, colorOf = mu ? Muni.balColor : balColor;
+    Muni.renderBalHead();
     const steps = 24, cells = [];
     for (let i = 0; i < steps; i++) {
       const s = (i / (steps - 1)) * 2 - 1; // -1（入荷が多い）〜 1（出荷が多い）
-      const v = Math.sign(s) * M.maxBal * s * s;
-      cells.push(`<i style="background:${css(balColor(v))}"></i>`);
+      const v = Math.sign(s) * maxBal * s * s;
+      cells.push(`<i style="background:${css(colorOf(v))}"></i>`);
     }
     q('#mlg-bar').innerHTML = cells.join('');
     // 目盛りは、表示用の平方根の尺度の逆変換で置く。1・2・5 × 10^k のうち、尺度の 0.4 と 0.8 に近い値を選ぶ
     const nice = [];
     for (let e = 1; e <= 6; e++) for (const m of [1, 2, 5]) nice.push(m * Math.pow(10, e));
-    const pick = (f) => nice.reduce((b2, v) => (Math.abs(Math.sqrt(v / M.maxBal) - f) < Math.abs(Math.sqrt(b2 / M.maxBal) - f) ? v : b2), nice[0]);
-    const cand = [...new Set([0.4, 0.8].map(pick))].filter((v) => v < M.maxBal);
+    const pick = (f) => nice.reduce((b2, v) => (Math.abs(Math.sqrt(v / maxBal) - f) < Math.abs(Math.sqrt(b2 / maxBal) - f) ? v : b2), nice[0]);
+    const cand = [...new Set([0.4, 0.8].map(pick))].filter((v) => v < maxBal);
     const marks = [...cand.slice().reverse().map((v) => -v), 0, ...cand];
     const lab = (v) => (v === 0 ? '0' : (v < 0 ? '−' : '+') + (Math.abs(v) >= 1e4 ? `${Math.abs(v) / 1e4}万` : n0(Math.abs(v))));
     q('#mlg-ticks').innerHTML = marks.map((v) => {
-      const pos = 50 + Math.sign(v) * Math.sqrt(Math.abs(v) / M.maxBal) * 50;
+      const pos = 50 + Math.sign(v) * Math.sqrt(Math.abs(v) / maxBal) * 50;
       return `<span style="left:${pos}%">${lab(v)}</span>`;
     }).join('');
     q('#mlg-jartic').hidden = !M.jartic;
+    q('#mlg-flow').hidden = false;
   }
 
   /* ------------------------------------------------------------ 流れ（動く矢印） */
@@ -239,12 +242,14 @@ const Market = (() => {
   function layers(now, zoom) {
     const L = deck, out = [], sec = now / 1000, P = M.d.prefs;
     const bal = M.bal;
+    const mu = Muni.isMuni();
+    out.push(...Muni.under());
     out.push(new L.GeoJsonLayer({
-      id: 'm-pref', data: S.pref, pickable: true, stroked: true, filled: true, beforeId: firstLabelId,
+      id: 'm-pref', data: S.pref, pickable: Muni.prefFilled(), stroked: true, filled: Muni.prefFilled(), beforeId: firstLabelId,
       getFillColor: (f) => { const i = M.prefIdx.get(f.properties.n); return i === undefined ? [60, 70, 90, 80] : balColor(bal[i]); },
-      getLineColor: [210, 226, 255, 80], lineWidthMinPixels: 0.8, getLineWidth: 0.8, lineWidthUnits: 'pixels',
-      autoHighlight: true, highlightColor: [255, 255, 255, 38],
-      updateTriggers: { getFillColor: [M.mode] }, transitions: { getFillColor: { duration: 650, easing: ease } },
+      getLineColor: mu ? [236, 244, 255, 190] : [210, 226, 255, 80], lineWidthMinPixels: mu ? 1.6 : 0.8, getLineWidth: mu ? 1.6 : 0.8, lineWidthUnits: 'pixels',
+      autoHighlight: Muni.prefFilled(), highlightColor: [255, 255, 255, 38],
+      updateTriggers: { getFillColor: [M.mode], getLineColor: [mu], getLineWidth: [mu] }, transitions: { getFillColor: { duration: 650, easing: ease } },
     }));
     if (Hubs.on) out.push(...Hubs.layers(zoom));
     const F = M.flows;
@@ -308,12 +313,13 @@ const Market = (() => {
         getSize: 13, sizeUnits: 'pixels', getPixelOffset: [17, 0], getColor: (p) => [...jColor(p), 255],
       }));
     }
+    out.push(...Muni.over(zoom));
     return out;
   }
 
   /* ------------------------------------------------------------ 選択 */
 
-  const padding = () => ({ top: 150, bottom: 190, left: 430, right: (q('#m-right').offsetWidth || 480) + 80 });
+  const padding = () => (innerWidth <= 1100 ? { top: 120, bottom: 60, left: 40, right: 40 } : { top: 150, bottom: 190, left: 430, right: (document.body.classList.contains('m-right-collapsed') ? 300 : (q('#m-right').offsetWidth || 480)) + 80 });
 
   function fitPair(r) {
     const a = M.d.cap[r.fi], b = M.d.cap[r.ti];
@@ -496,7 +502,8 @@ const Market = (() => {
       t = `大型車 ${o.pair}（国の観測点）`;
       s = `上り計 ${n0(o.up_total)} 台 ／ 下り計 ${n0(o.down_total)} 台 ／ 比 ${o.ratio.toFixed(3)}`;
     } else {
-      const hh = Hubs.on ? Hubs.hoverText(info) : null;
+      const mh = Muni.hoverText(info);
+      const hh = mh || (Hubs.on ? Hubs.hoverText(info) : null);
       if (hh) { t = hh.t; s = hh.s; }
     }
     if (!t) { tag.classList.remove('on'); return; }
@@ -507,6 +514,7 @@ const Market = (() => {
 
   function click(info) {
     const o = info && info.object, id = info && info.layer && info.layer.id;
+    if (Muni.click(info)) return;
     if (o && id === 'm-flow-pick') return select(o.route.r.k, { fly: true });
     if (o && id === 'm-jartic') {
       const r = M.rows.find((x) => x.fi === o.fi && x.ti === o.ti);
@@ -541,6 +549,7 @@ const Market = (() => {
 
   function setActive(on) {
     M.active = on;
+    Muni.setActive(on);
     if (!on) { M.markers.forEach((m) => m.remove()); M.markers = []; q('#hover-tag').classList.remove('on'); }
     else { syncMarkers(); syncHash(); }
   }
@@ -556,5 +565,5 @@ const Market = (() => {
   const pairText = () => { const r = selected(); return r ? `${M.d.prefs[r.fi]}→${M.d.prefs[r.ti]}` : null; };
   const pairNames = () => { const r = selected(); return r ? { from: M.d.prefs[r.fi], to: M.d.prefs[r.ti] } : null; };
 
-  return { load, init, layers, flowLayers, hover, click, setActive, syncHash, readHash, afterStart, setJartic, select, deselect, selected, pairText, pairNames, state: M, refresh };
+  return { load, init, renderLegend, layers, flowLayers, hover, click, setActive, syncHash, readHash, afterStart, setJartic, select, deselect, selected, pairText, pairNames, state: M, refresh };
 })();

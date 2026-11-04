@@ -875,3 +875,139 @@ button.rt-card:hover { background: rgba(255, 255, 255, 0.075); }
 #track .gapband { position: absolute; top: 8px; height: 6px; border-radius: 3px; background: repeating-linear-gradient(135deg, var(--c) 0 3px, transparent 3px 6px); opacity: .85; }
 .daylabels span.gl { transform: translateX(2px); font-size: 10.5px; }
 #m-credits .rt-attr { color: var(--muted); }
+
+/* ======================================================================
+   版3の4段目: 市区町村の推定・物流の集積・施設（SPEC §18）と、狭い画面の畳み方
+   ====================================================================== */
+:root { --cr-h: 30px; --mr: calc(var(--m-w) + 30px); }
+body.cr-open { --cr-h: 112px; }
+
+/* 左の列: 操作 2 枚と凡例を縦に並べ、足りない高さは凡例の中だけ送りにする（重ならない） */
+#m-left { max-height: calc(100vh - 76px - var(--cr-h) - 12px); }
+#m-left > section { flex: none; }
+#m-left > #m-legend { position: static; width: auto; flex: 1 1 auto; min-height: 150px; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 10px; }
+#mlg-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; padding-right: 2px; }
+#mlg-scroll > * { flex: none; }
+#mlg-scroll [hidden], #m-legend [hidden] { display: none !important; }
+#mu-notice { flex: none; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.mu-notice-t { margin: 0; font-size: 12.5px; line-height: 1.6; color: #fff; }
+.mu-notice-t b { font-weight: 700; }
+.mu-formula { margin-top: 4px; font-size: 11px; color: var(--muted); }
+.mu-formula summary { cursor: pointer; }
+.mu-formula p { margin: 4px 0 0; line-height: 1.65; max-height: 150px; overflow: auto; }
+#mlg-attr { flex: none; border-top: 1px solid var(--line); padding-top: 6px; font-size: 10.5px; line-height: 1.5; color: #8b99b0; }
+#mlg-attr div + div { margin-top: 2px; }
+.mlg-t { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px; }
+.mlg-t small { margin-left: 0; }
+.sw-gray { background: rgba(124, 134, 150, 0.6); border: 1px solid rgba(255,255,255,.18); }
+.mlg-gray { display: flex; align-items: center; gap: 0; margin-top: 4px; font-size: 11px; color: var(--muted); }
+#mlg-bal.is-muni .mlg-bar { outline: 1px solid rgba(255,255,255,.28); outline-offset: 1px; }
+.mlg-bar-c { height: 10px; gap: 2px; }
+.mlg-bar-c i { border-radius: 3px; }
+.mlg-ticks-c span { font-size: 10.5px; }
+.mlg-cap-c { margin-top: 2px; }
+.mlg-chk { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; font-size: 12px; color: var(--text); cursor: pointer; }
+.mlg-chk input { accent-color: #b99cf6; width: 15px; height: 15px; margin: 0; }
+.m-seg-s { margin-bottom: 8px; }
+.m-seg-s button { height: 30px; font-size: 11.5px; padding: 0 4px; }
+.m-seg-scope { margin-bottom: 12px; }
+.m-seg-scope button { height: 32px; }
+
+/* 施設の凡例 */
+.fac-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.fac-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--muted); font-size: 11.5px; white-space: nowrap; transition: background .15s, color .15s; }
+.fac-chip:hover:not(:disabled) { color: var(--text); background: rgba(255,255,255,.06); }
+.fac-chip[aria-pressed="true"] { background: var(--accent-soft); color: #fff; border-color: rgba(92,200,255,.45); }
+.fac-chip:disabled { opacity: .45; cursor: default; }
+.fac-chip em { font-style: normal; font-size: 10.5px; color: var(--faint); }
+.fac-chip .fg { flex: none; display: block; }
+.fac-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(238,206,120,.35); border: 1.5px solid #eece78; flex: none; }
+.fac-msg { margin: 8px 2px 0; font-size: 12px; font-weight: 700; color: var(--warn); }
+
+/* 右の列: 市区町村の詳細 */
+#m-muni { padding: 12px 18px 14px; border-bottom: 1px solid var(--line); overflow: auto; max-height: 56%; flex: none; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; animation: pairin .45s var(--ease); }
+#m-muni[hidden] { display: none; }
+.mu-pref { font-size: 12px; font-weight: 400; color: var(--muted); }
+.mu-est { margin: 4px 0 6px; font-size: 11.5px; color: var(--warn); }
+.mu-gray-r { margin: 0 0 6px; font-size: 12px; line-height: 1.6; }
+.mu-stats3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mu-stats4 { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 0; }
+.mu-stats4 b { font-size: 13.5px; }
+.mu-stats4 span { font-size: 10px; line-height: 1.3; }
+.mu-un, .mu-tn { margin: 6px 0 0; font-size: 11px; line-height: 1.6; color: var(--muted); }
+.mu-tbl { width: 100%; margin-top: 8px; border-collapse: collapse; font-size: 12px; }
+.mu-tbl th { text-align: right; font-weight: 500; font-size: 10.5px; color: var(--muted); padding: 3px 4px; border-bottom: 1px solid var(--line); }
+.mu-tbl th:first-child, .mu-tbl td:first-child { text-align: left; }
+.mu-tbl td { padding: 4px; text-align: right; border-bottom: 1px solid rgba(255,255,255,.04); }
+.mu-gray-t { color: var(--muted); }
+
+/* 畳める枠 */
+.m-h-fold { margin-bottom: 0; }
+.m-fold { display: flex; align-items: baseline; gap: 10px; width: 100%; border: 0; background: transparent; padding: 0; font-weight: 700; font-size: 13px; text-align: left; color: inherit; }
+.m-fold .m-tag { margin-left: auto; }
+.m-fold .caret { width: 11px; height: 7px; flex: none; align-self: center; fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s var(--ease); }
+.m-fold[aria-expanded="false"] .caret { transform: rotate(-90deg); }
+#m-calc #m-calc-body { margin-top: 10px; }
+#m-calc.folded #m-calc-body { display: none; }
+.m-rfold { margin-left: auto; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; align-self: center; flex: none; }
+.m-rfold:hover { background: rgba(255,255,255,.08); }
+.m-rfold .caret { width: 12px; height: 8px; fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s var(--ease); }
+body.m-right-collapsed .m-rfold .caret { transform: rotate(-90deg); }
+.m-rh { align-items: center; }
+
+/* 出典（畳める） */
+#m-credits-d > summary { cursor: pointer; font-size: 10.5px; color: #9aa8bf; list-style: none; width: max-content; padding: 2px 0; }
+#m-credits-d > summary::-webkit-details-marker { display: none; }
+#m-credits-d > summary::before { content: "▸ "; }
+#m-credits-d[open] > summary::before { content: "▾ "; }
+#m-credits-body { margin-top: 2px; }
+
+/* 上の要約: 長い文は広い画面だけ。狭いときは短い見出しにして、全文は title に */
+.lb-short { display: none; }
+@media (max-width: 1500px) {
+  #m-summary { left: 380px; right: var(--mr); padding: 8px 4px; }
+  .lb-full { display: none; }
+  .lb-short { display: inline; }
+  .sum-src { display: none; }
+  .sum-tile { padding: 0 10px; }
+  .sum-lbl { font-size: 11.5px; line-height: 1.35; }
+  #m-left { width: 340px; }
+}
+body.m-right-collapsed { --mr: 336px; }
+body.view-market.m-right-collapsed #layers { right: var(--gutter); }
+body.view-market.m-right-collapsed #m-right { bottom: auto; width: 300px; }
+body.m-right-collapsed #m-right #m-table-wrap, body.m-right-collapsed #m-right #m-pair, body.m-right-collapsed #m-right #m-muni, body.m-right-collapsed #m-right .m-rtot { display: none; }
+body.m-right-collapsed #m-right header { border-bottom: 0; padding-bottom: 8px; }
+body.m-right-collapsed .m-rsub { display: none; }
+#m-credits { right: calc(var(--mr) + 10px); }
+
+@media (max-height: 800px) {
+  #m-ctl, #m-calc { padding: 11px 14px 9px; }
+  .m-h { margin-bottom: 8px; }
+  .m-seg { margin-bottom: 8px; }
+  .m-seg button { height: 30px; }
+  .m-seg-scope button { height: 30px; }
+  .m-slider { margin-bottom: 2px; }
+  .m-count { display: none; }
+  .sum-num { font-size: 24px; }
+}
+
+/* 幅 1100 以下（800 付近）: 右の一覧は畳んだ見出しだけにして、上の要約はその下に細い帯で出す */
+@media (max-width: 1100px) {
+  :root { --gutter: 12px; }
+  #views, #m-left, #find-view, #find-notes { width: 316px; }
+  #m-summary { left: 344px; right: 12px; top: 72px; padding: 6px 2px; }
+  body.view-market #m-right { right: 12px; top: 12px; }
+  body:not(.m-right-collapsed) #m-summary { display: none; }
+  .sum-num { font-size: 20px; }
+  .sum-lbl { font-size: 10.5px; }
+  .sum-tile { padding: 0 8px; }
+  body.view-market #layers { top: 190px; transform: none; right: 12px; }
+  body:not(.m-right-collapsed) #layers { display: none; }
+  body.view-market:not(.m-right-collapsed) #m-right { width: min(440px, calc(100vw - 24px)); bottom: 12px; z-index: 30; }
+  #m-credits { right: 12px; }
+  .mp-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.mlg-more { margin-top: 6px; font-size: 11px; color: var(--muted); }
+.mlg-more summary { cursor: pointer; }
+.mlg-more p { margin: 4px 0 0; line-height: 1.6; }

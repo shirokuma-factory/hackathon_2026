@@ -839,7 +839,7 @@ function setHubSel(kind) {
 async function main() {
   const [meta, idx, muni, pref, routes, style] = await Promise.all([
     getJSON('data/meta.json'), getJSON('data/index.json'), getJSON('data/muni.geojson'), getJSON('data/pref.geojson'),
-    getJSON('data/routes.json'), getJSON(STYLE_URL), Hubs.load(), Rt.loadMeta().then(() => Promise.all([Rt.loadPairs(), Rt.loadTrips()])), Market.load(),
+    getJSON('data/routes.json'), getJSON(STYLE_URL), Hubs.load(), Rt.loadMeta().then(() => Promise.all([Rt.loadPairs(), Rt.loadTrips()])), Market.load(), Muni.load(),
   ]);
   Object.assign(S, { meta, idx, muni, pref, routes });
   for (const f of muni.features) S.byIndex.set(f.properties.i, f);
@@ -850,6 +850,7 @@ async function main() {
   const p = new URLSearchParams(location.hash.slice(1));
   S.view = ['market', 'find', 'compare'].includes(p.get('v')) ? p.get('v') : (p.get('o') || p.get('l') || p.get('d')) ? 'compare' : 'market';
   Market.readHash(p);
+  Muni.readHash(p);
   if (p.get('o') && meta.origins.some((o) => o.code === p.get('o'))) S.origin = p.get('o');
   if (['km', 'days', 'fare'].includes(p.get('l'))) S.layer = p.get('l');
   await loadOrigin(S.origin);
@@ -896,6 +897,8 @@ async function main() {
   Market.setActive(S.view === 'market');
   Market.init();
   Market.afterStart();
+  Muni.init();
+  Muni.afterStart();
   Find.readHash(p);
   await Find.init();
   if (S.view === 'find') Find.enter(null);
@@ -907,6 +910,8 @@ async function main() {
     e.currentTarget.setAttribute('aria-pressed', String(on));
     Market.setJartic(on);
   });
+  document.querySelector('.tgl[data-toggle="conc"]').addEventListener('click', (e) => Muni.setConc(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
+  document.querySelector('.tgl[data-toggle="fac"]').addEventListener('click', (e) => Muni.setFac(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
   if (p.get('hubs') === '1') setHubs(true);
   $('#cards').addEventListener('click', (e) => { const b = e.target.closest('.hub-btn'); if (b) setHubSel(b.dataset.hub); });
 
@@ -937,7 +942,7 @@ async function main() {
   refreshFareLayer();
   requestAnimationFrame(frame);
   setTimeout(() => $('#loading').classList.add('done'), 400);
-  window.__app = { S, Market, Hubs, Find, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
+  window.__app = { S, Market, Muni, Hubs, Find, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }
 
 main().catch((e) => {

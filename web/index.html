@@ -48,6 +48,8 @@
   <div class="cap">重ねる</div>
   <button class="lyr tgl" data-toggle="hubs" aria-pressed="false" title="貨物駅・港・フェリー航路（OpenStreetMap）">拠点<small>駅・港</small></button>
   <button class="lyr tgl v-market" data-toggle="jartic" aria-pressed="true" title="国の常設観測点の大型車（JARTIC）">大型車<small>観測点</small></button>
+  <button class="lyr tgl v-market" data-toggle="conc" aria-pressed="false" title="道路貨物運送業（44）と倉庫業（47）の従業者数（令和6年経済センサス‐基礎調査）">物流の<br>集積<small>44・47</small></button>
+  <button class="lyr tgl v-market" data-toggle="fac" aria-pressed="false" title="トラックターミナル・貨物駅・空港・倉庫などの施設">施設<small>空港・倉庫ほか</small></button>
   <div class="rt-legend" aria-label="手段の凡例"></div>
   <button id="home" title="全国を表示">全国</button>
 </nav>
@@ -116,16 +118,23 @@
 
 <div id="truck-tag" class="v-compare"></div>
 <section id="m-summary" class="glass v-market" aria-label="全国の数字">
-  <div class="sum-tile"><div class="sum-num num"><span id="sum-load"></span><small>%</small></div><div class="sum-lbl">積載効率</div>
+  <div class="sum-tile" title="営業用普通車・2025 年度（自動車輸送統計年報）"><div class="sum-num num"><span id="sum-load"></span><small>%</small></div>
+    <div class="sum-lbl"><span class="lb-full">積載効率</span><span class="lb-short">積載効率</span></div>
     <div class="sum-src">営業用普通車・2025 年度（自動車輸送統計年報）</div></div>
-  <div class="sum-tile"><div class="sum-num num"><span id="sum-rate"></span><small>%</small></div><div class="sum-lbl">実車率（走った距離のうち荷を積んでいた割合）</div>
+  <div class="sum-tile" title="営業用普通車・2025 年度（自動車輸送統計年報）。走った距離のうち荷を積んでいた割合"><div class="sum-num num"><span id="sum-rate"></span><small>%</small></div>
+    <div class="sum-lbl"><span class="lb-full">実車率（走った距離のうち荷を積んでいた割合）</span><span class="lb-short">実車率</span></div>
     <div class="sum-src">営業用普通車・2025 年度（自動車輸送統計年報）</div></div>
-  <div class="sum-tile"><div class="sum-num num"><span id="sum-share"></span><small>%</small></div><div class="sum-lbl">県をまたぐ荷で、逆向きに同じ量の荷が無い割合</div>
+  <div class="sum-tile" title="県をまたぐ荷で、逆向きに同じ量の荷が無い割合。営業用トラック・物流センサス 2021（e-Stat を加工）"><div class="sum-num num"><span id="sum-share"></span><small>%</small></div>
+    <div class="sum-lbl"><span class="lb-full">県をまたぐ荷で、逆向きに同じ量の荷が無い割合</span><span class="lb-short">逆向きに荷が無い割合</span></div>
     <div class="sum-src">営業用トラック・物流センサス 2021（e-Stat を加工）</div></div>
 </section>
 
 <div id="m-left" class="v-market">
   <section id="m-ctl" class="glass" aria-label="表示する区間">
+    <div class="m-seg m-seg-scope" id="m-scope" role="group" aria-label="塗り分けの単位">
+      <button data-scope="pref" aria-pressed="true">県</button>
+      <button data-scope="muni" aria-pressed="false">市区町村（推定）</button>
+    </div>
     <div class="m-h">表示する区間</div>
     <div class="m-seg" id="m-mode" role="group" aria-label="輸送手段">
       <button data-mode="truck" aria-pressed="true">営業用トラック</button>
@@ -140,7 +149,8 @@
     <p class="m-count" id="m-count"></p>
   </section>
   <section id="m-calc" class="glass" aria-label="想定の計算">
-    <div class="m-h">想定の計算<span class="m-tag">予測ではなく幅の目安</span></div>
+    <div class="m-h m-h-fold"><button class="m-fold" data-fold="m-calc" aria-expanded="true" aria-controls="m-calc-body">想定の計算<span class="m-tag">予測ではなく幅の目安</span><svg class="caret" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5"/></svg></button></div>
+    <div id="m-calc-body">
     <label class="m-slider"><span class="lbl">不足量のうち帰りの区間に載る割合 X</span><output id="m-x-out" class="num"></output>
       <input id="m-x" type="range" min="0" max="20" step="0.5" value="5"></label>
     <div class="calc-out"><span class="num" id="calc-from"></span><span class="calc-ar" aria-hidden="true">&rarr;</span><b class="num" id="calc-to"></b><span class="calc-d num" id="calc-d"></span></div>
@@ -148,37 +158,51 @@
     <details class="calc-note"><summary>この計算の前提</summary>
       <p id="calc-formula"></p>
       <p>前提は 5 つあり、強いものです。トンキロに比例する。帰り便は今も走っている。ほかの便の走行は変わらない。全国の実車率で代用する。道路距離は直線の一定倍とみなす。</p></details>
+    </div>
+  </section>
+  <section id="m-legend" class="glass" aria-label="凡例">
+    <div id="mu-notice" hidden>
+      <p class="mu-notice-t"><b id="mu-notice-text">推定です。公開の統計に市区町村単位の流動はありません。県の値を業種の従業者数と人口で分けた目安です</b></p>
+      <details class="mu-formula"><summary>推定の式を見る</summary><p id="mu-formula-text"></p></details>
+    </div>
+    <div id="mlg-scroll">
+      <div class="mlg-sec" id="mlg-bal">
+        <div class="mlg-t"><span id="mlg-bal-t">県の出荷と入荷の差</span><small id="mlg-bal-u">出荷 − 入荷（トン、3 日間）</small></div>
+        <div class="mlg-bar" id="mlg-bar"></div>
+        <div class="mlg-ticks" id="mlg-ticks"></div>
+        <div class="mlg-cap"><span><i class="sw sw-in"></i>入荷が多い（荷を受け取る）</span><span><i class="sw sw-out"></i>出荷が多い（荷を送り出す）</span></div>
+        <div class="mlg-gray" id="mlg-gray" hidden><i class="sw sw-gray"></i><span>灰色 = 秘匿・数字なし（理由は触れると出ます）</span></div>
+      </div>
+      <div class="mlg-sec" id="mlg-conc" hidden></div>
+      <div class="mlg-sec" id="mlg-fac" hidden></div>
+      <div class="mlg-sec" id="mlg-flow"><div class="mlg-t">動く線と乗り物<small>区間ごと</small></div>
+        <div class="mlg-row"><svg class="mlg-ar" viewBox="0 0 60 14" aria-hidden="true"><path d="M2 7h40" stroke="#cfeaff" stroke-width="2" stroke-linecap="round"/><path d="M42 2l14 5-14 5z" fill="#eaf6ff"/></svg>
+          <span>向き = 荷が多い向き（乗り物の進む向き） ／ 太さ = 不足量 ／ 明るさ = 偏りの比が小さいほど明るい ／ 下の細い線の色 = 手段</span></div></div>
+      <div class="mlg-sec" id="mlg-jartic"><div class="mlg-t">今週の大型車の点<small>国の観測点（JARTIC）</small></div>
+        <div class="mlg-row"><i class="dot dot-up"></i><span>上りが多い</span><i class="dot dot-down"></i><span>下りが多い</span><span class="mlg-faint">濃いほど差が大きい。▲▼は多い側</span></div>
+        <div class="mlg-note">上り・下りは道路の定義で、区間の行き帰りとは一致しません。</div></div>
+      <div class="lg-hubs" hidden></div>
+    </div>
+    <div id="mlg-attr" aria-label="出典" hidden></div>
   </section>
 </div>
 
 <aside id="m-right" class="glass v-market" aria-label="帰りが空きやすい区間">
   <header>
-    <div class="m-rh"><b id="m-rtitle">帰りが空きやすい区間</b><span class="m-rsub num" id="m-rsub"></span></div>
+    <div class="m-rh"><b id="m-rtitle">帰りが空きやすい区間</b><span class="m-rsub num" id="m-rsub"></span>
+      <button id="m-rfold" class="m-rfold" aria-expanded="true" aria-controls="m-table-wrap" aria-label="一覧を畳む・開く"><svg class="caret" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5"/></svg></button></div>
     <div class="m-rtot num" id="m-rtot"></div>
   </header>
+  <div id="m-muni" hidden></div>
   <div id="m-pair" hidden></div>
   <div id="m-table-wrap"><table id="m-table" aria-label="区間の一覧">
     <thead><tr><th class="c-rk"></th><th class="c-pair">区間（荷が多い向き）</th><th>行き<small>t</small></th><th>帰り<small>t</small></th><th>偏りの比</th><th>不足量<small>t</small></th><th>直線<small>km</small></th></tr></thead>
     <tbody id="m-tbody"></tbody></table></div>
 </aside>
 
-<section id="m-legend" class="glass v-market" aria-label="凡例">
-  <div class="mlg-sec">
-    <div class="mlg-t">県の出荷と入荷の差<small>出荷 − 入荷（トン、3 日間）</small></div>
-    <div class="mlg-bar" id="mlg-bar"></div>
-    <div class="mlg-ticks" id="mlg-ticks"></div>
-    <div class="mlg-cap"><span><i class="sw sw-in"></i>入荷が多い県（荷を受け取る）</span><span><i class="sw sw-out"></i>出荷が多い県（荷を送り出す）</span></div>
-  </div>
-  <div class="mlg-sec"><div class="mlg-t">動く線と乗り物<small>区間ごと</small></div>
-    <div class="mlg-row"><svg class="mlg-ar" viewBox="0 0 60 14" aria-hidden="true"><path d="M2 7h40" stroke="#cfeaff" stroke-width="2" stroke-linecap="round"/><path d="M42 2l14 5-14 5z" fill="#eaf6ff"/></svg>
-      <span>向き = 荷が多い向き（乗り物の進む向き） ／ 太さ = 不足量 ／ 明るさ = 偏りの比が小さいほど明るい ／ 下の細い線の色 = 手段</span></div></div>
-  <div class="mlg-sec" id="mlg-jartic"><div class="mlg-t">今週の大型車の点<small>国の観測点（JARTIC）</small></div>
-    <div class="mlg-row"><i class="dot dot-up"></i><span>上りが多い</span><i class="dot dot-down"></i><span>下りが多い</span><span class="mlg-faint">濃いほど差が大きい。▲▼は多い側</span></div>
-    <div class="mlg-note">上り・下りは道路の定義で、区間の行き帰りとは一致しません。</div></div>
-  <div class="lg-hubs" hidden></div>
-</section>
 
-<div id="m-credits" class="v-market" aria-label="出典と利用条件"></div>
+
+<div id="m-credits" class="v-market" aria-label="出典と利用条件"><details id="m-credits-d"><summary>出典・利用条件</summary><div id="m-credits-body"></div></details></div>
 
 <section id="find-view" class="glass v-find" aria-label="空きを探す・つなぐ">
   <div class="m-h">空きを探す・つなぐ<span class="m-tag">架空のデモ</span></div>
@@ -244,6 +268,7 @@
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
 <script src="work.js"></script>
 <script src="hubs.js"></script>
+<script src="muni.js"></script>
 <script src="routes.js"></script>
 <script src="market.js"></script>
 <script src="find.js"></script>
