@@ -338,7 +338,7 @@ function frame(now) {
   let layers;
   if (S.view === 'market') layers = Market.layers(now, zoom);
   else if (S.view === 'find') layers = [S.staticLayers[1], ...Market.flowLayers(now, 0.3), ...Find.layers(now)]; // 県境、帰りの空きやすさ（うすく）、架空の便
-  else layers = [...S.staticLayers, ...Hubs.layers(zoom, { line: currentHubLine() }), ...dynamicLayers(now)];
+  else layers = [...S.staticLayers, ...Hubs.layers(zoom, { line: currentHubLine() }), ...Muni.compareFac(zoom), ...dynamicLayers(now)];
   overlay.setProps({ layers });
   placeTruckTag();
   requestAnimationFrame(frame);
@@ -466,7 +466,11 @@ const MODES = [
   { key: 'kashikiri', label: '貸切' }, { key: 'rail', label: '鉄道' }, { key: 'ferry', label: 'フェリー' },
 ];
 const CHIP = { '公開条件に合う': 'ok', '要確認': 'check', '使えない': 'no', '計算できない': 'na' };
+// カードに添えるサムネイル（SPEC §19.6）。貸切は車種（2t・4t・10t）で選ぶ
+const CARD_MODEL = { takuhai: 'box_80', rosen: 'truck', jitbox: 'roll_cage', rail: 'freight_train', ferry: 'ferry' };
 const SHORT_LABEL = { takuhai: '宅配', rosen: '路線便', jitbox: 'カゴ台車' };
+
+const cardModel = (key, r) => (key !== 'kashikiri' ? CARD_MODEL[key] : r.detail && r.detail.vehicle ? M3D.byVehicle(r.detail.vehicle) : null);
 
 // /api/estimate の行からカードを作る。金額・状態・理由・出典・日数はすべて API の値。
 function buildCards(i, est) {
@@ -475,7 +479,7 @@ function buildCards(i, est) {
   for (const m of MODES) {
     if (m.key === 'rail' || m.key === 'ferry') {
       const hn = Hubs.nearest(S.origin, i);
-      cards.push({ label: m.label, status: '計算できない', amount: null, dim: true, hub: hn ? { kind: m.key, ...hn[m.key] } : null,
+      cards.push({ label: m.label, model: CARD_MODEL[m.key], status: '計算できない', amount: null, dim: true, hub: hn ? { kind: m.key, ...hn[m.key] } : null,
         none: '運賃表を使えません。各社への問い合わせが必要です',
         tip: m.key === 'rail' ? 'JR貨物の運賃は二次利用できないため、金額は出していません' : 'フェリーの運賃は一次資料で確かめられなかったため、金額は出していません' });
       continue;
@@ -485,7 +489,7 @@ function buildCards(i, est) {
     const notes = [].concat(r.notes, r.issues.map((x) => x.message).filter((x) => !r.notes.includes(x)));
     const days = r.transit ? (r.transit.published || m.key === 'jitbox' ? r.transit.display : r.transit.text) : null;
     if (r.amount === null || r.amount === undefined) {
-      cards.push({ label: m.label, status: r.status, amount: null, none: r.reasons[0] || '運賃表なし・問い合わせ', days,
+      cards.push({ label: m.label, model: cardModel(m.key, r), status: r.status, amount: null, none: r.reasons[0] || '運賃表なし・問い合わせ', days,
         tip: r.reasons.concat(notes).join(' / '), src: srcOf(r) });
       continue;
     }
@@ -498,7 +502,7 @@ function buildCards(i, est) {
       if (o && est.route !== 'other' && o.amount !== r.amount) tip += `。OSRM の道路距離 ${o.km}km で計算すると ${fmt(o.amount)}円です`;
       if (g && g.days) dayText = `運転だけで${g.days}日（積込み・荷待ちを除く）`;
     }
-    cards.push({ label: m.label, sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, amount: r.amount,
+    cards.push({ label: m.label, model: cardModel(m.key, r), sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, amount: r.amount,
       low: r.low, high: r.high, days: dayText, tip, src: srcOf(r) });
   }
   return cards;
@@ -528,7 +532,8 @@ function renderCards(cards) {
     const foot = src || tip ? `<div class="foot">${src}${tip}</div>` : '';
     const none = c.amount === null || c.amount === undefined ? `<span class="amt-none" title="${escapeHtml(c.none)}">${escapeHtml(c.none)}</span>` : '';
     const hub = c.hub ? hubHtml(c.hub) : '';
-    return `<article class="card${c.dim ? ' dim' : ''}${none ? ' none' : ''}" style="--n:${n}"><div class="top"><h3>${c.label}${c.sub ? `<small>${c.sub}</small>` : ''}</h3>` +
+    const th = c.model ? M3D.thumb(c.model, 80, 50, 'mth-card') : '';
+    return `<article class="card${c.dim ? ' dim' : ''}${none ? ' none' : ''}" style="--n:${n}"><div class="top">${th}<h3>${c.label}${c.sub ? `<small>${c.sub}</small>` : ''}</h3>` +
       `${none}<span class="chip ${CHIP[c.status] || 'na'}">${c.status}</span></div>${amt}${note}${meta}${hub}${foot}</article>`;
   }).join('');
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -748,7 +753,7 @@ function hoverTag(info) {
   const o = info && info.object;
   const hh = Hubs.on && o ? Hubs.hoverText(info) : null;
   if (hh) {
-    tag.innerHTML = `<b>${escapeHtml(hh.t)}</b><span>${escapeHtml(hh.s)}</span>`;
+    tag.innerHTML = `${hh.m ? M3D.thumb(hh.m, 64, 40, 'mth-tip') : ''}<b>${escapeHtml(hh.t)}</b><span>${escapeHtml(hh.s)}</span>`;
     tag.style.transform = `translate(${Math.min(innerWidth - 300, info.x + 18)}px, ${Math.max(8, info.y - 8)}px)`;
     tag.classList.add('on');
     return;
@@ -867,7 +872,7 @@ async function main() {
   const st = darkStyle(style);
   firstLabelId = st.layers.find((l) => l.type === 'symbol').id;
   map = new maplibregl.Map({
-    container: 'map', style: st, center: [137.5, 37.2], zoom: 4.6, minZoom: 3.4, maxZoom: 12, attributionControl: false,
+    container: 'map', style: st, center: [137.5, 37.2], zoom: 4.6, minZoom: 3.4, maxZoom: 16, attributionControl: false,
     dragRotate: false, pitchWithRotate: false, touchPitch: false, fadeDuration: 0, maxBounds: [[110, 15], [165, 55]],
   });
   map.touchZoomRotate.disableRotation();

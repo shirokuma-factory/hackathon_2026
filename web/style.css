@@ -849,6 +849,15 @@ body:not(.view-find) .f-tag { display: none !important; }
 button.rt-card:hover { background: rgba(255, 255, 255, 0.075); }
 .rt-card.on { background: rgba(255, 255, 255, 0.1); border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset, 0 0 18px -6px var(--c); }
 .rt-card.dim { opacity: 0.55; }
+.rt-card:not(.off) { display: flex; align-items: center; gap: 8px; }
+.rt-body { display: block; flex: 1; min-width: 0; }
+.mth { display: block; flex: none; object-fit: contain; pointer-events: none; }
+.rt-lg-ic { display: flex; align-items: center; gap: 4px; }
+.rt-legend:not(.rt-legend-row) { grid-template-columns: 1fr; }
+.rt-legend:not(.rt-legend-row) .mth-lg { width: 34px; height: auto; }
+.card .top .mth-card { order: -1; }
+#hover-tag .mth-tip { float: left; margin: -2px 8px 0 -2px; }
+#hover-tag { min-height: 0; }
 .rt-card.off { opacity: 0.5; border-left-color: var(--line-strong); cursor: default; }
 .rt-top { display: flex; align-items: center; gap: 8px; }
 .rt-top b { font-size: 13px; font-weight: 700; }
