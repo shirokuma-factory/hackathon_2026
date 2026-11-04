@@ -309,6 +309,7 @@ def main() -> int:
                 shutil.rmtree(dl, ignore_errors=True)
     finally:
         cs.stop_tree(edge_proc)
+        cs.stop_edge_profile(profile)
         if own:
             cs.stop_tree(own)
         shutil.rmtree(profile, ignore_errors=True)
