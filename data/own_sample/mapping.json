@@ -1,0 +1,320 @@
+{
+ "schema": {
+  "note": "列ごとの辞書の結果と値の形の一致率。claude_proposal は開発のセッションで Claude が列名と値の形の説明（claude_input）だけを見て出した提案を入れる欄。null のときは『未作成』と表示し、確かさは辞書の一致だけで計算する。",
+  "claude_proposal": {
+   "role": "辞書の役割の ID（kind / start_time / end_time / distance_km / loaded_flag / place_name / driver_code / plate / vehicle_type / date）",
+   "reason": "短い理由（任意）"
+  },
+  "claude_input": "Claude に送る記録の形。列名、行数、空欄でない割合、値の形の説明の割合だけ。実際の値・氏名・荷主名・地点名は含めない（SPEC §22 G71）"
+ },
+ "claude_model": null,
+ "claude_created_at": null,
+ "dictionary": {
+  "digitaco": {
+   "KBN": "kind",
+   "ST_TIME": "start_time",
+   "ED_TIME": "end_time",
+   "ODO_KM": "distance_km",
+   "JK_FLG": "loaded_flag",
+   "POS_NAME": "place_name",
+   "DRV_CD": "driver_code"
+  },
+  "haisha": {
+   "車番": "plate",
+   "車種": "vehicle_type"
+  },
+  "roles": {
+   "kind": "区分（走行・停車）",
+   "start_time": "開始の日時",
+   "end_time": "終了の日時",
+   "distance_km": "走行距離（km）",
+   "loaded_flag": "実車・空車の区分",
+   "place_name": "停車の地点名",
+   "driver_code": "運転者コード",
+   "plate": "車番",
+   "vehicle_type": "車種",
+   "date": "日付"
+  }
+ },
+ "columns": [
+  {
+   "source": "配車表",
+   "column": "車番",
+   "dict_hit": true,
+   "dict_role": "plate",
+   "dict_label": "車番",
+   "shape_expected": "4 桁の番号をふくむ車番",
+   "shape_ratio": 1.0,
+   "shape_best_role": null,
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 1.0,
+   "color": "green",
+   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "claude_input": {
+    "source": "配車表",
+    "column": "車番",
+    "row_count": 8,
+    "non_blank_ratio": 1.0,
+    "shape_summary": {
+     "4 桁の番号をふくむ車番": 0.75,
+     "小数まじりの数字": 0.25
+    }
+   }
+  },
+  {
+   "source": "配車表",
+   "column": "車種",
+   "dict_hit": true,
+   "dict_role": "vehicle_type",
+   "dict_label": "車種",
+   "shape_expected": "「大型」か「数字 + t」",
+   "shape_ratio": 0.75,
+   "shape_best_role": null,
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 0.875,
+   "color": "yellow",
+   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 0.750 = 0.875",
+   "claude_input": {
+    "source": "配車表",
+    "column": "車種",
+    "row_count": 8,
+    "non_blank_ratio": 1.0,
+    "shape_summary": {
+     "「大型」か「数字 + t」": 0.75,
+     "英数字をふくむ文字列": 0.25
+    }
+   }
+  },
+  {
+   "source": "配車表",
+   "column": "日付の見出し（32 列）",
+   "dict_hit": true,
+   "dict_role": "date",
+   "dict_label": "日付",
+   "shape_expected": "月/日 の日付の見出し",
+   "shape_ratio": 0.9688,
+   "shape_best_role": null,
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 0.984375,
+   "color": "green",
+   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 0.969 = 0.984",
+   "claude_input": {
+    "source": "配車表",
+    "column": "日付の見出し（32 列）",
+    "row_count": 32,
+    "non_blank_ratio": 1.0,
+    "shape_summary": {
+     "月/日 の日付の見出し": 0.9688,
+     "英数字をふくむ文字列": 0.0312
+    }
+   }
+  },
+  {
+   "source": "デジタコ",
+   "column": "KBN",
+   "dict_hit": true,
+   "dict_role": "kind",
+   "dict_label": "区分（走行・停車）",
+   "shape_expected": "1 か 2",
+   "shape_ratio": 1.0,
+   "shape_best_role": null,
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 1.0,
+   "color": "green",
+   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "claude_input": {
+    "source": "デジタコ",
+    "column": "KBN",
+    "row_count": 72,
+    "non_blank_ratio": 1.0,
+    "shape_summary": {
+     "小数まじりの数字": 1.0
+    }
+   }
+  },
+  {
+   "source": "デジタコ",
+   "column": "ST_TIME",
+   "dict_hit": true,
+   "dict_role": "start_time",
+   "dict_label": "開始の日時",
+   "shape_expected": "YYYY-MM-DD HH:MM の日時",
+   "shape_ratio": 1.0,
+   "shape_best_role": null,
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 1.0,
+   "color": "green",
+   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "claude_input": {
+    "source": "デジタコ",
+    "column": "ST_TIME",
+    "row_count": 72,
+    "non_blank_ratio": 1.0,
+    "shape_summary": {
+     "YYYY-MM-DD HH:MM の日時": 1.0
+    }
+   }
+  },
+  {
+   "source": "デジタコ",
+   "column": "ED_TIME",
+   "dict_hit": true,
+   "dict_role": "end_time",
+   "dict_label": "終了の日時",
+   "shape_expected": "YYYY-MM-DD HH:MM の日時",
+   "shape_ratio": 1.0,
+   "shape_best_role": null,
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 1.0,
+   "color": "green",
+   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "claude_input": {
+    "source": "デジタコ",
+    "column": "ED_TIME",
+    "row_count": 72,
+    "non_blank_ratio": 1.0,
+    "shape_summary": {
+     "YYYY-MM-DD HH:MM の日時": 1.0
+    }
+   }
+  },
+  {
+   "source": "デジタコ",
+   "column": "ODO_KM",
+   "dict_hit": true,
+   "dict_role": "distance_km",
+   "dict_label": "走行距離（km）",
+   "shape_expected": "小数まじりの数字",
+   "shape_ratio": 1.0,
+   "shape_best_role": null,
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 1.0,
+   "color": "green",
+   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "claude_input": {
+    "source": "デジタコ",
+    "column": "ODO_KM",
+    "row_count": 72,
+    "non_blank_ratio": 0.5,
+    "shape_summary": {
+     "小数まじりの数字": 1.0
+    }
+   }
+  },
+  {
+   "source": "デジタコ",
+   "column": "JK_FLG",
+   "dict_hit": true,
+   "dict_role": "loaded_flag",
+   "dict_label": "実車・空車の区分",
+   "shape_expected": "0 か 1",
+   "shape_ratio": 1.0,
+   "shape_best_role": null,
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 1.0,
+   "color": "green",
+   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "claude_input": {
+    "source": "デジタコ",
+    "column": "JK_FLG",
+    "row_count": 72,
+    "non_blank_ratio": 0.5,
+    "shape_summary": {
+     "小数まじりの数字": 1.0
+    }
+   }
+  },
+  {
+   "source": "デジタコ",
+   "column": "POS_NAME",
+   "dict_hit": true,
+   "dict_role": "place_name",
+   "dict_label": "停車の地点名",
+   "shape_expected": "漢字・かなだけの名称",
+   "shape_ratio": 0.7778,
+   "shape_best_role": null,
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 0.888888889,
+   "color": "yellow",
+   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 0.778 = 0.889",
+   "claude_input": {
+    "source": "デジタコ",
+    "column": "POS_NAME",
+    "row_count": 72,
+    "non_blank_ratio": 0.5,
+    "shape_summary": {
+     "漢字・かなだけの名称": 0.7778,
+     "英数字をふくむ文字列": 0.2222
+    }
+   }
+  },
+  {
+   "source": "デジタコ",
+   "column": "DRV_CD",
+   "dict_hit": true,
+   "dict_role": "driver_code",
+   "dict_label": "運転者コード",
+   "shape_expected": "英大文字 1 字と数字 2 桁",
+   "shape_ratio": 1.0,
+   "shape_best_role": null,
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 1.0,
+   "color": "green",
+   "formula": "0.5 × max(辞書 1, Claude 0) + 0.5 × 値の形 1.000 = 1.000",
+   "claude_input": {
+    "source": "デジタコ",
+    "column": "DRV_CD",
+    "row_count": 72,
+    "non_blank_ratio": 1.0,
+    "shape_summary": {
+     "英大文字 1 字と数字 2 桁": 1.0
+    }
+   }
+  },
+  {
+   "source": "デジタコ",
+   "column": "X9",
+   "dict_hit": false,
+   "dict_role": null,
+   "dict_label": null,
+   "shape_expected": "小数まじりの数字",
+   "shape_ratio": 1.0,
+   "shape_best_role": "distance_km",
+   "claude_proposal": null,
+   "claude_note": "未作成（本線が作る）",
+   "claude_agrees": false,
+   "confidence": 0.5,
+   "color": "red",
+   "formula": "0.5 × max(辞書 0, Claude 0) + 0.5 × 値の形 1.000 = 0.500",
+   "claude_input": {
+    "source": "デジタコ",
+    "column": "X9",
+    "row_count": 72,
+    "non_blank_ratio": 0.5,
+    "shape_summary": {
+     "小数まじりの数字": 1.0
+    }
+   }
+  }
+ ]
+}
