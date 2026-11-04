@@ -21,6 +21,14 @@ TARIFF_FILES = {
 }
 
 
+# 貸切の距離制運賃の運輸局別の表（SPEC §5.5 とその訂正）。既定は関東
+KASHIKIRI_REGION_FILES = {
+    "関東": "mlit_standard_fare_kanto.json",
+    "近畿": "mlit_standard_fare_kinki.json",
+}
+WAITING_FILE = "mlit_standard_fare_waiting.json"
+
+
 @dataclass(frozen=True)
 class Route:
     id: str
@@ -60,6 +68,21 @@ def load_tariff(key: str, base: Path | None = None) -> dict[str, Any]:
     """key は TARIFF_FILES のキー（takuhai / rosen / jitbox / kashikiri）。"""
     path = (base or data_dir()) / "tariffs" / TARIFF_FILES[key]
     with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_kashikiri(region: str = "関東", base: Path | None = None) -> dict[str, Any]:
+    """貸切の距離制運賃の表を運輸局の地域で選ぶ（既定は関東）。"""
+    if region not in KASHIKIRI_REGION_FILES:
+        raise KeyError(f"貸切の表がない地域です: {region}")
+    path = (base or data_dir()) / "tariffs" / KASHIKIRI_REGION_FILES[region]
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_waiting_tariff(base: Path | None = None) -> dict[str, Any]:
+    """待機時間料・積込料・取卸料の表（SPEC §23）。"""
+    with open((base or data_dir()) / "tariffs" / WAITING_FILE, encoding="utf-8") as f:
         return json.load(f)
 
 

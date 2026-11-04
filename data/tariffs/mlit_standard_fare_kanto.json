@@ -5,14 +5,34 @@
   "applies_from": null,
   "checked_on": "2026-11-03",
   "tax": "税抜",
-  "scope_note": "国の目安であり、実際の運賃は運送会社ごとに違う。2t・4t・10t の距離制だけを持つ。",
+  "scope_note": "国の目安であり、実際の運賃は運送会社ごとに違う。2t・4t・10t の距離制だけを持つ。 500km を超えると加算は 50km ごと（SPEC §5.5 の訂正）。",
   "origin_region": "関東",
   "base_km": 200,
   "step_km": 20,
   "vehicles": [
-    {"class": "2t", "max_kg": 2000, "base_fare": 52300, "add_per_step": 3830},
-    {"class": "4t", "max_kg": 4000, "base_fare": 60360, "add_per_step": 4380},
-    {"class": "10t", "max_kg": 10000, "base_fare": 80110, "add_per_step": 5850}
+    {
+      "class": "2t",
+      "max_kg": 2000,
+      "base_fare": 52300,
+      "add_per_step": 3830,
+      "add_per_step_over_500": 9580
+    },
+    {
+      "class": "4t",
+      "max_kg": 4000,
+      "base_fare": 60360,
+      "add_per_step": 4380,
+      "add_per_step_over_500": 10950
+    },
+    {
+      "class": "10t",
+      "max_kg": 10000,
+      "base_fare": 80110,
+      "add_per_step": 5850,
+      "add_per_step_over_500": 14620
+    }
   ],
-  "verified_by": "調査担当サブエージェントが一次資料で照合（2026-11-03）"
+  "verified_by": "調査担当サブエージェントが一次資料で照合（2026-11-03）",
+  "over_500_km": 500,
+  "over_500_step_km": 50
 }
