@@ -22,3 +22,8 @@ node_modules/
 data/traffic/raw/
 data/raw/
 data/routes/cache/
+
+# 国土数値情報 P31 物流拠点は非商用・再配布不可（SPEC §18.3）。取得物と変換物は絶対にコミットしない
+data/raw/p31/
+**/p31_points*.json
+**/P31-*.zip
