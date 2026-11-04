@@ -1,0 +1,66 @@
+/* 積付けの 3D 表示（SPEC §20）。色と寸法の記号は style.css の変数を使う。 */
+#loadview { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; }
+#loadview[hidden] { display: none; }
+.lv-back { position: absolute; inset: 0; background: rgba(4, 7, 12, 0.66); }
+.lv-panel {
+  position: relative; width: min(1240px, calc(100vw - 40px)); height: min(780px, calc(100vh - 40px));
+  display: flex; flex-direction: column; background: var(--glass-solid); overflow: hidden;
+}
+.lv-head { display: flex; align-items: baseline; gap: 14px; padding: 14px 52px 12px 20px; border-bottom: 1px solid var(--line); position: relative; }
+.lv-head b { font-size: 16px; font-weight: 700; }
+.lv-sub { font-size: 12px; color: var(--muted); }
+.lv-x { position: absolute; right: 12px; top: 10px; width: 30px; height: 30px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); }
+.lv-x:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+.lv-body { flex: 1; min-height: 0; display: flex; }
+.lv-stage { position: relative; flex: 1; min-width: 0; background: radial-gradient(ellipse at 50% 40%, #121b2b, #070b12 75%); }
+.lv-canvas { position: absolute; inset: 0; }
+.lv-msg { position: absolute; left: 16px; top: 14px; right: 16px; font-size: 13px; color: var(--muted); pointer-events: none; }
+.lv-msg.err { color: var(--error); }
+.lv-tools { position: absolute; left: 14px; bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; right: 14px; }
+.lv-btn {
+  height: 32px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--line-strong); background: rgba(13, 20, 31, 0.8); font-size: 12.5px;
+}
+.lv-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+.lv-hint { font-size: 11px; color: var(--faint); }
+.lv-side { width: 330px; flex: none; overflow: auto; padding: 14px 18px 18px; border-left: 1px solid var(--line); }
+.lv-side .lbl { display: block; font-size: 11px; color: var(--muted); margin: 0 0 4px 2px; letter-spacing: .04em; }
+.lv-spec { margin: 8px 0 4px; font-size: 12px; color: var(--muted); }
+.lv-basis { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 11px; color: var(--text); }
+.lv-basis.b-推定 { color: var(--warn); border-color: rgba(240, 182, 78, 0.5); }
+.lv-warn { margin: 4px 0; padding: 7px 10px; border-radius: 9px; background: rgba(240, 182, 78, 0.12); border: 1px solid rgba(240, 182, 78, 0.3); color: var(--warn); font-size: 12px; }
+.lv-det { margin: 6px 0 10px; font-size: 12px; color: var(--muted); }
+.lv-det summary { cursor: pointer; }
+.lv-det p { margin: 6px 0 0; line-height: 1.6; }
+.lv-chk { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 8px 0 12px; cursor: pointer; }
+.lv-verdict { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); font-size: 13px; line-height: 1.4; }
+.lv-verdict .lv-mark { font-size: 26px; font-weight: 700; line-height: 1; width: 30px; text-align: center; }
+.lv-verdict.ok { color: var(--ok); background: rgba(85, 214, 166, 0.1); border-color: rgba(85, 214, 166, 0.3); }
+.lv-verdict.warn { color: var(--warn); background: rgba(240, 182, 78, 0.1); border-color: rgba(240, 182, 78, 0.3); }
+.lv-verdict.ng { color: var(--error); background: rgba(255, 107, 107, 0.1); border-color: rgba(255, 107, 107, 0.3); }
+.lv-nums { margin: 12px 0 4px; display: grid; gap: 9px; }
+.lv-nums > div { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
+.lv-nums dt { color: var(--muted); }
+.lv-nums dd { margin: 0; text-align: right; font-weight: 700; }
+.lv-nums dd.bad { color: var(--error); }
+.lv-bar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.lv-bar i { display: block; height: 100%; background: var(--accent); }
+.lv-h { margin: 16px 0 6px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.lv-un, .lv-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 12.5px; }
+.lv-un li { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 107, 107, 0.08); border: 1px solid rgba(255, 107, 107, 0.25); }
+.lv-un li span { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.lv-none { margin: 0; font-size: 12.5px; color: var(--muted); }
+.lv-items li { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; }
+.lv-items i { width: 12px; height: 12px; border-radius: 3px; display: block; }
+.lv-note { margin: 16px 0 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+.lv-err { color: var(--error); font-size: 13px; line-height: 1.6; }
+body.lv-open .maplibregl-canvas { filter: saturate(0.6); }
+
+@media (max-width: 860px) {
+  .lv-panel { width: 100vw; height: 100vh; border-radius: 0; }
+  .lv-body { flex-direction: column; }
+  .lv-stage { flex: none; height: 46vh; }
+  .lv-side { width: auto; border-left: 0; border-top: 1px solid var(--line); flex: 1; }
+}
+.ed-foot #ed-3d { white-space: nowrap; flex: none; }
+.ed-foot { flex-wrap: wrap; }
+.ed-foot .ed-state { flex: 1 1 100%; min-width: 0; }

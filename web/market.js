@@ -275,11 +275,17 @@ const Market = (() => {
         ...tripProps, id: 'm-flow-core', getWidth: (d) => d.route.w, trailLength: 2.6,
         getColor: (d) => [...d.route.col, 215 * dimOf(d.route)], updateTriggers: { getColor: [M.sel, M.hover, M.mode], getWidth: [M.mode] },
       }));
-      out.push(new L.IconLayer({
-        id: 'm-flow-head', data: headData(sec), getPosition: (d) => d.p, getIcon: () => Rt.icons()[M.mode === 'truck' ? 'truck' : M.mode], getAngle: (d) => d.ang,
-        getSize: (d) => (M.mode === 'truck' ? 15 : 20) + d.route.w * 1.9, sizeUnits: 'pixels', getColor: (d) => [255, 255, 255, 255 * d.dim * d.fade], billboard: false,
-        updateTriggers: { getIcon: [M.mode], getSize: [M.mode] },
-      }));
+      // 帰り便の先頭の乗り物。ズームが小さいときは 2D アイコン、大きいときは 3D モデル（models3d.js の LOD）
+      const heads = headData(sec), mx3 = M3D.mix(zoom);
+      if (mx3 < 0.999) {
+        out.push(new L.IconLayer({
+          id: 'm-flow-head', data: heads, getPosition: (d) => d.p, getIcon: () => Rt.icons()[M.mode === 'truck' ? 'truck' : M.mode], getAngle: (d) => d.ang,
+          getSize: (d) => (M.mode === 'truck' ? 15 : 20) + d.route.w * 1.9, sizeUnits: 'pixels', getColor: (d) => [255, 255, 255, 255 * d.dim * d.fade * (1 - mx3)], billboard: false,
+          updateTriggers: { getIcon: [M.mode], getSize: [M.mode] },
+        }));
+      }
+      const h3 = M3D.vehicles('m-flow-head-3d', M.mode, heads.map((d) => ({ p: d.p, ang: d.ang, a: d.dim * d.fade })), zoom);
+      if (h3) out.push(h3);
       out.push(new L.ScatterplotLayer({
         id: 'm-ends', data: M.endpoints, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 2.6, filled: true, getFillColor: [225, 240, 255, 150],
       }));

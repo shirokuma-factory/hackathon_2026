@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="loadview.css">
 </head>
 <body class="view-market">
 <div id="map"></div>
@@ -261,13 +262,16 @@
 </section>
 
 <div id="hover-tag"></div>
+<div id="loadview" hidden></div>
 <div id="toast" role="status"></div>
 <div id="loading">地図を読み込んでいます</div>
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
 <script src="work.js"></script>
+<script src="loadview.js"></script>
 <script src="hubs.js"></script>
+<script src="models3d.js"></script>
 <script src="muni.js"></script>
 <script src="routes.js"></script>
 <script src="market.js"></script>

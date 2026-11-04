@@ -263,6 +263,31 @@ const Muni = (() => {
         }));
       }
     }
+    out.push(...fac3d(zoom));
+    return out;
+  }
+
+  // 施設の 3D モデル（ズーム 12 以上、画面に入るものだけ。models3d.js）。向きは固定。
+  // P31 の種類 → モデル: トラックターミナル・卸売市場・保税地域 → 倉庫、コンテナターミナル → コンテナヤード + 港のクレーン、
+  // 鉄道貨物駅 → ターミナル、航空貨物ターミナルと空港（C28）→ 航空貨物ターミナル。OSM の倉庫・物流施設 → 倉庫（冷蔵の区別はデータにない）
+  const P31_MODEL = { 5: 'warehouse', 7: 'warehouse', 4: 'warehouse', 3: 'terminal', 2: 'air_cargo_terminal' };
+  function fac3d(zoom) {
+    if (!M3D.facilityOn(zoom)) return [];
+    M3D.mix(zoom); // 地図の最大ズームを広げる
+    const out = [], add = (l) => { if (l) out.push(l); };
+    if (U.p31Items) {
+      const items = U.p31Items.filter((x) => U.types[x.kind]);
+      for (const kind of Object.keys(P31_MODEL)) add(M3D.facility('fac3d-p31-' + kind, P31_MODEL[kind], items.filter((x) => String(x.kind) === kind), zoom, { k: P31_MODEL[kind] === 'warehouse' ? 0.7 : 1 }));
+      const cont = items.filter((x) => x.kind === 1);
+      add(M3D.facility('fac3d-p31-yard', 'container_yard', cont, zoom));
+      add(M3D.facility('fac3d-p31-crane', 'port_crane', cont.map((x) => ({ p: [x.p[0], x.p[1] - 0.0006] })), zoom));
+    }
+    if (U.c28 && U.types.air) add(M3D.facility('fac3d-air', 'air_cargo_terminal', U.c28.items.map(([lon, lat]) => ({ p: [lon, lat] })), zoom));
+    if (U.types.osm && U.osm) {
+      const skip = U.osm.types.indexOf('truck_stop');
+      if (!U.osmWh) U.osmWh = U.osm.items.filter((d) => d[2] !== skip);
+      add(M3D.facility('fac3d-osm', 'warehouse', U.osmWh, zoom, { getP: (d) => [d[0], d[1]], k: 0.4 })); // OSM の建物は小さいものが多いので、モデルを 0.4 倍にして重なりを減らす（実際の形ではない）
+    }
     return out;
   }
 

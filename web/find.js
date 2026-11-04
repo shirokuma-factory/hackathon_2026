@@ -152,9 +152,17 @@ const Find = (() => {
       if (p >= 1) continue;
       const pos = pointAt(g.rt, p), nx = pointAt(g.rt, Math.min(1, p + 0.01)), pv = pointAt(g.rt, Math.max(0, p - 0.01));
       const dx = (nx[0] - pv[0]) * Math.cos((pos[1] * Math.PI) / 180), dy = nx[1] - pv[1];
-      veh.push({ p: pos, ang: -(Math.atan2(dx, dy) * 180) / Math.PI, a: lv(t) * Math.min(1, p * 10, (1 - p) * 10) });
+      veh.push({ p: pos, ang: -(Math.atan2(dx, dy) * 180) / Math.PI, a: lv(t) * Math.min(1, p * 10, (1 - p) * 10), model: M3D.byVehicle(t.vehicle) });
     }
-    out.push(Rt.iconLayer('f-veh', veh, 'truck', 28));
+    // 2D アイコンと 3D モデルの切り替え（models3d.js の LOD）。3D は車種ごとのモデルに分けて出す
+    const zm = map.getZoom(), mx3 = M3D.mix(zm);
+    out.push(Rt.iconLayer('f-veh', mx3 > 0.001 ? veh.map((d) => ({ ...d, a: d.a * (1 - mx3) })) : veh, 'truck', 28));
+    if (mx3 > 0.001) {
+      for (const key of ['truck', 'truck_4t', 'box_2t', 'kei_van']) {
+        const l3 = M3D.vehicles('f-veh-3d-' + key, key, veh.filter((d) => d.model === key), zm);
+        if (l3) out.push(l3);
+      }
+    }
     const ends = ts.flatMap((t) => [{ id: t.id, p: F.geo[t.id].a, o: true }, { id: t.id, p: F.geo[t.id].b, o: false }]);
     out.push(new L.ScatterplotLayer({
       id: 'f-ends', data: ends, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: (d) => (d.o ? 3.4 : 4.6), filled: true, stroked: true,

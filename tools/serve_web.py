@@ -12,6 +12,7 @@ API（POST は Content-Type: application/json の JSON。入力の誤りは 400 
     GET  /api/demo_quotes?id=S5&version=1[&today=2026-11-03]   架空の見積回答（id は空）
     POST /api/estimate   {shipment, origin_code?, dest_code?, route?, distance_km?}
     POST /api/layer      {origin_code, shipment}   荷物に合わせた貸切の額の層
+    POST /api/loadplan   {shipment, container?, stackable?}   荷室への積付けの配置（SPEC §20。目安）
     POST /api/request    {shipment, scenario?}
     POST /api/compare    {quotes, version, today?}
     POST /api/save       案件（case_to_dict の形）→ 正規化した案件 JSON（保存はブラウザのダウンロード）
@@ -48,7 +49,7 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from shipcompare import geo, spaceb  # noqa: E402
+from shipcompare import geo, loadplan, spaceb  # noqa: E402
 from shipcompare import routes as route_lib  # noqa: E402
 from shipcompare.estimate import ST_NOCALC, estimate_all, summarize  # noqa: E402
 from shipcompare.guide import contacts_for_rows, load_transit_days, mode_group, transit_days, transit_days_text  # noqa: E402
@@ -289,6 +290,27 @@ def api_layer(body: Any) -> dict[str, Any]:
     edges = geo.quantile_edges(present) if present else []
     cls = [geo.class_of(v, edges) if v is not None else None for v in fare]
     return {"origin_code": oc, "total_kg": kg, "fare": fare, "edges": edges, "cls": cls}
+
+
+def api_loadplan(body: Any) -> dict[str, Any]:
+    body = _need_dict(body)
+    s = _shipment_of(body)
+    cid = body.get("container", "box_2t")
+    if not isinstance(cid, str):
+        raise BadRequest("container は荷室の ID（文字列）で渡してください")
+    stackable = body.get("stackable", True)
+    if not isinstance(stackable, bool):
+        raise BadRequest("stackable は true か false で渡してください")
+    try:
+        container = loadplan.container_by_id(cid)
+        items = loadplan.items_from_shipment(s, stackable)
+        res = loadplan.plan_load(items, container)
+    except ValueError as e:
+        raise BadRequest(str(e)) from e
+    res["containers"] = [c.to_dict() for c in loadplan.containers()]
+    res["items"] = [{"count": it.count, "length_cm": it.length_cm, "width_cm": it.width_cm,
+                     "height_cm": it.height_cm, "weight_kg": it.weight_kg, "stackable": it.stackable} for it in items]
+    return res
 
 
 def api_request(body: Any) -> dict[str, Any]:
@@ -536,7 +558,7 @@ def api_b_reset(body: Any) -> dict[str, Any]:
 GET_ROUTES = {"/api/scenarios": lambda q: api_scenarios(), "/api/demo_quotes": api_demo_quotes,
               "/api/b/trips": api_b_trips, "/api/route": api_route}
 POST_ROUTES = {
-    "/api/estimate": api_estimate, "/api/layer": api_layer, "/api/request": api_request,
+    "/api/estimate": api_estimate, "/api/layer": api_layer, "/api/loadplan": api_loadplan, "/api/request": api_request,
     "/api/compare": api_compare, "/api/save": api_save, "/api/load": api_load,
     "/api/confirm": api_confirm, "/api/add_quote": api_add_quote, "/api/add_demo_quotes": api_add_demo_quotes,
     "/api/b/match": api_b_match, "/api/b/hold": api_b_hold, "/api/b/decide": api_b_decide, "/api/b/reset": api_b_reset,

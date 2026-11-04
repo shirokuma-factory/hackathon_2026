@@ -77,6 +77,16 @@ const Hubs = (() => {
       const t2 = textLayer('hub-pt-names2', d.pt2, 6.4, zoom, [...C_PT, 225]);
       const t3 = textLayer('hub-pt-names1', d.pt1, 8, zoom, [...C_PT, 215]);
       for (const t of [t1, t2, t3]) if (t) out.push(t);
+      // 3D モデル（ズーム 12 以上、画面に入るものだけ。models3d.js）: 貨物駅 → ターミナル、港 → クレーン（大きい港は コンテナヤードも）
+      if (M3D.facilityOn(zoom)) {
+        if (!d.cargoPt) {
+          // 旅客用の船着場・乗り場は除く（名前で判断）。コンテナヤードは、フェリー・ふ頭・コンテナ・貨物を名前に含む大きな港だけ
+          const pax = /船着場|乗り場|乗場|桟橋|渡船|海上バス|客船|クルーズ/;
+          d.cargoPt = d.pt1.filter((x) => !pax.test(x.name));
+          d.yardPt = d.pt2.filter((x) => !pax.test(x.name) && /フェリー|ふ頭|埠頭|コンテナ|貨物/.test(x.name)).map((x) => ({ p: [x.p[0], x.p[1] + 0.0006] }));
+        }
+        for (const l of [M3D.facility('hub3d-st', 'terminal', d.st, zoom), M3D.facility('hub3d-crane', 'port_crane', d.cargoPt, zoom), M3D.facility('hub3d-yard', 'container_yard', d.yardPt, zoom)]) if (l) out.push(l);
+      }
     }
     const ln = opts.line;
     if (ln) {

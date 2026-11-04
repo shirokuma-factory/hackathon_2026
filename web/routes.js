@@ -418,6 +418,15 @@ const Rt = (() => {
     });
   }
 
+  // 乗り物の層。ズームが小さいときは 2D アイコン、大きいときは 3D モデル、間は交差（models3d.js の LOD）
+  function vehLayers(id, data, mode, size, zoom, extra = {}, k = 1) {
+    const out = [], mx = M3D.mix(zoom);
+    if (mx < 0.999) out.push(iconLayer(id, mx > 0.001 ? data.map((d) => ({ ...d, a: (d.a ?? 1) * (1 - mx) })) : data, mode, size, extra));
+    const l3 = M3D.vehicles(id + '-3d', mode, data, zoom, { k });
+    if (l3) out.push(l3);
+    return out;
+  }
+
   function railLayer(alpha) {
     if (!R.railPaths) { loadRail(); return null; }
     if (!R.railPaths.length || alpha <= 0) return null;
@@ -495,14 +504,14 @@ const Rt = (() => {
       if (m === 'air') {
         out.push(iconLayer('rt-shadow-air', data.map((v) => ({ ...v, p: [v.p[0], v.p[1], 0], a: v.a * 0.35 })), 'air', SIZE.air * 0.9, { getColor: (d) => [0, 0, 0, Math.round(150 * d.a)] }));
       }
-      if (data.length) out.push(iconLayer('rt-veh-' + m, data, m, (F === m ? 1.12 : 1) * SIZE[m], { updateTriggers: { getSize: [F] } }));
+      if (data.length) out.push(...vehLayers('rt-veh-' + m, data, m, (F === m ? 1.12 : 1) * SIZE[m], zoom, { updateTriggers: { getSize: [F] } }, F === m ? 1.12 : 1));
     }
     if (lead) {
       out.push(new L.ScatterplotLayer({
         id: 'rt-lead-halo', data: [{ p: lead.p }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 24, filled: true, getFillColor: withA(col(lead.mode), 70),
         stroked: true, getLineColor: withA(col(lead.mode), 220), lineWidthUnits: 'pixels', getLineWidth: 1.6, updateTriggers: { getFillColor: [lead.mode], getLineColor: [lead.mode] },
       }));
-      out.push(iconLayer('rt-lead', [{ p: lead.p, ang: lead.ang }], lead.mode, SIZE[lead.mode] * 1.3));
+      out.push(...vehLayers('rt-lead', [{ p: lead.p, ang: lead.ang }], lead.mode, SIZE[lead.mode] * 1.3, zoom, {}, 1.3));
     }
     // 1 日の運転（9 時間）の終わりの印（トラックだけの経路のとき）
     const tl = timeline();

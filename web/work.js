@@ -127,7 +127,7 @@ function renderCargoEditor() {
         <label class="wide"><span class="lbl">壊れ物の扱い</span><input class="ctl sm" type="text" data-f="fragile_note" value="${wesc(fv(d.fragile_note))}"></label>
       </div>
     </details>
-    <div class="ed-foot"><span class="ed-state" id="ed-state" role="status"></span><button type="button" class="btn-primary sm" id="ed-confirm">この条件で確定</button></div>`;
+    <div class="ed-foot"><span class="ed-state" id="ed-state" role="status"></span><button type="button" class="btn-link" id="ed-3d">積み方を 3D で見る</button><button type="button" class="btn-primary sm" id="ed-confirm">この条件で確定</button></div>`;
   updateEdState();
 }
 
@@ -187,6 +187,7 @@ function bindCargo() {
       W.draft.items.splice(Number(b.dataset.del), 1);
       renderCargoEditor();
     } else if (b.id === 'ed-confirm') confirmCargo();
+    else if (b.id === 'ed-3d' && window.LoadView) LoadView.open(W.draft); // 確定前の入力も見られる（SPEC §20.5）
   });
   $w('#cargo-toggle').addEventListener('click', () => setCargoOpen(!W.cargoOpen));
 }
