@@ -75,6 +75,16 @@ SCENES = {
     "facilities": ("#v=market&fc=1", 9.0, "(function(){__app.map().jumpTo({center:[139.75,35.6],zoom:8.6});})()", "2026-11-04_facilities.jpg"),
     "warehouses_z11": ("#v=market&fc=1", 9.0, "(function(){__app.map().jumpTo({center:[139.82,35.72],zoom:11.3});})()", "2026-11-04_warehouses_z11.jpg"),
     "narrow_800": ("#v=market&sc=muni", 8.0, None, "2026-11-04_narrow_800.jpg"),
+    # 版4 自社の運行（SPEC §22、G72）。取り込みの結果、確認、地図と表（市場の矢印つき）、気づき、下書きから第 1 部へ
+    "own_import": ("#v=own", 9.0, None, "2026-11-05_v22_own_import.jpg"),
+    "own_confirm": ("#v=own&ot=confirm", 9.0,
+                    "(function(){const b=document.querySelector('#own-body .o-card [data-act=\"ok\"]'); if(b) b.click();})()", "2026-11-05_v22_own_confirm.jpg"),
+    "own_map": ("#v=own&ot=insight", 9.0,
+                "(function(){const c=document.querySelector('#own-mkt'); if(c){c.checked=true; c.dispatchEvent(new Event('change'));}})()", "2026-11-05_v22_own_map.jpg"),
+    "own_insight": ("#v=own&ot=insight", 9.0,
+                    "(function(){const b=document.querySelector('#own-body .o-ins [data-act=\"ev\"]'); if(b) b.click();})()", "2026-11-05_v22_own_insight.jpg"),
+    "own_draft": ("#v=own&ot=insight", 9.0,
+                  "(function(){const b=document.querySelector('#own-body .o-ins [data-act=\"next\"][data-a=\"draft_backhaul\"]'); if(b) b.click();})()", "2026-11-05_v22_own_draft.jpg"),
 }
 
 
@@ -261,11 +271,13 @@ def main() -> int:
             hash_, wait, pre, fname = SCENES[n]
             page.goto("about:blank")  # ハッシュだけの移動だと再読み込みされないので、いったん空白にする
             page.goto(base + hash_)
-            page.wait(lambda: page.js("!!window.__app"), 60, "アプリの起動")
+            page.wait(lambda: page.js("!!window.__app"), 180, "アプリの起動")  # 他の処理で CPU が混んでいると 60 秒を超える
+            # 先読み（SPEC §19.5a）が終わって読み込み画面が消えるまで待つ（ソフトウェア描画では 9 秒を超えることがある）
+            page.wait(lambda: page.js("document.querySelector('#loading').classList.contains('done')"), 240, "読み込み画面の終了")
             time.sleep(wait)
             if pre:
                 page.js(pre)
-                time.sleep(5.0 if n.startswith('modes') else 1.0)  # 地図の移動（約 2.4 秒）が終わるまで
+                time.sleep(5.0 if n.startswith(('modes', 'own_')) else 1.0)  # 地図の移動（約 2.4 秒）が終わるまで
             if n == "b_real":  # 架空の便の乗り物が線の上にいる時刻（find.js の周期 14 秒のうち 7〜9 秒）まで待つ
                 for _ in range(60):
                     if 7.0 <= (page.js("(performance.now()/1000)%14") or 0) <= 9.0:
