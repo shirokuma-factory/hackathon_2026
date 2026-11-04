@@ -66,6 +66,15 @@ SCENES = {
                    "__app.Rt.setFocus('rail')", "2026-11-04_modes_rail.jpg"),
     "market_real": ("#v=market&p=27-12", 12.0, None, "2026-11-04_market_real.jpg"),
     "b_real": ("#v=find", 13.6, None, "2026-11-04_b_real.jpg"),
+    # 版3の4段目（SPEC §18、G45・G47）。市区町村（推定）、物流の集積の 3D の柱、施設（P31 は手元にあるときだけ）、拡大 11 の倉庫の点、狭い画面
+    "muni_estimate": ("#v=market&sc=muni", 8.0,
+                      "(function(){const a=__app; a.map().jumpTo({center:[139.85,35.85],zoom:7.7}); a.Muni.select(a.S.idx.codes.indexOf('12219'));})()",
+                      "2026-11-04_muni_estimate.jpg"),
+    "concentration_3d": ("#v=market&cc=dens&c3=1", 8.0,
+                         "(function(){__app.map().jumpTo({center:[139.6,35.3],zoom:7.4,pitch:55});})()", "2026-11-04_concentration_3d.jpg"),
+    "facilities": ("#v=market&fc=1", 9.0, "(function(){__app.map().jumpTo({center:[139.75,35.6],zoom:8.6});})()", "2026-11-04_facilities.jpg"),
+    "warehouses_z11": ("#v=market&fc=1", 9.0, "(function(){__app.map().jumpTo({center:[139.82,35.72],zoom:11.3});})()", "2026-11-04_warehouses_z11.jpg"),
+    "narrow_800": ("#v=market&sc=muni", 8.0, None, "2026-11-04_narrow_800.jpg"),
 }
 
 

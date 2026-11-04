@@ -6,6 +6,8 @@
       origin_<コード>.json, routes.json, market.json, hubs.json, jartic.json,
       routes_meta.json, routes_<出発地>.json, routes_pairs.json, routes_trips.json, routes_rail.json）。
       routes_*（SPEC §17）は data/routes/ の実際の線（道路・線路・航路・空の弧）を、座標を 1e-4 度の整数の差分にして小さくしたもの。
+      muni.json・c28.json・osm_points.json（SPEC §18）は市区町村の推定、物流の集積、空港、OSM の倉庫の点。
+      local/p31.json は国土数値情報 P31（非商用・再配布不可）。data/raw/p31/ にあるときだけ web/data/local/（gitignore）へ作る。
       目安額は /api/estimate が計算するので作らない。市場を見る（SPEC §16）の数字と、最寄りの拠点（SPEC §15.5）は
       ここで Python が計算して書き、画面は表示するだけにする
 """
@@ -278,6 +280,81 @@ def build_real_routes() -> None:
     write_json("routes_rail.json", {"attribution": net["attribution"], "lines": [enc_line(l) for l in net["lines"]]})
 
 
+# ---------------------------------------------------------------- 市区町村の推定・集積・施設（SPEC §18）
+
+STATE_CODE = {"ok": 0, "none": 1, "secret": 2, "missing": 3}  # 画面は 0 以外の理由を灰色にして出す
+OSM_TYPES = ["warehouse", "logistics", "industrial_warehouse", "depot", "truck_stop"]
+P31_RAW = ROOT / "data" / "raw" / "p31" / "p31_points.json"
+LOCAL_OUT = OUT / "local"  # .gitignore 済み（P31 は再配布不可）
+
+
+def build_muni(codes: list[str]) -> None:
+    """市区町村の推定 B(m)（data/stats/muni_estimate.json）と物流の集積（44+47）を、地図の市区町村の番号（codes の順）の列にする。
+    秘匿・数字なしは null のまま（0 にしない）。階級の境界（分位数）はここで計算する。"""
+    est = read_json(ROOT / "data" / "stats" / "muni_estimate.json")
+    mpts = read_json(GEO / "municipality_points.json")["points"]
+    osm = read_json(GEO / "osm_logistics_counts.json")
+    rows = [est["municipalities"].get(c) for c in codes]
+    cols: dict[str, list] = {k: [] for k in ("out", "in", "bal", "ost", "ist", "emp", "pop", "area", "reason", "c44", "c47", "cemp", "cest", "cdens", "cst", "pt", "osm")}
+    for c, r in zip(codes, rows):
+        if r is None:
+            for k in cols:
+                cols[k].append(None)
+            continue
+        cols["out"].append(r["out_t"]); cols["in"].append(r["in_t"]); cols["bal"].append(r["balance_t"])
+        cols["ost"].append(STATE_CODE[r["out_state"]]); cols["ist"].append(STATE_CODE[r["in_state"]])
+        cols["emp"].append(r["mfg_trucking_warehouse_employees"]); cols["pop"].append(r["population"])
+        cols["area"].append(r["area_km2"]); cols["reason"].append(r["gray_reason"])
+        a, b = r["trucking_44"], r["warehousing_47"]
+        cols["c44"].append([a["establishments"], a["employees"], STATE_CODE[a["status"]]])
+        cols["c47"].append([b["establishments"], b["employees"], STATE_CODE[b["status"]]])
+        both = [a["status"], b["status"]]
+        if "missing" in both:
+            cst = 3
+        elif "secret" in both:
+            cst = 2
+        else:
+            cst = 0
+        emp = a["employees"] + b["employees"] if cst == 0 else None
+        cols["cemp"].append(emp)
+        cols["cest"].append((a["establishments"] or 0) + (b["establishments"] or 0) if cst != 3 else None)
+        cols["cdens"].append(None if emp is None or not r["area_km2"] else round(emp / r["area_km2"], 3))
+        cols["cst"].append(cst)
+        p = mpts.get(c)
+        cols["pt"].append([round(p["lon"], 4), round(p["lat"], 4)] if p else None)
+        oc = osm["municipalities"].get(c, {})
+        cols["osm"].append([oc.get(t, 0) for t in OSM_TYPES])
+    edges = {"dens": geo.quantile_edges([v for v in cols["cdens"] if v is not None], 7),
+             "emp": geo.quantile_edges([v for v in cols["cemp"] if v is not None], 7)}
+    prefs = {n: [p["out_t"], p["in_t"], p["unallocated_out_t"], p["unallocated_in_t"], p["n_municipalities"], p["n_gray"]]
+             for n, p in est["prefectures"].items()}
+    write_json("muni.json", {
+        "source": est["source"], "terms": est["terms"], "disclaimer": est["disclaimer"], "formula": est["formula"], "unit": est["unit"],
+        "status_notes": est["status_notes"], "state_names": ["数字あり", "事業所なし", "秘匿", "表にない"],
+        "prefs": prefs, "edges": edges, "osm_types": OSM_TYPES, "osm_unmatched": osm["unmatched"], **cols,
+    })
+
+
+def build_facilities() -> None:
+    """空港（C28、商用可）と OSM の倉庫・物流施設の点（ODbL）は公開用に。P31 は手元にあるときだけ web/data/local/ へ。"""
+    c28 = read_json(GEO / "c28_airports_2021.json")
+    write_json("c28.json", {"source": c28["source"], "terms": c28["terms"],
+                            "items": [[r4(i["lon"]), r4(i["lat"]), i["name"], i["status"]] for i in c28["items"]]})
+    o = read_json(GEO / "osm_logistics_points.json")
+    write_json("osm_points.json", {"attribution": o["attribution"], "license": o["license"], "fetched_on": o["fetched_on"],
+                                   "types": o["types"], "tags": o["tags"], "items": [[r4(x), r4(y), t] for x, y, t, _ in o["items"]]})
+    if not P31_RAW.exists():
+        print("local/p31.json: data/raw/p31/ に P31 がないので作りません（tools/fetch_p31.py で取得）")
+        return
+    p = read_json(P31_RAW)
+    LOCAL_OUT.mkdir(parents=True, exist_ok=True)
+    with open(LOCAL_OUT / "p31.json", "w", encoding="utf-8", newline="\n") as f:
+        json.dump({"source": p["source"], "terms": p["terms"], "fetched_on": p["fetched_on"], "kinds": p["kinds"],
+                   "items": [[round(i["lon"], 5), round(i["lat"], 5), i["kind"], i["name"], i["address"], i["operator"]] for i in p["items"]]},
+                  f, ensure_ascii=False, separators=(",", ":"))
+    print(f"local/p31.json: {(LOCAL_OUT / 'p31.json').stat().st_size / 1024:.0f} KB（gitignore 済み。コミットしない）")
+
+
 def main() -> None:
     points = geo.load_points()
     codes = sorted(points)
@@ -294,6 +371,8 @@ def main() -> None:
     build_market()
     build_jartic()
     build_hubs(codes, points)
+    build_muni(codes)
+    build_facilities()
     build_real_routes()
     routes_src = read_json(GEO / "routes.json")["routes"]
     routes = {k: v for k, v in routes_src.items() if v["origin"] in geo.ORIGINS}
