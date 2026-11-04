@@ -387,6 +387,7 @@ function frame(now) {
   const tl0 = performance.now();
   if (S.view === 'market') layers = Market.layers(now, zoom);
   else if (S.view === 'find') layers = [S.staticLayers[1], ...Market.flowLayers(now, 0.3), ...Find.layers(now)]; // 県境、帰りの空きやすさ（うすく）、架空の便
+  else if (S.view === 'own') layers = [S.staticLayers[1], ...(Own.market() ? Market.flowLayers(now, 0.55) : []), ...Own.layers()]; // 県境、市場の矢印（切り替え）、自社の区間（SPEC §22）
   else layers = [...S.staticLayers, ...Hubs.layers(zoom, { line: currentHubLine() }), ...Muni.compareFac(zoom), ...dynamicLayers(now)];
   if (WARM.running) layers.push(...WARM.layers(now)); // 起動時のシェーダーの先読み（warmup.js）。読み込み画面の裏で、種類ごとに 1 個ずつ描く
   PERF.mark('layers', tl0);
@@ -719,6 +720,8 @@ function fitJapan(animate) {
     ? { top: 165, bottom: 100, left: 400, right: ($('#m-right').offsetWidth || 480) + 90 }
     : S.view === 'find'
       ? { top: 60, bottom: 100, left: 420, right: ($('#find-right').offsetWidth || 480) + 70 }
+    : S.view === 'own'
+      ? { top: 60, bottom: 130, left: 480, right: ($('#own-right').offsetWidth || 540) + 70 }
     : { top: 20, bottom: 110, left: 60, right: 110 };
   map.fitBounds(JAPAN_BOUNDS, { padding: pad, duration: animate ? 1800 : 0 });
 }
@@ -775,6 +778,7 @@ function writeHash() {
   const p = new URLSearchParams();
   p.set('v', S.view);
   if (S.view === 'find') Find.hashParams(p);
+  if (S.view === 'own') Own.hashParams(p);
   if (S.view !== 'compare') { history.replaceState(null, '', '#' + p.toString()); return; }
   p.set('o', S.origin);
   p.set('l', S.layer);
@@ -825,7 +829,7 @@ function hoverTag(info) {
 const DETAIL_FLAGS = ['has-detail', 'has-route', 'has-work'];
 function applyViewClasses() {
   const c = document.body.classList;
-  for (const v of ['market', 'find', 'compare']) c.toggle('view-' + v, S.view === v);
+  for (const v of ['market', 'find', 'compare', 'own']) c.toggle('view-' + v, S.view === v);
   document.querySelectorAll('#views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)));
 }
 function setView(v) {
@@ -841,6 +845,7 @@ function setView(v) {
   }
   if (prev === 'market') Market.setActive(false);
   if (prev === 'find') Find.leave();
+  if (prev === 'own') Own.leave();
   $('#hover-tag').classList.remove('on');
   S.view = v;
   applyViewClasses();
@@ -852,6 +857,8 @@ function setView(v) {
     Market.setActive(true);
     const r = Market.selected();
     if (r) Market.select(r.k, { fly: true }); else fitJapan(true);
+  } else if (v === 'own') {
+    Own.enter();
   } else {
     fitJapan(true);
     Find.enter(prev === 'market' ? Market.pairNames() : null);
@@ -915,7 +922,7 @@ async function main() {
     '22101', '22130', '23106', '24201', '25201', '26104', '27128', '28110', '29201', '30201', '31201', '32201', '33101', '34101', '35203',
     '36201', '37201', '38201', '39201', '40131', '41201', '42201', '43101', '44201', '45201', '46201', '47201', '27140', '14100', '23101'];
   const p = new URLSearchParams(location.hash.slice(1));
-  S.view = ['market', 'find', 'compare'].includes(p.get('v')) ? p.get('v') : (p.get('o') || p.get('l') || p.get('d')) ? 'compare' : 'market';
+  S.view = ['market', 'find', 'compare', 'own'].includes(p.get('v')) ? p.get('v') : (p.get('o') || p.get('l') || p.get('d')) ? 'compare' : 'market';
   Market.readHash(p);
   Muni.readHash(p);
   if (p.get('o') && meta.origins.some((o) => o.code === p.get('o'))) S.origin = p.get('o');
@@ -975,6 +982,9 @@ async function main() {
   Find.readHash(p);
   await Find.init();
   if (S.view === 'find') Find.enter(null);
+  Own.readHash(p);
+  await Own.init();
+  if (S.view === 'own') Own.enter();
   setHubLegend();
   document.querySelectorAll('#views button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
   document.querySelector('.tgl[data-toggle="hubs"]').addEventListener('click', () => setHubs(!Hubs.on));
@@ -1018,7 +1028,7 @@ async function main() {
   requestAnimationFrame(frame);
   M3D.preload();
   if (new URLSearchParams(location.search).get('perf')) { const sc = document.createElement('script'); sc.src = 'perfprobe.js'; document.head.appendChild(sc); }
-  window.__app = { WARM, S, Market, Muni, Hubs, Find, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
+  window.__app = { WARM, S, Market, Muni, Hubs, Find, Own, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }
 
 main().catch((e) => {
