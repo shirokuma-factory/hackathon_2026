@@ -271,18 +271,31 @@ const Muni = (() => {
   // P31 の種類 → モデル: トラックターミナル・卸売市場・保税地域 → 倉庫、コンテナターミナル → コンテナヤード + 港のクレーン、
   // 鉄道貨物駅 → ターミナル、航空貨物ターミナルと空港（C28）→ 航空貨物ターミナル。OSM の倉庫・物流施設 → 倉庫（冷蔵の区別はデータにない）
   const P31_MODEL = { 5: 'warehouse', 7: 'warehouse', 4: 'warehouse', 3: 'terminal', 2: 'air_cargo_terminal' };
+  // 毎フレーム配列を作り直すと deck.gl がデータの再計算をするので、元のデータと種類の選択が同じ間は同じ配列を返す
+  const memo = new Map();
+  function cached(key, deps, fn) {
+    const m = memo.get(key);
+    if (m && m.deps.length === deps.length && m.deps.every((d, i) => d === deps[i])) return m.v;
+    const v = fn();
+    memo.set(key, { deps, v });
+    return v;
+  }
   function fac3d(zoom) {
     if (!M3D.facilityOn(zoom)) return [];
-    M3D.mix(zoom); // 地図の最大ズームを広げる
     const out = [], add = (l) => { if (l) out.push(l); };
+    const sig = Object.keys(U.types).map((k) => (U.types[k] ? k : '')).join();
     if (U.p31Items) {
-      const items = U.p31Items.filter((x) => U.types[x.kind]);
-      for (const kind of Object.keys(P31_MODEL)) add(M3D.facility('fac3d-p31-' + kind, P31_MODEL[kind], items.filter((x) => String(x.kind) === kind), zoom, { k: P31_MODEL[kind] === 'warehouse' ? 0.7 : 1 }));
-      const cont = items.filter((x) => x.kind === 1);
-      add(M3D.facility('fac3d-p31-yard', 'container_yard', cont, zoom));
-      add(M3D.facility('fac3d-p31-crane', 'port_crane', cont.map((x) => ({ p: [x.p[0], x.p[1] - 0.0006] })), zoom));
+      const g = cached('p31', [U.p31Items, sig], () => {
+        const items = U.p31Items.filter((x) => U.types[x.kind]), by = {};
+        for (const kind of Object.keys(P31_MODEL)) by[kind] = items.filter((x) => String(x.kind) === kind);
+        const cont = items.filter((x) => x.kind === 1);
+        return { by, cont, crane: cont.map((x) => ({ p: [x.p[0], x.p[1] - 0.0006] })) };
+      });
+      for (const kind of Object.keys(P31_MODEL)) add(M3D.facility('fac3d-p31-' + kind, P31_MODEL[kind], g.by[kind], zoom, { k: P31_MODEL[kind] === 'warehouse' ? 0.7 : 1 }));
+      add(M3D.facility('fac3d-p31-yard', 'container_yard', g.cont, zoom));
+      add(M3D.facility('fac3d-p31-crane', 'port_crane', g.crane, zoom));
     }
-    if (U.c28 && U.types.air) add(M3D.facility('fac3d-air', 'air_cargo_terminal', U.c28.items.map(([lon, lat]) => ({ p: [lon, lat] })), zoom));
+    if (U.c28 && U.types.air) add(M3D.facility('fac3d-air', 'air_cargo_terminal', cached('air', [U.c28], () => U.c28.items.map(([lon, lat]) => ({ p: [lon, lat] }))), zoom));
     if (U.types.osm && U.osm) {
       const skip = U.osm.types.indexOf('truck_stop');
       if (!U.osmWh) U.osmWh = U.osm.items.filter((d) => d[2] !== skip);
@@ -291,11 +304,20 @@ const Muni = (() => {
     return out;
   }
 
+  // 比べる画面の施設（拡大 12 以上の 3D だけ。点やアイコンは出さない）。データは最初に必要になったときに読み込む（「施設」の切り替えとは無関係）
+  function compareFac(zoom) {
+    if (!M3D.facilityOn(zoom)) return [];
+    if (!U.facLoading && (!U.c28 || !U.osm || U.p31 === undefined)) { U.facLoading = true; loadFacilities().finally(() => { U.facLoading = false; }); }
+    return fac3d(zoom);
+  }
+
   /* ------------------------------------------------------------ 説明（地図の上にあわせたとき）と選択 */
 
   const nameOf = (i) => `${S.idx.prefs[i]} ${S.idx.names[i]}`;
   function stateText(code) { return U.d.state_names[code]; }
 
+  // 施設の説明に添えるサムネイル（SPEC §19.6）。コンテナターミナルは港のクレーン
+  const HOVER_MODEL = { 5: 'warehouse', 7: 'warehouse', 4: 'warehouse', 3: 'terminal', 2: 'air_cargo_terminal', 1: 'port_crane' };
   function hoverText(info) {
     const o = info && info.object, id = info && info.layer && info.layer.id;
     if (!o || !id) return null;
@@ -309,9 +331,9 @@ const Muni = (() => {
       }
       return { t: nameOf(i), s: concLine(i) };
     }
-    if (id === 'fac-p31') return { t: o.name, s: `${GLYPH[o.kind][0]}・${o.address || '住所なし'}・2013 年（国土数値情報 P31）` };
-    if (id === 'fac-air') return { t: o.name, s: `空港（${o.status}）・国土数値情報 C28（2021）` };
-    if (id === 'fac-osm') return { t: '倉庫・物流施設（OSM）', s: U.osm.tags[U.osm.types[o[2]]] || '' };
+    if (id === 'fac-p31') return { t: o.name, s: `${GLYPH[o.kind][0]}・${o.address || '住所なし'}・2013 年（国土数値情報 P31）`, m: HOVER_MODEL[o.kind] };
+    if (id === 'fac-air') return { t: o.name, s: `空港（${o.status}）・国土数値情報 C28（2021）`, m: 'air_cargo_terminal' };
+    if (id === 'fac-osm') return { t: '倉庫・物流施設（OSM）', s: U.osm.tags[U.osm.types[o[2]]] || '', m: 'warehouse' };
     if (id === 'fac-osm-agg') return { t: nameOf(o.i), s: `OSM の倉庫・物流施設 ${n0(o.n)} 件（拡大 11 以上で 1 件ずつ出します）` };
     return null;
   }
@@ -502,7 +524,7 @@ const Muni = (() => {
   }
 
   return {
-    load, init, afterStart, readHash, isMuni, prefFilled, maxBal, balColor, renderBalHead, under, over, hoverText, click, setScope, setConc, setCol3d, setFac,
+    load, init, afterStart, readHash, isMuni, prefFilled, maxBal, balColor, renderBalHead, under, over, compareFac, hoverText, click, setScope, setConc, setCol3d, setFac,
     setActive, select, deselect, state: U, DISCLAIMER, ATTR,
   };
 })();

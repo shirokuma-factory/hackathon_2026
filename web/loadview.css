@@ -64,3 +64,6 @@ body.lv-open .maplibregl-canvas { filter: saturate(0.6); }
 .ed-foot #ed-3d { white-space: nowrap; flex: none; }
 .ed-foot { flex-wrap: wrap; }
 .ed-foot .ed-state { flex: 1 1 100%; min-width: 0; }
+
+.lv-thumb { display: flex; justify-content: center; margin: 8px 0 0; }
+.lv-thumb .mth { width: 144px; height: 90px; }

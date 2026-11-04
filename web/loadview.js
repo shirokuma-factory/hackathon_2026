@@ -128,6 +128,11 @@ const LoadView = (() => {
   }
 
   /* ---------------------------------------------------------------- 横のパネル */
+  // 荷室の ID → サムネイルのモデル名（SPEC §19.6）。JITBOX のボックスは該当するモデルがないので出さない
+  const CONT_MODEL = {
+    kei_van: 'kei_van', box_2t_short: 'box_2t', box_2t: 'box_2t', wing_4t: 'truck_4t', wing_10t: 'truck',
+    jr_12ft: 'container_12ft', jr_31ft: 'container_31ft', roll_cage: 'roll_cage', rb_upper_1700: 'truck_4t', rb_upper_2000: 'truck_4t',
+  };
   function renderSide() {
     const side = $('#lv-side');
     const r = V.res;
@@ -146,6 +151,7 @@ const LoadView = (() => {
     side.innerHTML = `
       <label class="lbl" for="lv-cont">荷室</label>
       <select id="lv-cont" class="ctl sm">${opts}</select>
+      ${typeof M3D !== 'undefined' && CONT_MODEL[c.id] ? `<div class="lv-thumb">${M3D.thumb(CONT_MODEL[c.id], 144, 90)}</div>` : ''}
       <p class="lv-spec num">内寸 ${num(c.length_mm)}×${num(c.width_mm)}×${num(c.height_mm)}mm・最大積載 ${num(c.payload_kg)}kg
         <span class="lv-basis b-${esc(c.basis)}">${esc(c.basis)}</span></p>
       ${c.sellable_slot ? '' : '<p class="lv-warn">推定・販売枠ではありません。積付けの属性として見るための空間です。</p>'}

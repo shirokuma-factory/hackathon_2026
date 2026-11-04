@@ -5,8 +5,13 @@
    ■ LOD の規則（ズームは MapLibre の値）
      ・乗り物: ズーム Z_ON(9.0) 未満は 2D アイコンだけ。Z_ON〜Z_FULL(9.8) は 2D を薄くしながら 3D を濃くする（交差）。Z_FULL 以上は 3D だけ。
      ・施設（倉庫・駅・港・空港）: ズーム Z_FAC(12) 以上で 3D。画面内に入るものだけを、モデルごとに最大 CAP(300) 件まで（中心に近い順。ズーム 14 未満はさらに絞る）。
-     ・地図の最大ズームは app.js で 12 だが、それでは実寸のモデルが見えないので、この層が使われるときに 16 まで上げる（M3D.mix 内）。
+     ・地図の最大ズームは app.js の地図の作成時に 16 にしてある（実寸のモデルを見るため）。
 
+   ■ 負荷を抑える規則（SPEC §19.5）
+     ・施設の層のデータ（画面内の絞り込み）は、地図が止まって 150ms たったときにだけ作り直す。動いている間は直前の配列（同じ参照）を使うので、
+       deck.gl はデータの再計算をしない。絞り込みの範囲は画面より 35% 広くしてあり、少し動かしただけでは端が欠けない。
+     ・画面内に 1 件もないモデルの層は作らない（layer が null を返す）。
+     ・層に渡す定数（_animations、parameters）は毎回作り直さず、同じオブジェクトを使う。 
    ■ 大きさ（sizeScale）
      モデルの単位はメートル。実寸のままだと遠くでは 1 px 未満になるので、
        sizeScale = max(1, px × mpp / len)
@@ -29,6 +34,9 @@ const M3D = (() => {
   const Z_ON = 9.0, Z_FULL = 9.8, Z_FAC = 12, MAXZ = 16, CAP = 300;
   const cfg = { capScale: 1 }; // 施設の件数の上限に掛ける倍率（計測用）
   const DIR = 'models/';
+  const THUMB_DIR = 'img/models/';
+  const ANIM = { '*': { playing: true, speed: 1 } }; // 同じ参照を渡す（毎回作ると層の差分の判定が重くなる）
+  const PARAMS = { depthCompare: 'less-equal' };
   // len: 全長（m、glb の寸法から）。px: 画面で最低限見せたい長さ。anim: 焼き込みのアニメーションがあるモデル
   const MODELS = {
     truck: { f: 'truck.glb', len: 12.1, px: 26, anim: true },
@@ -61,12 +69,26 @@ const M3D = (() => {
   const mpp = (zoom, lat) => (78271.517 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
   const smooth = (t) => t * t * (3 - 2 * t);
 
+  /* サムネイル（SPEC §19.6）。web/img/models/*.webp（320x200、透過）。UI の説明用で、地図の層とは無関係。
+     alt は日本語。画面外のものは読み込まない（loading=lazy）。知らない名前のときは空文字を返す。 */
+  const THUMB_ALT = {
+    truck: '10t ウイングボディ', truck_4t: '4t ウイング車', box_2t: '2t 箱車', kei_van: '軽バン', trailer: 'トラクターと 40ft 海上コンテナ',
+    freight_train: '電気機関車とコンテナ貨車', container_12ft: '12ft 鉄道コンテナ', container_31ft: '31ft 鉄道コンテナ', ferry: '長距離 RORO フェリー', roro_ship: '貨物専用 RORO 船',
+    container_ship: 'コンテナ船', cargo_plane: '貨物機', passenger_jet: '旅客機（腹の貨物室）', warehouse: '倉庫', cold_storage: '冷蔵・冷凍倉庫',
+    terminal: 'トラックターミナル・貨物駅', port_crane: '港のガントリークレーン', air_cargo_terminal: '空港の貨物ターミナル', container_yard: 'コンテナヤード',
+    roll_cage: 'カゴ台車', box_80: '段ボール箱（80 サイズ）',
+  };
+  const thumbAlt = (name) => THUMB_ALT[name] || '';
+  function thumb(name, w = 96, h = 60, cls = '') {
+    if (!THUMB_ALT[name]) return '';
+    return `<img class="mth${cls ? ' ' + cls : ''}" src="${THUMB_DIR}${name}.webp" width="${w}" height="${h}" alt="${THUMB_ALT[name]}" loading="lazy" decoding="async">`;
+  }
+
   const hasDeck = () => typeof deck !== 'undefined' && typeof deck.ScenegraphLayer === 'function';
 
-  // 3D の濃さ（0 = 2D だけ、1 = 3D だけ）。地図の最大ズームもここで広げる
+  // 3D の濃さ（0 = 2D だけ、1 = 3D だけ）
   function mix(zoom) {
     if (!hasDeck()) return 0;
-    if (typeof map !== 'undefined' && map && map.getMaxZoom() < MAXZ) map.setMaxZoom(MAXZ);
     return smooth(clamp01((zoom - Z_ON) / (Z_FULL - Z_ON)));
   }
   const iconAlpha = (zoom) => 1 - mix(zoom); // 2D アイコンに掛ける濃さ
@@ -93,10 +115,10 @@ const M3D = (() => {
       getColor: (d) => [c[0], c[1], c[2], Math.round(255 * (d.a ?? 1))],
       sizeScale: sizeScale(key, zoom, opts.lat) * (opts.k ?? 1),
       _lighting: 'pbr',
-      _animations: m.anim ? { '*': { playing: true, speed: 1 } } : undefined,
+      _animations: m.anim ? ANIM : undefined,
       opacity: op,
       pickable: !!opts.pickable,
-      parameters: { depthCompare: 'less-equal' },
+      parameters: PARAMS,
       updateTriggers: { getColor: [c.join(), opts.trig ?? 0] },
     });
   }
@@ -118,16 +140,16 @@ const M3D = (() => {
   /* 施設。points: [{p:[経度,緯度], yaw?}] を、画面に入るものだけ（中心に近い順に CAP 件まで）にして 1 つの層にする */
   // 施設の件数の上限。縮小気味のときは小さく見えるだけなので、件数を絞って描画の負荷を抑える（ズーム 12〜13 は 120、13〜14 は 200、14 以上は CAP）
   const capFor = (zoom) => Math.round((zoom < 13 ? 120 : zoom < 14 ? 200 : CAP) * cfg.capScale);
-  function inView(points, getP, zoom) {
+  function inView(points, getP, zoom, pad = 0.1) {
     getP = getP || ((d) => d.p);
     if (typeof map === 'undefined' || !map) return [];
     const b = map.getBounds(), c = map.getCenter();
     const w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth();
-    const pad = (e - w) * 0.1;
+    const px = (e - w) * pad, py = (n - s) * pad;
     const out = [];
     for (const d of points) {
       const p = getP(d);
-      if (p[0] >= w - pad && p[0] <= e + pad && p[1] >= s - pad && p[1] <= n + pad) out.push(d);
+      if (p[0] >= w - px && p[0] <= e + px && p[1] >= s - py && p[1] <= n + py) out.push(d);
     }
     const cap = capFor(zoom ?? 99);
     if (out.length <= cap) return out;
@@ -135,12 +157,30 @@ const M3D = (() => {
     const dist = (d) => { const p = getP(d); return ((p[0] - c.lng) * k) ** 2 + (p[1] - c.lat) ** 2; };
     return out.map((d) => [dist(d), d]).sort((a, b2) => a[0] - b2[0]).slice(0, cap).map((x) => x[1]);
   }
+
+  /* 地図の動きの検知。動いている間は施設の絞り込みをやり直さず、止まって IDLE_MS たったら epoch を進めて作り直させる */
+  const IDLE_MS = 150;
+  const mv = { watched: false, moving: false, epoch: 0, timer: 0 };
+  function watchMap() {
+    if (mv.watched || typeof map === 'undefined' || !map) return;
+    mv.watched = true;
+    const stop = () => { clearTimeout(mv.timer); mv.timer = setTimeout(() => { mv.moving = false; mv.epoch++; }, IDLE_MS); };
+    map.on('movestart', () => { clearTimeout(mv.timer); mv.moving = true; });
+    map.on('moveend', stop);
+  }
+  const FC = new Map(); // 層の id → { pts, cap, epoch, data }。data は止まっている間は同じ参照
   function facility(id, key, points, zoom, opts = {}) {
     if (!facilityOn(zoom) || !points || !points.length) return null;
-    mix(zoom); // 地図の最大ズームを広げる
-    const vis = inView(points, opts.getP, zoom);
-    return layer(id, key, vis.map((d) => ({ p: d.p || opts.getP(d), yaw: d.yaw ?? opts.yaw ?? 0, a: 1 })), { ...opts, zoom, opacity: 1 });
+    watchMap();
+    const cap = capFor(zoom);
+    let c = FC.get(id);
+    if (!c || c.pts !== points || (!mv.moving && (c.epoch !== mv.epoch || c.cap !== cap))) {
+      const vis = inView(points, opts.getP, zoom, 0.35);
+      c = { pts: points, cap, epoch: mv.epoch, data: vis.map((d) => ({ p: d.p || opts.getP(d), yaw: d.yaw ?? opts.yaw ?? 0, a: 1 })) };
+      FC.set(id, c);
+    }
+    return layer(id, key, c.data, { ...opts, zoom, opacity: 1 });
   }
 
-  return { cfg, capFor, MODELS, MODE_MODEL, Z_ON, Z_FULL, Z_FAC, MAXZ, CAP, mix, iconAlpha, facilityOn, sizeScale, mpp, yawOf, layer, vehicles, facility, inView, byVehicle, hasDeck };
+  return { cfg, capFor, MODELS, MODE_MODEL, Z_ON, Z_FULL, Z_FAC, MAXZ, CAP, mix, iconAlpha, facilityOn, sizeScale, mpp, yawOf, layer, vehicles, facility, inView, byVehicle, hasDeck, thumb, thumbAlt, THUMB_ALT };
 })();

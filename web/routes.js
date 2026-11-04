@@ -559,9 +559,10 @@ const Rt = (() => {
         return `<div class="rt-card off" style="--c:${rgb(col(m))}"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b><span class="rt-km">なし</span></span>` +
           `<span class="rt-why">${esc((s && s.why) || '作っていません')}</span></div>`;
       }
+      // 車の大きさはデータにないので、トラックは 10t ウイングのサムネイル（SPEC §19.6）
       return `<button type="button" class="rt-card${F === m ? ' on' : ''}${F && F !== m ? ' dim' : ''}" data-mode="${m}" aria-pressed="${F === m}" style="--c:${rgb(col(m))}">` +
-        `<span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b><span class="rt-km num">${km1(s.km)} km</span></span>` +
-        `<span class="rt-time">${timeHtml(s)}</span><span class="rt-legs">${legsHtml(s)}</span></button>`;
+        `<span class="rt-body"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b><span class="rt-km num">${km1(s.km)} km</span></span>` +
+        `<span class="rt-time">${timeHtml(s)}</span><span class="rt-legs">${legsHtml(s)}</span></span>${M3D.thumb(M3D.MODE_MODEL[m], 80, 50, 'mth-card')}</button>`;
     }).join('');
     const note = cur.note ? `<p class="rt-note ${cur.noteKind}" role="status">${esc(cur.note)}</p>` : '';
     const head = '<div class="rt-head"><b>送り方を比べる</b><small>手段のカードを押すと、その手段の経路を強く出します</small></div>';
@@ -577,7 +578,7 @@ const Rt = (() => {
   /* ------------------------------------------------------------ 凡例 */
 
   function legendHtml() {
-    return '<div class="rt-lg-cap">手段</div>' + ORDER.map((m) => `<div class="rt-lg-row">${iconInline(m, 24)}<span>${LABEL[m]}</span></div>`).join('');
+    return '<div class="rt-lg-cap">手段</div>' + ORDER.map((m) => `<div class="rt-lg-row"><span class="rt-lg-ic">${iconInline(m, 24)}${M3D.thumb(M3D.MODE_MODEL[m], 40, 25, 'mth-lg')}</span><span>${LABEL[m]}</span></div>`).join('');
   }
   function mountLegend() { document.querySelectorAll('.rt-legend').forEach((el) => { el.innerHTML = legendHtml(); }); }
 

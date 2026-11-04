@@ -492,7 +492,7 @@ const Market = (() => {
 
   function hover(info) {
     const tag = q('#hover-tag'), o = info && info.object, id = info && info.layer && info.layer.id;
-    let t = null, s = null;
+    let t = null, s = null, m = null;
     if (o && id === 'm-pref') {
       const i = M.prefIdx.get(o.properties.n);
       if (i !== undefined) {
@@ -510,10 +510,10 @@ const Market = (() => {
     } else {
       const mh = Muni.hoverText(info);
       const hh = mh || (Hubs.on ? Hubs.hoverText(info) : null);
-      if (hh) { t = hh.t; s = hh.s; }
+      if (hh) { t = hh.t; s = hh.s; m = hh.m; }
     }
     if (!t) { tag.classList.remove('on'); return; }
-    tag.innerHTML = `<b>${esc(t)}</b><span class="num">${esc(s)}</span>`;
+    tag.innerHTML = `${m ? M3D.thumb(m, 64, 40, 'mth-tip') : ''}<b>${esc(t)}</b><span class="num">${esc(s)}</span>`;
     tag.style.transform = `translate(${Math.min(innerWidth - 420, info.x + 18)}px, ${Math.max(8, info.y - 8)}px)`;
     tag.classList.add('on');
   }
