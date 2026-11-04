@@ -1,0 +1,38 @@
+{
+  "carrier": "国土交通省",
+  "service": "標準的な運賃（近畿運輸局、距離制）",
+  "source_url": "https://www.mlit.go.jp/report/press/content/001732088.pdf",
+  "applies_from": null,
+  "checked_on": "2026-11-05",
+  "tax": "税抜",
+  "scope_note": "国の目安であり、実際の運賃は運送会社ごとに違う。2t・4t・10t の距離制だけを持つ。 500km を超えると加算は 50km ごと（SPEC §5.5 の訂正）。",
+  "origin_region": "近畿",
+  "base_km": 200,
+  "step_km": 20,
+  "vehicles": [
+    {
+      "class": "2t",
+      "max_kg": 2000,
+      "base_fare": 50270,
+      "add_per_step": 3680,
+      "add_per_step_over_500": 9210
+    },
+    {
+      "class": "4t",
+      "max_kg": 4000,
+      "base_fare": 57350,
+      "add_per_step": 4180,
+      "add_per_step_over_500": 10450
+    },
+    {
+      "class": "10t",
+      "max_kg": 10000,
+      "base_fare": 77370,
+      "add_per_step": 5650,
+      "add_per_step_over_500": 14130
+    }
+  ],
+  "verified_by": "値は SPEC §5.5 の訂正（2026-11-05、本線の指定）。近畿運輸局の表の原本との照合は未了。出典 URL は国土交通省の告示の報道発表（関東と同じ）",
+  "over_500_km": 500,
+  "over_500_step_km": 50
+}
