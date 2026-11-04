@@ -118,7 +118,8 @@ def basis_text(r: EstimateRow) -> str:
     elif r.mode == "jitbox" and "boxes" in d:
         parts.append(f"最低 {d['boxes']} 本 × {d['fare_per_box']:,}円（{d['route_label']}）")
     elif r.mode.startswith("kashikiri") and "vehicle" in d:
-        parts.append(f"{d['vehicle']}車（最大積載 {d['max_kg']:,}kg）、200km 超の加算 {d['steps']} 区分")
+        parts.append(f"{d['vehicle']}車（最大積載 {d['max_kg']:,}kg）、200km 超の加算 {d['steps']} 区分"
+                     + (f"、500km 超の加算 {d['steps_over_500']} 区分（50km ごと）" if d.get("steps_over_500") else ""))
     parts += r.reasons
     return "。".join(p for p in parts if p)
 

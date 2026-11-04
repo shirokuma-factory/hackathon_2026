@@ -13,6 +13,7 @@ API（POST は Content-Type: application/json の JSON。入力の誤りは 400 
     POST /api/estimate   {shipment, origin_code?, dest_code?, route?, distance_km?}
     POST /api/layer      {origin_code, shipment}   荷物に合わせた貸切の額の層
     POST /api/loadplan   {shipment, container?, stackable?}   荷室への積付けの配置（SPEC §20。目安）
+    POST /api/waiting/calc {year?, rows:[...] | text}   荷待ち・荷役の記録の計算（SPEC §23。記録は保存もログ出力もしない）
     POST /api/request    {shipment, scenario?}
     POST /api/compare    {quotes, version, today?}
     POST /api/save       案件（case_to_dict の形）→ 正規化した案件 JSON（保存はブラウザのダウンロード）
@@ -49,7 +50,7 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from shipcompare import geo, loadplan, spaceb  # noqa: E402
+from shipcompare import geo, loadplan, spaceb, waiting  # noqa: E402
 from shipcompare import routes as route_lib  # noqa: E402
 from shipcompare.estimate import ST_NOCALC, estimate_all, summarize  # noqa: E402
 from shipcompare.guide import contacts_for_rows, load_transit_days, mode_group, transit_days, transit_days_text  # noqa: E402
@@ -555,10 +556,30 @@ def api_b_reset(body: Any) -> dict[str, Any]:
     return {"ok": True}
 
 
+def api_waiting_calc(body: Any) -> dict[str, Any]:
+    """荷待ち・荷役の記録の計算（SPEC §23.4）。記録はファイルにもログにも書かず、応答を返したら捨てる。
+    rows は行の辞書の配列。rows の代わりに text（Excel から貼り付けたタブ区切り）も受ける。"""
+    body = _need_dict(body)
+    year = body.get("year")
+    if year is not None and (isinstance(year, bool) or not isinstance(year, int)):
+        raise BadRequest("year は整数で渡してください")
+    if body.get("rows") is not None:
+        rows = body["rows"]
+    elif isinstance(body.get("text"), str):
+        rows = waiting.parse_paste(body["text"])
+    else:
+        raise BadRequest("rows（行の配列）か text（貼り付けたタブ区切り）を渡してください")
+    try:
+        return waiting.calc(rows, year)
+    except ValueError as e:
+        raise BadRequest(str(e)) from e
+
+
 GET_ROUTES = {"/api/scenarios": lambda q: api_scenarios(), "/api/demo_quotes": api_demo_quotes,
               "/api/b/trips": api_b_trips, "/api/route": api_route}
 POST_ROUTES = {
     "/api/estimate": api_estimate, "/api/layer": api_layer, "/api/loadplan": api_loadplan, "/api/request": api_request,
+    "/api/waiting/calc": api_waiting_calc,
     "/api/compare": api_compare, "/api/save": api_save, "/api/load": api_load,
     "/api/confirm": api_confirm, "/api/add_quote": api_add_quote, "/api/add_demo_quotes": api_add_demo_quotes,
     "/api/b/match": api_b_match, "/api/b/hold": api_b_hold, "/api/b/decide": api_b_decide, "/api/b/reset": api_b_reset,

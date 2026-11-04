@@ -358,10 +358,22 @@ def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
 # ---------------------------------------------------------------- 貸切
 
 def kashikiri_fares(km: Decimal, weight_kg: Decimal, tariff: dict[str, Any]) -> list[dict[str, Any]]:
-    """距離 km（base_km 以上）と合計重量に載る車格ごとの額（SPEC §5.5 の式）。小さい車格から並べる。"""
-    steps = ceil_int((km - tariff["base_km"]) / Decimal(tariff["step_km"]))
+    """距離 km（base_km 以上）と合計重量に載る車格ごとの額（SPEC §5.5 とその訂正）。小さい車格から並べる。
+
+    200km 超 500km までは step_km（20km）ごと、500km 超は over_500_step_km（50km）ごとに加算する。
+    steps は 20km ごとの区分の数、steps_over_500 は 50km ごとの区分の数。
+    表に 500km 超の定めがなければ steps_over_500 は 0 で、20km ごとのまま数える。
+    地域の表は tariffs.load_kashikiri(region) で選ぶ（既定は関東）。"""
+    over_km = tariff.get("over_500_km")
+    over_step = tariff.get("over_500_step_km")
+    if over_km is None or over_step is None or km <= over_km:
+        steps, steps_over = ceil_int((km - tariff["base_km"]) / Decimal(tariff["step_km"])), 0
+    else:
+        steps = ceil_int((Decimal(over_km) - tariff["base_km"]) / Decimal(tariff["step_km"]))
+        steps_over = ceil_int((km - over_km) / Decimal(over_step))
     return [
-        {"class": v["class"], "max_kg": v["max_kg"], "steps": steps, "amount": v["base_fare"] + steps * v["add_per_step"]}
+        {"class": v["class"], "max_kg": v["max_kg"], "steps": steps, "steps_over_500": steps_over,
+         "amount": v["base_fare"] + steps * v["add_per_step"] + steps_over * v.get("add_per_step_over_500", 0)}
         for v in tariff["vehicles"] if weight_kg <= v["max_kg"]
     ]
 
@@ -414,7 +426,7 @@ def estimate_kashikiri(shipment: Shipment, totals: Totals, tariff: dict[str, Any
     for f in kashikiri_fares(km, totals.weight_kg, tariff):
         r = base_row(f"kashikiri_{f['class']}", f"貸切 {f['class']}車（標準的な運賃）")
         r.amount = f["amount"]
-        r.detail = {"vehicle": f["class"], "max_kg": f["max_kg"], "steps": f["steps"]}
+        r.detail = {"vehicle": f["class"], "max_kg": f["max_kg"], "steps": f["steps"], "steps_over_500": f["steps_over_500"]}
         r.issues.append(Issue(ISSUE_LOADING, "積めるかどうかは判定していません。積付けは要確認"))
         rows.append(r)
     if not rows:
