@@ -7,6 +7,7 @@ from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 from typing import Any
 
 from .models import Shipment, to_decimal
+from .loadplan import WING_4T_ID, tariff_class_note
 from .tariffs import ROUTES, Source, load_all_tariffs, source_of
 
 # 判定の状態
@@ -448,6 +449,14 @@ def estimate_kashikiri(shipment: Shipment, totals: Totals, tariff: dict[str, Any
         r = base_row(f"kashikiri_{f['class']}", f"貸切 {f['class']}車（標準的な運賃）")
         r.amount = f["amount"]
         r.detail = {"vehicle": f["class"], "max_kg": f["max_kg"], "steps": f["steps"], "steps_over_500": f["steps_over_500"]}
+        # 料金の車格（告示の区分）の言葉。積付けの車の公表例とは別のもの（SPEC §34.5）
+        r.detail["class_label"] = f"{f['class']} 車の区分（〜{f['max_kg']:,}kg）"
+        r.notes.append(r.detail["class_label"] + "。実際の車の最大積載量は車によって違います")
+        if f["class"] == "4t":
+            load_note = tariff_class_note(WING_4T_ID, float(totals.weight_kg))
+            if load_note:
+                r.detail["load_note"] = load_note
+                r.notes.append(load_note)
         r.issues.append(Issue(ISSUE_LOADING, "積めるかどうかは判定していません。積付けは要確認"))
         rows.append(r)
     if not rows:

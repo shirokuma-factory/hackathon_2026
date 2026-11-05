@@ -580,7 +580,7 @@ function buildCards(i, est) {
     const isEst = ESTIMATE_GROUPS.includes(m.key);
     // 路線便の試算が出せる区間の限り（比べるページには額が無い理由）は、吹き出しだけでなくカードの本文に出す（SPEC §32 #5）
     const rosenNote = m.key === 'rosen' ? r.notes.find((x) => x.startsWith('路線便の試算は')) : null;
-    cards.push({ label: m.label, model: cardModel(m.key, r), sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, note: rosenNote || '',
+    cards.push({ label: m.label, model: cardModel(m.key, r), sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, note: rosenNote || (r.detail && r.detail.load_note) || '',
       amount: isEst ? round100(r.amount) : r.amount, low: isEst ? round100(r.low) : r.low, high: isEst ? round100(r.high) : r.high, est: isEst, days: dayText, tip, src: srcOf(r) });
   }
   return cards;

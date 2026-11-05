@@ -13,6 +13,8 @@ const LoadView = (() => {
   const VERDICT = {
     '○': { cls: 'ok', text: '全部載ります' },
     '△': { cls: 'warn', text: '載りますが、数値が目安か余裕が小さい条件です' },
+    // 全部は置けなかったが、載らないとは言い切れないとき（SPEC §34.4）。「載りません」とは言わない
+    '△?': { cls: 'warn', text: '配置の確認が必要です（載らないとは言い切れません）' },
     '×': { cls: 'ng', text: '載りません' },
   };
   const ANIM_MS = 2000, DROP_MS = 520;
@@ -137,7 +139,7 @@ const LoadView = (() => {
     const side = $('#lv-side');
     const r = V.res;
     if (!r) { side.innerHTML = `<p class="lv-err">${esc(V.error)}</p>`; return; }
-    const c = r.container, s = r.summary, vd = VERDICT[s.verdict] || VERDICT['×'];
+    const c = r.container, s = r.summary, vd = VERDICT[s.verdict === '△' && !s.fits ? '△?' : s.verdict] || VERDICT['×'];
     const opts = r.containers.map((x) => `<option value="${esc(x.id)}"${x.id === c.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('');
     const items = r.items.map((it, i) => {
       const placed = r.placements.filter((p) => p.item === i).length;
@@ -158,6 +160,8 @@ const LoadView = (() => {
       <details class="lv-det"><summary>この荷室の数値の根拠</summary><p>${esc(c.note)}</p></details>
       <label class="lv-chk"><input type="checkbox" id="lv-stack"${V.stackable ? ' checked' : ''}>積み重ねてよい（全部の荷）</label>
       <div class="lv-verdict ${vd.cls}"><span class="lv-mark">${esc(s.verdict)}</span><span>${vd.text}${s.weight_ok ? '' : `（最大積載量を ${num(s.weight_over_kg, 1)}kg 超えます）`}</span></div>
+      ${!s.fits && s.verdict_reason && s.verdict !== '△' ? `<p class="lv-warn">${esc(s.verdict_reason)}</p>` : ''}
+      ${s.tariff_note ? `<p class="lv-warn" id="lv-tariff-note">${esc(s.tariff_note)}</p>` : ''}
       <dl class="lv-nums num">
         <div><dt>置いた数</dt><dd>${num(s.placed)} / ${num(s.requested)} 個</dd></div>
         <div><dt>置けなかった数</dt><dd class="${s.unplaced_count ? 'bad' : ''}">${num(s.unplaced_count)} 個</dd></div>

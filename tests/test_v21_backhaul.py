@@ -122,9 +122,9 @@ def test_g61_floor_total_boundary():
     sh = s6_ship()  # 4.08m²
     assert spaceb.match(sh, dict(t7(), floor_free_m2=4.08))[0] is True
     ok, reasons = spaceb.match(sh, dict(t7(), floor_free_m2=4.07))
-    assert not ok and any("床の合計 4.08m² がこの便の床の空き 4.07m² を超えます" in r for r in reasons)
+    assert not ok and any("床の空き 4.07m² に対して荷の床 4.08m² で、超えます" in r for r in reasons)
     ok, reasons = spaceb.match(sh, dict(t7(), floor_free_m2=3.0))
-    assert any("床の合計 4.08m² がこの便の床の空き 3.00m² を超えます" in r for r in reasons)
+    assert any("床の空き 3.00m² に対して荷の床 4.08m² で、超えます" in r for r in reasons)
     # 盤の残りを渡すとそちらで比べる
     assert spaceb.match(sh, t7(), floor_m2=Decimal("4.07"))[0] is False
 
@@ -145,7 +145,7 @@ def test_g61_shipment_without_origin_or_window_is_unchanged():
     t = trip()  # arrive_at・pickup_code・floor_free_m2 を持たない
     assert spaceb.match(plain, t) == (True, [])
     for tr in spaceb.load_trips():
-        assert not any("集荷の地点" in r or "届けばよい日" in r or "床の合計" in r for r in spaceb.match(plain, tr)[1]), tr["id"]
+        assert not any("集荷の地点" in r or "届けばよい日" in r or "荷の床" in r for r in spaceb.match(plain, tr)[1]), tr["id"]
 
 
 def test_g61_pickup_and_window_apply_to_all_trips_with_defaults():
@@ -195,7 +195,7 @@ def test_g62_floor_remaining_drops_and_returns():
     h1 = b.hold("T7", sh, hold_minutes=60)
     assert b.trips()[0]["remaining_floor_m2"] == pytest.approx(1.92) and h1["floor_m2"] == pytest.approx(4.08)
     # 残り 1.92m² には 2 件目が載らない
-    with pytest.raises(BoardError, match="床の合計"):
+    with pytest.raises(BoardError, match="荷の床"):
         b.hold("T7", sh, hold_minutes=60)
     # 辞退で戻る
     b.decide(h1["hold_id"], "decline")

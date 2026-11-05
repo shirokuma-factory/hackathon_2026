@@ -176,28 +176,19 @@ def _orientations(b: _Box) -> list[tuple[int, int, bool]]:
     return o
 
 
-def plan_load(items: list[LoadItem], container: Container) -> dict[str, Any]:
-    """荷物を荷室に配置する。戻りは placements（置いた順）、unplaced、summary、container の辞書。"""
-    if not items:
-        raise ValueError("荷物の行がありません")
-    boxes: list[_Box] = []
-    total_kg = Decimal(0)
-    for i, it in enumerate(items):
-        if isinstance(it.count, bool) or not isinstance(it.count, int) or it.count < 1:
-            raise ValueError(f"荷物{i + 1}行目の個数は 1 以上の整数にしてください")
-        wt = to_decimal(it.weight_kg)
-        if wt is None or wt <= 0:
-            raise ValueError(f"荷物{i + 1}行目の1個の重さは 0 より大きい数にしてください")
-        if len(boxes) + it.count > MAX_PIECES:
-            raise ValueError(f"個数の合計が多すぎます（{MAX_PIECES:,} 個まで）")
-        l, w, h = _mm(it.length_cm), _mm(it.width_cm), _mm(it.height_cm)
-        total_kg += wt * it.count
-        for n in range(it.count):
-            boxes.append(_Box(i, n, l, w, h, bool(it.stackable), len(boxes)))
+# 試す選び方（SPEC §34.4）: (並べる順の鍵, 新しい棚で長い辺を長さ方向に向けるか)。最初のものが従来の手順。
+_STRATEGIES: list[tuple[Any, bool]] = [
+    (lambda b: (-(b.l * b.w), -b.h, b.seq), False),
+    (lambda b: (-(b.l * b.w), -b.h, b.seq), True),
+    (lambda b: (-max(b.l, b.w), -(b.l * b.w), -b.h, b.seq), True),
+    (lambda b: (-max(b.l, b.w), -(b.l * b.w), -b.h, b.seq), False),
+    (lambda b: (-b.h, -(b.l * b.w), b.seq), True),
+    (lambda b: (-min(b.l, b.w), -(b.l * b.w), -b.h, b.seq), True),
+]
 
-    L, W, H = container.length_mm, container.width_mm, container.height_mm
-    order = sorted(boxes, key=lambda b: (-(b.l * b.w), -b.h, b.seq))
 
+def _run_plan(order: list[_Box], L: int, W: int, H: int, long_x: bool) -> tuple[list[_Placed], dict[int, str]]:
+    """決まった順の荷を、棚詰め → 積み重ねの順に置く。long_x が True なら、新しい棚で長い辺を荷室の長さ方向に向ける。"""
     placed: list[_Placed] = []
     reasons: dict[int, str] = {}  # seq → 置けなかった理由
     shelves: list[list[int]] = []  # [x0, 奥行, 使った幅]
@@ -224,7 +215,7 @@ def plan_load(items: list[LoadItem], container: Container) -> dict[str, Any]:
             continue
         cands2 = [(dx, dy, rot) for dx, dy, rot in _orientations(b) if next_x + dx <= L and dy <= W]
         if cands2:  # 新しい棚。入る向きのうち長さを使わない方を選ぶ
-            dx, dy, rot = min(cands2, key=lambda c: (c[0], c[2]))
+            dx, dy, rot = min(cands2, key=lambda c: ((-c[0] if long_x else c[0]), c[2]))
             shelves.append([next_x, dx, dy])
             placed.append(_Placed(b, next_x, 0, 0, dx, dy, rot))
             next_x += dx
@@ -260,6 +251,75 @@ def plan_load(items: list[LoadItem], container: Container) -> dict[str, Any]:
         p = _Placed(b, top.x, top.y, z, dx, dy, rot)
         placed.append(p)
         stacks[si] = p
+    return placed, reasons
+
+
+LOAD_UNCERTAIN = "配置の確認が必要"  # △ のとき: 手順では置き方を見つけられなかっただけで、載らないとは言い切れない
+
+# 料金の車格（告示の区分）と、積付けの車（公表例）は別のもの（SPEC §34.5）
+WING_4T_ID = "wing_4t"
+TARIFF_4T_LABEL = "4t 車の区分（〜4,000kg）"
+LOAD_4T_LABEL = "4t ウイングの公表例（最大積載量 約 2,700kg）"
+TARIFF_4T_MAX_KG = 4000
+TARIFF_4T_NOTE = ("公表例の 4t ウイング（約 2,700kg）には載りません。"
+                  "同じ 4t 車の区分でも、車によって最大積載量が違います")
+
+
+def tariff_class_note(container_id: str, total_kg: float) -> str:
+    """積付けの車が 4t ウイングの公表例で、重さがその最大積載量を超え、料金の 4t の区分には収まるときの文。それ以外は空。"""
+    payload = next((c.payload_kg for c in containers() if c.id == WING_4T_ID), 0)
+    if container_id == WING_4T_ID and payload < total_kg <= TARIFF_4T_MAX_KG:
+        return TARIFF_4T_NOTE
+    return ""
+
+
+def _failed_verdict(boxes: list[_Box], weight_over: bool, container: Container, reasons: dict[int, str],
+                    placed_seq: set[int], over_kg: float) -> tuple[str, str]:
+    """全部は載らなかったときの判定。確実に載らない理由があるときだけ × にし、手順で見つけられなかっただけなら △ にする。"""
+    L, W, H = container.length_mm, container.width_mm, container.height_mm
+    if weight_over:
+        return "×", f"重さが最大積載量を {over_kg:,.1f}kg 超えます"
+    if any(b.h > H or not any(dx <= L and dy <= W for dx, dy, _ in _orientations(b)) for b in boxes):
+        return "×", "1 個の寸法が荷室より大きい荷があります"
+    if not any(b.stackable for b in boxes) and sum(b.l * b.w for b in boxes) > L * W:
+        return "×", "積み重ね不可で、荷の床面積の合計が荷室の床より大きいです"
+    if sum(b.l * b.w * b.h for b in boxes) > L * W * H:
+        return "×", "荷の容積の合計が荷室の容積より大きいです"
+    return "△", LOAD_UNCERTAIN + "（手順では置き方を見つけられませんでしたが、載らないとは言い切れません）"
+
+
+def plan_load(items: list[LoadItem], container: Container) -> dict[str, Any]:
+    """荷物を荷室に配置する。戻りは placements（置いた順）、unplaced、summary、container の辞書。"""
+    if not items:
+        raise ValueError("荷物の行がありません")
+    boxes: list[_Box] = []
+    total_kg = Decimal(0)
+    for i, it in enumerate(items):
+        if isinstance(it.count, bool) or not isinstance(it.count, int) or it.count < 1:
+            raise ValueError(f"荷物{i + 1}行目の個数は 1 以上の整数にしてください")
+        wt = to_decimal(it.weight_kg)
+        if wt is None or wt <= 0:
+            raise ValueError(f"荷物{i + 1}行目の1個の重さは 0 より大きい数にしてください")
+        if len(boxes) + it.count > MAX_PIECES:
+            raise ValueError(f"個数の合計が多すぎます（{MAX_PIECES:,} 個まで）")
+        l, w, h = _mm(it.length_cm), _mm(it.width_cm), _mm(it.height_cm)
+        total_kg += wt * it.count
+        for n in range(it.count):
+            boxes.append(_Box(i, n, l, w, h, bool(it.stackable), len(boxes)))
+
+    L, W, H = container.length_mm, container.width_mm, container.height_mm
+
+    # 並べる順と向きの選び方を変えて何通りか試し、置けた数がいちばん多いものを使う（全部置けたら打ち切る）。
+    # 選び方は固定の短い一覧で、乱数も時刻も使わない（SPEC §34.4）。
+    best: tuple[list[_Placed], dict[int, str]] | None = None
+    for key, long_x in _STRATEGIES:
+        run = _run_plan(sorted(boxes, key=key), L, W, H, long_x)
+        if best is None or len(run[0]) > len(best[0]):
+            best = run
+        if len(best[0]) == len(boxes):
+            break
+    assert best is not None
+    placed, reasons = best
 
     placements = [
         {"order": n, "item": p.box.item, "nth": p.box.nth, "x": p.x, "y": p.y, "z": p.z,
@@ -283,8 +343,10 @@ def plan_load(items: list[LoadItem], container: Container) -> dict[str, Any]:
     weight_ok = over <= 0
     fits = n_placed == n_total and weight_ok
     volume_pct = round(vol * 100 / (L * W * H), 1)
+    verdict_reason = ""
     if not fits:
-        verdict = "×"
+        verdict, verdict_reason = _failed_verdict(boxes, weight_over=not weight_ok, container=container, reasons=reasons,
+                                                  placed_seq=placed_seq, over_kg=float(max(Decimal(0), over)))
     elif container.basis != "公表例" or volume_pct >= 90:
         verdict = "△"  # 載るが、数値が目安・推定の荷室か、容積の余裕が小さい
     else:
@@ -300,6 +362,10 @@ def plan_load(items: list[LoadItem], container: Container) -> dict[str, Any]:
         "weight_over_kg": float(max(Decimal(0), over)),
         "stacked": any(p.z > 0 for p in placed),
         "verdict": verdict,
+        "verdict_reason": verdict_reason,
         "note": LIMIT_NOTE,
     }
+    tariff_note = tariff_class_note(container.id, float(total_kg))
+    if tariff_note:
+        summary["tariff_note"] = tariff_note
     return {"container": container.to_dict(), "placements": placements, "unplaced": unplaced, "summary": summary}
