@@ -9,6 +9,7 @@
     uv run python tools/capture_web.py --flow     # S5 の筋書きを本物のクリックと入力でたどり、5枚を docs/assets に保存する
     uv run python tools/capture_web.py --v21flow  # S6（SPEC §21）の照合・仮予約・承諾・書面・締切のカードを撮る
     uv run python tools/capture_web.py --v216flow # 値段の式（SPEC §21.6）の荷主の役と運送会社の役の画面を撮る
+    uv run python tools/capture_web.py --compare-lite  # web/compare_lite.html（SPEC §24）を S6 の荷で撮る（_v24_compare_lite.jpg）
     uv run python tools/capture_web.py --waiting  # web/waiting.html（SPEC §23.7）の単独ページを例の行つきで撮る（_v237_standalone.jpg）
     uv run python tools/capture_web.py --bflow    # S6 と T7 で 照合・仮予約・運送会社の承諾（SPEC §16.2）を撮る
 """
@@ -147,6 +148,16 @@ def waiting_standalone(w: int, h: int) -> None:
         page.wait(lambda: page.js("!!document.querySelector('#wait-doc table.rec')"), 30, "下書き")
         time.sleep(0.8)
         save_shot(page, OUT_DIR / "2026-11-05_v237_standalone.jpg", w, h)
+
+
+def compare_lite_shot(w: int, h: int) -> None:
+    """web/compare_lite.html（SPEC §24）を S6 の荷で撮る。"""
+    url = (ROOT / "web" / "compare_lite.html").as_uri() + "?example=1"
+    with edge_page(w, h) as page:
+        page.goto(url)
+        page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")
+        time.sleep(0.8)
+        save_shot(page, OUT_DIR / "2026-11-05_v24_compare_lite.jpg", w, h)
 
 
 def serve(port: int) -> subprocess.Popen:
@@ -403,6 +414,7 @@ def main() -> int:
     ap.add_argument("--v21flow", action="store_true", help="S6（SPEC §21）の筋書きをたどって v21_* を撮る")
     ap.add_argument("--v216flow", action="store_true", help="値段の式（SPEC §21.6）の荷主の役と運送会社の役の画面を撮る")
     ap.add_argument("--waiting", action="store_true", help="web/waiting.html（SPEC §23.7）を例の行つきで撮る")
+    ap.add_argument("--compare-lite", action="store_true", help="web/compare_lite.html（SPEC §24）を S6 の荷で撮る")
     ap.add_argument("--size", default="1920x1080")
     ap.add_argument("--out", help="単一の場面のときの出力先（省略すると docs/assets）")
     ap.add_argument("--click", help="経度,緯度。その地点を本物のマウスでクリックしてから撮る")
@@ -411,6 +423,10 @@ def main() -> int:
     if args.waiting:
         ww, hh = (int(x) for x in args.size.split("x"))
         waiting_standalone(ww, hh)
+        return 0
+    if args.compare_lite:
+        ww, hh = (int(x) for x in args.size.split("x"))
+        compare_lite_shot(ww, hh)
         return 0
     names = list(SCENES) if args.all else ([] if (args.flow or args.bflow or args.v21flow or args.v216flow) else (args.scene or ["overview"]))
     w, h = (int(x) for x in args.size.split("x"))

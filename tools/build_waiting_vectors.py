@@ -100,6 +100,10 @@ CASES: list[dict] = [
     {"name": "paste_header_in_other_order", "year": 2026, "paste": True,
      "text": "契約の相手\t日付\t車種\t到着\t荷役開始\t荷主等の都合の待機か\t指定の到着時刻\t附帯業務の内容\t附帯業務の分\n"
              "A運輸\t10/5\t小型\t09:00\t10:00\tはい\t09:20\t検品\t30"},
+    {"name": "paste_realistic_excel_header_other_order", "year": 2026, "paste": True,
+     "text": "荷主\t運行日\t備考\t車両番号\t車格\t着時刻\t指定時刻\t積込開始時刻\t積込終了時刻\t出発時刻\t荷役をした人\t荷役の方法\t荷主等の都合\n"
+             "B商事\t10/7\t雨\t神戸100あ1234\t4t\t08:10\t08:30\t10:15\t10:55\t11:05\t運転者\t手積み\tはい\n"
+             "B商事\t10/8\t\t神戸100あ1234\t中型\t09:00\t\t10:00\t\t10:10\t\t\tはい"},
     {"name": "paste_with_appointed_and_side_columns_at_the_end", "year": 2026, "paste": True,
      "text": "\t".join(["10/5", "", "中型", "A運輸", "", "08:10", "09:30", "", "", "", "", "はい", "08:30", "検品", "20"])},
 ]
