@@ -712,6 +712,20 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 #find-view .field > .lbl { display: block; margin: 0 0 4px 2px; }
 .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
 .f-grid .lbl { display: block; margin: 0 0 4px 2px; }
+.f-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.f-grid3 .lbl { display: block; margin: 0 0 4px 2px; font-size: 11px; }
+/* 値段の式（SPEC §21.6、運送会社の役だけ） */
+.f-formula { margin-top: 10px; padding-top: 4px; border-top: 1px solid var(--line); }
+.fm-line { margin: 0 0 8px; font-size: 11.5px; line-height: 1.6; color: var(--muted); }
+.fm-tbl > div { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.fm-tbl > div > span { color: var(--muted); }
+.fm-tbl > div.big > span, .fm-tbl > div.big > b { color: var(--text); font-weight: 700; }
+.fm-tbl > div.sum { border-bottom: 0; padding-top: 7px; }
+.fm-tbl > div.sum span { color: var(--text); font-weight: 700; }
+.fm-tbl > div.sum b { font-size: 20px; color: var(--accent); }
+.fm-miss { margin: 4px 0; font-size: 12px; color: var(--warn); }
+.fm-km { margin: 2px 0 0; font-size: 11px; color: var(--faint); }
+.fm-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--warn); font-weight: 700; }
 .f-checks { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
 .f-chk { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
 .f-chk input { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; margin: 0; border-radius: 5px; border: 1px solid var(--line-strong); background: rgba(255,255,255,.05); display: grid; place-content: center; cursor: pointer; flex: none; }
@@ -1021,3 +1035,30 @@ body.m-right-collapsed .m-rsub { display: none; }
 .mlg-more { margin-top: 6px; font-size: 11px; color: var(--muted); }
 .mlg-more summary { cursor: pointer; }
 .mlg-more p { margin: 4px 0 0; line-height: 1.6; }
+
+/* 帰り便で 1 件をつなぐ（SPEC §21）: 書面の下書きと締切のカード */
+.f-hdl { color: var(--faint); font-size: 11px; margin-left: 8px; }
+.f-hold.lost .f-hold-row b { color: var(--warn); }
+#f-contract { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 80px); overflow: auto; z-index: 40; padding: 18px 22px 16px; background: var(--glass-solid); }
+#f-contract[hidden] { display: none !important; }
+.fc-head { display: flex; align-items: center; gap: 10px; font-size: 16px; margin-bottom: 8px; }
+.fc-notice { margin: 0 0 4px; font-size: 13px; font-weight: 700; line-height: 1.6; }
+.fc-fiction { margin: 0 0 10px; font-size: 12px; color: var(--warn); }
+.fc-sub { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+.fc-row { display: grid; grid-template-columns: 13em 1fr; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.6; }
+.fc-row span { color: var(--muted); }
+.fc-row b { font-weight: 500; }
+.fc-row.legal span::after { content: "（必須）"; font-size: 11px; color: var(--faint); }
+.fc-miss { font-style: normal; color: var(--warn); }
+.fc-missing { margin: 10px 0 4px; padding: 8px 10px; border: 1px solid var(--warn); border-radius: 8px; color: var(--warn); font-size: 12.5px; line-height: 1.7; }
+.fc-ready, .fc-done { margin: 10px 0 4px; font-size: 12.5px; color: var(--ok); }
+.fc-btns { display: flex; gap: 8px; margin-top: 12px; }
+.fc-btns .btn-primary.sm, .fc-btns .btn-ghost.sm { width: auto; padding: 0 18px; height: 34px; }
+.fc-btns .btn-primary[disabled] { opacity: .45; cursor: not-allowed; }
+@media print {
+  body * { visibility: hidden !important; }
+  #f-contract, #f-contract * { visibility: visible !important; }
+  #f-contract { position: absolute !important; left: 0; top: 0; transform: none; width: 100%; max-height: none; overflow: visible; background: #fff !important; color: #000 !important; box-shadow: none; border: 0; padding: 0; }
+  #f-contract * { color: #000 !important; border-color: #888 !important; }
+  .no-print { display: none !important; }
+}

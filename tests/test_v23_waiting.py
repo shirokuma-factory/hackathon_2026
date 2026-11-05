@@ -1,6 +1,6 @@
 """SPEC §23 荷待ち・荷役の記録の計算（受入条件 G73〜G78）。
 
-G78 の「守る線と根拠の欄の文言が画面に常に出る」は画面ができてから試験する（ここでは扱わない）。
+G78 の「守る線と根拠の欄の文言が画面に常に出る」は web/own.js の文言を見る（末尾）。
 積込料・取卸料の数え方は告示の文言からの読み取りで、Q&A の例で確かめたのは待機時間料だけ。
 """
 
@@ -69,7 +69,7 @@ def test_g74_medium_eleven_times_52_min_is_19360():
     p = res["by_partner"][0]
     assert p["count"] == 11 and p["amount"] == 19360 and p["wait_minutes"] == 11 * 52
     assert p["months"] == [{"month": "2026-10", **{k: p[k] for k in
-            ("count", "wait_minutes", "handling_minutes", "wait_fee", "handling_fee", "amount", "over_1h_count", "over_2h_count")}}]
+            ("count", "wait_minutes", "handling_minutes", "wait_fee", "handling_fee", "amount", "over_1h_count", "over_2h_count", "side_work_count", "side_work_minutes")}}]
 
 
 # ---------------------------------------------------------------- G75
@@ -233,5 +233,150 @@ def test_g78_api_calc_and_does_not_write_files(monkeypatch):
     assert writes == []  # 記録を保存しない（ファイルを書き込みで開いていない）
 
 
-def test_g78_ui_text_is_tested_when_the_ui_exists():
-    pytest.skip("守る線と根拠の欄の文言が画面に出ることの試験は、画面（web/own.js）ができてから別に足す")
+def test_g78_api_text_returns_input_rows_for_the_table():
+    mod = _server()
+    httpd = mod.make_server(0)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        status, data = _post(httpd.server_address[1], {"year": 2026, "text": "\n".join([HEADER, LINE1, LINE2])})
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+    assert status == 200 and len(data["input_rows"]) == 2 and data["input_rows"][0]["partner"] == "A運輸"
+    assert data["tariff"]["waiting"]["normal"]["中型"] == 1760 and data["tariff"]["handling"]["手積み"]["normal"]["小型"] == 2000
+    assert data["by_partner"][0]["date_from"] == "2026-10-05" and data["by_partner"][0]["date_to"] == "2026-10-05"
+
+
+# ---------------------------------------------------------------- SPEC 23.6 の訂正
+def test_s23_6_over_1h_counts_waiting_only_and_over_2h_counts_waiting_plus_driver_handling():
+    # 待機 50 分 + 運転者の荷役 20 分: 1 時間以上ではない。合計 70 分で 2 時間以上でもない
+    r = one(start="09:50", end="10:10", handler="運転者", method="手積み")
+    assert (r["over_1h"], r["over_2h_total"]) == (False, False)
+    # 待機 50 分 + 運転者の荷役 80 分: 1 時間以上ではないが、合計 130 分で 2 時間以上
+    r = one(start="09:50", end="11:10", handler="運転者", method="手積み")
+    assert (r["wait_min"], r["handling_min"], r["over_1h"], r["over_2h_total"]) == (50, 80, False, True)
+    # 待機 60 分ちょうど: 1 時間以上。荷役なしで 2 時間未満
+    r = one(start="10:00")
+    assert (r["over_1h"], r["over_2h_total"]) == (True, False)
+    # 荷主側の荷役は待機に入る: 待機 30 分 + 荷主側の荷役 30 分 = 60 分 → 1 時間以上
+    r = one(start="09:30", end="10:00", handler="荷主側")
+    assert (r["wait_min"], r["over_1h"]) == (60, True)
+    # 荷主等の都合でない待機は 0 分。運転者の荷役が 2 時間以上でも 1 時間以上の荷待ちには入らない
+    r = one(start="09:10", end="11:30", handler="運転者", method="手積み", shipper_fault="いいえ")
+    assert (r["wait_min"], r["over_1h"], r["over_2h_total"]) == (0, False, True)
+
+
+def test_s23_6_partner_counts_follow_the_two_rules():
+    rows = [row(start="09:50", end="11:10", handler="運転者", method="手積み"), row(date="2026-10-06", start="10:00"),
+            row(date="2026-10-07", start="09:20")]
+    p = waiting.calc(rows, 2026)["by_partner"][0]
+    assert (p["over_1h_count"], p["over_2h_count"]) == (1, 1)
+
+
+# ---------------------------------------------------------------- G78（画面の文言）
+OWN_JS = (ROOT / "web" / "own.js").read_text(encoding="utf-8")
+
+
+def test_g78_ui_always_shows_protect_lines_and_legal_basis():
+    for text in ("参考額は告示の表に当てた計算です。請求するか、いくらにするかは運送会社が決めます。法的な判断は弁護士・運輸支局などに確かめてください",
+                 "入れた記録はこの PC の中だけで計算し、外に送りません",
+                 "改正法 Q&A 問2-2・2-3", "標準運送約款 第 34 条", "取適法", "Q42・Q132", "トラック・物流Gメンの情報提供の窓口"):
+        assert text in OWN_JS, text
+    # 守る線と根拠の欄は、計算の結果の有無に関わらず右の欄に出す（waitRightHtml の先頭で作る）
+    head = OWN_JS[OWN_JS.index("function waitRightHtml()"):]
+    assert head.index("const protect") < head.index("if (!r ||") and head.index("const basis") < head.index("if (!r ||")
+    assert 'class="w-protect no-print"' not in OWN_JS  # 画面では隠さない
+
+
+def test_g78_ui_has_the_four_tab_wait_input_and_examples():
+    assert 'data-tab="wait"' in OWN_JS and "荷待ちを入れる" in OWN_JS
+    for label in ("日付", "車番", "車種", "契約の相手", "場所", "到着", "荷役開始", "荷役終了", "出発", "荷役をした人", "荷役の方法", "荷主等の都合の待機か"):
+        assert f"t: '{label}'" in OWN_JS, label
+    assert "例を入れる" in OWN_JS and "架空 元請A物流" in OWN_JS and "江東区 地点07" in OWN_JS and "W_EXAMPLE_DAYS = [1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16]" in OWN_JS
+    assert "/api/waiting/calc" in OWN_JS and "text/csv" in OWN_JS and "window.print()" in OWN_JS
+
+
+def test_g78_ui_example_rows_match_the_realistic_11_rows():
+    """画面の「例を入れる」と同じ行（地点07、52 分 × 8、75 分 × 2、指定の到着時刻つき 1）を計算に通す。昔の 11 × 52 分は waiting_vectors.json に別の例として残す。"""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools"))
+    from build_waiting_vectors import example_rows
+    res = waiting.calc(example_rows(), 2026)
+    assert res["errors"] == []
+    p = res["by_partner"][0]
+    assert p["count"] == 11 and p["amount"] == 31_020 and p["over_1h_count"] == 3 and p["over_2h_count"] == 1
+    assert p["wait_minutes"] == 8 * 52 + 2 * 75 + 105 and p["handling_minutes"] == 40
+    old = [row(vehicle_class="中型", date=f"2026-10-{d:02d}", start="09:52") for d in range(1, 12)]
+    assert waiting.calc(old, 2026)["by_partner"][0]["amount"] == 19_360
+
+
+def test_g78_print_css_prints_only_the_draft():
+    css = (ROOT / "web" / "own.css").read_text(encoding="utf-8")
+    assert "@media print" in css and "#wait-doc" in css
+
+
+# ---------------------------------------------------------------- SPEC 23.7 / G84 指定の到着時刻と附帯業務
+def test_g84_appointed_time_early_arrival_counts_from_the_appointed_time():
+    # 08:10 到着、指定 08:30、荷役開始 09:30。待機は 60 分（08:30 から）。到着から数えると 80 分
+    r = one(arrive="08:10", appointed="08:30", start="09:30")
+    assert (r["wait_min"], r["wait_base_min"], r["wait_from"]) == (60, 20, "指定の到着時刻")
+    assert r["wait_fee"] == 1680 and r["over_1h"] is True
+    assert one(arrive="08:10", start="09:30")["wait_fee"] == 2 * 1680  # 指定なしは 80 分 − 30 分 → 2 回
+
+
+def test_g84_appointed_time_late_arrival_counts_from_arrival():
+    r = one(arrive="08:50", appointed="08:30", start="09:50")
+    assert (r["wait_min"], r["wait_base_min"], r["wait_from"]) == (60, 0, "到着")
+    assert r["wait_fee"] == one(arrive="08:50", start="09:50")["wait_fee"] == 1680
+
+
+def test_g84_no_appointed_time_is_unchanged_and_equal_time_is_arrival():
+    assert one(start="10:00")["wait_from"] == "到着"
+    assert one(appointed="09:00", start="10:00")["wait_fee"] == one(start="10:00")["wait_fee"]
+
+
+def test_g84_two_hour_boundary_counts_from_the_appointed_time():
+    # 到着 08:10、指定 08:30（境は 10:30）。運転者の荷役 10:15〜10:55 → 境の前 15 分、後 25 分
+    r = one(arrive="08:10", appointed="08:30", start="10:15", end="10:55", handler="運転者", method="手積み")
+    assert (r["handling_normal_units"], r["handling_over_units"]) == (1, 1)
+    assert r["handling_fee"] == 2000 + 2400
+    assert r["wait_min"] == 105 and r["wait_normal_units"] == 3 and r["wait_over_units"] == 0
+    # 指定なしなら境は 10:10 で、荷役はすべて境の後
+    r0 = one(arrive="08:10", start="10:15", end="10:55", handler="運転者", method="手積み")
+    assert (r0["handling_normal_units"], r0["handling_over_units"]) == (0, 2)
+
+
+def test_g84_appointed_time_after_handling_start_gives_zero_wait():
+    r = one(arrive="08:00", appointed="09:30", start="09:00")
+    assert r["wait_min"] == 0 and r["wait_fee"] == 0
+
+
+def test_g84_appointed_time_across_midnight():
+    r = one(arrive="23:50", appointed="00:10", start="01:10")  # 指定は翌日の 00:10
+    assert r["wait_base_min"] == 20 and r["wait_min"] == 60 and r["wait_fee"] == 1680
+
+
+def test_g84_side_work_is_recorded_but_not_priced():
+    r = one(start="10:00", side_work="パレットの積み替え", side_min="25")
+    assert (r["side_work"], r["side_min"]) == ("パレットの積み替え", 25)
+    assert r["amount"] == one(start="10:00")["amount"] == 1680
+    p = waiting.calc([row(start="10:00", side_work="検品", side_min="25")], 2026)["by_partner"][0]
+    assert (p["side_work_count"], p["side_work_minutes"]) == (1, 25)
+
+
+def test_g84_errors_for_unreadable_appointed_time_and_side_minutes():
+    res = waiting.calc([row(appointed="朝"), row(side_min="abc")], 2026)
+    msgs = {e["row"]: e["message"] for e in res["errors"]}
+    assert "指定の到着時刻" in msgs[1] and "附帯業務の分" in msgs[2] and res["rows"] == []
+
+
+def test_g84_paste_has_appointed_and_side_columns_at_the_end():
+    line = "\t".join(["10/5", "", "中型", "A運輸", "", "08:10", "09:30", "", "", "", "", "はい", "08:30", "検品", "20"])
+    rows = waiting.parse_paste(line)
+    assert rows[0]["appointed"] == "08:30" and rows[0]["side_work"] == "検品" and rows[0]["side_min"] == "20"
+    r = waiting.calc(rows, 2026)["rows"][0]
+    assert r["wait_min"] == 60 and r["side_min"] == 20
+    head = "\t".join(["日付", "車種", "契約の相手", "到着", "荷役開始", "荷主等の都合の待機か", "指定の到着時刻", "附帯業務の内容", "附帯業務の分"])
+    body = "\t".join(["10/5", "中型", "A運輸", "08:10", "09:30", "はい", "08:30", "検品", "20"])
+    rows = waiting.parse_paste(head + "\n" + body)
+    assert rows[0]["appointed"] == "08:30" and waiting.calc(rows, 2026)["rows"][0]["wait_min"] == 60

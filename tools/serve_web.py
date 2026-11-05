@@ -28,9 +28,11 @@ API（POST は Content-Type: application/json の JSON。入力の誤りは 400 
                                          トラックの道路の経路（SPEC §17.1）。その場で OSRM に問い合わせ、data/routes/cache/ に保存する
                                          （1 秒 1 件）。取れなければ直線の弧と「経路を取得できませんでした」（fallback: true）
     GET  /api/b/trips                   架空の運送会社と便（いまの重さの余りと仮予約つき）
-    POST /api/b/match   {shipment, dest_code, category?, in_container?, fragile?, is_box?}  便ごとの合否と理由
-    POST /api/b/hold    {trip_id, shipment, dest_code, ..., hold_minutes?}   期限付きの仮予約（余りを減らす）
+    POST /api/b/match   {shipment, dest_code, category?, in_container?, fragile?, is_box?, origin_code?, window_from?, window_to?}  便ごとの合否と理由
+    POST /api/b/hold    {trip_id, shipment, dest_code, ..., hold_minutes? | hold_until?, shipper?}   期限付きの仮予約（余りを減らす。締切は 72 時間まで）
     POST /api/b/decide  {hold_id, decision: accept|decline}                  運送会社の役の承諾か辞退
+    POST /api/b/contract {hold_id, fuel_surcharge?, payment_method?}          承諾済みの仮予約から書面の下書き（SPEC §21.3。承諾前は 400）
+    POST /api/b/price_formula {trip_id, shipment, base_load_rate?, lead_discount?, region?, min_fee_yen?}   個建運賃の参考額（SPEC §21.6。運送会社の役の画面で使う）
     POST /api/b/reset   {}                                                    初期の架空データに戻す
 """
 
@@ -232,6 +234,7 @@ def api_scenarios() -> dict[str, Any]:
         "id": sc["id"], "name": sc["name"], "label": sc.get("label"),
         "assumed_shipper": bool(sc.get("assumed_shipper")), "assumption_note": sc.get("assumption_note"),
         "has_demo_quotes": bool(sc.get("demo_quotes")), "shipment": shipment_to_dict(sc["shipment"]),
+        "backhaul": sc.get("backhaul"),  # 空きを探す・つなぐ用の追加項目（SPEC §21。S6 だけ）
     } for sc in list_scenarios()]}
 
 
@@ -251,6 +254,24 @@ def api_demo_quotes(query: dict[str, list[str]]) -> dict[str, Any]:
     return {"scenario_id": sid, "quotes": [quote_to_dict(q) for q in demo_quotes_for(sc, int(raw_version), today)]}
 
 
+ORIGIN_SUBSTITUTE_MAX_KM = 50  # 代用してよい最寄りの出発地までの直線距離
+
+
+def _origin_or_nearest(oc: Any) -> tuple[str, str | None]:
+    """出発地のコード。関東の7か所に無い市区町村（例: S6 の江東区）は、最寄りの出発地の事前計算の表で代用する。
+    戻り値は (使うコード, 代用の注記)。新しく通信はしない（SPEC §21.2）。"""
+    if oc in geo.ORIGINS:
+        return oc, None
+    pts = geo.load_points()
+    if not isinstance(oc, str) or oc not in pts:
+        raise BadRequest(f"出発地 {oc!r} は対応していません（関東の7か所だけです）")
+    a = pts[oc]
+    used = min(geo.ORIGINS, key=lambda c: geo.haversine_km(a["lon"], a["lat"], pts[c]["lon"], pts[c]["lat"]))
+    if geo.haversine_km(a["lon"], a["lat"], pts[used]["lon"], pts[used]["lat"]) > ORIGIN_SUBSTITUTE_MAX_KM:
+        raise BadRequest(f"出発地 {oc!r} は対応していません（関東の7か所と、その近く {ORIGIN_SUBSTITUTE_MAX_KM}km 以内だけです）")
+    return used, f"距離は最寄りの出発地（{pts[used]['name']}）の値で代用"
+
+
 def _apply_destination(body: dict[str, Any], s) -> dict[str, Any] | None:
     """出発地と着地のコードがあれば、区間と距離を荷物に当てはめて、道路の情報を返す。"""
     oc, dc = body.get("origin_code"), body.get("dest_code")
@@ -265,11 +286,12 @@ def _apply_destination(body: dict[str, Any], s) -> dict[str, Any] | None:
                 raise BadRequest("distance_km は 0 以上の数で渡してください")
             s.distance_km = float(d)
         return None
-    if oc not in geo.ORIGINS:
-        raise BadRequest(f"出発地 {oc!r} は対応していません（関東の7か所だけです）")
+    oc, origin_note = _origin_or_nearest(oc)
     if not isinstance(dc, str) or dc not in geo.load_points():
         raise BadRequest(f"着地 {dc!r} の市区町村コードが見つかりません")
     info = geo.drive_info(oc, dc)
+    if info is not None:
+        info = dict(info, origin_note=origin_note, origin_used=oc)
     route_id = geo.route_for(oc, dc)
     s.route = route_id
     if route_id == "other":
@@ -327,9 +349,7 @@ def api_estimate(body: Any) -> dict[str, Any]:
 
 def api_layer(body: Any) -> dict[str, Any]:
     body = _need_dict(body)
-    oc = body.get("origin_code")
-    if oc not in geo.ORIGINS:
-        raise BadRequest(f"出発地 {oc!r} は対応していません（関東の7か所だけです）")
+    oc, origin_note = _origin_or_nearest(body.get("origin_code"))
     s = _shipment_of(body)
     totals = summarize(s)
     kg = float(totals.weight_kg) if totals.ok and totals.weight_kg is not None else None
@@ -338,7 +358,7 @@ def api_layer(body: Any) -> dict[str, Any]:
     present = [v for v in fare if v is not None]
     edges = geo.quantile_edges(present) if present else []
     cls = [geo.class_of(v, edges) if v is not None else None for v in fare]
-    return {"origin_code": oc, "total_kg": kg, "fare": fare, "edges": edges, "cls": cls}
+    return {"origin_code": oc, "total_kg": kg, "fare": fare, "edges": edges, "cls": cls, "origin_note": origin_note}
 
 
 def api_loadplan(body: Any) -> dict[str, Any]:
@@ -622,10 +642,23 @@ def api_b_hold(body: Any) -> dict[str, Any]:
     body = _need_dict(body)
     s = _b_shipment(body)
     try:
-        hold = _board().hold(body.get("trip_id"), s, body.get("hold_minutes", spaceb.DEFAULT_HOLD_MINUTES))
+        shipper = body.get("shipper")
+        if shipper is not None and not (isinstance(shipper, dict) and all(isinstance(v, str) for v in shipper.values())):
+            raise spaceb.BoardError("shipper（荷主の名称・住所・法人番号）は文字列の辞書で入れてください")
+        hold = _board().hold(body.get("trip_id"), s, body.get("hold_minutes", spaceb.DEFAULT_HOLD_MINUTES),
+                             hold_until=body.get("hold_until"), shipper=shipper)
     except spaceb.BoardError as e:
         raise BadRequest(str(e)) from e
     return {"hold": hold, **_b_notices()}
+
+
+def api_b_contract(body: Any) -> dict[str, Any]:
+    body = _need_dict(body)
+    try:
+        return {"contract": _board().contract(body.get("hold_id"), body.get("fuel_surcharge"), body.get("payment_method")),
+                **_b_notices()}
+    except spaceb.BoardError as e:
+        raise BadRequest(str(e)) from e
 
 
 def api_b_decide(body: Any) -> dict[str, Any]:
@@ -635,6 +668,23 @@ def api_b_decide(body: Any) -> dict[str, Any]:
     except spaceb.BoardError as e:
         raise BadRequest(str(e)) from e
     return {"hold": hold, **_b_notices()}
+
+
+def api_b_price_formula(body: Any) -> dict[str, Any]:
+    """帰り便の値段の式（SPEC §21.6）。基準積載率は 0〜1（既定 0.7）、リードタイムの割引は 0〜0.5 の 0.1 刻み、地域は 近畿 / 関東。"""
+    body = _need_dict(body)
+    trip = next((t for t in spaceb.load_trips() if t["id"] == body.get("trip_id")), None)
+    if trip is None:
+        raise BadRequest(f"便 {body.get('trip_id')!r} が見つかりません")
+    s = _b_shipment({**body, "dest_code": body.get("dest_code") or trip["dest_code"]})
+    carrier = next((c for c in spaceb.load_demo()["carriers"] if c["id"] == trip["carrier_id"]), {})
+    try:
+        ref = spaceb.per_unit_reference(trip, s, body.get("base_load_rate", spaceb.DEFAULT_BASE_LOAD_RATE),
+                                        body.get("lead_discount", 0), body.get("region") or carrier.get("tariff_region") or "関東",
+                                        min_fee_yen=body.get("min_fee_yen"))
+    except ValueError as e:
+        raise BadRequest(str(e)) from e
+    return {"reference": ref, **_b_notices()}
 
 
 def api_b_reset(body: Any) -> dict[str, Any]:
@@ -650,16 +700,25 @@ def api_waiting_calc(body: Any) -> dict[str, Any]:
     year = body.get("year")
     if year is not None and (isinstance(year, bool) or not isinstance(year, int)):
         raise BadRequest("year は整数で渡してください")
+    pasted = None
+    defaulted: list[str] = []
+    notes: list[str] = []
     if body.get("rows") is not None:
         rows = body["rows"]
     elif isinstance(body.get("text"), str):
-        rows = waiting.parse_paste(body["text"])
+        rows, defaulted, notes = waiting.parse_paste_ex(body["text"])
+        pasted = rows
     else:
         raise BadRequest("rows（行の配列）か text（貼り付けたタブ区切り）を渡してください")
     try:
-        return waiting.calc(rows, year)
+        res = waiting.calc(rows, year)
     except ValueError as e:
         raise BadRequest(str(e)) from e
+    if pasted is not None:
+        res["input_rows"] = pasted  # 画面の表に入れ直すための、貼り付けを読んだ行（見出しの順に従った結果）
+        res["defaulted"] = defaulted  # 欄が無くて既定値を入れた列（shipper_fault）。画面が注記を出す
+        res["notes"] = notes  # 読まなかった見出し、列の順で読んだこと、などの注記（SPEC §23.8）
+    return res
 
 
 GET_ROUTES = {"/api/scenarios": lambda q: api_scenarios(), "/api/demo_quotes": api_demo_quotes,
@@ -670,6 +729,7 @@ POST_ROUTES = {
     "/api/compare": api_compare, "/api/save": api_save, "/api/load": api_load,
     "/api/confirm": api_confirm, "/api/add_quote": api_add_quote, "/api/add_demo_quotes": api_add_demo_quotes,
     "/api/b/match": api_b_match, "/api/b/hold": api_b_hold, "/api/b/decide": api_b_decide, "/api/b/reset": api_b_reset,
+    "/api/b/contract": api_b_contract, "/api/b/price_formula": api_b_price_formula,
 }
 
 
