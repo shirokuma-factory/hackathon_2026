@@ -76,6 +76,8 @@ from shipcompare.tariffs import ROUTES, load_tariff  # noqa: E402
 WEB_DIR = ROOT / "web"
 DEFAULT_PORT = 8600
 MAX_BODY = 2_000_000
+SHIPPER_MAX_KEYS = 8  # 仮予約に付ける荷主の項目（名称・住所・法人番号など）の数と長さの上限。メモリを使い切らせないため
+SHIPPER_MAX_CHARS = 200
 ALLOWED_HOSTS = ("127.0.0.1", "localhost")
 
 # ---- 公開版（Cloud Run。SPEC §15.1「公開版」）。--public か環境変数 SHIPCOMPARE_PUBLIC=1 で有効
@@ -83,7 +85,7 @@ PUBLIC_DEFAULT_PORT = 8080  # Cloud Run は環境変数 PORT で渡す。無け�
 SESSION_HEADER = "X-Demo-Session"
 SESSION_ID_RE = re.compile(r"[A-Za-z0-9_-]{8,64}")
 ANON_SESSION = "anon"
-SESSION_MAX = 300  # 来訪者ごとの状態を持つ最大数（古い順に捨てる）
+SESSION_MAX = 2000  # 来訪者ごとの状態を持つ最大数（古い順に捨てる）。1 人が ID を変えて他の来訪者の盤を押し出しにくいよう大きめ（盤 1 つは数 KB）
 SESSION_TTL_SEC = 2 * 3600  # 使われないまま経つとこの時間で捨てる
 GZIP_EXTS = {".js", ".css", ".json", ".geojson", ".html", ".svg", ".glb"}
 LONG_CACHE_DIRS = ("data", "models", "img")  # web/ の下で 1 時間キャッシュさせる場所
@@ -678,6 +680,9 @@ def api_b_hold(body: Any) -> dict[str, Any]:
         shipper = body.get("shipper")
         if shipper is not None and not (isinstance(shipper, dict) and all(isinstance(v, str) for v in shipper.values())):
             raise spaceb.BoardError("shipper（荷主の名称・住所・法人番号）は文字列の辞書で入れてください")
+        if shipper is not None and (len(shipper) > SHIPPER_MAX_KEYS
+                                    or any(len(str(k)) > 40 or len(v) > SHIPPER_MAX_CHARS for k, v in shipper.items())):
+            raise spaceb.BoardError(f"shipper は {SHIPPER_MAX_KEYS} 項目まで、1 項目 {SHIPPER_MAX_CHARS} 文字までで入れてください")
         hold = _board().hold(body.get("trip_id"), s, body.get("hold_minutes", spaceb.DEFAULT_HOLD_MINUTES),
                              hold_until=body.get("hold_until"), shipper=shipper)
     except spaceb.BoardError as e:
@@ -842,6 +847,8 @@ def _static_bytes(path: Path, st, ext: str, accept_gzip: bool) -> tuple[bytes, b
 
 
 class Handler(SimpleHTTPRequestHandler):
+    server_version = "Backfull"  # 応答の Server に Python の版を出さない
+    sys_version = ""
     extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".js": "text/javascript", ".json": "application/json",
                       ".geojson": "application/geo+json", ".css": "text/css", ".html": "text/html",
                       ".glb": "model/gltf-binary", ".svg": "image/svg+xml"}
@@ -862,6 +869,9 @@ class Handler(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         self.send_header("Cache-Control", self._cc or "no-store")
         self._cc = None
+        # 種類の推測で別の形式として解釈させない。ほかのサイトの枠の中に入れさせない
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
         super().end_headers()
 
     def _enter(self) -> None:
@@ -922,6 +932,9 @@ class Handler(SimpleHTTPRequestHandler):
     # --- 静的ファイル（公開版は gzip とキャッシュの指定つきで返す。手元の版は標準の動き）
     def _static(self, url_path: str, head: bool) -> bool:
         """処理したら True。標準の処理に任せるときは False。公開版と SHIPCOMPARE_HIDE_LOCAL=1 は web/data/local/ を 404 にする。"""
+        if "\x00" in unquote(url_path):  # NUL を含むパスは開けない（例外で接続が切れるのを防ぐ）
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return True
         if not (self.public or hide_local()):
             return False
         rel = unquote(url_path).lstrip("/")
