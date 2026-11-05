@@ -30,10 +30,10 @@ def _edge_or_skip():
 
 
 # ---------------------------------------------------------------- G85 印刷
-def test_g85_waiting_print_is_a4_portrait_and_not_cut():
+def test_g85_waiting_print_is_a4_portrait_and_not_cut(tmp_path):
     _edge_or_skip()
     import print_page_pdf as pp
-    pdf = Path(tempfile.gettempdir()) / "test_waiting_print.pdf"
+    pdf = tmp_path / "test_waiting_print.pdf"
     pp.print_to_pdf(WAITING.as_uri() + "?example=1", pdf)
     pages = pp.pdf_page_count(pdf)
     assert pages == 2, pages  # 例の 11 行: 1 枚目に一覧と根拠、2 枚目に欄の案の残りと結びの一文
@@ -137,7 +137,7 @@ def test_g91_selftest_and_s6_in_headless_edge():
         page.goto(PAGE.as_uri() + "?selftest=1")
         page.wait(lambda: page.js("document.querySelector('#selftest') && document.querySelector('#selftest').textContent.length > 0"), 30, "自己確認")
         text = page.js("document.querySelector('#selftest').textContent")
-        assert text == f"SELFTEST PASS {n + 12}/{n + 12}", text
+        assert text == f"SELFTEST PASS {n + 14}/{n + 14}", text
         page.goto(PAGE.as_uri() + "?example=1")
         page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")
         got = page.js("""(function(){

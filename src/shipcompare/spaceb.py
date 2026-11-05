@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -16,6 +17,9 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import geo
+from .tariffs import deck_2t
+
+_DECK_2T = deck_2t()
 from .estimate import kashikiri_fares, round_yen
 from .models import to_decimal
 from .tariffs import KASHIKIRI_REGION_FILES, data_dir, load_kashikiri
@@ -30,6 +34,38 @@ FICTION_NOTICE = "架空の運送会社と便です。"
 BOOKING_NOTICE = "積むかどうか、どこにどう積むかは運送会社が決めます。受付で量って条件に合わないときは受け付けません。"
 
 HELD, ACCEPTED, DECLINED, EXPIRED = "held", "accepted", "declined", "expired"
+
+
+DEMO_NOW_LABEL = "デモの時刻: {md} {hm}（架空の便に合わせています）"
+
+
+def demo_now() -> datetime:
+    """デモの時刻（data/demo/carriers.json の demo_now、SPEC §34.6）。実際の時計に依存しない。"""
+    return datetime.fromisoformat(load_demo()["demo_now"]).replace(tzinfo=None)
+
+
+def demo_now_label(now: datetime | None = None) -> str:
+    n = now or demo_now()
+    return DEMO_NOW_LABEL.format(md=f"{n.month}/{n.day}", hm=f"{n.hour:02d}:{n.minute:02d}")
+
+
+class DemoClock:
+    """盤の既定の時計。demo_now から始め、盤を作ってから（または戻してから）の経過時間だけ進む。
+
+    実際の日付には依存しない（架空の便の出発日時に合わせるため、SPEC §34.6）。
+    """
+
+    def __init__(self, start: datetime | None = None):
+        self._start = start
+        self._t0 = time.monotonic()
+
+    def restart(self) -> None:
+        self._t0 = time.monotonic()
+
+    def __call__(self) -> datetime:
+        if self._start is None:
+            self._start = demo_now()
+        return self._start + timedelta(seconds=time.monotonic() - self._t0)
 
 
 class BoardError(Exception):
@@ -180,9 +216,17 @@ def _depart_dt(trip: dict[str, Any]) -> datetime | None:
 
 
 def _trip_floor(trip: dict[str, Any]) -> Any:
-    """便の床の空き m²（登録値）。floor_free_m2、無ければ車の床の総面積 floor_total_m2、どちらも無ければ None。"""
+    """便の床の空き m²（登録値）。floor_free_m2 があればそれ。
+
+    SPEC §34.1・SPEC §38 S1: 棚の形（SHELF_TYPES）と RB の中の上段は、車全体の床ではなく 1 口の底面（unit_footprint_mm の積）
+    × 口の数（units、無ければ 1）が上限。それ以外の形は車の床の総面積 floor_total_m2。どちらも無ければ None。
+    """
     if trip.get("floor_free_m2") is not None:
         return trip["floor_free_m2"]
+    if trip.get("space_type") in SHELF_TYPES + ("inside_rb_upper",) and trip.get("unit_footprint_mm"):
+        fw, fd = (_dec(x) for x in trip["unit_footprint_mm"])
+        units = _dec(trip.get("units") or 1)
+        return fw * fd * units / Decimal(1_000_000)
     return trip.get("floor_total_m2")
 
 
@@ -314,7 +358,7 @@ class Board:
     """便ごとの重さの余りと仮予約をメモリに持つ。操作はすべて Lock の中で行う。"""
 
     def __init__(self, trips: list[dict[str, Any]] | None = None, clock: Callable[[], datetime] | None = None):
-        self._clock = clock or datetime.now
+        self._clock = clock or DemoClock()
         self._lock = threading.Lock()
         self._base_trips = list(trips if trips is not None else load_trips())
         self._trips = list(self._base_trips)
@@ -335,6 +379,12 @@ class Board:
     def reset(self) -> None:
         with self._lock:
             self._reset_locked()
+            if hasattr(self._clock, "restart"):
+                self._clock.restart()  # 既定の時計は、戻したときにデモの時刻の始めに戻る
+
+    def now(self) -> datetime:
+        """この盤の時計の、いまの時刻（現地時刻、タイムゾーンなし）。"""
+        return self._clock()
 
     # --- 内部（Lock を持っているときだけ呼ぶ）
     def _sweep(self) -> None:
@@ -371,6 +421,9 @@ class Board:
         d["remaining_slack_kg"] = float(cap.slack)
         d["remaining_shelf_kg"] = float(cap.shelf) if cap.shelf is not None else None
         d["remaining_floor_m2"] = float(cap.floor) if cap.floor is not None else None
+        fl = _trip_floor(t)
+        d["floor_free_m2"] = float(_dec(fl)) if fl is not None else None  # 床の空きの登録値（棚の形は 1 口の底面）。画面の分母
+        d["floor_is_unit"] = t.get("space_type") in SHELF_TYPES + ("inside_rb_upper",) and t.get("floor_free_m2") is None
         return d
 
     # --- 公開
@@ -700,11 +753,14 @@ SELF_CARRIER_ID = "C9"
 SELF_CARRIER = {"id": SELF_CARRIER_ID, "name": "架空 自社", "note": "運送会社の役で登録した便の運送会社です（この来訪者の画面だけ）",
                 "tariff_region": "関東"}
 REGISTER_VEHICLES: dict[str, dict[str, Any]] = {
-    "2t": {"label": "架空 2t 箱車", "max_load_kg": 2000, "floor_total_m2": 6.0, "footprint_mm": [3100, 1770],
-           "clear_height_mm": 1800, "max_piece_kg": 150, "weight_slack_kg": 1000},
-    "4t": {"label": "架空 4t ウイング", "max_load_kg": 3500, "floor_total_m2": 13.0, "footprint_mm": [6000, 2000],
+    # floor_total_m2 は footprint_mm の積（SPEC §38 N3）。積付け（loadplan.py）の公表例の荷台（2t ≈ 5.5m²、10t ≈ 23.0m²）にそろえる
+    # 2t の荷台は data/vehicle_decks.json の 2t ショートの公表例にそろえる（洗い出し r1 N7。比べるページ・積付けと同じ値）
+    "2t": {"label": "架空 2t 箱車", "max_load_kg": 2000, "floor_total_m2": _DECK_2T["floor_m2"],
+           "footprint_mm": list(_DECK_2T["footprint_mm"]),
+           "clear_height_mm": min(1800, _DECK_2T["height_mm"]), "max_piece_kg": 150, "weight_slack_kg": 1000},
+    "4t": {"label": "架空 4t ウイング", "max_load_kg": 3500, "floor_total_m2": 12.0, "footprint_mm": [6000, 2000],
            "clear_height_mm": 2100, "max_piece_kg": 300, "weight_slack_kg": 2000},
-    "10t": {"label": "架空 10t ウイング", "max_load_kg": 9000, "floor_total_m2": 28.0, "footprint_mm": [9500, 2300],
+    "10t": {"label": "架空 10t ウイング", "max_load_kg": 9000, "floor_total_m2": 23.04, "footprint_mm": [9600, 2400],
             "clear_height_mm": 2300, "max_piece_kg": 500, "weight_slack_kg": 4500},
 }
 KINKI_PREFS = ("福井県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県")
@@ -740,8 +796,10 @@ def _local_dt(v: Any, label: str) -> datetime:
         raise ValueError(f"{label}は 2026-11-13T17:00 のような日時で入れてください") from None
 
 
-def build_registered_trip(body: dict[str, Any]) -> dict[str, Any]:
-    """登録の入力から便の辞書を作る（値段と id 以外）。誤りは ValueError（日本語）。"""
+def build_registered_trip(body: dict[str, Any], now: datetime | None = None) -> dict[str, Any]:
+    """登録の入力から便の辞書を作る（値段と id 以外）。誤りは ValueError（日本語）。
+
+    now（盤の時計）を渡すと、出発日時がそれより前の便は登録できない（SPEC §34.6）。"""
     o, d = _code(body.get("origin_code"), "発地"), _code(body.get("dest_code"), "着地")
     if o == d:
         raise ValueError("発地と着地が同じ市区町村です")
@@ -750,6 +808,8 @@ def build_registered_trip(body: dict[str, Any]) -> dict[str, Any]:
     if veh is None:
         raise ValueError("車種は " + "・".join(v["label"] for v in REGISTER_VEHICLES.values()) + " から選んでください")
     dep, arr = _local_dt(body.get("depart_at"), "出発日時"), _local_dt(body.get("arrive_at"), "到着日時")
+    if now is not None and dep <= now:
+        raise ValueError(f"出発日時は盤の時計（{now.month}/{now.day} {now.hour:02d}:{now.minute:02d}）より後にしてください")
     if arr <= dep:
         raise ValueError("到着日時は出発日時より後にしてください")
     if arr - dep > timedelta(days=7):
@@ -759,8 +819,16 @@ def build_registered_trip(body: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(fp, (list, tuple)) or len(fp) != 2:
         raise ValueError("1口の底面は縦と横の 2 つの数で入れてください")
     fw, fd = _num_in(fp[0], "1口の底面の縦（mm）", 100, 20000), _num_in(fp[1], "1口の底面の横（mm）", 100, 20000)
+    # SPEC §38 S2: 選んだ車種の荷台を超える値は登録できない（底面は縦横を入れ替えてもよい）
+    vl, vw = (Decimal(str(x)) for x in veh["footprint_mm"])
+    if not ((fw <= vl and fd <= vw) or (fd <= vl and fw <= vw)):
+        raise ValueError(f"この車種の荷台は {veh['footprint_mm'][0]}×{veh['footprint_mm'][1]}mm・高さ {veh['clear_height_mm']}mm です。"
+                         f"1口の底面 {_fmt(fw)}×{_fmt(fd)}mm は収まりません")
     height = _num_in(body.get("clear_height_mm"), "空きの高さ（mm）", 100, 4000)
-    piece = _num_in(body.get("max_piece_kg"), "1個の重さの上限（kg）", 1, veh["max_load_kg"])
+    if height > Decimal(veh["clear_height_mm"]):
+        raise ValueError(f"この車種の荷台は {veh['footprint_mm'][0]}×{veh['footprint_mm'][1]}mm・高さ {veh['clear_height_mm']}mm です。"
+                         f"空きの高さ {_fmt(height)}mm は超えています")
+    piece = _num_in(body.get("max_piece_kg"), "1個の重さの上限（kg）", 1, min(veh["max_piece_kg"], veh["max_load_kg"]))
     drops = body.get("drop_points")
     if not isinstance(drops, list) or not drops or len(drops) > 12:
         raise ValueError("降ろせる地点は 1〜12 か所入れてください")

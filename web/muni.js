@@ -42,6 +42,8 @@ const Muni = (() => {
   const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
   const rgbCss = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
   const signed = (v) => `${v >= 0 ? '+' : '−'}${n0(Math.abs(v))}`;
+  // 出荷・入荷の丸めた値の差。画面に出る引き算と合わせ、0 には符号を付けない（レビュー N5）
+  const balText = (i) => { const b = Math.round(U.d.out[i]) - Math.round(U.d.in[i]); return b === 0 ? '0' : `${b > 0 ? '+' : '−'}${Math.abs(b).toLocaleString('ja-JP')}`; };
 
   /* ------------------------------------------------------------ 起動 */
 
@@ -355,7 +357,7 @@ const Muni = (() => {
       if (i < 0) return null;
       if (id === 'mu-bal') {
         if (d.bal[i] === null) return { t: nameOf(i), s: `灰色: ${d.reason[i] || '数字がありません'}` };
-        return { t: nameOf(i), s: `推定 B ${signed(d.bal[i])} t（出荷 ${n0(d.out[i])} − 入荷 ${n0(d.in[i])}）。推定です` };
+        return { t: nameOf(i), s: `推定 B ${balText(i)} t（出荷 ${n0(d.out[i])} − 入荷 ${n0(d.in[i])}）。推定です` };
       }
       return { t: nameOf(i), s: concLine(i) };
     }
@@ -414,7 +416,7 @@ const Muni = (() => {
       (gray ? `<p class="mu-gray-r"><i class="sw sw-gray"></i>灰色（0 ではありません）: ${esc(d.reason[i] || '数字がありません')}</p>` : '') +
       `<div class="mp-stats mu-stats3"><div><span>出荷 Out</span><b class="num">${num(d.out[i])}</b><small>t</small></div>` +
       `<div><span>入荷 In</span><b class="num">${num(d.in[i])}</b><small>t</small></div>` +
-      `<div><span>推定の差 B</span><b class="num">${d.bal[i] === null ? '—' : signed(d.bal[i])}</b><small>t</small></div></div>` +
+      `<div><span>推定の差 B</span><b class="num">${d.bal[i] === null ? '—' : balText(i)}</b><small>t</small></div></div>` +
       `<div class="mp-stats mu-stats4"><div><span>出荷の重み</span><b class="num">${w(d.out[i], pf[0])}</b></div>` +
       `<div><span>入荷の重み</span><b class="num">${w(d.in[i], pf[1])}</b></div>` +
       `<div><span>製造・運送・倉庫の従業者</span><b class="num">${num(d.emp[i])}</b><small>人</small></div>` +

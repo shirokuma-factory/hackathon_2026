@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 from typing import Any
 
 from .models import Shipment, to_decimal
-from .loadplan import WING_4T_ID, tariff_class_note
-from .tariffs import ROUTES, Source, load_all_tariffs, source_of
+from .loadplan import LoadItem, WING_4T_ID, container_by_id, items_from_shipment, plan_load, tariff_class_note
+from .tariffs import ROUTES, Source, load_all_tariffs, load_vehicle_decks, source_of
 
 # 判定の状態
 ST_OK = "公開条件に合う"
@@ -329,6 +329,28 @@ def estimate_rosen(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
 
 # ---------------------------------------------------------------- カゴ台車1本単位
 
+def _boxes_by_pieces(shipment: Shipment, box: dict[str, Any]) -> int:
+    """ボックスの内寸に、荷が何個ずつ入るかから出した本数（積付けの計算をボックスの荷室で回す）。
+    1 個がボックスに入らない行は数えない（その行は別に「要確認」にする）。重さは見ない（重さの本数は別に出す）。"""
+    ln, wd, ht = (int(x) for x in box["inner_mm"])
+    cont = replace(container_by_id("jitbox"), payload_kg=10**9)
+    inner = sorted((ln / 10, wd / 10, ht / 10))
+    items = [it for it in items_from_shipment(shipment)
+             if all(d <= b for d, b in zip(sorted((it.length_cm, it.width_cm, it.height_cm)), inner))]
+    if not items:
+        return 1
+    total = sum(it.count for it in items)
+    if total > 600:  # 計算が重くなる個数は、容積の本数に任せる
+        return 1
+    n = 1
+    while n <= total:
+        groups = _split_items(items, n)
+        if all(plan_load(g, cont)["summary"]["verdict"] != "×" for g in groups if g):
+            return n
+        n += 1
+    return total
+
+
 def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
                     manual: dict[str, int]) -> EstimateRow:
     row = EstimateRow("jitbox", JITBOX_LABEL, ST_OK, source=anon_source(tariff))
@@ -351,12 +373,27 @@ def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
         return row
 
     box = tariff["box"]
+    # 1 個の重さがボックスの最大積載量を超える荷は、分けられないので積めない（洗い出し E1・F03）
+    heavy = [(i, to_decimal(item.weight_kg)) for i, item in enumerate(shipment.items, start=1)
+             if to_decimal(item.weight_kg) > Decimal(box["max_kg"])]
+    if heavy:
+        i, kg = heavy[0]
+        row.status = ST_UNUSABLE
+        row.reasons = [f"荷物{i}行目の1個の重さが{kg.normalize():f}kgで、ボックスの最大積載量{box['max_kg']}kgを超えます"
+                       "（1個は分けられないので、この手段は使えません）"]
+        row.issues.append(Issue(ISSUE_LOADING, row.reasons[0]))
+        row.notes = [n for n in row.notes if not n.startswith("最低")]
+        return row
     by_weight = ceil_int(totals.weight_kg / Decimal(box["max_kg"]))
     by_volume = ceil_int(totals.volume_m3 / Decimal(str(box["volume_m3"])))
-    boxes = max(by_weight, by_volume)
+    by_pieces = _boxes_by_pieces(shipment, box)
+    boxes = max(by_weight, by_volume, by_pieces)
     row.amount = route["fare_per_box"] * boxes
-    row.detail = {"boxes": boxes, "fare_per_box": route["fare_per_box"], "route_label": route["label"]}
+    row.detail = {"boxes": boxes, "fare_per_box": route["fare_per_box"], "route_label": route["label"],
+                  "boxes_by_weight": by_weight, "boxes_by_volume": by_volume, "boxes_by_pieces": by_pieces}
     row.notes.append(f"最低 {boxes} 本の目安。積付けは要確認")
+    if by_pieces > max(by_weight, by_volume):
+        row.notes.append(f"重さと容積では {max(by_weight, by_volume)} 本ですが、荷の形（内寸に何個入るか）から {by_pieces} 本として数えています")
     row.issues.append(Issue(ISSUE_LOADING, "ボックス内寸 1,040×1,040×1,700mm への積付けは要確認"))
 
     inner = sorted(Decimal(str(x)) / 10 for x in box["inner_mm"])  # cm
@@ -398,6 +435,113 @@ def kashikiri_fares(km: Decimal, weight_kg: Decimal, tariff: dict[str, Any]) -> 
          "amount": v["base_fare"] + steps * v["add_per_step"] + steps_over * v.get("add_per_step_over_500", 0)}
         for v in tariff["vehicles"] if weight_kg <= v["max_kg"]
     ]
+
+
+# 車の台数を数えるときの上限（積付けの計算が重くなりすぎないため）
+MAX_SPLIT_VEHICLES = 10
+MAX_SPLIT_PIECES = 600
+
+
+def _split_items(items: list[LoadItem], n: int) -> list[list[LoadItem]]:
+    """荷を n 台に分ける。1 個ずつ、体積の大きい順に、いま体積の小さい台へ割り当てる（入力の順で決まり、乱数を使わない）。"""
+    pieces = sorted(((i, it) for i, it in enumerate(items) for _ in range(it.count)),
+                    key=lambda x: (-(x[1].length_cm * x[1].width_cm * x[1].height_cm), x[0]))
+    load = [0.0] * n
+    counts: list[dict[int, int]] = [dict() for _ in range(n)]
+    for i, it in pieces:
+        k = min(range(n), key=lambda g: (load[g], g))
+        load[k] += it.length_cm * it.width_cm * it.height_cm
+        counts[k][i] = counts[k].get(i, 0) + 1
+    return [[replace(items[i], count=c) for i, c in sorted(cs.items())] for cs in counts]
+
+
+def _deck_container(deck_id: str, max_kg: int):
+    """荷室は積付けの公表例。重さは料金の車格の区分（max_kg）で比べる（4t の区分と公表例の食い違いは別の注記で出す）。"""
+    return replace(container_by_id(deck_id), payload_kg=int(max_kg))
+
+
+def _fit_one(items: list[LoadItem], cls: str, max_kg: int) -> tuple[str, str, str]:
+    """1 台に載るか。(判定 ○△×, 理由, 荷台の ID)。2t はショートに載らなくてもロングなら載る可能性があるので △ にする。"""
+    decks = load_vehicle_decks()
+    short = decks["tariff_class_deck"][cls]
+    res = plan_load(items, _deck_container(short, max_kg))["summary"]
+    verdict, reason = res["verdict"], res["verdict_reason"]
+    if verdict == "×":
+        long_id = decks.get("tariff_class_deck_long", {}).get(cls)
+        if long_id:
+            res2 = plan_load(items, _deck_container(long_id, max_kg))["summary"]
+            if res2["verdict"] != "×":
+                d1, d2 = container_by_id(short), container_by_id(long_id)
+                return "△", (f"{cls} ショート（荷室の長さ {d1.length_mm:,}mm）には載りませんが、ロング（標準の {cls} 箱車、"
+                             f"{d2.length_mm:,}mm）なら載る可能性があります。車の種類の指定が要ります"), long_id
+    return verdict, reason, short
+
+
+def _fit_many(items: list[LoadItem], cls: str, max_kg: int, n_weight: int) -> tuple[int, str, str] | None:
+    """cls の車を何台にすれば載るか。(台数, 判定, 理由)。重さから出した台数 n_weight から数え、載らなければ増やす。
+    荷が多すぎて計算しないときは重さだけの台数（判定 △）、上限（MAX_SPLIT_VEHICLES 台）でも載らないときは None。"""
+    cont = _deck_container(load_vehicle_decks()["tariff_class_deck"][cls], max_kg)
+    if sum(it.count for it in items) > MAX_SPLIT_PIECES:
+        return n_weight, "△", "台数は重さだけで計算しました。積付けは要確認"
+    for n in range(max(2, n_weight), MAX_SPLIT_VEHICLES + 1):
+        groups = [g for g in _split_items(items, n) if g]
+        res = [plan_load(g, cont)["summary"] for g in groups]
+        if all(r["verdict"] != "×" for r in res):
+            if n > n_weight:
+                return n, "△", f"重さでは{n_weight}台ですが、荷の形から{n}台として数えています。積付けは要確認"
+            return n, "△", "台数は重さだけで計算しました。積付けは要確認"
+    return None
+
+
+_LOADS_CACHE: dict[Any, list[dict[str, Any]]] = {}
+
+
+def kashikiri_loads(items: list[LoadItem] | None, weight_kg: Decimal, tariff: dict[str, Any]) -> list[dict[str, Any]]:
+    """貸切の車格ごとに、荷が載るか（距離に関係しない部分）。小さい車格から並べる。
+    1 台に載る車格がなければ、車格ごとの必要台数の候補（vehicles が 2 以上）を足す。
+    items が None なら重さだけで選ぶ（従来の動き）。"""
+    key = (None if items is None else tuple((i.count, i.length_cm, i.width_cm, i.height_cm, i.weight_kg, i.stackable) for i in items),
+           str(weight_kg), tuple((v["class"], v["max_kg"]) for v in tariff["vehicles"]))
+    if key in _LOADS_CACHE:
+        return _LOADS_CACHE[key]
+    out: list[dict[str, Any]] = []
+    for v in tariff["vehicles"]:
+        if weight_kg <= v["max_kg"]:
+            if items is None:
+                verdict, reason, deck = "○", "", None
+            else:
+                verdict, reason, deck = _fit_one(items, v["class"], v["max_kg"])
+            out.append({"class": v["class"], "max_kg": v["max_kg"], "vehicles": 1, "verdict": verdict, "reason": reason, "deck": deck})
+    if items is not None and not any(c["verdict"] != "×" for c in out):
+        # 1 台では載らない: 車格ごとに必要な台数（洗い出し F01・F09）
+        for v in tariff["vehicles"]:
+            n_weight = max(2, ceil_int(weight_kg / Decimal(v["max_kg"])))
+            r = _fit_many(items, v["class"], v["max_kg"], n_weight)
+            if r is not None:
+                n, verdict, reason = r
+                out.append({"class": v["class"], "max_kg": v["max_kg"], "vehicles": n, "verdict": verdict, "reason": reason,
+                            "deck": load_vehicle_decks()["tariff_class_deck"][v["class"]]})
+    if len(_LOADS_CACHE) > 256:
+        _LOADS_CACHE.clear()
+    _LOADS_CACHE[key] = out
+    return out
+
+
+def kashikiri_candidates(km: Decimal, items: list[LoadItem] | None, weight_kg: Decimal, tariff: dict[str, Any]) -> list[dict[str, Any]]:
+    """距離と荷から、貸切の候補（車格・台数・額・判定）。台数が複数の候補は、いちばん安い 1 つだけ残す。
+    額は kashikiri_fares の式で 1 台分を出し、台数を掛ける。載らない（×）車格は額なしで残す。"""
+    unit = {f["class"]: f for f in kashikiri_fares(km, Decimal(0), tariff)}
+    cands = []
+    for ld in kashikiri_loads(items, weight_kg, tariff):
+        f = unit[ld["class"]]
+        usable = ld["verdict"] != "×"
+        cands.append({**ld, "steps": f["steps"], "steps_over_500": f["steps_over_500"], "unit_amount": f["amount"],
+                      "amount": f["amount"] * ld["vehicles"] if usable else None})
+    multi = [c for c in cands if c["vehicles"] > 1]
+    if multi:
+        best = min(multi, key=lambda c: (c["amount"], c["class"]))
+        cands = [c for c in cands if c["vehicles"] == 1] + [best]
+    return cands
 
 
 def estimate_kashikiri(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
@@ -444,25 +588,43 @@ def estimate_kashikiri(shipment: Shipment, totals: Totals, tariff: dict[str, Any
         r = base_row()
         return [_nocalc(r, totals)]
 
+    try:
+        items: list[LoadItem] | None = items_from_shipment(shipment)
+    except ValueError:
+        items = None
     rows = []
-    for f in kashikiri_fares(km, totals.weight_kg, tariff):
-        r = base_row(f"kashikiri_{f['class']}", f"貸切 {f['class']}車（標準的な運賃）")
-        r.amount = f["amount"]
-        r.detail = {"vehicle": f["class"], "max_kg": f["max_kg"], "steps": f["steps"], "steps_over_500": f["steps_over_500"]}
+    for c in kashikiri_candidates(km, items, totals.weight_kg, tariff):
+        cls, n = c["class"], c["vehicles"]
+        mode = f"kashikiri_{cls}" if n == 1 else f"kashikiri_{cls}x{n}"
+        label = f"貸切 {cls}車（標準的な運賃）" if n == 1 else f"貸切 {cls}車 {n}台（標準的な運賃）"
+        r = base_row(mode, label)
+        r.detail = {"vehicle": cls, "max_kg": c["max_kg"], "steps": c["steps"], "steps_over_500": c["steps_over_500"],
+                    "vehicles": n, "unit_amount": c["unit_amount"], "load_verdict": c["verdict"]}
         # 料金の車格（告示の区分）の言葉。積付けの車の公表例とは別のもの（SPEC §34.5）
-        r.detail["class_label"] = f"{f['class']} 車の区分（〜{f['max_kg']:,}kg）"
+        r.detail["class_label"] = f"{cls} 車の区分（〜{c['max_kg']:,}kg）"
         r.notes.append(r.detail["class_label"] + "。実際の車の最大積載量は車によって違います")
-        if f["class"] == "4t":
+        if n > 1:
+            r.notes.append(f"{cls} 車 {n} 台の目安です（1 台分 {c['unit_amount']:,}円 × {n}）。{c['reason']}")
+        if c["verdict"] == "×":
+            r.status = ST_UNUSABLE
+            r.reasons = [f"使えない（{c['reason']}）"]
+        else:
+            r.amount = c["amount"]
+            if c["verdict"] == "△":
+                r.status = ST_CHECK
+                if n == 1:
+                    r.reasons = [c["reason"]]
+        if cls == "4t" and n == 1:
             load_note = tariff_class_note(WING_4T_ID, float(totals.weight_kg))
             if load_note:
                 r.detail["load_note"] = load_note
                 r.notes.append(load_note)
-        r.issues.append(Issue(ISSUE_LOADING, "積めるかどうかは判定していません。積付けは要確認"))
+        r.issues.append(Issue(ISSUE_LOADING, "積付けは公表例の荷台での目安です。実車に積めるかは運送会社に要確認"))
         rows.append(r)
-    if not rows:
+    if not rows:  # 10 台でも載らない（1 個が大きすぎるなど）
         r = base_row()
         r.status = ST_UNUSABLE
-        r.reasons = ["合計重量が10tの最大積載量を超えます"]
+        r.reasons = ["使えない（10t 車を何台にしても載らない荷があります。台数を分けた見積が必要です）"]
         rows.append(r)
     return rows
 
@@ -498,6 +660,25 @@ def estimate_all(shipment: Shipment, manual: dict[str, int] | None = None,
                 r.issues.append(Issue(ISSUE_MULTI_DEST, msg))
 
     return sort_rows(rows)
+
+
+def rebase_kashikiri_on_road_distance(shipment: Shipment, rows: list[EstimateRow], km: float,
+                                      manual: dict[str, int] | None = None,
+                                      tariffs: dict[str, dict[str, Any]] | None = None) -> list[EstimateRow]:
+    """デモの区間（想定距離で行を作った）の貸切の行を、道路距離 km（OSRM）で作り直した行に差し替える（洗い出し N1）。
+    地図の塗り分けと同じ距離の額がカードの大きな数字になる。想定距離の額は、その車格の行の注記に残す。
+    宅配・路線便・カゴ台車の行は、デモの区間の表のまま変えない。"""
+    route = ROUTES.get(shipment.route or "")
+    s2 = replace(shipment, route="other", origin_in_kanto=True, distance_km=km)
+    fresh = [r for r in estimate_all(s2, manual, tariffs) if r.mode.startswith("kashikiri")]
+    assumed = {r.detail.get("vehicle"): r for r in rows if r.mode.startswith("kashikiri") and r.detail.get("vehicles", 1) == 1}
+    for r in fresh:
+        a = assumed.get(r.detail.get("vehicle"))
+        if (route is not None and route.km is not None and a is not None and a.amount is not None
+                and a.amount != r.amount and r.detail.get("vehicles", 1) == 1):
+            r.notes.append(f"デモ区間の想定距離 {route.km}km で計算すると {a.amount:,}円です。"
+                           f"この欄の額は地図の塗り分けと同じ道路距離 {km:g}km で計算しています")
+    return sort_rows([r for r in rows if not r.mode.startswith("kashikiri")] + fresh)
 
 
 def sort_rows(rows: list[EstimateRow]) -> list[EstimateRow]:

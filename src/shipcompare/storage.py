@@ -217,6 +217,12 @@ def validate_case(c: Case) -> None:
         _check(isinstance(q.id, str) and isinstance(q.carrier, str) and isinstance(q.product, str),
                "見積回答の id・会社名・商品名が文字列ではありません")
         _check(isinstance(q.version, int) and not isinstance(q.version, bool), "見積回答の版が整数ではありません")
+        _check(isinstance(q.lines, dict), "見積回答の内訳の形が違います")
+        for key, line in q.lines.items():
+            _check(line.kind in ("amount", "included", "unknown"), "保存ファイルの見積回答の内訳の種類が対応していません")
+            _check(line.amount is None or (isinstance(line.amount, int) and not isinstance(line.amount, bool)),
+                   "保存ファイルの見積回答の金額が整数ではありません")
+        _check(q.tax in ("税抜", "税込"), "保存ファイルの見積回答の税区分が税抜・税込のどちらでもありません")
     _check(len(set(ids)) == len(ids), "見積回答の id が重複しています")
     _check(all(isinstance(q.is_demo, bool) for q in c.quotes), "見積回答の is_demo が真偽値ではありません")
     for v in c.versions:

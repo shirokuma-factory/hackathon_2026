@@ -18,12 +18,13 @@ x が長さ、y が幅、z が高さ。
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from .models import Shipment, to_decimal
-from .tariffs import load_tariff
+from .tariffs import deck_of, load_tariff
 
 MAX_PIECES = 3000  # 1回の計算で扱う個数の上限（画面が重くならないため）
 
@@ -62,6 +63,12 @@ def _box_container() -> Container:
                      "docs/plan/logistics-review-20261103 の 04 と 05 に出典。")
 
 
+def _deck(deck_id: str) -> tuple[int, int, int, int]:
+    """貸切の車の荷台（長さ, 幅, 高さ mm と最大積載量 kg）。data/vehicle_decks.json から読む（比べるページ・空きを探すと共通の値）。"""
+    d = deck_of(deck_id)
+    return int(d["length_mm"]), int(d["width_mm"]), int(d["height_mm"]), int(d["payload_kg"])
+
+
 def containers() -> list[Container]:
     """選べる荷室の一覧。数値は目安で、実車は車種・架装で違う（05 の表も「全車種を代表する規格ではない」としている）。"""
     return [
@@ -69,16 +76,16 @@ def containers() -> list[Container]:
         Container("kei_van", "軽バン荷室", 1800, 1300, 1200, 350, "目安",
                   "一般的な軽バンの荷室の目安（長さ・幅・高さとも車種で数％〜1割違う）。最大積載量 350kg は軽貨物の上限。"),
         # 05 の表「2tショート箱・オーシャンリンクス」の1行をそのまま使う（行をまたいで組み合わせない）。
-        Container("box_2t_short", "2t 箱車（ショート）", 3000, 1700, 1700, 2000, "公表例",
+        Container("box_2t_short", "2t 箱車（ショート）", *_deck("box_2t_short"), "公表例",
                   "05 の表の公開例（オーシャンリンクス）。最大積載量は約 2,000kg。"),
         # 05 の表「2t・テスココンポ」の1行。
-        Container("box_2t", "2t 箱車（標準）", 4200, 1800, 2000, 2000, "公表例",
+        Container("box_2t", "2t 箱車（標準）", *_deck("box_2t"), "公表例",
                   "05 の表の公開例（テスココンポ）。同じ 2t でも荷室高は 1,700〜2,000mm の幅がある。"),
         # 05 の表「4tウイング・オーシャンリンクス」の1行。
-        Container("wing_4t", "4t ウイング", 6200, 2200, 2400, 2700, "公表例",
+        Container("wing_4t", "4t ウイング", *_deck("wing_4t"), "公表例",
                   "05 の表の公開例（オーシャンリンクス）。最大積載量は約 2,700kg。ゲート装備・自重で変わる。"),
         # 05 の表「10tウイング・オーシャンリンクス」の1行。
-        Container("wing_10t", "10t ウイング", 9600, 2400, 2600, 13500, "公表例",
+        Container("wing_10t", "10t ウイング", *_deck("wing_10t"), "公表例",
                   "05 の表の公開例（オーシャンリンクス）。最大積載量は約 13,500kg。"),
         # 04 の JR 貨物の説明: 19D 形式は内寸 3,647×2,275×2,252mm、積載重量 5,000kg。
         Container("jr_12ft", "JR 12ft コンテナ", 3647, 2275, 2252, 5000, "公表例",
@@ -228,6 +235,9 @@ def _run_plan(order: list[_Box], L: int, W: int, H: int, long_x: bool) -> tuple[
         if not b.stackable:
             reasons[b.seq] = "床に空きがなく、積み重ね不可の荷です"
             continue
+        if not any(t.box.stackable for t in stacks):
+            reasons[b.seq] = "下の荷がすべて積み重ね不可のため、載せる場所がありません"
+            continue
         best: tuple[int, int, bool] | None = None  # (山の番号, 上面の z, 回転)
         best_key: tuple[int, int] | None = None
         for si, top in enumerate(stacks):
@@ -279,12 +289,29 @@ def _failed_verdict(boxes: list[_Box], weight_over: bool, container: Container, 
     L, W, H = container.length_mm, container.width_mm, container.height_mm
     if weight_over:
         return "×", f"重さが最大積載量を {over_kg:,.1f}kg 超えます"
-    if any(b.h > H or not any(dx <= L and dy <= W for dx, dy, _ in _orientations(b)) for b in boxes):
+    def fits_as_is(b: _Box) -> bool:
+        return b.h <= H and any(dx <= L and dy <= W for dx, dy, _ in _orientations(b))
+
+    def fits_if_tilted(b: _Box) -> bool:
+        # 3 辺を並べ替えて荷室に収まるか（この手順では傾けないので、置けるとは限らない）
+        return any(x <= L and y <= W and z <= H for x, y, z in itertools.permutations((b.l, b.w, b.h)))
+
+    misfit = [b for b in boxes if not fits_as_is(b)]
+    if any(not fits_if_tilted(b) for b in misfit):
         return "×", "1 個の寸法が荷室より大きい荷があります"
-    if not any(b.stackable for b in boxes) and sum(b.l * b.w for b in boxes) > L * W:
+    # 積み重ね不可の荷は床をふさぐ。積み重ねてよい荷も、最も広い 1 個は床か、より広い荷の上に要る
+    # （傾ければ入る荷は床の面積が決まらないので、ここでは数えない）
+    fitting = [b for b in boxes if fits_as_is(b)]
+    nonstack_area = sum(b.l * b.w for b in fitting if not b.stackable)
+    max_stack_area = max((b.l * b.w for b in fitting if b.stackable), default=0)
+    if nonstack_area + max_stack_area > L * W:
+        if max_stack_area:
+            return "×", "積み重ね不可の荷が床をふさぎ、積み重ねてよい荷を置く場所がありません（下の荷がすべて積み重ね不可です）"
         return "×", "積み重ね不可で、荷の床面積の合計が荷室の床より大きいです"
     if sum(b.l * b.w * b.h for b in boxes) > L * W * H:
         return "×", "荷の容積の合計が荷室の容積より大きいです"
+    if misfit:
+        return "△", LOAD_UNCERTAIN + "（立てれば入る可能性があります（この手順では傾けません））"
     return "△", LOAD_UNCERTAIN + "（手順では置き方を見つけられませんでしたが、載らないとは言い切れません）"
 
 

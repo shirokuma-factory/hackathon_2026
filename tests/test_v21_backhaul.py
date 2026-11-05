@@ -215,10 +215,10 @@ def test_g62_floor_remaining_drops_and_returns():
 def test_g62_api_hold_until_over_72h_is_400(srv):  # noqa: F811
     mod, port = srv
     post(port, "/api/b/reset", {})
-    over = (datetime.now() + timedelta(hours=73)).isoformat(timespec="seconds")
+    over = (spaceb.demo_now() + timedelta(hours=73)).isoformat(timespec="seconds")
     status, r = post(port, "/api/b/hold", dict(s6_body(), trip_id="T7", hold_until=over))
     assert status == 400 and "72 時間" in r["error"]
-    ok_until = (datetime.now() + timedelta(hours=48)).isoformat(timespec="seconds")
+    ok_until = (spaceb.demo_now() + timedelta(hours=48)).isoformat(timespec="seconds")
     status, r = post(port, "/api/b/hold", dict(s6_body(), trip_id="T7", hold_until=ok_until))
     assert status == 200 and r["hold"]["expires_at"] == ok_until
     post(port, "/api/b/reset", {})

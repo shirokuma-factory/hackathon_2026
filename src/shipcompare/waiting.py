@@ -69,6 +69,9 @@ _TON_CLASS = {"2": "小型", "4": "中型", "10": "大型"}   # 「4t車」「4�
 _YES = {"はい", "yes", "y", "true", "1", "○", "〇", "◯", "有", "あり", "荷主都合", "荷主の都合", "荷主等の都合"}
 _NO = {"いいえ", "no", "n", "false", "0", "×", "✕", "✗", "x", "無", "なし", "渋滞", "都合外"}
 _ERA_BASE = {"令和": 2018, "r": 2018, "平成": 1988, "h": 1988, "昭和": 1925, "s": 1925}
+# 元号の始まりの日。これより前の日付は読めない日付にする（令和元年 1 月 5 日は平成 31 年で、打ち間違い）
+_ERA_START = {"令和": date(2019, 5, 1), "r": date(2019, 5, 1), "平成": date(1989, 1, 8), "h": date(1989, 1, 8),
+              "昭和": date(1926, 12, 25), "s": date(1926, 12, 25)}
 
 
 # 日時の欄（「2026/10/05 9:00」「10/5 9:00」「R8.10.5 9時00分」）の、時刻の前の日付の部分
@@ -139,7 +142,9 @@ def parse_date(text: str, year: int | None) -> date | None:
         m = re.fullmatch(r"(令和|平成|昭和|r|h|s)(元|[0-9]{1,2})(?:[-/.]|年)([0-9]{1,2})(?:[-/.]|月)([0-9]{1,2})日?", t, re.I)
         if m:
             n = 1 if m.group(2) == "元" else int(m.group(2))
-            return date(_ERA_BASE[m.group(1).lower()] + n, int(m.group(3)), int(m.group(4)))
+            key = m.group(1).lower()
+            dt = date(_ERA_BASE[key] + n, int(m.group(3)), int(m.group(4)))
+            return dt if dt >= _ERA_START[key] else None
         m = re.fullmatch(r"([0-9]{1,2})(?:/|月)([0-9]{1,2})日?", t)
         if m and year is not None:
             return date(year, int(m.group(1)), int(m.group(2)))
@@ -167,6 +172,10 @@ def _date_part(text: str) -> str:
     if not m or parse_time(m.group(2)) is None:
         return ""
     return m.group(1)
+
+
+_YEARLESS = re.compile(r"[0-9]{1,2}(?:/|月)[0-9]{1,2}日?(?: ?\([月火水木金土日祝]+\))?")
+LONG_WAIT_NOTE = "待ちが 1 日（24 時間）を超えています。日付と時刻を確かめてください"
 
 
 def parse_paste_ex(text: str) -> tuple[list[dict[str, str]], list[str], list[str]]:
@@ -344,27 +353,62 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     if errs:
         return None, errs
 
-    # 日付をまたぐ時刻は翌日として扱う（到着を基準に、前の時刻より小さければ +24 時間）
-    s_rel = start - arrive
-    crosses = False
-    if s_rel < 0:
-        s_rel += 1440
-        crosses = True
+    # 日時の欄に日付が書いてあるときは、日付と時刻から実際の差を出す（SPEC §38）。日付が無い欄だけ、
+    # 到着を基準に、前の時刻より小さければ +24 時間（日付をまたぐ）として扱う
+    yr = d.year
+
+    def field_day(key: str, ref: int | None = None) -> int | None:
+        part = _date_part(g[key]) if g[key] else ""
+        if not part:
+            return None
+        dd = parse_date(part, yr)
+        if dd is not None and ref is not None and _YEARLESS.fullmatch(_nz(part)) and dd.toordinal() < ref - 180:
+            dd = parse_date(part, yr + 1)   # 年の無い 1/1 が 12/31 の翌日になる場合
+        return dd.toordinal() if dd is not None else None
+
+    a_day = field_day("arrive")
+    if a_day is None:
+        a_day = d.toordinal()
+    a_abs = a_day * 1440 + arrive
+
+    s_day = field_day("start", a_day)
+    if s_day is not None:
+        s_rel = s_day * 1440 + start - a_abs
+        if s_rel < 0:
+            errs.append("荷役開始が到着より前です（日付と時刻を確かめてください）")
+    else:
+        s_rel = start - arrive
+        if s_rel < 0:
+            s_rel += 1440
     e_rel = None
     if end is not None:
-        e_rel = end - arrive
-        while e_rel < s_rel:
-            e_rel += 1440
-            crosses = True
+        e_day = field_day("end", a_day)
+        if e_day is not None:
+            e_rel = e_day * 1440 + end - a_abs
+            if e_rel < s_rel:
+                errs.append("荷役終了が荷役開始より前です（日付と時刻を確かめてください）")
+        else:
+            e_rel = end - arrive
+            while e_rel < s_rel:
+                e_rel += 1440
     post_min = 0   # 荷役終了 → 出発（荷役のあとの待ち）
+    dep_rel = None
     if depart is not None:
-        dep_rel = depart - arrive
         floor = e_rel if e_rel is not None else s_rel
-        while dep_rel < floor:
-            dep_rel += 1440
-            crosses = True
+        p_day = field_day("depart", a_day)
+        if p_day is not None:
+            dep_rel = p_day * 1440 + depart - a_abs
+            if dep_rel < floor:
+                errs.append("出発が" + ("荷役終了" if e_rel is not None else "荷役開始") + "より前です（日付と時刻を確かめてください）")
+        else:
+            dep_rel = depart - arrive
+            while dep_rel < floor:
+                dep_rel += 1440
         if post_on and e_rel is not None:
             post_min = dep_rel - e_rel
+    if errs:
+        return None, errs
+    crosses = arrive + max(x for x in (s_rel, e_rel, dep_rel) if x is not None) >= 1440
     handling_min = (e_rel - s_rel) if e_rel is not None else 0
 
     unit = int(tariff["unit_minutes"])
@@ -375,24 +419,33 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     # 指定と到着の差は 12 時間以内の近い側に取る（23:50 到着で指定 00:10 は 20 分後、翌日の指定）
     base = 0
     if appointed is not None:
-        diff = appointed - arrive
-        if diff > 720:
-            diff -= 1440
-        elif diff < -720:
-            diff += 1440
+        ap_day = field_day("appointed", a_day)
+        if ap_day is not None:
+            diff = ap_day * 1440 + appointed - a_abs   # 日付があるときは実際の差
+        else:
+            diff = appointed - arrive
+            if diff > 720:
+                diff -= 1440
+            elif diff < -720:
+                diff += 1440
         base = max(0, diff)
     boundary = base + thr  # 2 時間の境（到着からの分）
 
-    # 待機
+    # 待機。時計の上の区間ごとに、待機の始まり + 120 分の境の前と後に分ける（SPEC §25.6 の訂正、告示 別紙 V）。
+    # 荷役のあとの待ちも、荷役の時間を含めた時計の境で分ける（運転者の荷役の間に境をまたぐ場合を含む）
     if handler == "荷主側":
-        wait_raw = max(0, e_rel - max(s_rel, base))  # 指定の時刻より後の荷役だけ
-        wait_raw += max(0, s_rel - base)
+        hi = max(base, e_rel)   # 荷主側の荷役は待機に含む。到着（または指定）から荷役終了まで続く
     else:
-        wait_raw = max(0, s_rel - base)
-    wait_raw += post_min   # 30 分の差し引きは 1 か所ごとに 1 回、2 時間の境は待機の始まりから（SPEC §25）
+        hi = max(base, s_rel)
+    n_main = max(0, min(hi, boundary) - base)
+    o_main = max(0, hi - boundary)
+    post_over = max(0, dep_rel - max(e_rel, boundary)) if post_min > 0 else 0
+    wait_raw = n_main + o_main + post_min   # 30 分の差し引きは 1 か所ごとに 1 回（SPEC §25）
     w = wait_raw if fault else 0
-    wn_min = max(0, min(w, thr) - free)
-    wo_min = max(0, w - thr)
+    wn_total = (n_main + post_min - post_over) if fault else 0
+    wo_total = (o_main + post_over) if fault else 0
+    wn_min = max(0, wn_total - free)
+    wo_min = wo_total
     wn_units, wo_units = _ceil_div(wn_min, unit), _ceil_div(wo_min, unit)
     wn_rate, wo_rate = tariff["waiting"]["normal"][vclass], tariff["waiting"]["over_2h"][vclass]
     wait_fee = wn_units * wn_rate + wo_units * wo_rate
@@ -410,6 +463,8 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     handling_fee = hn_units * hn_rate + ho_units * ho_rate
 
     row_notes = [UNKNOWN_HANDLER_NOTE] if handler == UNKNOWN_HANDLER and end is not None else []
+    if wait_raw >= 1440:
+        row_notes.append(LONG_WAIT_NOTE)
     out = {
         "row": n,
         "date": d.isoformat(),
@@ -417,7 +472,7 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         "vehicle_no": g["vehicle_no"],
         "vehicle_class": vclass,
         "partner": partner,
-        "place": g["place"],
+        "place": _nz(g["place"]),   # 全角・半角の違いで場所が分かれないようにそろえる
         "arrive": fmt_time(arrive),
         "start": fmt_time(start),
         "end": fmt_time(end) if end is not None else "",

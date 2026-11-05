@@ -78,6 +78,8 @@ const Find = (() => {
     try {
       const r = await Work.api('/api/b/trips');
       F.trips = r.trips; F.carriers = r.carriers; F.holds = r.holds; F.note = r.note; F.fiction = r.fiction_notice; F.booking = r.booking_notice;
+      if (r.board_now) { F.boardNow = r.board_now; F.skew = new Date(r.board_now).getTime() - Date.now(); } // 盤の時計（デモの時刻、SPEC §34.6）
+      F.demoLabel = r.demo_now_label || F.demoLabel;
       F.err = '';
       if (!F.scLoaded) {
         try { F.scList = (await Work.api('/api/scenarios')).scenarios; F.scList.forEach((x) => { F.scBack[x.id] = x.backhaul || null; }); F.scLoaded = true; } catch (e) { /* 場面の追加項目が無くても動く */ }
@@ -309,7 +311,9 @@ const Find = (() => {
     const s = Math.max(0, Math.ceil(ms / 1000)), z = (n) => String(n).padStart(2, '0');
     return s >= 3600 ? `${Math.floor(s / 3600)}:${z(Math.floor((s % 3600) / 60))}:${z(s % 60)}` : `${Math.floor(s / 60)}:${z(s % 60)}`;
   };
-  const cdText = (h) => cdFmt(new Date(h.expires_at).getTime() - Date.now());
+  // 画面の「いま」は盤の時計（デモの時刻）。実際の日付には依存しない
+  const nowMs = () => Date.now() + (F.skew || 0);
+  const cdText = (h) => cdFmt(new Date(h.expires_at).getTime() - nowMs());
 
   function barHtml(t, cargoKg) {
     const reg = Math.max(1, regSlack(t)), rem = shownRemain(t);
@@ -317,7 +321,10 @@ const Find = (() => {
     let txt = `<span>重さの余り <b class="num">${kg(rem)}</b> / ${kg(regSlack(t))} kg</span>`;
     if (cargoKg !== null) txt += `<span class="num">この荷 ${kg(cargoKg)} kg</span>`;
     const shelf = t.remaining_shelf_kg !== null && t.remaining_shelf_kg !== undefined ? `<div class="f-shelf num">棚の耐荷重の残り ${kg(t.remaining_shelf_kg)} kg</div>` : '';
-    const floor = t.remaining_floor_m2 !== null && t.remaining_floor_m2 !== undefined ? `<div class="f-shelf num">床の空き ${kg(t.remaining_floor_m2)} / ${kg(t.floor_free_m2)} m²</div>` : '';
+    // 床の空きは盤の残りと登録値（API が floor_free_m2 を必ず返す）。数が読めないときは行を出さない。棚の形は車の床ではなく 1 口の床
+    const fNum = (v) => typeof v === 'number' && Number.isFinite(v);
+    const floor = fNum(t.remaining_floor_m2) && fNum(t.floor_free_m2)
+      ? `<div class="f-shelf num">${t.floor_is_unit ? '1口の床の空き' : '床の空き'} ${kg(t.remaining_floor_m2)} / ${kg(t.floor_free_m2)} m²</div>` : '';
     return `<div class="f-bar"><div class="f-track"><i style="width:${fill.toFixed(1)}%"></i>${need !== null ? `<u style="left:${need.toFixed(1)}%"></u>` : ''}</div>` +
       `<div class="f-bar-txt">${txt}</div>${shelf}${floor}</div>`;
   }
@@ -365,7 +372,7 @@ const Find = (() => {
     const r = F.results[t.id], ok = r && r.ok, scope = inScope(t), selCls = t.id === F.sel ? ' sel' : '';
     const mh = holdOf(t), mine = mh && (mh.state === 'held' || mh.state === 'accepted');  // 自分の仮予約がある便は、残りが減った照合の結果を出さない
     const chip = mine ? `<span class="chip ${mh.state === 'accepted' ? 'ok' : 'check'}">${mh.state === 'accepted' ? '承諾済み' : '仮予約中'}</span>`
-      : !r ? '<span class="chip na">照合中</span>' : ok ? '<span class="chip ok">○ 載ります</span>' : '<span class="chip no">× 載りません</span>';
+      : !r ? '<span class="chip na">照合中</span>' : ok ? '<span class="chip ok">○ 載ります</span>' : `<span class="chip no">${esc(noChip(r.reasons))}</span>`;
     const reasons = r && !ok && !mine ? `<ul class="f-why">${r.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
     return `<article class="f-card${ok ? ' ok' : ''}${r && !ok ? ' ng' : ''}${selCls}${scope ? '' : ' off'}" data-t="${t.id}" tabindex="0">` +
       `<div class="f-top"><span class="f-id">${t.id}</span><b class="f-veh">${esc(t.vehicle)}</b>${chip}</div>` +
@@ -416,6 +423,17 @@ const Find = (() => {
     [/集荷の地点/, '集荷の地点が便の空く地点から遠い'], [/荷の床/, '荷の床の合計が便の床の空きを超える'], [/出発済み/, '便がすでに出発している'], [/容器/, '容器に入れた荷だけを受ける便'],
     [/RB/, 'RB の持ち主の同意が無い、または 1 口の重さが上段の上限を超える'], [/直方体の箱/, '箱でない荷は受けない便'], [/壊れ物/, '壊れ物は受けない便'], [/品目/, '品目が便の受けない品目に入る'],
   ];
+  // カードの見出しのチップ: 最初の理由の種類を出す。理由が複数あるときは「ほか ○件」を足す（SPEC §38 F04）
+  const CHIP_KINDS = [
+    [/箱の高さ|箱の底面/, '寸法が合いません'], [/1個の重さ|合計の重さ/, '重さが合いません'], [/荷の床/, '床が足りません'],
+    [/届けばよい日/, '日が合いません'], [/集荷の地点/, '集荷の範囲外'], [/出発済み/, '出発済み'], [/降ろせる地点/, '降ろせる地点が違います'],
+    [/^品目/, '受けない品目'], [/容器|RB|直方体の箱|壊れ物/, '受託の条件に合いません'],
+  ];
+  function noChip(reasons) {
+    const list = reasons || [];
+    const k = list.length ? CHIP_KINDS.find((x) => x[0].test(list[0])) : null;
+    return `× ${k ? k[1] : '載りません'}${list.length > 1 ? `（ほか ${list.length - 1} 件）` : ''}`;
+  }
   const kindOf = (r) => { const k = REASON_KINDS.find((x) => x[0].test(r)); return k ? k[1] : r; };
   // 名前に「（架空）」が含まれるときは足さない（SPEC §31.5 #13）
   const fict = (name) => (/[（(]架空[）)]/.test(String(name)) ? String(name) : `${name}（架空）`);
@@ -515,7 +533,7 @@ const Find = (() => {
     if (!F.pair || F.role !== 'shipper') { el.hidden = true; return; }
     const n = F.trips.filter(isReverse).length;
     el.hidden = false;
-    el.innerHTML = `<div><b>市場を見るで選んだ区間 ${esc(F.pair.from)}→${esc(F.pair.to)}</b>` +
+    el.innerHTML = `<div><b>全国の物流傾向で選んだ区間 ${esc(F.pair.from)}→${esc(F.pair.to)}</b>` +
       `<span>荷が少ない逆向き（${esc(F.pair.to)}→${esc(F.pair.from)}）の帰りの便は ${n} 本です。</span></div>` +
       `<label class="f-chk"><input type="checkbox" id="f-onlypair" ${F.onlyPair ? 'checked' : ''}><span>この向きの便だけ出す</span></label>` +
       '<button type="button" class="btn-link" data-act="clear-pair">区間の指定をやめる</button>';
@@ -572,7 +590,7 @@ const Find = (() => {
   const pad2 = (n) => String(n).padStart(2, '0');
   const dtLocal = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   function regDefaults(from, to) {
-    const dep = new Date(); dep.setDate(dep.getDate() + 1); dep.setHours(17, 0, 0, 0);
+    const dep = new Date(nowMs()); dep.setDate(dep.getDate() + 1); dep.setHours(17, 0, 0, 0); // 盤の時計の翌日 17:00
     const arr = new Date(dep.getTime() + 17 * 3600 * 1000);
     const o = capitalOf(from), d = capitalOf(to);
     return { o, d, dep: dtLocal(dep), arr: dtLocal(arr), veh: '4t', drops: d ? muniFull(d) : '', price: '', priceDirty: false, basis: '', err: '', done: '', busy: false, tok: 0, ...vehFill('4t') };
@@ -717,7 +735,7 @@ const Find = (() => {
       render();
       const dn = q('#fr-done'); if (dn) { dn.textContent = r.done; dn.scrollIntoView({ block: 'nearest' }); }
       fitTrips([t.id]);
-      toast(`${t.id} を登録しました。「最初の状態に戻す」で消えます`);
+      toast(`${t.id} を登録しました。「仮予約と空きを最初の状態に戻す」で消えます`);
     } catch (e) { fail(e.message); toast(e.message); } finally { r.busy = false; const g = q('#fr-go'); if (g) g.disabled = false; }
   }
 
@@ -728,6 +746,8 @@ const Find = (() => {
     if (force || slack.dataset.t !== t.id) {
       slack.value = regSlack(t); price.value = tripPrice(t); slack.dataset.t = t.id;
     }
+    const lbl = price.closest('label') && price.closest('label').querySelector('.lbl'); // 左の欄の見出しは、選んだ便の値段の単位に合わせる（SPEC §38 F4）
+    if (lbl) lbl.textContent = `${t.price_unit || '1口'}の料金（円・税抜）`;
   }
 
   /* ------------------------------------------------------------ 値段の式（SPEC §21.6。運送会社の役の画面だけ） */
@@ -805,6 +825,7 @@ const Find = (() => {
   }
 
   function render() {
+    demoClockLine();
     if (!F.loaded) { renderList(); return; }
     renderLeft();
     renderFormula();
@@ -814,6 +835,15 @@ const Find = (() => {
     q('#f-fiction').textContent = F.fiction || '架空の運送会社と便です。';
     arcPara();
     q('#f-booking').textContent = F.booking || '積むかどうか、どこにどう積むかは運送会社が決めます。受付で量って条件に合わないときは受け付けません。';
+  }
+
+  // 画面の上に、デモの時刻を常に出す（SPEC §34.6）。サーバーが返した文を使い、無ければ決まった文
+  function demoClockLine() {
+    const host = q('#find-view') || q('#f-shipper')?.parentElement;
+    if (!host) return;
+    let p = q('#f-democlock');
+    if (!p) { p = document.createElement('p'); p.id = 'f-democlock'; p.className = 'f-democlock'; const h = host.querySelector('.m-h'); if (h) h.insertAdjacentElement('afterend', p); else host.insertBefore(p, host.firstChild); }
+    p.textContent = F.demoLabel || 'デモの時刻: 11/10 09:00（架空の便に合わせています）';
   }
 
   // 地図の凡例の欄に、直線で表示している便がある旨を 1 行足す
@@ -829,7 +859,7 @@ const Find = (() => {
     if (!F.active) return;
     if (F.role === 'carrier' && F.loaded) renderFormula();
     document.querySelectorAll('.f-cd').forEach((el) => {
-      const ms = new Date(el.dataset.exp).getTime() - Date.now();
+      const ms = new Date(el.dataset.exp).getTime() - nowMs();
       const s = Math.max(0, Math.ceil(ms / 1000));
       el.textContent = `残り ${cdFmt(ms)}`;
       el.classList.toggle('low', ms < 60000);
@@ -1069,7 +1099,7 @@ const Find = (() => {
     F.timer = setInterval(tick, 1000);
   }
 
-  // 見方を開いたとき。pair は市場を見るで選んだ区間（荷が多い向き）。
+  // 見方を開いたとき。pair は全国の物流傾向で選んだ区間（荷が多い向き）。
   async function enter(pair) {
     F.active = true;
     if (pair) { F.pair = { from: pair.from, to: pair.to }; F.onlyPair = true; }

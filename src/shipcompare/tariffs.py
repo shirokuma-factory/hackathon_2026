@@ -86,6 +86,38 @@ def load_waiting_tariff(base: Path | None = None) -> dict[str, Any]:
         return json.load(f)
 
 
+def load_vehicle_decks(base: Path | None = None) -> dict[str, Any]:
+    """貸切の車格ごとの荷台の寸法・最大積載量（data/vehicle_decks.json）。積付け・貸切の候補・比べるページ・空きを探すが共通で読む。"""
+    with open((base or data_dir()) / "vehicle_decks.json", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def deck_of(deck_id: str, base: Path | None = None) -> dict[str, Any]:
+    """荷台の ID（box_2t_short など）の寸法。"""
+    for d in load_vehicle_decks(base)["decks"]:
+        if d["id"] == deck_id:
+            return d
+    raise KeyError(f"荷台 {deck_id!r} は data/vehicle_decks.json にありません")
+
+
+def deck_2t(base: Path | None = None) -> dict[str, Any]:
+    """2t ショートの荷台（洗い出し N7 の唯一の値）。length_mm・width_mm・height_mm・payload_kg に加え、
+    footprint_mm（長さ, 幅）と floor_m2（床の面積。m²）を添える。空きを探す（spaceb.py）はこれを読む。"""
+    d = dict(deck_of(load_vehicle_decks(base)["tariff_class_deck"]["2t"], base))
+    d["footprint_mm"] = [d["length_mm"], d["width_mm"]]
+    d["floor_m2"] = round(d["length_mm"] * d["width_mm"] / 1_000_000, 2)
+    return d
+
+
+FERRY_ONLY_FILE = "ferry_only_destinations.json"
+
+
+def load_ferry_only(base: Path | None = None) -> dict[str, Any]:
+    """道路で本州とつながっていない着地の一覧（data/geo/ferry_only_destinations.json）。"""
+    with open((base or data_dir()) / "geo" / FERRY_ONLY_FILE, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def load_all_tariffs(base: Path | None = None) -> dict[str, dict[str, Any]]:
     return {key: load_tariff(key, base) for key in TARIFF_FILES}
 

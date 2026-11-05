@@ -12,6 +12,7 @@ Edge の場所は環境変数 EDGE_PATH、なければ一般的なインスト�
 from __future__ import annotations
 
 import argparse
+import atexit
 import base64
 import io
 import json
@@ -111,7 +112,43 @@ def stop_edge_profile(profile: str) -> None:
     ps = ("Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\" | "
           f"Where-Object {{ $_.CommandLine -like '*{key}*' }} | "
           "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }")
-    subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True)
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        pass
+
+
+# このプロセスが作ったプロファイル。例外・Ctrl+C・タイムアウトで finally を通れなかった分を、終了時に片づける。
+# プロファイルのパスで探すので、ここに登録していない Edge（ほかのセッションや利用者の Edge）は止めない。
+_PROFILES: list[str] = []
+
+
+def new_profile(prefix: str = "edge_profile_") -> str:
+    """Edge 用の使い捨てプロファイルのフォルダを作り、終了時の片づけに登録する。"""
+    profile = tempfile.mkdtemp(prefix=prefix)
+    _PROFILES.append(profile)
+    return profile
+
+
+def release_profile(profile: str) -> None:
+    """プロファイルの Edge を止めてフォルダを消す。何度呼んでもよい。"""
+    try:
+        stop_edge_profile(profile)
+    finally:
+        shutil.rmtree(profile, ignore_errors=True)
+        if profile in _PROFILES:
+            _PROFILES.remove(profile)
+
+
+def _cleanup_profiles() -> None:
+    for profile in list(_PROFILES):
+        try:
+            release_profile(profile)
+        except BaseException:  # noqa: BLE001  終了処理では例外を外に出さない
+            pass
+
+
+atexit.register(_cleanup_profiles)
 
 
 # ------------------------------------------------------------------ CDP
@@ -583,14 +620,16 @@ def main() -> int:
             print(f"ポート {DEFAULT_PORT} は使用中のため {PORT} で起動します")
     BASE = f"http://localhost:{PORT}"
     edge = find_edge()
-    profile = tempfile.mkdtemp(prefix="edge_profile_")
-    st_proc = subprocess.Popen(
-        ["uv", "run", "streamlit", "run", "app/main.py", "--server.headless", "true",
-         "--server.port", str(PORT), "--client.toolbarMode", "minimal", "--server.fileWatcherType", "none", "--browser.gatherUsageStats", "false"],
-        cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    profile = new_profile()
+    st_proc = None
     edge_proc = None
     results: dict[str, str] = {}
     try:
+        st_proc = subprocess.Popen(
+            ["uv", "run", "streamlit", "run", "app/main.py", "--server.headless", "true",
+             "--server.port", str(PORT), "--client.toolbarMode", "minimal", "--server.fileWatcherType", "none",
+             "--browser.gatherUsageStats", "false"],
+            cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         wait_health()
         dbg = free_port()
         edge_proc = subprocess.Popen(
@@ -632,11 +671,16 @@ def main() -> int:
                 except Exception:
                     pass
     finally:
-        if edge_proc is not None:
-            stop_tree(edge_proc)
-        stop_edge_profile(profile)
-        stop_tree(st_proc)
-        shutil.rmtree(profile, ignore_errors=True)
+        # どこで例外・Ctrl+C が起きても、起動したものを全部止める（1 つが失敗しても次へ進む）
+        try:
+            if edge_proc is not None:
+                stop_tree(edge_proc)
+        finally:
+            try:
+                release_profile(profile)
+            finally:
+                if st_proc is not None:
+                    stop_tree(st_proc)
     print("=== 結果")
     for n, r in results.items():
         print(f"{n}: {r}")

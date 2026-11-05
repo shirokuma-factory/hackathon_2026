@@ -99,7 +99,7 @@ def build_origins(codes: list[str], tariff: dict) -> None:
         for c in codes:
             d = osrm.get(c) or {}
             k, m = d.get("km"), d.get("minutes")
-            f = geo.is_ferry_route(k, m)
+            f = geo.is_ferry_destination(c, k, m)  # 北海道・島しょの一覧（data/geo/ferry_only_destinations.json）か、平均速度 25km/h 未満
             km.append(k)
             mins.append(m)
             ferry.append(f)

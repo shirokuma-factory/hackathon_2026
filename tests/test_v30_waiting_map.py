@@ -2,7 +2,8 @@
 
 - 静的な確認（文字列）: 共有の JS（web/waiting_calc.js）をページに埋め込んでいること、リンク、読み込みの順。
 - 画面の確認: 地図の画面（tools/serve_web.py + ヘッドレス Edge）で例を入れ、waiting.html の例と同じ数字が出て、点と凡例があること。
-  Edge が無い環境では飛ばす。
+  Edge が無い環境だけ飛ばす。Edge があるのに起動・接続・読み込みが時間切れになったら失敗にする（SPEC §38 TQ-4・TQ-5）。
+  Edge は --disable-extensions/--disable-sync（EDGE_CLEAN_FLAGS）つきで起動し、about:blank のページに接続する。
 """
 
 from __future__ import annotations
@@ -104,31 +105,43 @@ def test_g132_map_tab_numbers_match_the_waiting_page_example_and_points_have_a_l
     dbg = cs.free_port()
     proc = subprocess.Popen(
         [edge, "--headless=new", f"--remote-debugging-port={dbg}", "--window-size=1920,1080", f"--user-data-dir={profile}", "--hide-scrollbars",
-         "--force-device-scale-factor=1", "--no-first-run", "--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader", "about:blank"],
+         "--force-device-scale-factor=1", "--no-first-run", "--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader",
+         *cs.EDGE_CLEAN_FLAGS, "about:blank"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
+        # サーバーが index.html を返すまで待つ（返らなければ失敗。飛ばさない）
+        end = time.time() + 60
+        while True:
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/index.html", timeout=3) as r:
+                    if r.status == 200:
+                        break
+            except Exception:  # noqa: BLE001
+                pass
+            assert time.time() < end, "サーバーが 60 秒以内に index.html を返しません"
+            time.sleep(0.5)
         time.sleep(1.5)
         targets = []
         for _ in range(60):
             try:
                 with urllib.request.urlopen(f"http://127.0.0.1:{dbg}/json/list", timeout=2) as r:
-                    targets = [t for t in json.load(r) if t.get("type") == "page"]
+                    targets = cs.blank_targets(json.load(r))
                 if targets:
                     break
             except Exception:  # noqa: BLE001
                 pass
             time.sleep(0.5)
-        if not targets:
-            pytest.skip("Edge のページに接続できませんでした")
+        assert targets, "Edge のページ（about:blank）に接続できませんでした"
+
         page = cs.Page(targets[0]["webSocketDebuggerUrl"])
         page.send("Page.addScriptToEvaluateOnNewDocument", source=cw.ERR_HOOK)
         page.send("Emulation.setDeviceMetricsOverride", width=1920, height=1080, deviceScaleFactor=1, mobile=False)
         page.goto(f"http://localhost:{port}/index.html#v=own&ot=wait")
         try:
-            page.wait(lambda: page.js("!!window.__app"), 180, "アプリの起動")
-            page.wait(lambda: page.js("!document.querySelector('#loading') || document.querySelector('#loading').classList.contains('done')"), 240, "読み込み")
+            page.wait(lambda: page.js("!!window.__app"), 60, "アプリの起動")
+            page.wait(lambda: page.js("!document.querySelector('#loading') || document.querySelector('#loading').classList.contains('done')"), 60, "読み込み")
         except Exception as e:  # noqa: BLE001
-            pytest.skip(f"地図の画面が起動しません（地図の部品を取得できない環境）: {e}")
+            pytest.fail(f"地図の画面が起動しません: {e} / window.__errs {page.js('window.__errs || []')}")
         page.wait(lambda: page.js("!!document.querySelector('[data-w=example]')"), 60, "例を入れるボタン")
         page.js("document.querySelector('[data-w=example]').click()")
         page.wait(lambda: page.js("!!document.querySelector('#hotspots') && document.querySelectorAll('.wm-pt').length > 0"), 60, "表と点")

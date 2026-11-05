@@ -117,6 +117,7 @@ body.selftest #selftest { display: block; }
 const TARIFFS = /*__TARIFFS__*/null;
 const VECTORS = /*__VECTORS__*/null;
 const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Artifact 用の版（navigator.clipboard でコピーし、断られたら枠の文を選ぶ）
+const DECKS = /*__DECKS__*/null;   // 貸切の車の荷台の寸法（data/vehicle_decks.json。積付け・地図の画面・空きを探すと同じ値。ビルドのときに埋め込む）
 const CONTACTS = /*__CONTACTS__*/null;   // 各社の問い合わせ・申し込みページ（ビルドのときに埋め込む。ページは通信しない）
 
 const GUARD = '目安です。最後は各社の見積で確かめてください';
@@ -127,6 +128,10 @@ const KANTO = ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', 
 const KINKI = ['福井県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'];
 const FLEX_DAYS = [0, 1, 2, 3, 4, 5, 7, 10, 14];
 
+// 荷台の値は DECKS（data/vehicle_decks.json）から読む。2t は積付けと同じショート・標準（ロング）、4t はウイング
+const deckById = (id) => DECKS.decks.find((d) => d.id === id);
+const DECK_2T_SHORT = deckById(DECKS.tariff_class_deck['2t']), DECK_2T_LONG = deckById(DECKS.tariff_class_deck_long['2t']), DECK_4T = deckById(DECKS.tariff_class_deck['4t']);
+
 // 規則の数字。出典は下の SOURCES（公式ページの条件）
 const RULES = {
   takuhaiS: { sum3: 200, side: 170, kg: 30 },                // 大手の宅配（標準の上限）
@@ -136,7 +141,8 @@ const RULES = {
   kei: { kg: 350, m3: 2.8, box: [180, 130, 120], boxSeat: [250, 130, 120] }, // 軽貨物マッチング（軽）
   jitbox: { box: [170, 104, 104], m3: 1.8, kg: 500 },         // カゴ台車 1 本単位のボックス
   rosen: { kgPerM3: 280, quoteOverKg: 1000 },                 // 路線便の計算重量
-  t2: { floorM2: 1.77 * 3.10, longest: 440, shortLen: 310 },  // 2t のショート 177×310cm、ロング 440cm
+  t2: { floorM2: DECK_2T_SHORT.length_mm * DECK_2T_SHORT.width_mm / 1e6, longest: DECK_2T_LONG.length_mm / 10, shortLen: DECK_2T_SHORT.length_mm / 10 },  // 2t のショート（荷台長・床）とロング（荷台長）。DECKS の値
+  t4: { payloadKg: DECK_4T.payload_kg },                       // 4t ウイングの公表例の最大積載量（料金の 4t の区分は 4,000kg まで）
   t4home: { kg: 3500, floorM2: 13.0 },                        // 地図の画面のデモの便 T7（架空）
   homeFlexDays: 3,
 };
@@ -145,6 +151,7 @@ const SOURCES = [
   '宅配・赤帽・カゴ台車・路線便: 各社の公式ページに載っている荷物の条件（2026-11-04 に確認。会社名と各社の表は載せません）',
   '大手の宅配の大型サイズ（3 辺合計 260cm・50kg）: 公式ページで確認（2026-11-05）',
   '家財おまかせ便、軽貨物マッチング: 各社の公式ページ（2026-11-05 に確認。法人・店舗への配達、赤帽の荷台寸法は未確認）',
+  '2t・4t の荷台の寸法（2t ショート 3,000×1,700mm、2t 標準 4,200×1,800mm、4t ウイング 6,200×2,200mm、最大積載量 約 2,700kg）: 積付けの公表例（data/vehicle_decks.json）。地図の画面の積付けと同じ値',
   '2t・4t の貸切の目安額: 国土交通省 標準的運賃（2024 年 3 月 22 日告示）の距離制運賃。関東運輸局・近畿運輸局の表。値は官報の告示本文（令和 6 年国土交通省告示第 209 号）と照合済み',
   `見積を頼む先: 各社の公式の問い合わせ・申し込みページ（${CONTACTS.checked_on} に確認）。記録が無い送り方は、記録が無いと書いて、窓口を作り出していない`,
   '帰り便: このサイトの地図の画面のデモ（架空の便）。デモの便 T7 は最大 3,500kg・床 13.0m²（車両の大きさ。地図のカードの数字は空いている分）',
@@ -269,10 +276,11 @@ function evalKashikiri(cls, pieces, t, from, km) {
   const bad = [];
   let status = 'ok';
   if (cls === '2t') {
-    if (t.longest > RULES.t2.longest) return opt(id, name, 'ng', [`最長辺 ${t.longest}cm は 2t ロングの荷台長 440cm を超える`]);
-    if (t.longest > RULES.t2.shortLen) { status = 'check'; bad.push(`最長辺 ${t.longest}cm は 2t ショートの荷台長 310cm を超える（ロングなら 440cm）`); }
-    if (t.floor > RULES.t2.floorM2) { status = 'check'; bad.push(`床面の合計 ${f1(t.floor)}m² は 2t ショートの床（約 5.5m²）を超える。積み重ねられるかは要確認`); }
+    if (t.longest > RULES.t2.longest) return opt(id, name, 'ng', [`最長辺 ${t.longest}cm は 2t ロングの荷台長 ${RULES.t2.longest}cm を超える`]);
+    if (t.longest > RULES.t2.shortLen) { status = 'check'; bad.push(`最長辺 ${t.longest}cm は 2t ショートの荷台長 ${RULES.t2.shortLen}cm を超える（ロングなら ${RULES.t2.longest}cm）`); }
+    if (t.floor > RULES.t2.floorM2) { status = 'check'; bad.push(`床面の合計 ${f1(t.floor)}m² は 2t ショートの床（約 ${f1(RULES.t2.floorM2)}m²）を超える。積み重ねられるかは要確認`); }
   }
+  if (cls === '4t' && t.kg > RULES.t4.payloadKg) { status = 'check'; bad.push(DECKS.tariff_4t_note); }   // SPEC §34.5: 料金の 4t の区分（〜4,000kg）と公表例の 4t ウイング（約 2,700kg）は別
   const region = regionOf(from);
   if (!(km > 0)) return opt(id, name, 'check', ['道路の距離 km を入れると、目安の額が出ます']);
   if (!region) return opt(id, name, 'check', ['集荷が関東・近畿の外のため、この表（関東運輸局・近畿運輸局）では出せない。見積で確かめる']);
@@ -335,6 +343,10 @@ function runSelftest() {
   n += 1; if (byp.jitbox.status !== 'ng' || byp.home.status !== 'ng') fails.push('個人宅はカゴ台車が ng、日の幅 1 日は帰り便が ng');
   const small = evaluate({ rows: [{ n: 1, l: 40, w: 30, h: 20, kg: 5 }], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 0 }), bys = Object.fromEntries(small.options.map((o) => [o.id, o]));
   n += 1; if (bys.takuhai.status !== 'ok' || bys.akabane.status !== 'check' || bys.kei.status !== 'ok') fails.push('小さな荷は宅配 ok、赤帽 check、軽貨物 ok');
+  // 4t の区分（〜4,000kg）でも、公表例の 4t ウイング（約 2,700kg）を超える荷は △ で、§34.5 の文を出す。2t の荷台は DECKS（積付けと共通）の値
+  const heavy = evaluate({ rows: [{ n: 1, l: 100, w: 100, h: 100, kg: 3000 }], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 0 }), byh = Object.fromEntries(heavy.options.map((o) => [o.id, o]));
+  n += 1; if (byh.kashikiri_4t.status !== 'check' || !byh.kashikiri_4t.reasons.includes(DECKS.tariff_4t_note)) fails.push('3,000kg の 4t は △ と §34.5 の文');
+  n += 1; if (RULES.t2.shortLen !== 300 || RULES.t2.longest !== 420 || Math.abs(RULES.t2.floorM2 - 5.1) > 1e-9) fails.push('2t の荷台が DECKS と違う');
   return fails.length ? `SELFTEST FAIL ${n - fails.length}/${n}\n${fails.join('\n')}` : `SELFTEST PASS ${n}/${n}`;
 }
 

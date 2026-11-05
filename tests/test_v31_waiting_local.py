@@ -2,7 +2,8 @@
 
 - 静的な確認: own.js が /api/waiting を呼ばず、WaitingShared.calc を使うこと。告示の表の静的ファイルが元のファイルと同じこと。
 - 画面の確認（ヘッドレス Edge + tools/serve_web.py）: 例を読み込んで表を出すまでに /api/waiting へのリクエストが 0 件、数字は G132 と同じ。
-  点の平均が場所ごと・月ごとの表と同じ。400px で点が地図の端と出典の文字に重ならない。Edge が無い環境では飛ばす。
+  点の平均が場所ごと・月ごとの表と同じ。400px で点が地図の端と出典の文字に重ならない。
+  Edge が無い環境だけ飛ばす。Edge があるのに起動・接続・読み込みが時間切れになったときは失敗にし、画面写真と window.__errs を残す（SPEC §38 TQ-6）。
 """
 
 from __future__ import annotations
@@ -94,8 +95,41 @@ def _connect(cs, dbg):
             pass
         time.sleep(0.5)
     if not targets:
-        pytest.skip("Edge のページに接続できませんでした")
+        pytest.fail("Edge のページ（about:blank）に接続できませんでした")
     return cs.Page(targets[0]["webSocketDebuggerUrl"])
+
+
+def _wait_server(port, timeout=60):
+    """index.html が 200 を返すまで待つ。返らなければ失敗（飛ばさない）。"""
+    end = time.time() + timeout
+    err = None
+    while time.time() < end:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/index.html", timeout=3) as r:
+                if r.status == 200:
+                    return
+        except Exception as e:  # noqa: BLE001
+            err = e
+        time.sleep(0.5)
+    pytest.fail(f"サーバーが {timeout} 秒以内に index.html を返しません: {err}")
+
+
+def _fail_with_evidence(page, what, exc):
+    """時間切れのとき、画面写真と window.__errs を残して失敗にする。"""
+    import base64
+    shot, errs = "", ""
+    try:
+        data = page.send("Page.captureScreenshot", format="png").get("data", "")
+        out = Path(tempfile.gettempdir()) / f"waiting_local_fail_{int(time.time())}.png"
+        out.write_bytes(base64.b64decode(data))
+        shot = str(out)
+    except Exception as e:  # noqa: BLE001
+        shot = f"(画面写真を取れません: {e})"
+    try:
+        errs = json.dumps(page.js("window.__errs || []"), ensure_ascii=False)
+    except Exception as e:  # noqa: BLE001
+        errs = f"(window.__errs を読めません: {e})"
+    pytest.fail(f"{what}: {exc} / 画面写真 {shot} / window.__errs {errs}")
 
 
 def _open_wait(page, port, w, h):
@@ -105,13 +139,13 @@ def _open_wait(page, port, w, h):
     page.send("Emulation.setDeviceMetricsOverride", width=w, height=h, deviceScaleFactor=1, mobile=False)
     page.goto(f"http://localhost:{port}/index.html#v=own&ot=wait")
     try:
-        page.wait(lambda: page.js("!!window.__app"), 180, "アプリの起動")
-        page.wait(lambda: page.js("!document.querySelector('#loading') || document.querySelector('#loading').classList.contains('done')"), 240, "読み込み")
+        page.wait(lambda: page.js("!!window.__app"), 60, "アプリの起動")
+        page.wait(lambda: page.js("!document.querySelector('#loading') || document.querySelector('#loading').classList.contains('done')"), 60, "読み込み")
+        page.wait(lambda: page.js("!!document.querySelector('[data-w=example]')"), 60, "例を入れるボタン")
+        page.js("document.querySelector('[data-w=example]').click()")
+        page.wait(lambda: page.js("!!document.querySelector('#hotspots') && document.querySelectorAll('.wm-pt').length > 0"), 60, "表と点")
     except Exception as e:  # noqa: BLE001
-        pytest.skip(f"地図の画面が起動しません（地図の部品を取得できない環境）: {e}")
-    page.wait(lambda: page.js("!!document.querySelector('[data-w=example]')"), 60, "例を入れるボタン")
-    page.js("document.querySelector('[data-w=example]').click()")
-    page.wait(lambda: page.js("!!document.querySelector('#hotspots') && document.querySelectorAll('.wm-pt').length > 0"), 60, "表と点")
+        _fail_with_evidence(page, "地図の画面が起動しません", e)
     time.sleep(3.0)  # 地図の移動が終わるまで
 
 
@@ -121,6 +155,7 @@ def test_g137_map_wait_tab_sends_nothing_to_the_waiting_api_and_numbers_match_g1
 
     port = cs.free_port()
     server = cw.serve(port)
+    _wait_server(port)
     proc, profile, dbg = _session(cs, edge, 1920, 1080)
     try:
         time.sleep(1.5)
@@ -163,6 +198,7 @@ def test_g141_15_points_stay_inside_the_map_and_clear_of_the_attribution_at_400p
 
     port = cs.free_port()
     server = cw.serve(port)
+    _wait_server(port)
     proc, profile, dbg = _session(cs, edge, 400, 800)
     try:
         time.sleep(1.5)
