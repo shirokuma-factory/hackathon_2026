@@ -9,7 +9,7 @@ const Find = (() => {
     dest: '28110', category: '', inContainer: false, fragile: false, isBox: true, holdMin: 30,
     sel: null, pair: null, onlyPair: false, carrier: 'C1', edits: {}, mine: new Set(), busy: false,
     ver: 0, active: false, geo: {}, markers: new Map(), matchTok: 0, lastCargo: '', timer: null, poll: 0,
-    scBack: {}, scLoaded: false, bhSid: null, ct: {}, ctOpen: null, ctData: null, confirmed: new Set(), // SPEC §21
+    fm: { rate: 70, disc: 0, region: null, key: '', data: null, err: '', built: false, tok: 0 }, scBack: {}, scLoaded: false, bhSid: null, ct: {}, ctOpen: null, ctData: null, confirmed: new Set(), // SPEC §21
   };
   const PERIOD = 14;
   const SPACE = {
@@ -430,9 +430,78 @@ const Find = (() => {
     }
   }
 
+  /* ------------------------------------------------------------ 値段の式（SPEC §21.6。運送会社の役の画面だけ） */
+
+  // 計算はサーバー（/api/b/price_formula → src/shipcompare/spaceb.py）。ここは入力を送って、返った値を並べるだけ
+  const FORMULA_NOTE = '標準的運賃（2024 年 3 月 22 日告示）の個建運賃とリードタイムの割引の考え方に当てた参考額です。値段は運送会社が決めます';
+  const FORMULA_LINE = '個建運賃の参考額 = 距離制運賃 × max（重さの割合, 床の割合）÷ 基準積載率 ×（1 − リードタイムの割引）';
+  const pc1 = (v) => `${(Math.round(v * 1000) / 10).toLocaleString('ja-JP')}%`;
+
+  function renderFormula() {
+    const el = q('#f-formula');
+    if (!el) return;
+    if (F.role !== 'carrier') { el.innerHTML = ''; F.fm.built = false; F.fm.key = ''; return; }
+    if (!F.fm.built) {
+      el.innerHTML = '<div class="m-h f-sub-h">値段の式<span class="m-tag">運送会社の役だけ</span></div>' +
+        `<p class="fm-line">${FORMULA_LINE}</p>` +
+        '<div class="f-grid3"><label><span class="lbl">基準積載率（%）</span><input id="fm-rate" class="ctl sm num" type="number" min="10" max="100" step="5"></label>' +
+        `<label><span class="lbl">リードタイムの割引</span><select id="fm-disc" class="ctl sm">${[0, 10, 20, 30, 40, 50].map((v) => `<option value="${v}">${v}%</option>`).join('')}</select></label>` +
+        '<label><span class="lbl">地域の表</span><select id="fm-region" class="ctl sm"><option value="近畿">近畿運輸局</option><option value="関東">関東運輸局</option></select></label></div>' +
+        '<div id="fm-out" class="fm-out"></div>' +
+        `<p class="fm-note">${FORMULA_NOTE}。</p>`;
+      el.querySelector('#fm-rate').value = F.fm.rate;
+      el.querySelector('#fm-disc').value = String(F.fm.disc);
+      if (!F.fm.bound) { el.addEventListener('input', fmInput); el.addEventListener('change', fmInput); F.fm.bound = true; }
+      F.fm.built = true;
+    }
+    const c = cargoOf(), tid = q('#f-trip-sel').value, car = F.carriers.find((x) => x.id === F.carrier) || {};
+    const region = F.fm.region || car.tariff_region || '関東';
+    q('#fm-region').value = region;
+    const out = q('#fm-out');
+    if (!c || !tid) { out.innerHTML = '<p class="fm-miss">荷物を確定すると、その荷での参考額を出します。</p>'; return; }
+    const rate = Number(F.fm.rate);
+    if (!(rate >= 10 && rate <= 100)) { out.innerHTML = '<p class="fm-miss">基準積載率は 10〜100% で入れてください。</p>'; return; }
+    const key = JSON.stringify([tid, c.sh.items, rate, F.fm.disc, region]);
+    if (key !== F.fm.key) {
+      F.fm.key = key;
+      const tok = ++F.fm.tok;
+      Work.api('/api/b/price_formula', { trip_id: tid, shipment: { items: c.sh.items }, base_load_rate: rate / 100, lead_discount: F.fm.disc / 100, region })
+        .then((r) => { if (tok === F.fm.tok) { F.fm.data = r.reference; F.fm.err = ''; drawFormula(); } })
+        .catch((e) => { if (tok === F.fm.tok) { F.fm.data = null; F.fm.err = e.message; drawFormula(); } });
+    }
+    drawFormula();
+  }
+
+  function drawFormula() {
+    const out = q('#fm-out'), d = F.fm.data;
+    if (!out) return;
+    if (F.fm.err) { out.innerHTML = `<p class="fm-miss">${esc(F.fm.err)}</p>`; return; }
+    if (!d) { out.innerHTML = '<p class="fm-miss">計算しています…</p>'; return; }
+    const by = d.ratio_by;
+    out.innerHTML = '<div class="fm-tbl">' +
+      `<div><span>距離制運賃（${esc(d.region)}運輸局 ${esc(d.tariff_class)}、道路 ${d.km.toLocaleString('ja-JP')} km）</span><b class="num">${n0(d.distance_fare_yen)} 円</b></div>` +
+      `<div class="${by === '重さ' ? 'big' : ''}"><span>重さの割合 = ${kg(d.cargo_kg)} kg ÷ ${kg(d.max_load_kg)} kg</span><b class="num">${pc1(d.weight_ratio)}</b></div>` +
+      `<div class="${by === '床' ? 'big' : ''}"><span>床の割合 = ${kg(d.cargo_floor_m2)} m² ÷ ${kg(d.floor_total_m2)} m²</span><b class="num">${pc1(d.floor_ratio)}</b></div>` +
+      `<div><span>基準積載率</span><b class="num">${pc1(d.base_load_rate)}</b></div>` +
+      `<div><span>リードタイムの割引</span><b class="num">${pc1(d.lead_discount)}</b></div>` +
+      `<div class="sum"><span>個建運賃の参考額（税抜）</span><b class="num">${n0(d.reference_yen)} 円</b></div>` +
+      (d.trip_price_yen != null ? `<div><span>この便に登録した料金（架空・税抜）</span><b class="num">${n0(d.trip_price_yen)} 円</b></div>` : '') +
+      '</div>' + (d.km_note ? `<p class="fm-km">${esc(d.km_note)}</p>` : '');
+  }
+
+  function fmInput(e) {
+    const t = e.target;
+    if (t.id === 'fm-rate') F.fm.rate = t.value;
+    else if (t.id === 'fm-disc') F.fm.disc = Number(t.value);
+    else if (t.id === 'fm-region') F.fm.region = t.value;
+    else return;
+    renderFormula();
+  }
+
   function render() {
     if (!F.loaded) { renderList(); return; }
     renderLeft();
+    renderFormula();
     renderPairBar();
     renderList();
     syncTags();
@@ -442,6 +511,7 @@ const Find = (() => {
 
   function tick() {
     if (!F.active) return;
+    if (F.role === 'carrier' && F.loaded) renderFormula();
     document.querySelectorAll('.f-cd').forEach((el) => {
       const ms = new Date(el.dataset.exp).getTime() - Date.now();
       const s = Math.max(0, Math.ceil(ms / 1000));

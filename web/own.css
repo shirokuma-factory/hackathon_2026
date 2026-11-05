@@ -132,3 +132,64 @@ body:not(.view-own) .own-tag { display: none !important; }
 .own-draft[hidden] { display: none !important; }
 .own-draft .od-text { margin: 0 0 2px; font-size: 12.5px; line-height: 1.65; font-weight: 700; color: #ffe6b0; }
 .own-draft .od-close { font-size: 11.5px; padding: 0; }
+
+/* ======================================================================
+   荷待ちを入れる（SPEC §23）。左を広げて入力の表、右に相手ごとの表と協議の書面の下書き
+   ====================================================================== */
+body.own-wait #own-view { width: min(1000px, 52vw); bottom: 20px; }
+body.own-wait #own-notes, body.own-wait .o-co { display: none; }
+body.own-wait #own-right { width: min(880px, calc(48vw - 48px)); }
+
+.w-lead { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.w-small { margin: 0 0 6px; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+.w-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 6px 0; font-size: 12px; }
+.w-bar label { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11.5px; }
+.w-bar small { color: var(--faint); font-size: 11px; }
+.w-tw { overflow: auto; border: 1px solid var(--line); border-radius: 10px; max-height: 420px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+.w-tbl { border-collapse: collapse; font-size: 12px; width: 100%; }
+.w-tbl th { position: sticky; top: 0; z-index: 1; background: var(--glass-solid); text-align: left; font-weight: 500; color: var(--muted); font-size: 10.5px; padding: 5px 4px; border-bottom: 1px solid var(--line-strong); white-space: normal; line-height: 1.3; }
+.w-tbl td { padding: 2px 2px; border-bottom: 1px solid var(--line); }
+.w-tbl td.w-n { color: var(--faint); font-size: 11px; text-align: right; padding: 0 6px; }
+.w-tbl tr.bad td { background: rgba(240,90,90,.14); }
+.w-in { width: 100%; box-sizing: border-box; height: 28px; padding: 0 5px; font: inherit; font-size: 12px; color: var(--text); background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 6px; }
+.w-in:focus { outline: none; border-color: var(--accent); }
+select.w-in { padding: 0 2px; }
+.w-del { width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--faint); font-size: 14px; cursor: pointer; }
+.w-del:hover { background: rgba(255,255,255,.1); color: var(--text); }
+.w-errs { margin: 6px 0; padding: 8px 10px; border-radius: 8px; background: rgba(240,90,90,.12); border: 1px solid rgba(240,90,90,.4); font-size: 12px; line-height: 1.6; color: #ffd0d0; }
+.w-errs b { display: block; margin-bottom: 2px; color: #ffe3e3; }
+.w-err { margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: rgba(240,90,90,.12); color: #ffd0d0; font-size: 12px; }
+.w-paste { width: 100%; box-sizing: border-box; font: inherit; font-size: 12px; color: var(--text); background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; resize: vertical; }
+
+#own-right .w-rbody { flex: 1; min-height: 0; overflow: auto; padding: 0 18px 16px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+.w-protect, .w-basis { margin: 8px 0; padding: 9px 12px; border-radius: 10px; font-size: 12px; line-height: 1.65; }
+.w-protect { background: rgba(240,182,78,.13); border: 1px solid rgba(240,182,78,.4); }
+.w-protect b, .w-basis b { display: block; font-size: 12px; margin-bottom: 2px; }
+.w-protect p { margin: 0; color: #ffe6b0; font-weight: 700; }
+.w-basis { background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--muted); }
+.w-basis ul { margin: 0; padding-left: 18px; }
+.w-empty { margin: 14px 2px; color: var(--muted); font-size: 12.5px; }
+.w-sect { margin: 12px 0; }
+.w-par, .w-rec { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+.w-par th, .w-rec th { text-align: right; font-weight: 500; color: var(--muted); font-size: 11px; padding: 4px 6px; border-bottom: 1px solid var(--line-strong); line-height: 1.35; }
+.w-par th:first-child, .w-rec th:first-child { text-align: left; }
+.w-rec th small { display: block; font-weight: 400; color: var(--faint); font-size: 10px; }
+.w-par td, .w-rec td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.w-par td.num, .w-rec td.num { text-align: right; }
+.w-par tr[data-w="pick"] { cursor: pointer; }
+.w-par tr.on td { background: rgba(92,200,255,.12); }
+.w-doc { margin-top: 8px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 10px; background: rgba(255,255,255,.03); font-size: 12.5px; line-height: 1.7; }
+.w-doc h3 { margin: 0 0 8px; font-size: 15px; }
+.w-doc h4 { margin: 12px 0 2px; font-size: 12.5px; }
+.w-doc p { margin: 4px 0; }
+.w-dl { display: grid; grid-template-columns: 60px 1fr; gap: 2px 8px; margin: 0; }
+.w-dl dt { color: var(--faint); font-size: 11.5px; } .w-dl dd { margin: 0; }
+.w-list { margin: 4px 0; padding-left: 18px; }
+.w-sentence { margin-top: 10px; padding: 8px 10px; border-left: 3px solid var(--accent); background: rgba(92,200,255,.08); font-weight: 700; }
+
+@media print {
+  body.view-own #own-right { position: static !important; width: auto !important; max-height: none !important; overflow: visible !important; background: none !important; backdrop-filter: none !important; box-shadow: none !important; border: 0 !important; }
+  body.view-own #own-right .w-rbody { overflow: visible !important; padding: 0; }
+  #wait-doc, #wait-doc * { visibility: visible !important; color: #000 !important; border-color: #888 !important; }
+  #wait-doc { position: absolute !important; left: 0; top: 0; width: 100%; background: #fff !important; border: 0 !important; padding: 0; font-size: 12pt; }
+}

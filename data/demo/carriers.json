@@ -8,7 +8,7 @@
     {"id": "C3", "name": "架空みちのく中部運輸", "note": "架空。東北・中部発着の帰り便"},
     {
       "id": "C4", "name": "架空 播磨ライン運輸", "note": "架空。兵庫県加古川市の運送会社。東京からの帰りの便を登録している（解決の筋書き 第1部）",
-      "address": "兵庫県加古川市（架空の番地）",
+      "address": "兵庫県加古川市（架空の番地）", "tariff_region": "近畿",
       "license_no": "架空 貨物自動車運送事業 近運自貨第0000号",
       "terms": "標準貨物自動車運送約款（架空の会社がこれに従う想定）",
       "insurance": "貨物保険あり。1事故あたり上限 1,000万円（架空）",
@@ -101,13 +101,13 @@
       "origin_code": "13108", "dest_code": "28210",
       "depart_at": "2026-11-13T17:00", "arrive_at": "2026-11-14T12:30",
       "space_type": "free_bed", "clear_height_mm": 2100, "unit_footprint_mm": [6000, 2000],
-      "floor_free_m2": 6.0,
+      "floor_free_m2": 6.0, "max_load_kg": 3500, "floor_total_m2": 13.0,
       "max_piece_kg": 300, "weight_slack_kg": 2000,
       "drop_points": ["27128", "27127", "27120", "28210"],
       "pickup_code": "13108", "pickup_radius_km": 10, "accepts_unboxed": true,
       "container_required": false, "rb_owner_consent": false, "max_upper_per_rb_kg": null,
       "shelf_fixed": false, "shelf_rated_kg": null,
-      "price_ex_tax_yen": 45000, "price_unit": "1件",
+      "price_ex_tax_yen": 49900, "price_unit": "1件",
       "refused_categories": ["危険物", "生鮮食品", "動物"]
     }
   ]

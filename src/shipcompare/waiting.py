@@ -265,6 +265,7 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         "handling_over_units": ho_units, "handling_over_rate": ho_rate,
         "handling_fee": handling_fee,
         "amount": wait_fee + handling_fee,
+        # SPEC §23.6: 1 時間以上は待機（荷主側の荷役を含む）だけで数え、2 時間以上は待機と運転者の荷役の合計で数える
         "over_1h": w >= 60,
         "over_2h_total": (w + driver_handling_min) >= thr,
     }, []
@@ -293,7 +294,8 @@ def aggregate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         months = []
         for m in sorted({r["month"] for r in rs}):
             months.append({"month": m, **_sum([r for r in rs if r["month"] == m])})
-        out.append({"partner": name, **_sum(rs), "months": months})
+        out.append({"partner": name, **_sum(rs), "date_from": min(r["date"] for r in rs),
+                    "date_to": max(r["date"] for r in rs), "months": months})
     out.sort(key=lambda p: (-p["amount"], p["partner"]))
     return out
 
@@ -325,5 +327,7 @@ def calc(rows: list[Any], year: int | None = None, tariff: dict[str, Any] | None
         "by_partner": aggregate(done),
         "errors": errors,
         "tariff": {"source_url": t["source_url"], "applies_from": t["applies_from"], "checked_on": t["checked_on"],
-                   "tax": t["tax"]},
+                   "tax": t["tax"], "unit_minutes": t["unit_minutes"], "free_minutes": t["free_minutes"],
+                   "threshold_minutes": t["threshold_minutes"], "class_labels": t.get("class_labels", {}),
+                   "waiting": t["waiting"], "handling": t["handling"]},
     }
