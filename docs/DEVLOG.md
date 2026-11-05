@@ -220,3 +220,4 @@
 - 2026-11-05 07:39 `55e3e0a` Add gap analysis against the official judging criteria
 - 2026-11-05 07:39 `372f9eb` Merge remote-tracking branch 'origin/claude/exciting-bell-uj2kvl' into claude/exciting-bell-uj2kvl
 - 2026-11-05 10:54 `0b2f6ca` Revise gap analysis: exclude demo video, add public-version and new points
+- 2026-11-05 11:21 `cec16cf` Correct ComfyUI status in gap analysis
