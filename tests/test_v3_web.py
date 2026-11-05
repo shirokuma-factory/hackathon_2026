@@ -475,8 +475,11 @@ def test_spec15_17_settings_and_files():
     assert "\r" not in src and "import fastapi" not in src and "import flask" not in src
     for name in ("serve_web.py", "capture_web.py"):
         assert b"\r\n" not in (ROOT / "tools" / name).read_bytes()
-    for name in ("index.html", "app.js", "work.js", "style.css"):
+    for name in ("index.html", "app.js", "work.js", "style.css", "check.js"):
         assert b"\r\n" not in (ROOT / "web" / name).read_bytes()
+    # ?check=1 のときだけ読み込む（通常の利用者には追加の読み込みがない）
+    app = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+    assert "qs.get('check')" in app and "check.js" not in (ROOT / "web" / "index.html").read_text(encoding="utf-8")
     # 画面側に運賃や順位の計算を持ち込んでいない（API の結果を表示するだけ）
     js = (ROOT / "web" / "work.js").read_text(encoding="utf-8") + (ROOT / "web" / "app.js").read_text(encoding="utf-8")
     assert "diff_from_lowest" in js and "/api/compare" in js and "/api/estimate" in js

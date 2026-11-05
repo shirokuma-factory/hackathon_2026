@@ -1029,7 +1029,11 @@ async function main() {
   WARM.onDone(() => { PERF.hold(2000); setTimeout(() => $('#loading').classList.add('done'), 150); });
   requestAnimationFrame(frame);
   M3D.preload();
-  if (new URLSearchParams(location.search).get('perf')) { const sc = document.createElement('script'); sc.src = 'perfprobe.js'; document.head.appendChild(sc); }
+  { // ?perf=1 は計測、?check=1 は利用者向けの動作確認（どちらも付いていなければ何も読まない）
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('perf') || qs.get('check')) { const sc = document.createElement('script'); sc.src = 'perfprobe.js'; document.head.appendChild(sc); }
+    if (qs.get('check')) { const sc = document.createElement('script'); sc.src = 'check.js'; document.head.appendChild(sc); }
+  }
   window.__app = { WARM, S, Market, Muni, Hubs, Find, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }
 
