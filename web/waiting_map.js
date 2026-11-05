@@ -206,6 +206,7 @@ const WaitingMap = (() => {
     return `<h4>${esc(SH.CONSULT_TITLE)}</h4>
       <ul class="w-list">${lines.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
       <p>${esc(SH.CONSULT_CLOSE)}</p>
+      <h5 id="doc-pm-title" style="margin:8px 0 2px;font-size:12.5px">${esc(SH.PM_PARTNER_TITLE)}</h5>
       <p class="w-small">${esc(SH.PM_DEF)}</p>
       <div class="w-recw"><table class="w-rec" id="doc-placemonth"><thead><tr><th>場所</th><th>月</th><th>回数</th><th>平均の荷待ち（分）</th><th>1 時間以上の回数</th></tr></thead><tbody>${months.map((m) => `<tr><td>${esc(m.place)}</td><td>${esc(SH.monthLabel(m.month))}</td><td class="num">${m.count}</td><td class="num">${m.avg_minutes}</td><td class="num">${m.over_1h_count}</td></tr>`).join('')}</tbody></table></div>
       <p>${esc(SH.MONTH_CLOSE)}</p>`;

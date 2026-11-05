@@ -10,3 +10,7 @@
 @media (max-width: 600px) {
   .f-reg .f-grid, .f-reg .f-grid3 { grid-template-columns: 1fr; }
 }
+/* 広い画面: 左のパネルの中でスクロールしても、「この便を登録する」が下の注意と凡例の欄に隠れないよう、パネルの下端に留める（SPEC §32 #8） */
+@media (min-width: 901px) {
+  #find-view .f-reg .f-btns { position: sticky; bottom: -10px; z-index: 2; padding: 8px 0 10px; margin-bottom: -4px; background: rgba(11, 17, 28, .96); border-top: 1px solid var(--line); }
+}

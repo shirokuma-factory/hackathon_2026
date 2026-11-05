@@ -48,11 +48,7 @@ def s1_body() -> dict:
 def test_g138_public_request_contacts_have_no_mode_and_hide_single_company_windows(pub):
     status, r = post(pub, "/api/request", s1_body())
     assert status == 200
-    assert r["contacts"] and all(set(c) == {"name", "url", "condition", "checked_on", "has_window"} for c in r["contacts"])
-    assert "mode" not in json.dumps(r["contacts"])
-    names = " ".join(c["name"] for c in r["contacts"])
-    assert "佐川" not in names and "ヤマト" not in names  # 宅配・カゴ台車は 1 手段 1 社で、並べると結び付く
-    assert "日本通運" in names and "名鉄NX運輸" in names
+    assert r["contacts"] == []  # SPEC §32 #4: 公開版は窓口を 1 社も並べず、案内の文だけ
     assert r["contacts_note"] == CONTACT_POINTER == "窓口は比べるページの「見積を頼む先」にあります"
     assert "佐川" not in r["text"] and "ヤマト" not in r["text"]
 
@@ -67,7 +63,7 @@ def test_g138_local_request_contacts_are_sorted_by_reading_without_mode(srv):
 
 def test_g138_contacts_do_not_depend_on_which_modes_are_usable(pub):
     # 大きな荷で宅配が使えなくなっても、一覧は同じ（使える手段と会社を結び付けない）
-    small = post(pub, "/api/request", s1_body())[1]["contacts"]
+    small = post(pub, "/api/request", s1_body())[1]["contacts"]  # 公開版は空のまま
     items = [{"count": 1, "length_cm": 200, "width_cm": 100, "height_cm": 100, "weight_kg": 300}]
     big = {"shipment": {**s1_body()["shipment"], "items": items}}
     status, r = post(pub, "/api/request", big)
@@ -78,7 +74,7 @@ def test_g138_request_contacts_function_rules():
     pub_rows, note = request_contacts(public=True)
     loc_rows, note2 = request_contacts(public=False)
     assert note == CONTACT_POINTER and note2 is None
-    assert len(loc_rows) == 4 and len(pub_rows) == 2
+    assert len(loc_rows) == 4 and pub_rows == []
     assert all(c["has_window"] and c["url"] for c in loc_rows)  # 窓口のない貸切の行は並べない
 
 

@@ -233,6 +233,26 @@ const Find = (() => {
       m.el.classList.toggle('on', t.id === F.sel);
       m.el.style.display = F.active ? '' : 'none';
     }
+    spreadTags();
+  }
+
+  // 名札が重ならないように、画面上の位置で上下にずらす（SPEC §32 #9）。近い名札は、先に置いた名札と重ならない最初の段に置く
+  function spreadTags() {
+    if (!F.active) return;
+    const W = 76, H = 26, placed = [];
+    const items = F.trips.map((t) => ({ t, m: F.markers.get(t.id) })).filter((x) => x.m);
+    for (const { t, m } of items) {
+      const g = F.geo[t.id];
+      if (!g) continue;
+      const p = map.project(m.mk.getLngLat());
+      let k = 0, dy = 0;
+      for (; k < 14; k++) {
+        dy = k === 0 ? 0 : (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (H + 2);
+        if (!placed.some((r) => Math.abs(r.x - p.x) < W && Math.abs(r.y - (p.y + dy)) < H + 1)) break;
+      }
+      placed.push({ x: p.x, y: p.y + dy });
+      m.mk.setOffset([0, dy]);
+    }
   }
 
   function click(info) {
@@ -1020,6 +1040,7 @@ const Find = (() => {
       const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'find_extra.css'; document.head.appendChild(l);
     }
     bind();
+    map.on('moveend', () => spreadTags());
     await loadTrips();
     if (F.loaded) {
       if (F.trips.length && !F.trips.some((t) => t.drop_points.includes(F.dest))) F.dest = F.trips[0].dest_code;

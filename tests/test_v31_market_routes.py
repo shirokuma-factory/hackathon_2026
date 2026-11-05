@@ -153,8 +153,8 @@ def test_g139_hyogo_tokyo_has_the_entry_and_the_compare_uses_the_two_prefectures
         open_("#v=market&p=27-12")
         label = page.js("(function(){const b=document.querySelector('#m-pair [data-act=clo]');return b?b.textContent:null})()")
         assert label == "鉄道・船を含めて送り方を比べる（発地 新宿区 → 着地 神戸市中央区）"
-        # 大型車の見出しにデータの期間が入る（#5）
-        assert "10/27〜11/2 の 1 週間" in page.js("document.querySelector('#m-pair .mp-jh').textContent")
+        # 区間の詳細に大型車の折れ線は出さない（§32 #2）。層の凡例にはデータの期間が入る（§31 #5）
+        assert not page.js("document.querySelector('#m-pair .mp-j')")
         assert "10/27〜11/2 の 1 週間" in page.js("document.querySelector('#mlg-jartic-t').textContent")
         # 区間の両端が、上の要約と右の切り替えの列に隠れない（#8）。地図の移動が終わるのを待つ
         time.sleep(4)

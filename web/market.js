@@ -398,7 +398,6 @@ const Market = (() => {
     document.body.classList.toggle('m-has-pair', !!r);
     if (!r) { box.hidden = true; box.innerHTML = ''; return; }
     const P = M.d.prefs, a = P[r.fi], b = P[r.ti];
-    const pts = M.j.points.filter((p) => p.fi === r.fi && p.ti === r.ti);
     const mode = M.mode === 'truck' ? '営業用トラック' : M.mode === 'ferry' ? 'フェリー' : '鉄道コンテナ';
     let h = `<div class="mp-top"><div class="mp-title"><span>${esc(a)}</span><span class="ar">&rarr;</span><span>${esc(b)}</span></div>` +
       `<button class="mp-x" data-act="close" aria-label="区間の選択を外す">&#10005;</button></div>` +
@@ -408,25 +407,12 @@ const Market = (() => {
       `<p class="mp-msg">${esc(a)}から${esc(b)}へ運ぶ荷に対して、${esc(b)}から${esc(a)}へ戻る荷は少ないため、<b>この向きの帰り（${esc(b)}→${esc(a)}）が空きやすい</b>区間です。</p>` +
       `<ul class="mp-notes"><li>2021 年 10 月 19〜21 日の 3 日間の出荷で、年間の量ではありません。</li><li>量は重さ（トン）で、便の数ではありません。</li>` +
       `<li>県の単位で、距離は県庁所在地どうしの直線です。${mode}の荷だけを数えています。</li><li>傾向を示すもので、個々の運送会社の空きではありません。</li></ul>`;
-    if (pts.length) {
-      if (!pts.some((p) => p.id === M.jpId)) M.jpId = pts[0].id;
-      const cur = pts.find((p) => p.id === M.jpId);
-      h += `<div class="mp-j"><div class="mp-jh"><b>${esc(weekText())}の道路の大型車</b><span>国の常設観測点（JARTIC）・1 時間ごと</span></div>` +
-        `<div class="mp-chips" role="group" aria-label="観測点">${pts.map((p, i) => `<button data-act="pt" data-id="${p.id}" aria-pressed="${p.id === M.jpId}">地点 ${i + 1}</button>`).join('')}</div>` +
-        `<div class="mp-read" id="ch-read"></div><div id="ch-box">${chartSvg(cur)}</div>` +
-        `<div class="mp-jstat num"><span><i class="dot dot-up"></i>上り計 <b>${n0(cur.up_total)}</b> 台</span><span><i class="dot dot-down"></i>下り計 <b>${n0(cur.down_total)}</b> 台</span>` +
-        `<span>上り÷下り <b>${cur.ratio.toFixed(3)}</b></span><span>欠測 <b>${cur.missing_hours}</b> 時間（観測 ${cur.observed_hours} 時間）</span></div>` +
-        `<p class="mp-warn">上り・下りは道路の定義（路線の終点から起点へ向かう方向が上り）で、この区間の行き帰りとは一致しません。台数は参考値で、積荷の有無は分かりません。</p>` +
-        `<details class="mp-more"><summary>取得の条件</summary><p>${esc(periodText())}。欠測の時間は 0 台として数えず、線を途切れさせています。地点は区間の直線から ${cur.dist_km}km 以内の常設観測点で、一般道・高速の全てではありません。2021 年の調査は 3 日間です。</p></details></div>`;
-    } else {
-      h += `<p class="mp-nojt">この区間の大型車の観測点は取得していません（取得したのは兵庫–東京、東京–三重、神奈川–愛知の 3 区間だけです）。</p>`;
-    }
     h += '<div class="mp-roles">' +
       '<div class="mp-role"><span>荷主の役</span><button class="btn-primary mp-go" data-act="find">この向きの空き便を探す</button></div>' +
       `<div class="mp-role"><span>運送会社の役</span><button class="btn-ghost mp-go" data-act="carrier">この向きの帰り便を登録する</button></div></div>`;
     const clo = cloTarget(r);
     if (clo && r.km >= CLO_KM) {
-      h += `<div class="mp-clo"><p>直線 ${n0(r.km)} km あります。トラックから鉄道・船に移せるかを、日数と目安額の差で見られます。</p>` +
+      h += `<div class="mp-clo"><p>直線 ${n0(r.km)} km あります。鉄道・船の経路、貨物駅・港の位置、問い合わせ先を見られます。日数と額は問い合わせが必要です。</p>` +
         `<button class="btn-ghost mp-go" data-act="clo">鉄道・船を含めて送り方を比べる（発地 ${esc(clo.oName)} → 着地 ${esc(clo.dName)}）</button></div>`;
     } else if (!clo) {
       h += '<div class="mp-clo"><p class="mp-clo-why">発地に選べるのは関東の 7 か所だけなので、この区間は送り方の比べに移れません。</p></div>';
@@ -435,8 +421,6 @@ const Market = (() => {
     }
     box.innerHTML = h;
     box.hidden = false;
-    const hd = box.querySelector('.mp-jh');
-    if (hd) hideRead();
   }
 
   // データの期間を見出しに出す（取得した週が過ぎても誤りにならないよう、日付で書く）。例: 10/27〜11/2 の 1 週間

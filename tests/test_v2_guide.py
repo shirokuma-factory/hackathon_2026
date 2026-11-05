@@ -60,7 +60,7 @@ def test_spec13_7_contact_values_match_spec():
     assert data["takuhai"][0]["url"] == "https://www2.sagawa-exp.co.jp/contact/logistics/"
     assert data["jitbox"][0]["url"] == "https://pages.kuronekoyamato.co.jp/jitquotation_input.html"
     assert "法人発→法人着" in data["jitbox"][0]["condition"]
-    assert all("運送は名鉄NX運輸" in e["condition"] for e in data["rosen"])
+    assert all("こぐまアロー便" not in e["condition"] for e in data["rosen"])  # SPEC §32 #4: 商品名は条件の欄に出さない
     with open(data_dir() / "contacts.json", encoding="utf-8") as f:
         raw = json.load(f)
     assert raw["source"] and raw["checked_on"] == CHECKED

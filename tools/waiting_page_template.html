@@ -61,6 +61,7 @@ table.rec small, table.rec th small { display: block; color: var(--faint); font-
 #wait-doc { flex: 1 1 0; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: var(--card); }
 #wait-doc h3 { margin: 0 0 8px; font-size: 16px; }
 #wait-doc h4 { margin: 12px 0 2px; font-size: 13px; }
+#wait-doc h5 { margin: 8px 0 2px; font-size: 12.5px; }
 #wait-doc p { margin: 4px 0; }
 dl.dl { display: grid; grid-template-columns: 56px 1fr; gap: 2px 8px; margin: 0; }
 dl.dl dt { color: var(--faint); font-size: 12px; } dl.dl dd { margin: 0; }
@@ -201,7 +202,7 @@ body.selftest #selftest { display: block; }
 const TARIFF = /*__TARIFF__*/null;
 const VECTORS = /*__VECTORS__*/null;
 const { HEADER_ALIASES, headerKey, COLUMNS, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, monthLabel, truncWarn, BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE,
-  CONSULT_TITLE, CONSULT_CLOSE } = WaitingShared;
+  CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE } = WaitingShared;
 const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Artifact 用の版（印刷と CSV の保存は使えないので、文と CSV をコピーする）
 
 
@@ -393,6 +394,7 @@ function draftHtml(p) {
     ${consultLines(p.partner).length ? `<h4>${CONSULT_TITLE}</h4>
     <ul class="list">${consultLines(p.partner).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
     <p>${esc(CONSULT_CLOSE)}</p>
+    <h5 id="doc-pm-title">${esc(PM_PARTNER_TITLE)}</h5>
     <p class="small">${esc(PM_DEF)}</p>
     <div class="rec-w"><table class="rec" id="doc-placemonth"><thead><tr><th>場所</th><th>月</th><th>回数</th><th>平均の荷待ち（分）</th><th>1 時間以上の回数</th></tr></thead><tbody>${monthTable(p.partner).map((m) => `<tr><td>${esc(m.place)}</td><td>${esc(monthLabel(m.month))}</td><td class="num">${m.count}</td><td class="num">${m.avg_minutes}</td><td class="num">${m.over_1h_count}</td></tr>`).join('')}</tbody></table></div>
     <p>${esc(MONTH_CLOSE)}</p>` : ''}
@@ -423,7 +425,7 @@ function draftText(p) {
     methods.map((m) => `、${m}の積込料・取卸料 ${n0(t.handling[m].normal[c])} / 2 時間超 ${n0(t.handling[m].over_2h[c])}`).join('')));
   const cl = consultLines(p.partner);
   if (cl.length) {
-    L.push('', `【${CONSULT_TITLE}】`, ...cl.map((x) => `・${x}`), CONSULT_CLOSE, '', ['場所', '月', '回数', '平均の荷待ち（分）', '1 時間以上の回数'].join('	'),
+    L.push('', `【${CONSULT_TITLE}】`, ...cl.map((x) => `・${x}`), CONSULT_CLOSE, '', `【${PM_PARTNER_TITLE}】`, ['場所', '月', '回数', '平均の荷待ち（分）', '1 時間以上の回数'].join('	'),
       ...monthTable(p.partner).map((m) => [m.place, monthLabel(m.month), m.count, m.avg_minutes, m.over_1h_count].join('	')), MONTH_CLOSE);
   }
   L.push('', '【次の契約の書面（運送引受書）に入れる欄の案】', ...clauseList(t).map((x) => `・${x}`), '',

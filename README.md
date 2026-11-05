@@ -24,6 +24,12 @@ uv run python tools/serve_web.py
 
 ブラウザで http://127.0.0.1:8600/ を開きます。画面は 1920×1080 を想定しています。
 
+インターネットに公開する版は `--public` を付けて起動します。待ち受けるポートは環境変数 `PORT`（無ければ 8080）で決まります。公開版は OSRM の公開サーバーに問い合わせず、再配布できないデータ（P31）と各社の運賃の表を配信せず、見積依頼の窓口を並べず、仮予約などの状態を来訪者のブラウザごとに分けます。Cloud Run への公開手順は `docs/DEPLOY.md` です。
+
+```bash
+PORT=8080 uv run python tools/serve_web.py --public
+```
+
 | 見方 | できること | 仕様 |
 |---|---|---|
 | 市場を見る | 帰り便の偏り（物流センサス 2021）を地図で見る。課題の説明の画面 | SPEC §16.1 |
@@ -44,7 +50,7 @@ uv run pytest -q
 | 部分 | 内容 |
 |---|---|
 | `src/shipcompare/` | 目安額、照合と仮予約（`spaceb.py`）、荷待ちの計算（`waiting.py`）、自社の運行（`own.py`）などの純粋な関数 |
-| `tools/serve_web.py` | 標準ライブラリだけの配信サーバーと API（127.0.0.1 だけ） |
+| `tools/serve_web.py` | 標準ライブラリだけの配信サーバーと API（手元の版は 127.0.0.1 だけ。`--public` で公開版、`docs/DEPLOY.md`） |
 | `web/` | 地図の画面（MapLibre + deck.gl）と `waiting.html` |
 | `data/` | 運賃・標準的運賃の表・場面・架空の便とサンプル（すべて出典・確認日つき） |
 | `app/main.py` | 最初の版の Streamlit の画面（見積比較） |
