@@ -130,6 +130,13 @@ CASES: list[dict] = [
               row(partner="B", place="X", date="2026-11-02", start="11:15"), row(partner="A", place="", date="2026-10-07", start="09:40"),
               row(partner="A", place="Y", date="2026-09-30", start="12:00"), row(partner="A", place="Y", date="2026-10-01", start="09:20", shipper_fault="いいえ"),
               row(partner="A", place="  ", date="2026-11-03", start="10:00")]},
+    # ---- SPEC §29 (G124): 定期報告と同じ定義の荷待ち（report_wait_min）
+    {"name": "report_wait_early_arrival_shipper_handling_post_wait", "year": 2026,
+     "rows": [row(place="X", arrive="07:50", appointed="08:00", start="09:00"),
+              row(place="X", arrive="08:30", start="09:00", end="09:40", handler="荷主側", shipper_fault="いいえ"),
+              row(place="X", arrive="09:00", start="09:30", end="09:50", depart="10:30", handler="荷主側", post_wait="はい"),
+              row(place="X", arrive="10:00", start="10:20", end="10:40", depart="11:40", handler="運転者", method="手積み", post_wait="はい"),
+              row(place="X", arrive="08:00", appointed="08:30", start="08:20")]},
     {"name": "multiple_partners_and_months", "year": 2026,
      "rows": [row(start="10:00"), row(date="2026-11-02", start="11:15"), row(partner="B商事", start="10:00"),
               row(partner="B商事", date="2026-09-30", vehicle_class="トレーラー", start="12:00")]},

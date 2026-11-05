@@ -430,6 +430,7 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         "method": method,
         "shipper_fault": fault,
         "crosses_midnight": crosses,
+        "report_wait_min": max(0, s_rel - base),  # SPEC §29.1: 定期報告の定義（到着か指定の時刻の遅い方 → 荷役開始。荷主等の都合に関わらず）
         "wait_raw_min": s_rel,                    # 荷役開始 − 到着（責任の有無によらない）
         "wait_min": w,                            # 待機として数える分（荷主側の荷役と、数えるとした荷役のあとの待ちを含む。責任なしは 0）
         "post_wait": post_on,                     # 荷役のあとの待ちを荷主等の都合として数える行か
@@ -500,16 +501,16 @@ def hotspots(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def by_place_month(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """場所ごと・月ごとの平均の荷待ち（SPEC §28.2）。鍵は（場所、月 YYYY-MM）。場所が空なら「（場所の記入なし）」。
-    並びは場所の文字の順、月の順。"""
+    """場所ごと・月ごとの平均の荷待ち（SPEC §28.2、§29.1）。鍵は（場所、月 YYYY-MM）。場所が空なら「（場所の記入なし）」。
+    数えるのは report_wait_min（特定荷主の定期報告の算定方法）。並びは場所の文字の順、月の順。"""
     groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for r in rows:
         groups.setdefault((r["place"] or NO_PLACE, r["month"]), []).append(r)
     out = []
     for (place, month), rs in groups.items():
-        total = sum(r["wait_min"] for r in rs)
+        total = sum(r["report_wait_min"] for r in rs)
         out.append({"place": place, "month": month, "count": len(rs), "wait_minutes": total, "avg_minutes": _half_up(total, len(rs)),
-                    "over_1h_count": sum(1 for r in rs if r["over_1h"])})
+                    "over_1h_count": sum(1 for r in rs if r["report_wait_min"] >= 60)})
     out.sort(key=lambda x: (x["place"], x["month"]))
     return out
 
