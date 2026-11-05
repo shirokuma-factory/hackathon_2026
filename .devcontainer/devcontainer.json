@@ -3,7 +3,8 @@
   // サーバーは標準ライブラリだけで動くので、パッケージは入れない。
   // 外から開くため公開版（--public: OSRM に問い合わせない、P31 を配らない、来訪者ごとの状態）で起動する。
   // ポートは非公開のまま。開けるのは Codespace を作った本人だけ。
-  // 起動は postStartCommand（エディターの「フォルダーを信頼」を押す前でも動く）。ログは /tmp/backfull.log。
+  // 起動は postAttachCommand（エディターのターミナルで動く。「フォルダーを信頼して続行」を押すと始まる）。
+  // postStartCommand で裏に起動する形は、2026-11-06 の試験でサーバーが残らなかったため使わない。
   "name": "Backfull",
   "image": "mcr.microsoft.com/devcontainers/python:3.13",
   "hostRequirements": { "cpus": 2 },
@@ -11,5 +12,5 @@
   "portsAttributes": {
     "8600": { "label": "Backfull 地図の画面", "onAutoForward": "openBrowser" }
   },
-  "postStartCommand": "setsid nohup python tools/serve_web.py --public --port 8600 > /tmp/backfull.log 2>&1 < /dev/null &"
+  "postAttachCommand": "python tools/serve_web.py --public --port 8600"
 }
