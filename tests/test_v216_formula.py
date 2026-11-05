@@ -23,22 +23,23 @@ WEB = ROOT / "web"
 
 
 def hand(rate: str, disc: str) -> int:
-    """式を手で書いた値。近畿 4t 556.3km（新宿区の表で代用）の距離制運賃 140,950 円。"""
-    fare = next(f["amount"] for f in kashikiri_fares(Decimal("556.3"), Decimal(3500), load_kashikiri("近畿")) if f["class"] == "4t")
-    assert fare == 140_950
+    """式を手で書いた値（SPEC §21.7）。荷を積む区間 江東区 → 大阪市中央区は新宿区 → 大阪市中央区の 491.8km で代用。
+    近畿 4t 491.8km の距離制運賃 120,050 円 [57,350 + 15 × 4,180]。"""
+    fare = next(f["amount"] for f in kashikiri_fares(Decimal("491.8"), Decimal(3500), load_kashikiri("近畿")) if f["class"] == "4t")
+    assert fare == 120_050
     ratio = max(Decimal("4.08") / Decimal("13.0"), Decimal(400) / Decimal(3500))
     return int((Decimal(fare) * ratio / Decimal(rate) * (1 - Decimal(disc))).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
 def test_t7_has_load_floor_and_new_price():
     t = t7()
-    assert t["max_load_kg"] == 3500 and t["floor_total_m2"] == 13.0 and t["price_ex_tax_yen"] == 49_900
+    assert t["max_load_kg"] == 3500 and t["floor_total_m2"] == 13.0 and t["price_ex_tax_yen"] == 43_000
 
 
 def test_g81_formula_s6_t7_at_20_percent_discount_and_70_percent_base():
     r = spaceb.per_unit_reference(t7(), s6_ship(), "0.7", "0.2", "近畿")
-    assert r["reference_yen"] == hand("0.7", "0.2") == 50_556
-    assert r["distance_fare_yen"] == 140_950 and r["tariff_class"] == "4t" and r["km"] == 556.3
+    assert r["reference_yen"] == hand("0.7", "0.2") == 43_060
+    assert r["distance_fare_yen"] == 120_050 and r["tariff_class"] == "4t" and r["km"] == 491.8
     assert abs(r["floor_ratio"] - 4.08 / 13.0) < 1e-9 and abs(r["weight_ratio"] - 400 / 3500) < 1e-9 and r["ratio_by"] == "床"
     assert "新宿区" in r["km_note"]  # 江東区は新宿区の表で代用し、その旨を出す
 
@@ -51,7 +52,7 @@ def test_g81_formula_other_inputs(rate, disc):
 def test_formula_kanto_table_gives_a_different_amount():
     kinki = spaceb.per_unit_reference(t7(), s6_ship(), "0.7", "0.2", "近畿")["reference_yen"]
     kanto = spaceb.per_unit_reference(t7(), s6_ship(), "0.7", "0.2", "関東")
-    assert kanto["distance_fare_yen"] == 147_960 and kanto["reference_yen"] != kinki
+    assert kanto["distance_fare_yen"] != 120_050 and kanto["reference_yen"] != kinki
 
 
 def test_formula_weight_ratio_wins_for_a_heavy_light_floor_cargo():
@@ -78,7 +79,7 @@ def test_formula_needs_registered_load_and_floor():
 def test_formula_api(srv):
     _, port = srv
     st, d = post(port, "/api/b/price_formula", {**s6_body(), "trip_id": "T7", "base_load_rate": 0.7, "lead_discount": 0.2, "region": "近畿"})
-    assert st == 200 and d["reference"]["reference_yen"] == 50_556
+    assert st == 200 and d["reference"]["reference_yen"] == 43_060
     assert "値段は運送会社が決めます" in d["reference"]["notice"]
     # 地域を省くと運送会社の登録（C4 は近畿）になる
     st, d = post(port, "/api/b/price_formula", {**s6_body(), "trip_id": "T7"})
@@ -100,3 +101,27 @@ def test_g81_shipper_role_html_has_no_formula_panel():
                  "標準的運賃（2024 年 3 月 22 日告示）の個建運賃とリードタイムの割引の考え方に当てた参考額です。値段は運送会社が決めます"):
         assert text in js, text
     assert re.search(r'<div id="f-formula"[^>]*></div>', html)  # 中身は空の入れ物だけ
+
+
+# ---------------------------------------------------------------- 最低保証料（任意）
+def test_min_fee_raises_the_reference_when_the_formula_is_lower():
+    base = spaceb.per_unit_reference(t7(), s6_ship(), "0.7", "0.2", "近畿")
+    assert base["min_fee_yen"] is None and base["min_fee_applied"] is False and base["reference_yen"] == base["formula_yen"] == 43_060
+    hi = spaceb.per_unit_reference(t7(), s6_ship(), "0.7", "0.2", "近畿", min_fee_yen=45_000)
+    assert hi["formula_yen"] == 43_060 and hi["reference_yen"] == 45_000 and hi["min_fee_applied"] is True
+    lo = spaceb.per_unit_reference(t7(), s6_ship(), "0.7", "0.2", "近畿", min_fee_yen="40000")
+    assert lo["reference_yen"] == 43_060 and lo["min_fee_applied"] is False
+    assert spaceb.per_unit_reference(t7(), s6_ship(), "0.7", "0.2", "近畿", min_fee_yen="")["min_fee_yen"] is None
+    assert "最低保証料を下回るときは最低保証料" in hi["min_fee_note"]
+    with pytest.raises(ValueError, match="最低保証料"):
+        spaceb.per_unit_reference(t7(), s6_ship(), "0.7", "0.2", "近畿", min_fee_yen=-1)
+
+
+def test_min_fee_api_and_ui_text(srv):
+    _, port = srv
+    st, d = post(port, "/api/b/price_formula", {**s6_body(), "trip_id": "T7", "lead_discount": 0.2, "min_fee_yen": 45000})
+    assert st == 200 and d["reference"]["reference_yen"] == 45_000
+    assert post(port, "/api/b/price_formula", {**s6_body(), "trip_id": "T7", "min_fee_yen": "abc"})[0] == 400
+    js = (WEB / "find.js").read_text(encoding="utf-8")
+    assert "最低保証料（円）" in js and "最低保証料を下回るときは最低保証料" in js
+    assert "便の全体" not in js

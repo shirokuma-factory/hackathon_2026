@@ -530,6 +530,7 @@ DEFAULT_BASE_LOAD_RATE = Decimal("0.7")
 FORMULA_NOTICE = ("標準的運賃（2024 年 3 月 22 日告示）の個建運賃とリードタイムの割引の考え方に当てた参考額です。"
                   "値段は運送会社が決めます")
 FORMULA_TEXT = "個建運賃の参考額 = 距離制運賃 × max（重さの割合, 床の割合）÷ 基準積載率 ×（1 − リードタイムの割引）"
+MIN_FEE_NOTE = "最低保証料を下回るときは最低保証料"
 LEAD_DISCOUNTS = tuple(Decimal(i) / 10 for i in range(0, 6))  # 0〜50% を 10% 刻み
 
 
@@ -545,10 +546,14 @@ def _num(v: Any) -> Decimal | None:
 
 
 def trip_road_km(trip: dict[str, Any]) -> tuple[Decimal, str | None]:
-    """便の発地 → 着地の道路距離（OSRM の事前計算、km）と、代用したときの注記。
+    """便の発地 → 着地の道路距離。荷を積む区間の距離は road_km を使う（SPEC §21.7）。"""
+    return road_km(str(trip["origin_code"]), str(trip["dest_code"]))
 
-    事前計算の出発地は関東の 7 か所だけなので、それ以外（T7 の江東区など）は最寄りの出発地（新宿区）の表で代用する。"""
-    oc, dc = str(trip["origin_code"]), str(trip["dest_code"])
+
+def road_km(oc: str, dc: str) -> tuple[Decimal, str | None]:
+    """発地 → 着地の道路距離（OSRM の事前計算、km）と、代用したときの注記。
+
+    事前計算の出発地は関東の 7 か所だけなので、それ以外（江東区など）は最寄りの出発地（新宿区）の表で代用する。"""
     note = None
     if oc not in geo.ORIGINS:
         pts = geo.load_points()
@@ -566,13 +571,15 @@ def trip_road_km(trip: dict[str, Any]) -> tuple[Decimal, str | None]:
 
 def per_unit_reference(trip: dict[str, Any], shipment: BShipment, base_load_rate: Any = DEFAULT_BASE_LOAD_RATE,
                        lead_discount: Any = 0, region: str = "近畿", km: Decimal | None = None,
-                       km_note: str | None = None) -> dict[str, Any]:
+                       km_note: str | None = None, min_fee_yen: Any = None) -> dict[str, Any]:
     """個建運賃の参考額（SPEC §21.6）。
 
     参考額 = 距離制運賃 × max(重さの割合, 床の割合) ÷ 基準積載率 × (1 − リードタイムの割引)。
     重さの割合 = 荷の重さ ÷ 最大積載量、床の割合 = 荷の床面 ÷ 荷台の床面。
     距離制運賃は region の運輸局の表を kashikiri_fares に当てる（車格は最大積載量が載る最小のもの）。
-    km を渡さなければ trip_road_km で出す（OSRM の事前計算。ここで通信はしない）。誤りは ValueError（日本語）。"""
+    距離は荷を積む区間（荷の集荷の地点 → 荷の届け先）の道路距離（SPEC §21.7）。集荷の地点が無い荷は便の発地を使う。
+    km を渡さなければ road_km で出す（OSRM の事前計算。ここで通信はしない）。
+    min_fee_yen（最低保証料、任意）があるときは max(式の額, 最低保証料)。誤りは ValueError（日本語）。"""
     rate, disc = _num(base_load_rate), _num(lead_discount)
     if rate is None or not Decimal("0") < rate <= Decimal("1"):
         raise ValueError("基準積載率は 0 より大きく 100% 以下で入れてください")
@@ -583,8 +590,13 @@ def per_unit_reference(trip: dict[str, Any], shipment: BShipment, base_load_rate
     max_kg, floor_m2 = _num(trip.get("max_load_kg")), _num(trip.get("floor_total_m2"))
     if not max_kg or max_kg <= 0 or not floor_m2 or floor_m2 <= 0:
         raise ValueError("この便には最大積載量と荷台の床面積が登録されていないため、式を出せません")
+    floor_fee = None
+    if min_fee_yen not in (None, ""):
+        floor_fee = _num(min_fee_yen)
+        if floor_fee is None or floor_fee < 0 or floor_fee > Decimal(10_000_000):
+            raise ValueError("最低保証料は 0 円以上の数で入れてください")
     if km is None:
-        km, km_note = trip_road_km(trip)
+        km, km_note = road_km(str(shipment.origin_code or trip["origin_code"]), str(shipment.dest_code))
     tariff = load_kashikiri(region)
     if km < Decimal(tariff["base_km"]):
         raise ValueError(f"距離 {km}km は距離制運賃の基本距離（{tariff['base_km']}km）に届きません")
@@ -600,6 +612,7 @@ def per_unit_reference(trip: dict[str, Any], shipment: BShipment, base_load_rate
         "formula": FORMULA_TEXT, "notice": FORMULA_NOTICE,
         "trip_id": trip.get("id"), "region": region, "tariff_class": fare["class"],
         "km": float(km), "km_note": km_note,
+        "segment_origin_code": str(shipment.origin_code or trip["origin_code"]), "segment_dest_code": str(shipment.dest_code),
         "distance_fare_yen": fare["amount"],
         "steps": fare["steps"], "steps_over_500": fare["steps_over_500"],
         "cargo_kg": float(shipment.total_kg), "max_load_kg": float(max_kg),
@@ -607,6 +620,10 @@ def per_unit_reference(trip: dict[str, Any], shipment: BShipment, base_load_rate
         "weight_ratio": float(weight_ratio), "floor_ratio": float(floor_ratio),
         "ratio": float(ratio), "ratio_by": "床" if floor_ratio >= weight_ratio else "重さ",
         "base_load_rate": float(rate), "lead_discount": float(disc),
-        "reference_yen": round_yen(raw),
+        "formula_yen": round_yen(raw),
+        "min_fee_yen": round_yen(floor_fee) if floor_fee is not None else None,
+        "min_fee_applied": floor_fee is not None and round_yen(raw) < round_yen(floor_fee),
+        "min_fee_note": MIN_FEE_NOTE,
+        "reference_yen": max(round_yen(raw), round_yen(floor_fee)) if floor_fee is not None else round_yen(raw),
         "trip_price_yen": trip.get("price_ex_tax_yen"),
     }

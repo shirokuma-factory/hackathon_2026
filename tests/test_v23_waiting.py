@@ -69,7 +69,7 @@ def test_g74_medium_eleven_times_52_min_is_19360():
     p = res["by_partner"][0]
     assert p["count"] == 11 and p["amount"] == 19360 and p["wait_minutes"] == 11 * 52
     assert p["months"] == [{"month": "2026-10", **{k: p[k] for k in
-            ("count", "wait_minutes", "handling_minutes", "wait_fee", "handling_fee", "amount", "over_1h_count", "over_2h_count")}}]
+            ("count", "wait_minutes", "handling_minutes", "wait_fee", "handling_fee", "amount", "over_1h_count", "over_2h_count", "side_work_count", "side_work_minutes")}}]
 
 
 # ---------------------------------------------------------------- G75
@@ -296,16 +296,87 @@ def test_g78_ui_has_the_four_tab_wait_input_and_examples():
     assert "/api/waiting/calc" in OWN_JS and "text/csv" in OWN_JS and "window.print()" in OWN_JS
 
 
-def test_g78_ui_example_rows_give_11_times_52_min_and_19360_yen():
-    """画面の「例を入れる」と同じ行を API の計算に通すと、G74 の 19,360 円になる。"""
-    ex = [{"date": f"2026-10-{d:02d}", "vehicle_class": "中型", "partner": "架空 元請A物流", "place": "江東区 地点07", "arrive": "09:00",
-           "start": "09:30", "end": "09:52", "depart": "10:00", "handler": "荷主側", "shipper_fault": "はい"} for d in (1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16)]
-    res = waiting.calc(ex, 2026)
+def test_g78_ui_example_rows_match_the_realistic_11_rows():
+    """画面の「例を入れる」と同じ行（地点07、52 分 × 8、75 分 × 2、指定の到着時刻つき 1）を計算に通す。昔の 11 × 52 分は waiting_vectors.json に別の例として残す。"""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools"))
+    from build_waiting_vectors import example_rows
+    res = waiting.calc(example_rows(), 2026)
     assert res["errors"] == []
     p = res["by_partner"][0]
-    assert p["count"] == 11 and p["wait_minutes"] == 11 * 52 and p["amount"] == 19360 and p["over_1h_count"] == 0
+    assert p["count"] == 11 and p["amount"] == 31_020 and p["over_1h_count"] == 3 and p["over_2h_count"] == 1
+    assert p["wait_minutes"] == 8 * 52 + 2 * 75 + 105 and p["handling_minutes"] == 40
+    old = [row(vehicle_class="中型", date=f"2026-10-{d:02d}", start="09:52") for d in range(1, 12)]
+    assert waiting.calc(old, 2026)["by_partner"][0]["amount"] == 19_360
 
 
 def test_g78_print_css_prints_only_the_draft():
     css = (ROOT / "web" / "own.css").read_text(encoding="utf-8")
     assert "@media print" in css and "#wait-doc" in css
+
+
+# ---------------------------------------------------------------- SPEC 23.7 / G84 指定の到着時刻と附帯業務
+def test_g84_appointed_time_early_arrival_counts_from_the_appointed_time():
+    # 08:10 到着、指定 08:30、荷役開始 09:30。待機は 60 分（08:30 から）。到着から数えると 80 分
+    r = one(arrive="08:10", appointed="08:30", start="09:30")
+    assert (r["wait_min"], r["wait_base_min"], r["wait_from"]) == (60, 20, "指定の到着時刻")
+    assert r["wait_fee"] == 1680 and r["over_1h"] is True
+    assert one(arrive="08:10", start="09:30")["wait_fee"] == 2 * 1680  # 指定なしは 80 分 − 30 分 → 2 回
+
+
+def test_g84_appointed_time_late_arrival_counts_from_arrival():
+    r = one(arrive="08:50", appointed="08:30", start="09:50")
+    assert (r["wait_min"], r["wait_base_min"], r["wait_from"]) == (60, 0, "到着")
+    assert r["wait_fee"] == one(arrive="08:50", start="09:50")["wait_fee"] == 1680
+
+
+def test_g84_no_appointed_time_is_unchanged_and_equal_time_is_arrival():
+    assert one(start="10:00")["wait_from"] == "到着"
+    assert one(appointed="09:00", start="10:00")["wait_fee"] == one(start="10:00")["wait_fee"]
+
+
+def test_g84_two_hour_boundary_counts_from_the_appointed_time():
+    # 到着 08:10、指定 08:30（境は 10:30）。運転者の荷役 10:15〜10:55 → 境の前 15 分、後 25 分
+    r = one(arrive="08:10", appointed="08:30", start="10:15", end="10:55", handler="運転者", method="手積み")
+    assert (r["handling_normal_units"], r["handling_over_units"]) == (1, 1)
+    assert r["handling_fee"] == 2000 + 2400
+    assert r["wait_min"] == 105 and r["wait_normal_units"] == 3 and r["wait_over_units"] == 0
+    # 指定なしなら境は 10:10 で、荷役はすべて境の後
+    r0 = one(arrive="08:10", start="10:15", end="10:55", handler="運転者", method="手積み")
+    assert (r0["handling_normal_units"], r0["handling_over_units"]) == (0, 2)
+
+
+def test_g84_appointed_time_after_handling_start_gives_zero_wait():
+    r = one(arrive="08:00", appointed="09:30", start="09:00")
+    assert r["wait_min"] == 0 and r["wait_fee"] == 0
+
+
+def test_g84_appointed_time_across_midnight():
+    r = one(arrive="23:50", appointed="00:10", start="01:10")  # 指定は翌日の 00:10
+    assert r["wait_base_min"] == 20 and r["wait_min"] == 60 and r["wait_fee"] == 1680
+
+
+def test_g84_side_work_is_recorded_but_not_priced():
+    r = one(start="10:00", side_work="パレットの積み替え", side_min="25")
+    assert (r["side_work"], r["side_min"]) == ("パレットの積み替え", 25)
+    assert r["amount"] == one(start="10:00")["amount"] == 1680
+    p = waiting.calc([row(start="10:00", side_work="検品", side_min="25")], 2026)["by_partner"][0]
+    assert (p["side_work_count"], p["side_work_minutes"]) == (1, 25)
+
+
+def test_g84_errors_for_unreadable_appointed_time_and_side_minutes():
+    res = waiting.calc([row(appointed="9時"), row(side_min="abc")], 2026)
+    msgs = {e["row"]: e["message"] for e in res["errors"]}
+    assert "指定の到着時刻" in msgs[1] and "附帯業務の分" in msgs[2] and res["rows"] == []
+
+
+def test_g84_paste_has_appointed_and_side_columns_at_the_end():
+    line = "\t".join(["10/5", "", "中型", "A運輸", "", "08:10", "09:30", "", "", "", "", "はい", "08:30", "検品", "20"])
+    rows = waiting.parse_paste(line)
+    assert rows[0]["appointed"] == "08:30" and rows[0]["side_work"] == "検品" and rows[0]["side_min"] == "20"
+    r = waiting.calc(rows, 2026)["rows"][0]
+    assert r["wait_min"] == 60 and r["side_min"] == 20
+    head = "\t".join(["日付", "車種", "契約の相手", "到着", "荷役開始", "荷主等の都合の待機か", "指定の到着時刻", "附帯業務の内容", "附帯業務の分"])
+    body = "\t".join(["10/5", "中型", "A運輸", "08:10", "09:30", "はい", "08:30", "検品", "20"])
+    rows = waiting.parse_paste(head + "\n" + body)
+    assert rows[0]["appointed"] == "08:30" and waiting.calc(rows, 2026)["rows"][0]["wait_min"] == 60

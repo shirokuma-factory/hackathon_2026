@@ -9,7 +9,7 @@ const Find = (() => {
     dest: '28110', category: '', inContainer: false, fragile: false, isBox: true, holdMin: 30,
     sel: null, pair: null, onlyPair: false, carrier: 'C1', edits: {}, mine: new Set(), busy: false,
     ver: 0, active: false, geo: {}, markers: new Map(), matchTok: 0, lastCargo: '', timer: null, poll: 0,
-    fm: { rate: 70, disc: 0, region: null, key: '', data: null, err: '', built: false, tok: 0 }, scBack: {}, scLoaded: false, bhSid: null, ct: {}, ctOpen: null, ctData: null, confirmed: new Set(), // SPEC §21
+    fm: { rate: 70, disc: 0, minFee: '', region: null, key: '', data: null, err: '', built: false, tok: 0 }, scBack: {}, scLoaded: false, bhSid: null, ct: {}, ctOpen: null, ctData: null, confirmed: new Set(), // SPEC §21
   };
   const PERIOD = 14;
   const SPACE = {
@@ -446,11 +446,14 @@ const Find = (() => {
         `<p class="fm-line">${FORMULA_LINE}</p>` +
         '<div class="f-grid3"><label><span class="lbl">基準積載率（%）</span><input id="fm-rate" class="ctl sm num" type="number" min="10" max="100" step="5"></label>' +
         `<label><span class="lbl">リードタイムの割引</span><select id="fm-disc" class="ctl sm">${[0, 10, 20, 30, 40, 50].map((v) => `<option value="${v}">${v}%</option>`).join('')}</select></label>` +
-        '<label><span class="lbl">地域の表</span><select id="fm-region" class="ctl sm"><option value="近畿">近畿運輸局</option><option value="関東">関東運輸局</option></select></label></div>' +
+        '<label><span class="lbl">地域の表</span><select id="fm-region" class="ctl sm"><option value="近畿">近畿運輸局</option><option value="関東">関東運輸局</option></select></label>' +
+        '<label><span class="lbl">最低保証料（円）</span><input id="fm-min" class="ctl sm num" type="number" min="0" step="1000" placeholder="空欄"></label></div>' +
+        '<p class="fm-note">最低保証料を下回るときは最低保証料。</p>' +
         '<div id="fm-out" class="fm-out"></div>' +
         `<p class="fm-note">${FORMULA_NOTE}。</p>`;
       el.querySelector('#fm-rate').value = F.fm.rate;
       el.querySelector('#fm-disc').value = String(F.fm.disc);
+      el.querySelector('#fm-min').value = F.fm.minFee;
       if (!F.fm.bound) { el.addEventListener('input', fmInput); el.addEventListener('change', fmInput); F.fm.bound = true; }
       F.fm.built = true;
     }
@@ -459,13 +462,14 @@ const Find = (() => {
     q('#fm-region').value = region;
     const out = q('#fm-out');
     if (!c || !tid) { out.innerHTML = '<p class="fm-miss">荷物を確定すると、その荷での参考額を出します。</p>'; return; }
-    const rate = Number(F.fm.rate);
+    const rate = Number(F.fm.rate), mf = String(F.fm.minFee || '').trim();
+    if (mf !== '' && !(Number(mf) >= 0)) { out.innerHTML = '<p class="fm-miss">最低保証料は 0 円以上の数で入れてください。</p>'; return; }
     if (!(rate >= 10 && rate <= 100)) { out.innerHTML = '<p class="fm-miss">基準積載率は 10〜100% で入れてください。</p>'; return; }
-    const key = JSON.stringify([tid, c.sh.items, rate, F.fm.disc, region]);
+    const key = JSON.stringify([tid, body(), rate, F.fm.disc, region, mf]);
     if (key !== F.fm.key) {
       F.fm.key = key;
       const tok = ++F.fm.tok;
-      Work.api('/api/b/price_formula', { trip_id: tid, shipment: { items: c.sh.items }, base_load_rate: rate / 100, lead_discount: F.fm.disc / 100, region })
+      Work.api('/api/b/price_formula', { ...body(), trip_id: tid, base_load_rate: rate / 100, lead_discount: F.fm.disc / 100, region, ...(mf !== '' ? { min_fee_yen: Number(mf) } : {}) })
         .then((r) => { if (tok === F.fm.tok) { F.fm.data = r.reference; F.fm.err = ''; drawFormula(); } })
         .catch((e) => { if (tok === F.fm.tok) { F.fm.data = null; F.fm.err = e.message; drawFormula(); } });
     }
@@ -479,12 +483,13 @@ const Find = (() => {
     if (!d) { out.innerHTML = '<p class="fm-miss">計算しています…</p>'; return; }
     const by = d.ratio_by;
     out.innerHTML = '<div class="fm-tbl">' +
-      `<div><span>距離制運賃（${esc(d.region)}運輸局 ${esc(d.tariff_class)}、道路 ${d.km.toLocaleString('ja-JP')} km）</span><b class="num">${n0(d.distance_fare_yen)} 円</b></div>` +
+      `<div><span>距離制運賃（${esc(d.region)}運輸局 ${esc(d.tariff_class)}、荷を積む区間 ${esc(muniName(d.segment_origin_code))} → ${esc(muniName(d.segment_dest_code))} 道路 ${d.km.toLocaleString('ja-JP')} km）</span><b class="num">${n0(d.distance_fare_yen)} 円</b></div>` +
       `<div class="${by === '重さ' ? 'big' : ''}"><span>重さの割合 = ${kg(d.cargo_kg)} kg ÷ ${kg(d.max_load_kg)} kg</span><b class="num">${pc1(d.weight_ratio)}</b></div>` +
       `<div class="${by === '床' ? 'big' : ''}"><span>床の割合 = ${kg(d.cargo_floor_m2)} m² ÷ ${kg(d.floor_total_m2)} m²</span><b class="num">${pc1(d.floor_ratio)}</b></div>` +
       `<div><span>基準積載率</span><b class="num">${pc1(d.base_load_rate)}</b></div>` +
       `<div><span>リードタイムの割引</span><b class="num">${pc1(d.lead_discount)}</b></div>` +
-      `<div class="sum"><span>個建運賃の参考額（税抜）</span><b class="num">${n0(d.reference_yen)} 円</b></div>` +
+      (d.min_fee_yen != null ? `<div><span>式の額 / 最低保証料</span><b class="num">${n0(d.formula_yen)} 円 / ${n0(d.min_fee_yen)} 円</b></div>` : '') +
+      `<div class="sum"><span>個建運賃の参考額（税抜）${d.min_fee_applied ? '（最低保証料）' : ''}</span><b class="num">${n0(d.reference_yen)} 円</b></div>` +
       (d.trip_price_yen != null ? `<div><span>この便に登録した料金（架空・税抜）</span><b class="num">${n0(d.trip_price_yen)} 円</b></div>` : '') +
       '</div>' + (d.km_note ? `<p class="fm-km">${esc(d.km_note)}</p>` : '');
   }
@@ -494,6 +499,7 @@ const Find = (() => {
     if (t.id === 'fm-rate') F.fm.rate = t.value;
     else if (t.id === 'fm-disc') F.fm.disc = Number(t.value);
     else if (t.id === 'fm-region') F.fm.region = t.value;
+    else if (t.id === 'fm-min') F.fm.minFee = t.value;
     else return;
     renderFormula();
   }

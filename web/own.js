@@ -285,6 +285,8 @@ const Own = (() => {
     { k: 'handler', t: '荷役をした人', sel: ['', '運転者', '荷主側'], w: 76 },
     { k: 'method', t: '荷役の方法', sel: ['', '手積み', 'フォークリフト等'], w: 96 },
     { k: 'shipper_fault', t: '荷主等の都合の待機か', sel: ['', 'はい', 'いいえ'], w: 66 },
+    { k: 'appointed', t: '指定の到着時刻', ph: '08:30', w: 56 },
+    { k: 'side_work', t: '附帯業務の内容', w: 110 }, { k: 'side_min', t: '附帯業務の分', ph: '20', w: 52 },
   ];
   const W_PROTECT = [
     '参考額は告示の表に当てた計算です。請求するか、いくらにするかは運送会社が決めます。法的な判断は弁護士・運輸支局などに確かめてください',
@@ -297,6 +299,13 @@ const Own = (() => {
     'トラック・物流Gメンの情報提供の窓口があります（荷主には元請けを含みます）。',
     '数え方は標準的運賃（2024 年 3 月 22 日告示）の別紙の表と、Q&A 集 Q29（到着時刻から数える。最初の 30 分を差し引く）です。積込料・取卸料の数え方は告示の文言からの読み取りで、Q&A の例で確かめたのは待機時間料だけです。',
   ];
+  const W_PROCESS = [
+    '次回からの契約の書面に、待機時間料と積込料・取卸料の欄を入れてもらうよう頼みます。過去分を求めるかどうかは、運送会社が決めます。',
+    '国交省のリーフレットは、記録を待機時間料などを収受する根拠にできると書いています。',
+    '取適法では、トラック・物流Gメン（国交省）への通報も報復措置の禁止の対象になりました（条番号は未確認です）。',
+    'トラック・物流Gメンの窓口: https://truck-logistics-gmen.mlit.go.jp/s/',
+    '指定の到着時刻より早く着いたときは、指定の時刻から待機を数えています（控えめな扱い）。附帯業務は記録して一覧に出しますが、告示で実費として収受とされているため、参考額は付けていません。',
+  ];
   const W_EXAMPLE_DAYS = [1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16];
   const blankRow = () => Object.fromEntries(W_COLS.map((c) => [c.k, '']));
   const isBlank = (r) => W_COLS.every((c) => !String(r[c.k] || '').trim());
@@ -306,9 +315,15 @@ const Own = (() => {
   function waitInit() { if (!W.rows.length) W.rows = [blankRow(), blankRow(), blankRow()]; }
 
   function exampleRows() {
-    // 到着から荷役開始まで 30 分、荷主側の荷役 22 分で、待機は各 52 分（荷主側の荷役も待機に入る）
-    return W_EXAMPLE_DAYS.map((d) => ({ ...blankRow(), date: `${W.year}-10-${String(d).padStart(2, '0')}`, vehicle_class: '中型', partner: '架空 元請A物流',
-      place: '江東区 地点07', arrive: '09:00', start: '09:30', end: '09:52', depart: '10:00', handler: '荷主側', shipper_fault: 'はい' }));
+    // 11 行（地点07、中型、荷主等の都合）。8 行は到着 09:00・荷役開始 09:30・荷主側の荷役 22 分で待機 52 分（荷主側の荷役も待機に入る）。
+    // 3 番目と 8 番目は荷役なしで待機 75 分。最後の行は指定の到着時刻 08:30（到着 08:10）で、運転者が 10:15〜10:55 に手積み
+    // （待機は 08:30 から数え、2 時間の境は 10:30 になる）
+    return W_EXAMPLE_DAYS.map((d, i) => {
+      const base = { ...blankRow(), date: `${W.year}-10-${String(d).padStart(2, '0')}`, vehicle_class: '中型', partner: '架空 元請A物流', place: '江東区 地点07', shipper_fault: 'はい' };
+      if (i === 2 || i === 7) return { ...base, arrive: '09:00', start: '10:15', depart: '10:25' };
+      if (i === 10) return { ...base, arrive: '08:10', appointed: '08:30', start: '10:15', end: '10:55', depart: '11:05', handler: '運転者', method: '手積み', side_work: '検品・仕分け', side_min: '20' };
+      return { ...base, arrive: '09:00', start: '09:30', end: '09:52', depart: '10:00', handler: '荷主側' };
+    });
   }
 
   function waitRowHtml(r, i) {
@@ -336,7 +351,7 @@ const Own = (() => {
         <button type="button" class="btn-sm" data-w="example">例を入れる</button><button type="button" class="btn-sm" data-w="clear">表を空にする</button></div>
       <div class="w-tw"><table class="w-tbl" aria-label="荷待ち・荷役の記録の表"><thead><tr><th>#</th>${W_COLS.map((c) => `<th style="min-width:${c.w}px">${esc(c.t)}</th>`).join('')}<th></th></tr></thead>
         <tbody id="w-tbody">${W.rows.map(waitRowHtml).join('')}</tbody></table></div>
-      <div class="w-bar"><button type="button" class="btn-sm" data-w="add">行を足す</button><small>時刻は HH:MM（日付をまたぐ時刻は翌日として扱います）。荷役終了は荷役をしたときに入れます。</small></div>
+      <div class="w-bar"><button type="button" class="btn-sm" data-w="add">行を足す</button><small>時刻は HH:MM（日付をまたぐ時刻は翌日として扱います）。荷役終了は荷役をしたときに入れます。指定の到着時刻と附帯業務は、あるときだけ入れます。</small></div>
       <div id="w-errs-box">${waitErrsHtml()}</div>
       <details class="o-det" open><summary>Excel から貼り付ける</summary>
         <p class="w-small">Excel の表をコピーして貼り付けます（タブ区切り、列の順は上の表と同じです。1 行目が見出しなら読み飛ばします）。</p>
@@ -351,23 +366,25 @@ const Own = (() => {
     const classes = [...new Set(rows.map((r) => r.vehicle_class))];
     const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
     const rec = rows.map((r) => `<tr><td>${esc(r.date)}</td><td>${esc(r.vehicle_no)}</td><td>${esc(r.vehicle_class)}</td><td>${esc(r.place)}</td><td>${esc(r.arrive)}</td><td>${esc(r.start)}</td><td>${esc(r.end)}</td><td>${esc(r.handler)}</td>
-      <td class="num">${r.wait_min}</td><td class="num">${r.handling_min}</td><td class="num">${n0(r.amount)}</td></tr>`).join('');
+      <td class="num">${r.wait_min}${r.wait_base_min > 0 ? `<small>（指定 ${esc(r.appointed)} から）</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.amount)}</td></tr>`).join('');
     const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((m) => `<td class="num">${n0(t.handling[m].normal[c])} / ${n0(t.handling[m].over_2h[c])}</td>`).join('')}</tr>`).join('');
     return `<h3>荷待ち・荷役に関する協議のお願い（下書き）</h3>
       <dl class="w-dl"><dt>相手</dt><dd>${esc(p.partner)} 御中</dd><dt>期間</dt><dd>${esc(p.date_from)} 〜 ${esc(p.date_to)}（${p.count} 回）</dd>
         <dt>差出人</dt><dd>（運送会社の名称・担当者を書き入れてください）</dd></dl>
       <h4>記録の一覧</h4>
-      <table class="w-rec"><thead><tr><th>日付</th><th>車番</th><th>車種</th><th>場所</th><th>到着</th><th>荷役開始</th><th>荷役終了</th><th>荷役をした人</th><th>待機（分）</th><th>荷役（分）</th><th>参考額（円）</th></tr></thead><tbody>${rec}</tbody></table>
+      <div class="w-recw"><table class="w-rec"><thead><tr><th>日付</th><th>車番</th><th>車種</th><th>場所</th><th>到着</th><th>荷役開始</th><th>荷役終了</th><th>荷役をした人</th><th>待機（分）</th><th>荷役（分）</th><th>附帯業務（記録のみ）</th><th>参考額（円）</th></tr></thead><tbody>${rec}</tbody></table></div>
       <h4>参考額と計算の根拠</h4>
       <p>参考額の合計 <b class="num">${yen(p.amount)}</b>（税抜。待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}）。待機の合計 ${hm(p.wait_minutes)}、運転者の荷役の合計 ${hm(p.handling_minutes)}。</p>
-      <p class="w-small">標準的運賃（${esc(t.applies_from)} 告示）の別紙の表に当てた額です。待機は到着時刻から数え、最初の ${t.free_minutes} 分を差し引き、${t.unit_minutes} 分までごとに通常の額、到着から ${t.threshold_minutes / 60} 時間を超える部分は ${t.unit_minutes} 分までごとに 2 時間超の額です（Q&A 集 Q29）。荷主側が荷役をした時間も待機に入れています。出典: ${esc(t.source_url)}</p>
-      <table class="w-rec"><thead><tr><th>使った車種の単価（税抜・円）</th><th>待機時間料<small>${t.unit_minutes} 分までごと</small></th><th>2 時間超</th>${methods.map((m) => `<th>${esc(m)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table>
+      <p class="w-small">標準的運賃（${esc(t.applies_from)} 告示）の別紙の表に当てた額です。待機は到着時刻（指定の到着時刻があって実際の到着が早いときは指定の時刻）から数え、最初の ${t.free_minutes} 分を差し引き、${t.unit_minutes} 分までごとに通常の額、到着から ${t.threshold_minutes / 60} 時間を超える部分は ${t.unit_minutes} 分までごとに 2 時間超の額です（Q&A 集 Q29）。荷主側が荷役をした時間も待機に入れています。出典: ${esc(t.source_url)}</p>
+      <div class="w-recw"><table class="w-rec"><thead><tr><th>使った車種の単価（税抜・円）</th><th>待機時間料<small>${t.unit_minutes} 分までごと</small></th><th>2 時間超</th>${methods.map((m) => `<th>${esc(m)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
       <h4>次の契約の書面（運送引受書）に入れる欄の案</h4>
       <ul class="w-list"><li>待機時間料: 荷主等の都合による待機について、到着から ${t.free_minutes} 分を超えた時間に、${t.unit_minutes} 分までごとに上の単価（到着から 2 時間を超える部分は 2 時間超の単価）。</li>
         <li>積込料・取卸料: 運転者が荷役をしたとき、荷役の時間に ${t.unit_minutes} 分までごとに上の単価（手積み / フォークリフト等で別）。</li>
         <li>荷主等の都合でない待機（予期せぬ渋滞など）は対象にしません。</li></ul>
       <p class="w-sentence">下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。</p>`;
   }
+
+  const processHtml = () => `<aside class="w-process no-print" aria-label="協議の進め方"><b>協議の進め方</b><ul>${W_PROCESS.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></aside>`;
 
   function waitRightHtml() {
     const r = W.res;
@@ -386,7 +403,7 @@ const Own = (() => {
         <table class="w-par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th>運転者の荷役の合計</th><th>参考額</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">2 時間以上の荷待ち・荷役</th></tr></thead><tbody>${tb}</tbody></table></div>
         <div class="w-sect"><div class="m-rh"><b>協議の書面の下書き</b><span class="m-rsub no-print">上の表の行を押すと相手を切り替えます</span></div>
           <div class="w-bar no-print"><button type="button" class="btn-primary sm" data-w="print">印刷して残す</button><button type="button" class="btn-sm" data-w="csv">計算結果を CSV で書き出す</button></div>
-          <article id="wait-doc" class="w-doc">${draftHtml(p)}</article></div>`;
+          <div class="w-draftwrap"><article id="wait-doc" class="w-doc">${draftHtml(p)}</article>${processHtml()}</div></div>`;
     }
     return `<header><div class="m-rh"><b>荷待ち・荷役の記録から協議の書面を作る</b><span class="m-rsub">${r ? esc(`標準的運賃 ${r.tariff.applies_from} 告示`) : ''}</span></div></header>
       <div class="w-rbody">${protect}${mid}${basis}</div>`;
@@ -421,10 +438,10 @@ const Own = (() => {
   const waitSoon = () => { clearTimeout(W.tm); W.tm = setTimeout(waitCalc, 350); };
 
   function waitCsv() {
-    const heads = ['日付', '車番', '車種', '契約の相手', '場所', '到着', '荷役開始', '荷役終了', '出発', '荷役をした人', '荷役の方法', '荷主等の都合の待機か', '待機（分）', '運転者の荷役（分）',
+    const heads = ['日付', '車番', '車種', '契約の相手', '場所', '到着', '荷役開始', '荷役終了', '出発', '荷役をした人', '荷役の方法', '荷主等の都合の待機か', '指定の到着時刻', '附帯業務の内容', '附帯業務の分', '待機の数え始め', '待機（分）', '運転者の荷役（分）',
       '待機時間料 通常（回）', '待機時間料 2時間超（回）', '待機時間料（円）', '積込料・取卸料 通常（回）', '積込料・取卸料 2時間超（回）', '積込料・取卸料（円）', '参考額（円・税抜）'];
     const cell = (v) => { const t = String(v ?? ''); return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
-    const lines = [heads, ...W.res.rows.map((r) => [r.date, r.vehicle_no, r.vehicle_class, r.partner, r.place, r.arrive, r.start, r.end, r.depart, r.handler, r.method, r.shipper_fault ? 'はい' : 'いいえ',
+    const lines = [heads, ...W.res.rows.map((r) => [r.date, r.vehicle_no, r.vehicle_class, r.partner, r.place, r.arrive, r.start, r.end, r.depart, r.handler, r.method, r.shipper_fault ? 'はい' : 'いいえ', r.appointed, r.side_work, r.side_min || '', r.wait_from,
       r.wait_min, r.handling_min, r.wait_normal_units, r.wait_over_units, r.wait_fee, r.handling_normal_units, r.handling_over_units, r.handling_fee, r.amount])];
     const blob = new Blob(['﻿' + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
