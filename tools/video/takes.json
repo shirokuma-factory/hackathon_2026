@@ -1,0 +1,28 @@
+[
+  {
+    "id": "smoke",
+    "url_path": "/index.html#v=market",
+    "size": "1920x1080",
+    "network_log": true,
+    "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+    "steps": [
+      {
+        "wait": 10
+      }
+    ]
+  },
+  {
+    "id": "cursor_smoke",
+    "url_path": "/index.html#v=market",
+    "size": "1920x1080",
+    "cursor": true,
+    "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+    "steps": [
+      {"wait": 1},
+      {"move": "#m-tbody tr:first-child"},
+      {"highlight": ["#m-tbody tr:first-child", 1.5]},
+      {"click": "button[data-view=compare]"},
+      {"wait": 3}
+    ]
+  }
+]
