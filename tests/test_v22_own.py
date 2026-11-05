@@ -517,7 +517,7 @@ def test_ui_view_button_and_panels():
     assert html.index('<script src="own.js">') < html.index('<script src="app.js">')
     assert 'href="own.css"' in html
     # 常に出す文
-    for t in ("架空の会社のサンプルです", "この版ではサンプルだけを扱います。自社のファイルの取り込みは次の版です", "列の対応づけの Claude の提案は、開発のときに作った記録です"):
+    for t in ("架空の会社のサンプルです", "自社の配車表・デジタコの CSV を落とすと、ブラウザの中だけで分析します（ファイルは外に送りません）", "列の対応づけの Claude の提案は、開発のときに作った記録です"):
         assert t in html, t
     app = (WEB / "app.js").read_text(encoding="utf-8")
     assert "'own'" in app and "Own.enter" in app and "Own.layers" in app
@@ -526,7 +526,7 @@ def test_ui_view_button_and_panels():
 def test_ui_own_js_wording():
     js = (WEB / "own.js").read_text(encoding="utf-8")
     assert "Claude の提案: 未作成" in js  # 提案が null のときの表示
-    assert "この版ではサンプルだけを扱います" in js  # ファイルを落としたとき
+    assert "この版ではサンプルだけを扱います" not in js and "OwnCalc.analyze" in js  # ファイルを落とすと、JS で計算して表示する（SPEC §35）
     assert "11/13 の帰り便 T7 はこの下書きから登録した、という設定の架空の便です" in js
     assert "帰り便の下書きにする" in (WEB / "data" / "own_sample.json").read_text(encoding="utf-8")
     assert "Find.setRole('carrier')" in js and "App.setView('find')" in js

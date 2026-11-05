@@ -1,13 +1,15 @@
 'use strict';
-/* 自社の運行（SPEC §22、架空の会社のサンプル）。
-   数字・区間・気づきは tools/build_own_sample.py（src/shipcompare/own.py）が作った web/data/own_sample.json を表示するだけで、
-   ここでは計算しない。例外は地図の線の形（向きごとのずらし、点線）、タブ、確認の「確定・修正・読まない」（ページの中だけ）。 */
+/* 自社の運行（SPEC §22 のサンプル、§35 の自社のファイル）。
+   サンプルの数字・区間・気づきは tools/build_own_sample.py（src/shipcompare/own.py）が作った web/data/own_sample.json を表示する。
+   自社の CSV を落としたときは、web/own_calc.js（OwnCalc.analyze。own.py と同じ結果になる JS）でこのページの中だけで計算し、同じ形で表示する。
+   ファイルはブラウザの外に送らない（/api/ は呼ばない）。ここで計算するのは、地図の線の形、単価からの費用の式、書き出しの文字だけ。 */
 
 const Own = (() => {
   // 荷待ちを入れる（SPEC §23）の状態。記録はこのページのメモリにだけあり、保存しない
   const W = { year: 2026, rows: [], res: null, err: '', tok: 0, tm: null, partner: '', pasteMsg: '', pasteNote: '', bulkMsg: '', idxMap: [], bad: new Set() };
   const O = {
     data: null, loaded: false, active: false, tab: 'import', market: false, dec: {}, fixTxt: {}, open: new Set(), geo: null, markers: [], dropMsg: '',
+    sample: null, mode: 'sample', files: [], userAliases: {}, largeT: 10, cost: { perKm: '', perHour: '' }, lastCopy: '', copyMsg: '', munis: null, pairs: null, busy: false,
   };
   const WD = '月火水木金土日';
   const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -18,13 +20,16 @@ const Own = (() => {
   const DOT = { green: 'g', yellow: 'y', red: 'r', gray: 'n' };
   const KIND = { loaded: '実車', empty: '空車', unknown: '不明' };
   const NOT_YET = 'Claude の提案: 未作成';
+  const isImport = () => O.mode === 'import';
+  const claudeText = (c) => (c ? 'Claude の提案: ' + c.role : isImport() ? 'Claude: 使いません' : NOT_YET);
 
   /* ------------------------------------------------------------ 読み込み */
 
   async function load() {
     if (O.loaded) return;
     try {
-      O.data = await getJSON('data/own_sample.json');
+      O.sample = await getJSON('data/own_sample.json');
+      O.data = O.sample;
       O.loaded = true;
       buildGeo();
     } catch (e) {
@@ -91,25 +96,37 @@ const Own = (() => {
   const LANE = { out: { loaded: 0.07, unknown: 0.19, empty: 0.31 }, back: { loaded: -0.07, empty: -0.19, unknown: -0.31 } };
 
   function buildGeo() {
-    const d = O.data, base = d.route.path;
-    const groups = {};
+    const d = O.data;
+    const groups = {}, other = {};
     for (const l of d.legs) {
-      if (!l.dir) continue;
-      const k = `${l.dir}|${l.kind}`;
-      groups[k] = (groups[k] || 0) + 1;
+      if (l.dir) { const k = `${l.dir}|${l.kind}`; groups[k] = (groups[k] || 0) + 1; }
+      else if (l.frm && l.to && l.frm !== l.to) { const k = `${l.frm}|${l.to}|${l.kind}`; other[k] = (other[k] || 0) + 1; }
     }
-    const items = [], marks = [];
-    for (const [k, n] of Object.entries(groups)) {
-      const [dir, kind] = k.split('|');
-      const pth = offsetPath(base, LANE[dir][kind]);
-      const w = Math.min(9, 1.8 + 0.16 * n);
-      const col = COLOR[kind];
-      if (kind === 'empty') for (const s of dashes(pth, 0.14, 0.1)) items.push({ path: s, w, col, dir, kind, n });
-      else items.push({ path: pth, w: kind === 'unknown' ? Math.max(1.5, w * 0.6) : w, col: kind === 'unknown' ? [col[0], col[1], col[2], 190] : col, dir, kind, n });
-      if (kind === 'loaded') marks.push(...chevrons(pth, [0.28, 0.5, 0.72], 0.06, dir === 'back').map((p) => ({ path: p })));
+    const items = [], marks = [], base = d.route && d.route.path;
+    if (base && base.length > 1) {
+      for (const [k, n] of Object.entries(groups)) {
+        const [dir, kind] = k.split('|');
+        const pth = offsetPath(base, LANE[dir][kind]);
+        const w = Math.min(9, 1.8 + 0.16 * n);
+        const col = COLOR[kind];
+        if (kind === 'empty') for (const s of dashes(pth, 0.14, 0.1)) items.push({ path: s, w, col, dir, kind, n });
+        else items.push({ path: pth, w: kind === 'unknown' ? Math.max(1.5, w * 0.6) : w, col: kind === 'unknown' ? [col[0], col[1], col[2], 190] : col, dir, kind, n });
+        if (kind === 'loaded') marks.push(...chevrons(pth, [0.28, 0.5, 0.72], 0.06, dir === 'back').map((p) => ({ path: p })));
+      }
+    }
+    // 主な往復の組以外の区間は、市区町村の代表点どうしを直線で結ぶ（道路の形は持っていない）
+    for (const [k, n] of Object.entries(other)) {
+      const [a, b, kind] = k.split('|'), pa = d.places[a], pb = d.places[b];
+      if (!pa || !pb || pa.lon == null || pb.lon == null) continue;
+      const w = Math.min(6, 1.2 + 0.2 * n), col = COLOR[kind];
+      const line = [[pa.lon, pa.lat], [pb.lon, pb.lat]];
+      if (kind === 'empty') for (const s of dashes(line, 0.14, 0.1)) items.push({ path: s, w, col, dir: null, kind, n });
+      else items.push({ path: line, w, col, dir: null, kind, n });
     }
     O.geo = { items, marks };
   }
+
+  const placed = (d) => Object.values(d.places).filter((p) => p.lon != null && p.lat != null);
 
   function layers() {
     if (!O.geo || O.tab === 'wait') return []; // 荷待ちのタブでは、サンプルの運行の線と点は出さない（荷待ちの点だけを見せる）
@@ -123,21 +140,26 @@ const Own = (() => {
         id: 'o-chev', data: O.geo.marks, getPath: (x) => x.path, getWidth: 2.4, getColor: [236, 248, 255, 235], widthUnits: 'pixels', capRounded: true, jointRounded: true, pickable: false,
       }),
       new L.ScatterplotLayer({
-        id: 'o-pts', data: Object.values(O.data.places), getPosition: (p) => [p.lon, p.lat], getRadius: 7, radiusUnits: 'pixels', getFillColor: [255, 255, 255, 255],
+        id: 'o-pts', data: placed(O.data), getPosition: (p) => [p.lon, p.lat], getRadius: 7, radiusUnits: 'pixels', getFillColor: [255, 255, 255, 255],
         getLineColor: [92, 200, 255, 255], stroked: true, lineWidthUnits: 'pixels', getLineWidth: 3, pickable: false,
       }),
     ];
   }
 
+  function clearMarkers() {
+    for (const m of O.markers) { m.mk.remove(); }
+    O.markers = [];
+  }
+
   function syncMarkers() {
     if (!O.loaded) return;
     if (!O.markers.length) {
-      for (const p of Object.values(O.data.places)) {
+      for (const p of placed(O.data)) {
         const el = document.createElement('div');
         el.className = 'own-tag';
         el.innerHTML = p.id === O.data.base
           ? `<b>${esc(p.short)}</b><small>自社の車庫</small>`
-          : `<b>${esc(p.pseudo)}</b><small>${esc(p.label)}</small>`;
+          : isImport() ? `<b>${esc(p.short)}</b><small>${esc(p.label)}</small>` : `<b>${esc(p.pseudo)}</b><small>${esc(p.label)}</small>`;
         O.markers.push({ el, mk: new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -12] }).setLngLat([p.lon, p.lat]).addTo(map) });
       }
     }
@@ -145,6 +167,17 @@ const Own = (() => {
   }
 
   /* ------------------------------------------------------------ 左: タブ */
+
+  // 市区町村の名前に当たらなかった地点。線にせず、ここに並べる。市区町村の名前を入れると、別名として覚えて計算し直す
+  function unplacedHtml(d) {
+    if (!isImport()) return '';
+    const u = d.unplaced || [];
+    if (!u.length) return '<div class="o-h">地図に置けない地点</div><p class="o-hint">地図に置けない地点はありません</p>';
+    const rows = u.map((x) => `<div class="o-up" data-name="${esc(x.name)}"><span class="o-upn"><b>${esc(x.name)}</b><small>${x.count} 回出てきます・${esc(x.reason || '')}</small></span>
+      <input class="ctl sm" type="text" placeholder="市区町村名（例: 江東区）" aria-label="${esc(x.name)} の市区町村名"><button type="button" class="btn-sm" data-act="alias">地図に置く</button></div>`).join('');
+    return `<div class="o-h">地図に置けない地点 ${u.length} か所</div>
+      <p class="o-hint">地名の先頭が市区町村の名前に当たらなかった地点です。線にはしていません（実車か空車かの判定には使っています）。市区町村名を入れると、その名前の別名として覚えて計算し直します。</p>${rows}`;
+  }
 
   function counts() {
     const d = O.data;
@@ -156,25 +189,26 @@ const Own = (() => {
 
   function importHtml() {
     const d = O.data;
-    const rows = d.files.map((f) => `<tr><td class="o-fn"><b>${esc(f.file)}</b><small>${esc(f.kind)}${f.note ? '・' + esc(f.note) : ''}</small></td>
+    const rows = d.files.map((f) => `<tr><td class="o-fn"><b>${esc(f.file)}</b><small>${esc(f.kind)}${f.encoding ? '・' + esc(f.encoding) : ''}${f.note ? '・' + esc(f.note) : ''}</small></td>
       <td class="num">${f.ok}</td><td class="num ${f.pending ? 'o-y' : ''}">${f.pending}</td><td class="num ${f.unreadable ? 'o-r' : ''}">${f.unreadable}</td></tr>`).join('');
     const unread = d.unreadable.map((u) => `<tr><td class="o-where"><small>${esc(u.file)}</small>${esc(u.where)}</td><td class="o-mono">${esc(u.original)}</td><td class="o-r">${esc(u.reason)}</td></tr>`).join('');
     const cols = d.columns.map((c) => `<div class="o-col" title="${esc(c.formula)}">
       <span class="o-cn"><b>${esc(c.column)}</b><small>${esc(c.source)}</small></span>
       <span class="o-cd">${c.dict_hit ? '辞書 ○' : '辞書 ×'}</span><span class="o-cs num">形 ${pc(c.shape_ratio)}</span>
       <span class="o-cc"><i class="${dotCls(c.color)}"></i><span class="num">${c.confidence.toFixed(2)}</span></span>
-      <span class="o-cl">${c.claude_proposal ? 'Claude: ' + esc(c.claude_proposal.role) : NOT_YET}</span></div>`).join('');
+      <span class="o-cl">${c.claude_proposal ? 'Claude: ' + esc(c.claude_proposal.role) : isImport() ? 'Claude: 使いません' : NOT_YET}</span></div>`).join('');
     const g = d.columns.filter((c) => c.color === 'green').length, y = d.columns.filter((c) => c.color === 'yellow').length, r = d.columns.filter((c) => c.color === 'red').length;
-    return `<div class="o-drop" id="own-drop" tabindex="0" role="button" aria-label="自社のファイルを落とす欄（この版ではサンプルだけを扱います）">
-        <b>自社のファイルを落とす</b><span>配車表・デジタコの CSV</span><input id="own-file" type="file" multiple hidden></div>
+    const un = unplacedHtml(d);
+    return `<div class="o-drop" id="own-drop" tabindex="0" role="button" aria-label="自社のファイルを落とす欄（配車表・デジタコの CSV。ブラウザの外には送りません）">
+        <b>自社のファイルを落とす</b><span>配車表・デジタコの CSV（UTF-8 と Shift_JIS）。外には送りません</span><input id="own-file" type="file" accept=".csv,.txt,text/csv" multiple hidden></div>
       <p class="o-drop-msg" id="own-drop-msg" ${O.dropMsg ? '' : 'hidden'}>${esc(O.dropMsg)}</p>
       <table class="o-tbl"><thead><tr><th>ファイル</th><th>読めた行</th><th>確認待ち</th><th>読めない行</th></tr></thead><tbody>${rows}
         <tr class="o-paper"><td colspan="4">${esc(d.paper.text)}</td></tr></tbody></table>
       <details class="o-det" open><summary>表の形の判定</summary>${d.files.map((f) => `<p class="o-verdict"><b>${esc(f.file)}</b> ${esc(f.verdict)}</p>`).join('')}</details>
-      <div class="o-h">読めない ${d.unreadable.length} 行（わざと入れた例）</div>
-      <table class="o-tbl o-un"><tbody>${unread}</tbody></table>
+      <div class="o-h">読めない ${d.unreadable.length} 行${isImport() ? '' : '（わざと入れた例）'}</div>
+      <table class="o-tbl o-un"><tbody>${unread || '<tr><td class="o-hint">読めない行はありません</td></tr>'}</tbody></table>${un}
       <details class="o-det" open><summary>列の対応づけ（緑 ${g}・黄 ${y}・赤 ${r}）</summary>
-        <p class="o-claude ${d.claude.present ? '' : 'none'}">${esc(d.claude.label)}${d.claude.present ? '' : '（開発のときに作る記録の欄は空です。確かさは辞書の一致と値の形だけで計算しています）'}</p>
+        <p class="o-claude ${d.claude.present || isImport() ? '' : 'none'}">${esc(d.claude.label)}${d.claude.present ? '' : isImport() ? '（列の対応づけは、列名の辞書と値の形だけで決めています。外には送っていません）' : '（開発のときに作る記録の欄は空です。確かさは辞書の一致と値の形だけで計算しています）'}</p>
         <div class="o-cols">${cols}</div></details>`;
   }
 
@@ -184,7 +218,7 @@ const Own = (() => {
     const pend = d.confirm.length - cnt.ok - cnt.fix - cnt.skip;
     const cards = d.confirm.map((c) => {
       const st = O.dec[c.id] || '';
-      const claude = c.kind === 'column' ? `<div class="o-kv"><span>Claude</span><span class="${c.claude ? '' : 'o-none'}">${c.claude ? 'Claude の提案: ' + esc(c.claude.role) : NOT_YET}</span></div>` : '';
+      const claude = c.kind === 'column' ? `<div class="o-kv"><span>Claude</span><span class="${c.claude ? '' : 'o-none'}">${esc(claudeText(c.claude))}</span></div>` : '';
       const conf = c.confidence != null ? `<div class="o-kv"><span>確かさ</span><span class="num o-formula">${esc(c.formula)}</span></div>` : `<div class="o-kv"><span>しきい値</span><span class="o-formula">${esc(c.formula)}</span></div>`;
       const label = { ok: '確定しました', fix: '修正しました', skip: '読まないことにしました' }[st] || '';
       return `<div class="o-card ${st ? 'done ' + st : ''}" data-id="${c.id}">
@@ -226,8 +260,27 @@ const Own = (() => {
     body.innerHTML = O.tab === 'import' ? importHtml() : O.tab === 'confirm' ? confirmHtml() : O.tab === 'wait' ? waitHtml() : insightsHtml();
     body.scrollTop = keep;
     const tag = q('#own-view .m-tag');
-    if (tag) tag.textContent = O.tab === 'wait' ? '自社の記録を入れる' : '架空のサンプル';
+    if (tag) tag.textContent = O.tab === 'wait' ? '自社の記録を入れる' : isImport() ? '自社のファイル' : '架空のサンプル';
+    syncSource();
     bindDrop();
+  }
+
+  // どちらのデータを見ているかを、いつも上に出す（SPEC §35.2）。上の説明と、下の注意の文もデータに合わせる
+  function syncSource() {
+    let bar = q('#own-src');
+    if (!bar) { bar = document.createElement('div'); bar.id = 'own-src'; bar.className = 'o-srcbar'; q('#own-tabs').before(bar); }
+    bar.className = 'o-srcbar' + (isImport() ? ' on' : '');
+    bar.innerHTML = isImport()
+      ? `<span class="o-srcn"><small>いま見ているデータ</small><b>自社のファイル: ${O.files.length} 件</b></span><button type="button" class="btn-sm" data-act="reset">サンプルに戻す</button>`
+      : '<span class="o-srcn"><small>いま見ているデータ</small><b>サンプル（架空の会社）</b></span>';
+    const d = O.data, co = q('#own-view .o-co');
+    if (co) co.textContent = isImport()
+      ? `${O.files.map((f) => f.name).join('、')}（${d.year} 年 ${d.mon} 月、車両 ${d.vehicles.length} 台）`
+      : `${d.company.name}（${d.company.city}・車両 ${d.company.vehicles} 台）の ${d.year} 年 ${d.mon} 月`;
+    const n1 = q('#own-notes .f-n1'), n2 = q('#own-notes .f-n2'), n3 = q('#own-notes .f-n3');
+    if (n1) n1.textContent = isImport() ? '自社のファイルを分析しています。架空のサンプルではありません' : '架空の会社のサンプルです';
+    if (n2) n2.textContent = '落とした CSV はこのブラウザの中だけで計算します。外には送りません。ページを閉じると消えます';
+    if (n3) n3.textContent = isImport() ? '列の対応づけは、列名の辞書と値の形だけで決めています。Claude には送りません' : '列の対応づけの Claude の提案は、開発のときに作った記録です';
   }
 
   /* ------------------------------------------------------------ 右: 数字と表 */
@@ -236,35 +289,76 @@ const Own = (() => {
     return `<div class="o-tile" title="${esc(tip)}"><div class="o-tl">${label}</div><div class="o-tv num">${val}</div><div class="o-ts">${sub}</div>${nat ? `<div class="o-tn">${nat}</div>` : ''}</div>`;
   }
 
+  const yenS = (v) => `${n0(v)} 円`;
+
+  // 区間 × 向き × 曜日の表。単価が入っているときだけ、費用の列を足す（空なら出さない。0 円にしない）
+  function tableHtml(d) {
+    const cs = OwnCalc.costs(d, O.cost.perKm, O.cost.perHour), dockLong = (wd) => d.stops.filter((s) => s.place === d.dock && s.minutes >= 30 && s.cycle_wd === wd).reduce((a, s) => a + s.minutes, 0);
+    const extra = (cs.perKm != null ? 1 : 0) + (cs.perHour != null ? 1 : 0), nm = (id) => (d.places[id] ? d.places[id].short : '?');
+    const rowsOf = (dir) => {
+      const rs = d.table.filter((t) => t.dir === dir);
+      if (!rs.length) return '';
+      const tot = rs.reduce((a, t) => ({ trips: a.trips + t.trips, empty: a.empty + t.empty, km: a.km + t.empty_km, ls: a.ls + (t.long_stops || 0), unk: a.unk + t.unknown, lm: a.lm + (dir === 'out' ? dockLong(t.wd) : 0) }), { trips: 0, empty: 0, km: 0, ls: 0, unk: 0, lm: 0 });
+      const costCells = (km, lm) => (cs.perKm != null ? `<td class="num">${yenS(Math.round(km * cs.perKm))}</td>` : '') + (cs.perHour != null ? `<td class="num">${dir === 'out' ? yenS(Math.round((lm / 60) * cs.perHour)) : '—'}</td>` : '');
+      const body = rs.map((t) => {
+        const hot = dir === 'back' && t.trips >= 4 && t.empty * 4 >= (t.trips - t.unknown) * 3 && (t.trips - t.unknown) >= 4;
+        return `<tr class="${hot ? 'hot' : ''}"><td>${WD[t.wd]}曜発</td><td class="num">${t.trips}</td><td class="num">${t.empty}</td><td class="num">${t.empty_km ? n0(t.empty_km) : '—'}</td><td class="num">${t.long_stops == null ? '—' : t.long_stops}</td>${costCells(t.empty_km, dir === 'out' ? dockLong(t.wd) : 0)}</tr>`;
+      }).join('');
+      const a = dir === 'out' ? d.base : d.dock, b = dir === 'out' ? d.dock : d.base;
+      return `<tr class="grp"><td colspan="${5 + extra}">${dir === 'out' ? '行き' : '帰り'}　${esc(nm(a))} → ${esc(nm(b))}</td></tr>${body}
+        <tr class="tot"><td>合計</td><td class="num">${tot.trips}</td><td class="num">${tot.empty}</td><td class="num">${n0(tot.km)}</td><td class="num">${dir === 'out' ? tot.ls : '—'}</td>${costCells(tot.km, tot.lm)}</tr>`;
+    };
+    const body = rowsOf('out') + rowsOf('back');
+    if (!body) return '<p class="o-hint">主な往復（行き・帰り）の区間がありません。区間の表は出せません。</p>';
+    return `<table class="o-tab" aria-label="区間と向きと曜日の表"><thead><tr><th>向き・出た曜日</th><th>便数</th><th>空車</th><th>空車の km</th><th>30 分以上の停車</th>${cs.perKm != null ? '<th>空車の費用</th>' : ''}${cs.perHour != null ? '<th>停車の費用</th>' : ''}</tr></thead>
+        <tbody>${body}</tbody></table>`;
+  }
+
+  // 単価の欄と、式つきの費用（SPEC §35.3）。単価は利用者の入力で、削減額の約束ではない
+  function costOutHtml(d) {
+    const c = OwnCalc.costs(d, O.cost.perKm, O.cost.perHour);
+    if (c.empty == null && c.wait == null) return '<p class="o-hint">単価を入れると、空車 km と 30 分以上の停車の費用の目安を、式つきで出します。</p>';
+    const row = (label, x) => `<div class="o-crow"><span>${label}</span><b class="num">${yenS(x.yen)}</b><small class="o-formula">${esc(x.formula)} = ${yenS(x.yen)}</small></div>`;
+    return (c.empty ? row('空車の費用（月の合計）', c.empty) : '') + (c.wait ? row('30 分以上の停車の費用（月の合計）', c.wait) : '');
+  }
+
+  function renderCost() {
+    const d = O.data, o1 = q('#own-cost-out'), t = q('#own-tw');
+    if (o1) o1.innerHTML = costOutHtml(d);
+    if (t) t.innerHTML = tableHtml(d);
+  }
+
   function renderRight() {
     const el = q('#own-right');
     if (!el || !O.loaded) return;
     if (O.tab === 'wait') { syncWaitMap(); const keep = (el.querySelector('.w-rbody') || {}).scrollTop || 0; el.innerHTML = waitRightHtml(); const b = el.querySelector('.w-rbody'); if (b) b.scrollTop = keep; return; }
     const d = O.data, k = d.kpis, n = d.national;
     const ar = k.actual_rate, lr = k.load_rate, le = k.load_efficiency, lar = k.large_actual_rate;
+    const big = (v) => (v == null ? '—' : `${(v * 100).toFixed(1)}<small>%</small>`);
     const tiles = [
-      tile('実車率', `${(ar.value * 100).toFixed(1)}<small>%</small>`, `判定できた区間 ${pc(ar.share)}（${ar.legs} / ${ar.of} 区間）`,
+      tile('実車率', big(ar.value), `判定できた区間 ${pc(ar.share)}（${ar.legs} / ${ar.of} 区間）`,
         `全国 ${n.actual_rate_pct}%（営業用普通車）`, ar.formula),
-      tile('大型の積載率', `${(lr.value * 100).toFixed(1)}<small>%</small>`, `計算できた区間 ${pc(lr.share)}（${lr.legs} 区間。大型 ${lr.of_large} 区間のうち）`, '', lr.formula),
-      tile('大型の積載効率', `${(le.value * 100).toFixed(1)}<small>%</small>`, `大型の積載率 × 大型の実車率 ${pc(lar.value)}`, `全国 ${n.load_efficiency_pct}%（トンキロの比。式が違います）`, le.formula),
+      tile('大型の積載率', big(lr.value), `計算できた区間 ${pc(lr.share)}（${lr.legs} 区間。大型 ${lr.of_large} 区間のうち）`, '', lr.formula),
+      tile('大型の積載効率', big(le.value), `大型の積載率 × 大型の実車率 ${pc(lar.value)}`, `全国 ${n.load_efficiency_pct}%（トンキロの比。式が違います）`, le.formula),
     ].join('');
-    const rowsOf = (dir) => {
-      const rs = d.table.filter((t) => t.dir === dir);
-      const tot = rs.reduce((a, t) => ({ trips: a.trips + t.trips, empty: a.empty + t.empty, km: a.km + t.empty_km, ls: a.ls + (t.long_stops || 0), unk: a.unk + t.unknown }), { trips: 0, empty: 0, km: 0, ls: 0, unk: 0 });
-      const body = rs.map((t) => {
-        const hot = dir === 'back' && t.trips >= 4 && t.empty * 4 >= (t.trips - t.unknown) * 3 && (t.trips - t.unknown) >= 4;
-        return `<tr class="${hot ? 'hot' : ''}"><td>${WD[t.wd]}曜発</td><td class="num">${t.trips}</td><td class="num">${t.empty}</td><td class="num">${t.empty_km ? n0(t.empty_km) : '—'}</td><td class="num">${t.long_stops == null ? '—' : t.long_stops}</td></tr>`;
-      }).join('');
-      return `<tr class="grp"><td colspan="5">${dir === 'out' ? '行き' : '帰り'}　${esc(d.places[dir === 'out' ? d.base : d.dock].short)} → ${esc(d.places[dir === 'out' ? d.dock : d.base].short)}</td></tr>${body}
-        <tr class="tot"><td>合計</td><td class="num">${tot.trips}</td><td class="num">${tot.empty}</td><td class="num">${n0(tot.km)}</td><td class="num">${dir === 'out' ? tot.ls : '—'}</td></tr>`;
-    };
-    el.innerHTML = `<header><div class="m-rh"><b>自社の運行 ${d.mon} 月</b><span class="m-rsub">${esc(d.company.name)}・車両 ${d.company.vehicles} 台</span></div></header>
+    const assumed = isImport() && d.vehicles.some((v) => v.max_load_assumed);
+    const estWord = isImport() ? '直線距離 × 1.25 の推定' : 'OSRM の推定';
+    const outside = d.counts.outside_pair || 0, sh = (id) => esc((d.places[id] || {}).short || '?');
+    el.innerHTML = `<header><div class="m-rh"><b>自社の運行 ${d.mon} 月</b><span class="m-rsub">${esc(d.company.name)}・車両 ${d.vehicles.length} 台</span></div></header>
       <div class="o-tiles">${tiles}</div>
       <p class="o-caution">${esc(n.caution)}</p>
-      <p class="o-unk">実車か空車かが不明の区間 ${d.counts.unknown} 区間（${pc(d.counts.unknown_ratio)}）は、実車率に入れていません。距離は元の記録のメーター、無いときは OSRM の推定です。</p>
-      <div class="o-tw"><table class="o-tab" aria-label="区間と向きと曜日の表"><thead><tr><th>向き・出た曜日</th><th>便数</th><th>空車</th><th>空車の km</th><th>30 分以上の停車</th></tr></thead>
-        <tbody>${rowsOf('out')}${rowsOf('back')}</tbody></table></div>
-      <div class="o-foot"><label class="f-chk"><input type="checkbox" id="own-mkt" ${O.market ? 'checked' : ''}><span>市場の矢印を重ねる</span></label>
+      <p class="o-unk">実車か空車かが不明の区間 ${d.counts.unknown} 区間（${pc(d.counts.unknown_ratio)}）は、実車率に入れていません。距離は元の記録のメーター、無いときは ${estWord}です。${outside ? `主な往復（${sh(d.base)} と ${sh(d.dock)}）に入らない区間 ${outside} 区間は、下の表に入れていません（実車率には入れています）。` : ''}
+        ${assumed ? `<label class="o-large">大型の最大積載量は登録が無いので <input id="own-large" class="ctl sm" type="number" min="1" max="40" step="0.5" value="${O.largeT}" aria-label="大型の最大積載量（トン）"> t と仮定して、積載率を計算しています。</label>` : ''}</p>
+      <div class="o-cost"><div class="o-ch2">費用への換算<small>単価は自分で入れます。入れるまで費用は出しません</small></div>
+        <div class="o-cin"><label>km あたり変動費<span><input id="own-perkm" class="ctl sm" type="number" min="0" step="1" inputmode="decimal" value="${esc(O.cost.perKm)}" placeholder="例 30" aria-label="km あたり変動費（円/km）"> 円/km</span></label>
+          <label>時間あたりの費用<span><input id="own-perhour" class="ctl sm" type="number" min="0" step="1" inputmode="decimal" value="${esc(O.cost.perHour)}" placeholder="例 3000" aria-label="時間あたりの費用（円/時）"> 円/時</span></label></div>
+        <div id="own-cost-out">${costOutHtml(d)}</div>
+        <p class="o-note">単価は入力した値です。削減額の約束ではありません。空車の km が見えても、帰り荷があるかは別の話です。</p></div>
+      <div class="o-tw" id="own-tw">${tableHtml(d)}</div>
+      <div class="o-foot"><div class="o-copy"><button type="button" class="btn-sm" data-copy="csv">区間の判定を CSV でコピー</button><button type="button" class="btn-sm" data-copy="text">数字と気づきを文でコピー</button>
+          <span class="o-copy-msg" id="own-copy-msg" role="status">${esc(O.copyMsg)}</span></div>
+        <details class="o-src" id="own-copy-det" ${O.lastCopy ? 'open' : ''}><summary>コピーした内容</summary><textarea id="own-copy-ta" class="o-ta" readonly rows="5" aria-label="コピーした内容">${esc(O.lastCopy)}</textarea></details>
+        <label class="f-chk"><input type="checkbox" id="own-mkt" ${O.market ? 'checked' : ''}><span>市場の矢印を重ねる</span></label>
         <div class="o-lg"><span><i class="lg-l"></i>実車（濃い線）</span><span><i class="lg-e"></i>空車（点線）</span><span><i class="lg-u"></i>不明</span><span class="mlg-faint">太さ = 便数</span>
         <span><i class="lg-m"></i>市場の矢印（薄い青）</span></div>
         <details class="o-src"><summary>全国の値の出典</summary><p>${esc(n.source)}</p></details></div>`;
@@ -574,17 +668,165 @@ const Own = (() => {
 
   /* ------------------------------------------------------------ 操作 */
 
+  /* ------------------------------------------------------------ 自社のファイルの取り込み（SPEC §35.2）
+     CSV はブラウザの中で読み、OwnCalc.analyze（web/own_calc.js）で計算する。fetch も XMLHttpRequest も使わない（/api/ へは送らない）。 */
+
+  const MAX_BYTES = 20 * 1024 * 1024;
+
+  // 市区町村の表（名前・都道府県・代表点）。荷待ちの点と同じ S.idx と Muni.state.d.pt から作る
+  function munisList() {
+    if (O.munis) return O.munis;
+    if (typeof S === 'undefined' || !S.idx || typeof Muni === 'undefined' || !Muni.state || !Muni.state.d) return null;
+    const ix = S.idx, pt = Muni.state.d.pt || [];
+    O.munis = ix.codes.map((c, i) => {
+      const p = pt[i] || [ix.lon[i], ix.lat[i]];
+      return { code: c, name: ix.names[i], pref: ix.prefs[i], lon: p ? p[0] : null, lat: p ? p[1] : null };
+    });
+    return O.munis;
+  }
+
+  // 主な往復の道路の形。都道府県どうしのトラックの経路（routes_pairs.json）があれば使い、なければ代表点どうしの直線
+  async function attachRoute(d) {
+    const a = d.places[d.base], b = d.places[d.dock];
+    if (!a || !b || a.lon == null || b.lon == null) { d.route = { path: null, osrm_km: null, note: '' }; return; }
+    let path = [[a.lon, a.lat], [b.lon, b.lat]], note = '市区町村の代表点どうしを直線で結んでいます（道路の形ではありません）';
+    try {
+      const pairs = typeof Rt !== 'undefined' ? await Rt.loadPairs() : {};
+      const fwd = pairs[`${a.pref}>${b.pref}`], rec = fwd || pairs[`${b.pref}>${a.pref}`], m = rec && rec.m && rec.m.truck;
+      if (m && m.legs && a.pref !== b.pref) {
+        let pts = [];
+        for (const lg of m.legs) {
+          const c = lg.c;
+          let x = c[0], y = c[1];
+          pts.push([x / 1e4, y / 1e4]);
+          for (let i = 2; i < c.length; i += 2) { x += c[i]; y += c[i + 1]; pts.push([x / 1e4, y / 1e4]); }
+        }
+        if (!fwd) pts.reverse();
+        const step = 5, sm = pts.filter((_, i) => i % step === 0);
+        if ((pts.length - 1) % step) sm.push(pts[pts.length - 1]);
+        path = [[a.lon, a.lat], ...sm.map((p) => [Math.round(p[0] * 1e4) / 1e4, Math.round(p[1] * 1e4) / 1e4]), [b.lon, b.lat]];
+        note = '道路の形は 都道府県間のトラックの経路（OSRM、OpenStreetMap）。両端は地点に延ばしています';
+      }
+    } catch (e) { console.warn(e); }
+    d.route = { path, osrm_km: null, note };
+  }
+
+  function showDropMsg(t) {
+    O.dropMsg = t;
+    const m = q('#own-drop-msg');
+    if (m) { m.textContent = t; m.hidden = !t; }
+    if (t) toast(t);
+  }
+
+  function setData(d, mode) {
+    O.data = d; O.mode = mode;
+    O.dec = {}; O.fixTxt = {}; O.open = new Set(); O.copyMsg = ''; O.lastCopy = '';
+    buildGeo();
+    clearMarkers();
+    renderLeft(); renderRight(); syncMarkers();
+    if (O.active) fit(true);
+  }
+
+  async function analyzeFiles() {
+    const d = OwnCalc.analyze(O.files, { munis: munisList(), userAliases: O.userAliases, largeMaxLoadKg: O.largeT * 1000 });
+    await attachRoute(d);
+    return d;
+  }
+
+  // 落とされたファイルを読む。Shift_JIS も読める（OwnCalc.decode）
+  async function importFiles(list) {
+    const files = [...list];
+    if (!files.length) return;
+    const bad = [], got = [];
+    for (const f of files) {
+      if (f.size > MAX_BYTES) { bad.push(`${f.name}: 20MB を超えています`); continue; }
+      if (!/\.(csv|txt|tsv)$/i.test(f.name)) { bad.push(`${f.name}: CSV ではありません（Excel のファイルは「CSV UTF-8」で保存し直してください）`); continue; }
+      try {
+        const r = OwnCalc.decode(await f.arrayBuffer());
+        got.push({ name: f.name, text: r.text, encoding: r.encoding });
+      } catch (e) { bad.push(`${f.name}: 読めませんでした`); }
+    }
+    if (!got.length) { showDropMsg(`読めるファイルがありません。${bad.join('。')}`); return; }
+    const prev = isImport() ? O.files : [], names = new Set(got.map((g) => g.name));
+    const files2 = prev.filter((p) => !names.has(p.name)).concat(got);
+    const keep = O.files, keepAl = O.userAliases;
+    try {
+      O.files = files2;
+      if (!isImport()) O.userAliases = {};
+      const d = await analyzeFiles();
+      O.tab = 'import';
+      setData(d, 'import');
+      showDropMsg(`${got.length} 件を読みました（このブラウザの中だけで計算しています）${bad.length ? '。読めなかった: ' + bad.join('。') : ''}`);
+      writeHash();
+    } catch (e) {
+      console.warn(e);
+      O.files = keep; O.userAliases = keepAl;
+      showDropMsg(`計算できませんでした: ${e.message}`);
+    }
+  }
+
+  async function reanalyze() {
+    try { setData(await analyzeFiles(), 'import'); } catch (e) { console.warn(e); showDropMsg(`計算できませんでした: ${e.message}`); }
+  }
+
+  function backToSample() {
+    O.files = []; O.userAliases = {};
+    setData(O.sample, 'sample');
+    O.dropMsg = '';
+  }
+
   function bindDrop() {
     const z = q('#own-drop'), f = q('#own-file');
     if (!z || z.dataset.bound) return;
     z.dataset.bound = '1';
-    const say = () => { O.dropMsg = 'この版ではサンプルだけを扱います'; const m = q('#own-drop-msg'); m.textContent = O.dropMsg; m.hidden = false; toast(O.dropMsg); };
     z.addEventListener('click', () => f.click());
     z.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f.click(); } });
-    f.addEventListener('change', () => { f.value = ''; say(); });
+    f.addEventListener('change', () => { const l = [...f.files]; f.value = ''; importFiles(l); });
     ['dragenter', 'dragover'].forEach((t) => z.addEventListener(t, (e) => { e.preventDefault(); z.classList.add('over'); }));
-    ['dragleave', 'drop'].forEach((t) => z.addEventListener(t, (e) => { e.preventDefault(); z.classList.remove('over'); }));
-    z.addEventListener('drop', () => say()); // ファイルは読まない
+    z.addEventListener('dragleave', (e) => { e.preventDefault(); z.classList.remove('over'); });
+    z.addEventListener('drop', (e) => { e.preventDefault(); z.classList.remove('over'); importFiles((e.dataTransfer && e.dataTransfer.files) || []); });
+  }
+
+  /* ------------------------------------------------------------ 書き出し（SPEC §35.4） */
+
+  async function copyText(t, label) {
+    O.lastCopy = t;
+    let ok = false;
+    try { await navigator.clipboard.writeText(t); ok = true; } catch (e) { /* 下の予備へ */ }
+    if (!ok) {
+      const ta = document.createElement('textarea');
+      ta.value = t; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      ta.remove();
+    }
+    O.copyMsg = ok ? `${label}をコピーしました` : `${label}をコピーできませんでした。下の欄から選んでコピーしてください`;
+    const m = q('#own-copy-msg'), ta2 = q('#own-copy-ta'), det = q('#own-copy-det');
+    if (m) m.textContent = O.copyMsg;
+    if (ta2) ta2.value = t;
+    if (det) det.open = true;
+    toast(O.copyMsg);
+  }
+
+  function bindRight() {
+    const root = q('#own-right');
+    root.addEventListener('input', (e) => {
+      const t = e.target;
+      if (t.id === 'own-perkm') { O.cost.perKm = t.value; renderCost(); }
+      else if (t.id === 'own-perhour') { O.cost.perHour = t.value; renderCost(); }
+    });
+    root.addEventListener('change', (e) => {
+      if (e.target.id === 'own-large') {
+        const v = Number(e.target.value);
+        if (v > 0 && v <= 40) { O.largeT = v; reanalyze(); }
+      }
+    });
+    root.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-copy]');
+      if (!b || O.tab === 'wait') return;
+      if (b.dataset.copy === 'csv') copyText(OwnCalc.legsCsv(O.data), '区間の判定の CSV ');
+      else copyText(OwnCalc.summaryText(O.data, OwnCalc.costs(O.data, O.cost.perKm, O.cost.perHour)), '数字と気づきの文');
+    });
   }
 
   function draftNote() {
@@ -610,7 +852,7 @@ const Own = (() => {
 
   function onNext(a) {
     if (a === 'draft_backhaul') draft();
-    else if (a === 'import') { O.dropMsg = 'この版ではサンプルだけを扱います'; toast(O.dropMsg); }
+    else if (a === 'import') { if (O.tab !== 'import') setTab('import'); const f = q('#own-file'); if (f) f.click(); }
   }
 
   function bindLeft() {
@@ -620,6 +862,14 @@ const Own = (() => {
       if (tb) { setTab(tb.dataset.tab); return; }
       const b = e.target.closest('button[data-act]');
       if (!b) return;
+      if (b.dataset.act === 'reset') { backToSample(); return; }
+      if (b.dataset.act === 'alias') {
+        const row = b.closest('.o-up'), v = row.querySelector('input').value.trim();
+        if (!v) { toast('市区町村名を入れてください'); return; }
+        O.userAliases[row.dataset.name] = v;
+        reanalyze().then(() => { if ((O.data.unplaced || []).some((u) => u.name === row.dataset.name)) showDropMsg(`「${v}」は地図の市区町村に見つかりません（${row.dataset.name} は地図に置けないままです）`); });
+        return;
+      }
       const card = b.closest('.o-card'), ins = b.closest('.o-ins');
       const act = b.dataset.act;
       if (card) {
@@ -683,7 +933,16 @@ const Own = (() => {
   }
 
   function fit(animate) {
-    map.fitBounds([[134.2, 34.1], [140.6, 36.2]], { padding: fitPad(false), duration: animate ? 1500 : 0, essential: true });
+    let bb = [[134.2, 34.1], [140.6, 36.2]];
+    if (isImport()) { // 自社のファイルでは、地図に置けた地点が収まる範囲へ
+      const ps = placed(O.data);
+      if (ps.length) {
+        const lo = [Math.min(...ps.map((p) => p.lon)), Math.min(...ps.map((p) => p.lat))], hi = [Math.max(...ps.map((p) => p.lon)), Math.max(...ps.map((p) => p.lat))];
+        const pad = Math.max(0.35, (hi[0] - lo[0]) * 0.05, (hi[1] - lo[1]) * 0.05);
+        bb = [[lo[0] - pad, lo[1] - pad], [hi[0] + pad, hi[1] + pad]];
+      }
+    }
+    map.fitBounds(bb, { padding: fitPad(false), duration: animate ? 1500 : 0, essential: true });
   }
 
   // 荷待ちの点が収まる範囲へ。点が無いときは動かさない。force が false のときは、点の顔ぶれが変わったときだけ動かす（入力のたびに地図が動かないように）
@@ -714,6 +973,7 @@ const Own = (() => {
     await load();
     if (!O.loaded) return;
     bindLeft();
+    bindRight();
     bindWait();
     WaitingMap.onChange(() => { renderRight(); const d = q('#wm-detail'); if (d) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
     renderLeft(); renderRight();

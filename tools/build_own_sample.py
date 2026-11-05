@@ -249,10 +249,13 @@ def resolve_place(name: str) -> tuple[str | None, str | None, bool]:
     return None, None, False
 
 
-def build() -> dict:
+def build(write: bool = True, use_claude: bool = True) -> dict:
+    """write=False のときは何も書かず、元の CSV は data/own_sample/raw/ の今のファイルを読む（試験用）。
+    use_claude=False のときは mapping.json の Claude の提案を使わない（ブラウザの JS と比べるときの条件）。"""
     cycles = make_cycles()
-    write_haisha(cycles)
-    write_digitaco(cycles)
+    if write:
+        write_haisha(cycles)
+        write_digitaco(cycles)
 
     points = json.loads((ROOT / "data" / "geo" / "municipality_points.json").read_text(encoding="utf-8"))["points"]
     places = {
@@ -374,7 +377,7 @@ def build() -> dict:
     ins = own.insights({"legs": legs, "stops": stops, "shifts": shifts, "vehicles": vehicles, "places": places, "base": base, "dock": dock, "month": MON})
 
     # --- 列の対応づけ（mapping.json）と確認待ち
-    mapping, col_items = build_mapping(hrows, dig_values, wl)
+    mapping, col_items = build_mapping(hrows, dig_values, wl, write=write, use_claude=use_claude)
     confirm = []
     alias_total = new_alias_hits["haisha"] + new_alias_hits["digitaco"]
     confirm.append({
@@ -486,11 +489,11 @@ def road_path(places: dict) -> list[list[float]]:
 # ---------------------------------------------------------------- mapping.json
 
 
-def build_mapping(hrows: list[list[str]], dig_values: dict[str, list[str]], wl: dict) -> tuple[dict, list[dict]]:
+def build_mapping(hrows: list[list[str]], dig_values: dict[str, list[str]], wl: dict, write: bool = True, use_claude: bool = True) -> tuple[dict, list[dict]]:
     """列ごとに、辞書の結果・値の形の一致率・Claude の提案の欄を作る。既にある Claude の提案は残す。"""
     old = {}
     old_top = {}
-    if MAPPING.exists():
+    if use_claude and MAPPING.exists():
         o = json.loads(MAPPING.read_text(encoding="utf-8"))
         old = {(c["source"], c["column"]): c for c in o.get("columns", [])}
         old_top = {k: o.get(k) for k in ("claude_model", "claude_created_at")}
@@ -551,10 +554,11 @@ def build_mapping(hrows: list[list[str]], dig_values: dict[str, list[str]], wl: 
         "dictionary": {"digitaco": own.DIGITACO_DICT, "haisha": own.HAISHA_DICT, "roles": own.ROLE_LABEL},
         "columns": columns,
     }
-    MAPPING.parent.mkdir(parents=True, exist_ok=True)
-    with open(MAPPING, "w", encoding="utf-8", newline="\n") as fh:
-        json.dump(mapping, fh, ensure_ascii=False, indent=1)
-        fh.write("\n")
+    if write:
+        MAPPING.parent.mkdir(parents=True, exist_ok=True)
+        with open(MAPPING, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump(mapping, fh, ensure_ascii=False, indent=1)
+            fh.write("\n")
     return mapping, items
 
 
