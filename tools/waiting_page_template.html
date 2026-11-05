@@ -101,6 +101,17 @@ body.selftest #selftest { display: block; }
   #hotspots td.c3 { order: 4; flex: 1 0 100%; min-width: 0; }
   #hotspots td.c3:empty { display: none; }
   #hotspots td.small { min-width: 0; }
+  /* 契約の相手ごと（#partners の表）も同じカードにする。1 行目 = 相手、2 行目 = 数字（data-l の見出しつき） */
+  #partners table.par:not(#hotspots):not(#placemonth) { min-width: 0; }
+  #partners table.par:not(#hotspots):not(#placemonth), #partners table.par:not(#hotspots):not(#placemonth) tbody { display: block; }
+  #partners table.par:not(#hotspots):not(#placemonth) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  #partners table.par:not(#hotspots):not(#placemonth) tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  #partners table.par:not(#hotspots):not(#placemonth) tr.on { background: var(--hi); }
+  #partners table.par:not(#hotspots):not(#placemonth) tr::before { content: ""; order: 2; flex: 0 0 100%; height: 0; }
+  #partners table.par:not(#hotspots):not(#placemonth) td { padding: 0; border: 0; background: none; min-width: 0; text-align: left; white-space: normal; overflow-wrap: break-word; }
+  #partners table.par:not(#hotspots):not(#placemonth) td.c1 { order: 1; font-weight: 700; flex: 1 1 100%; }
+  #partners table.par:not(#hotspots):not(#placemonth) td.num { order: 3; flex: 0 0 auto; white-space: nowrap; }
+  #partners table.par:not(#hotspots):not(#placemonth) td[data-l]::before { content: attr(data-l) " "; color: var(--muted); font-size: 11px; font-weight: 400; }
 }
 /*PRINT-START*/
 @page { size: A4 portrait; margin: 12mm; }
@@ -903,8 +914,8 @@ function renderResult() {
   const sel = r.by_partner.some((p) => p.partner === S.partner) ? S.partner : r.by_partner[0].partner;
   S.partner = sel;
   const p = r.by_partner.find((x) => x.partner === sel);
-  const tb = r.by_partner.map((x) => `<tr class="${x.partner === sel ? 'on' : ''}" data-pick="${esc(x.partner)}"><td>${esc(x.partner)}</td><td class="num">${x.count}</td><td class="num">${hm(x.wait_minutes)}</td>` +
-    `<td class="num">${hm(x.handling_minutes)}</td><td class="num"><b>${n0(x.amount)}</b></td><td class="num">${x.over_1h_count}</td><td class="num">${x.over_2h_count}</td></tr>`).join('');
+  const tb = r.by_partner.map((x) => `<tr class="${x.partner === sel ? 'on' : ''}" data-pick="${esc(x.partner)}"><td class="c1">${esc(x.partner)}</td><td class="num" data-l="回数">${x.count}</td><td class="num" data-l="待機の合計">${hm(x.wait_minutes)}</td>` +
+    `<td class="num" data-l="運転者の荷役の合計">${hm(x.handling_minutes)}</td><td class="num" data-l="参考額"><b>${n0(x.amount)}</b></td><td class="num" data-l="1 時間以上">${x.over_1h_count}</td><td class="num" data-l="2 時間以上">${x.over_2h_count}</td></tr>`).join('');
   $('#partners').innerHTML = `<h2>契約の相手ごと<span class="small">　参考額は税抜・円。行を押すと相手を切り替えます</span></h2>
     <div class="scroll-x"><table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th>運転者の荷役の合計</th><th>参考額</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">2 時間以上の荷待ち・荷役</th></tr></thead><tbody>${tb}</tbody></table></div>
     ${hotspotsHtml(r)}`;
