@@ -96,7 +96,9 @@ def test_page_is_up_to_date_and_embeds_the_same_tariff_and_vectors():
     html = PAGE.read_text(encoding="utf-8")
     m = re.search(r"const TARIFF = (\{.*?\});\nconst VECTORS", html, re.S)
     assert m
-    assert json.loads(m.group(1)) == json.loads(TARIFF.read_text(encoding="utf-8"))
+    # 照合の記録（verified_by）だけ、リポジトリの中のファイル名を外して埋める（SPEC §31.5 #17）
+    assert json.loads(m.group(1)) == build_waiting_page.public_tariff()
+    assert "docs/" not in json.dumps(json.loads(m.group(1)), ensure_ascii=False)
     m = re.search(r"const VECTORS = (\{.*?\});\n", html, re.S)
     assert json.loads(m.group(1)) == load_vectors()
 

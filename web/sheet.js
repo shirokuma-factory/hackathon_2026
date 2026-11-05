@@ -22,8 +22,8 @@ const Sheet = (() => {
   const sheetPx = () => Math.round(innerHeight * SHEET_RATIO);
   const view = () => ['market', 'find', 'compare', 'own'].find((v) => document.body.classList.contains('view-' + v)) || 'market';
 
-  // 地図に渡す余白。狭い画面は、上の切り替えと下のパネルを避ける
-  function pad() { return { top: 56, bottom: sheetPx() + 12, left: 16, right: 16 }; }
+  // 地図に渡す余白。狭い画面は、上の切り替えと下のパネルを避ける。左右は区間の端の名前の札（幅 約 60px）が切れない広さ
+  function pad() { return { top: 56, bottom: sheetPx() + 12, left: 40, right: 40 }; }
 
   // 余白が地図の大きさを超えないようにする（広い画面でも、地図の幅・高さの 85% までに収める）
   function clamp(p, w, h) {

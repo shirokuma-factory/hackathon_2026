@@ -296,11 +296,15 @@ class Board:
     def __init__(self, trips: list[dict[str, Any]] | None = None, clock: Callable[[], datetime] | None = None):
         self._clock = clock or datetime.now
         self._lock = threading.Lock()
-        self._trips = trips if trips is not None else load_trips()
+        self._base_trips = list(trips if trips is not None else load_trips())
+        self._trips = list(self._base_trips)
         self._by_id = {t["id"]: t for t in self._trips}
         self._reset_locked()
 
     def _reset_locked(self) -> None:
+        self._trips = list(self._base_trips)  # 登録した便（SPEC §31.4）は戻すときに消える
+        self._by_id = {t["id"]: t for t in self._trips}
+        self._reg_seq = 0
         self._cap = {t["id"]: _Cap(_dec(t["weight_slack_kg"]),
                                    _dec(t["shelf_rated_kg"]) if t["space_type"] in SHELF_TYPES else None,
                                    _dec(t["floor_free_m2"]) if t.get("floor_free_m2") is not None else None)
@@ -355,6 +359,31 @@ class Board:
         with self._lock:
             self._sweep()
             return [self._trip_dict(t) for t in self._trips]
+
+    def trip(self, trip_id: Any) -> dict[str, Any]:
+        """便 1 件（登録値のまま。残りは含まない）。見つからなければ BoardError。"""
+        with self._lock:
+            return dict(self._trip(trip_id))
+
+    def extra_carriers(self) -> list[dict[str, Any]]:
+        """登録した便があるときだけ、その運送会社（架空 自社）を返す。"""
+        with self._lock:
+            if not any(t.get("registered") for t in self._trips):
+                return []
+            return [dict(SELF_CARRIER)]
+
+    def register(self, trip: dict[str, Any]) -> dict[str, Any]:
+        """検証済みの便を足す（SPEC §31.4）。この盤（来訪者）の中だけ。上限 MAX_REGISTERED 件。"""
+        with self._lock:
+            n = sum(1 for t in self._trips if t.get("registered"))
+            if n >= MAX_REGISTERED:
+                raise BoardError(f"登録できる便は 1 人 {MAX_REGISTERED} 件までです。「最初の状態に戻す」で消せます")
+            self._reg_seq += 1
+            t = dict(trip, id=f"R{self._reg_seq}")
+            self._trips.append(t)
+            self._by_id[t["id"]] = t
+            self._cap[t["id"]] = _Cap(_dec(t["weight_slack_kg"]), None, None)
+            return self._trip_dict(t)
 
     def holds(self) -> list[dict[str, Any]]:
         with self._lock:
@@ -454,7 +483,7 @@ class Board:
             if h.state != ACCEPTED:
                 raise BoardError("運送会社が承諾した仮予約だけ、書面の下書きを作れます")
             trip = self._by_id[h.trip_id]
-            carrier = next((c for c in load_demo()["carriers"] if c["id"] == trip["carrier_id"]), {})
+            carrier = next((c for c in load_demo()["carriers"] + [SELF_CARRIER] if c["id"] == trip["carrier_id"]), {})
             options = carrier.get("payment_options") or []
             fuel = _text_or_none(fuel_surcharge, "fuel_surcharge")
             pay = _text_or_none(payment_method, "payment_method")
@@ -627,3 +656,103 @@ def per_unit_reference(trip: dict[str, Any], shipment: BShipment, base_load_rate
         "reference_yen": max(round_yen(raw), round_yen(floor_fee)) if floor_fee is not None else round_yen(raw),
         "trip_price_yen": trip.get("price_ex_tax_yen"),
     }
+
+
+# ---------------------------------------------------------------- 運送会社が帰り便を登録する（SPEC §31.4）
+
+MAX_REGISTERED = 10
+SELF_CARRIER_ID = "C9"
+SELF_CARRIER = {"id": SELF_CARRIER_ID, "name": "架空 自社", "note": "運送会社の役で登録した便の運送会社です（この来訪者の画面だけ）",
+                "tariff_region": "関東"}
+REGISTER_VEHICLES: dict[str, dict[str, Any]] = {
+    "2t": {"label": "架空 2t 箱車", "max_load_kg": 2000, "floor_total_m2": 6.0, "footprint_mm": [3100, 1770],
+           "clear_height_mm": 1800, "max_piece_kg": 150, "weight_slack_kg": 1000},
+    "4t": {"label": "架空 4t ウイング", "max_load_kg": 3500, "floor_total_m2": 13.0, "footprint_mm": [6000, 2000],
+           "clear_height_mm": 2100, "max_piece_kg": 300, "weight_slack_kg": 2000},
+    "10t": {"label": "架空 10t ウイング", "max_load_kg": 9000, "floor_total_m2": 28.0, "footprint_mm": [9500, 2300],
+            "clear_height_mm": 2300, "max_piece_kg": 500, "weight_slack_kg": 4500},
+}
+KINKI_PREFS = ("福井県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県")
+REGISTER_PRICE_BASIS = ("値段の式（SPEC §21.6）の既定値（基準積載率 70%、リードタイムの割引 0%）で、いまの荷を載せたときの参考額です。"
+                        "値段は運送会社が決めます")
+
+
+def register_region(origin_code: str) -> str:
+    """運賃の表は関東と近畿の 2 つだけ。発地が近畿の県なら近畿、それ以外は関東の表を当てる。"""
+    p = geo.load_points().get(origin_code)
+    return "近畿" if p and p["pref"] in KINKI_PREFS else "関東"
+
+
+def _code(v: Any, label: str) -> str:
+    if not isinstance(v, str) or v not in geo.load_points():
+        raise ValueError(f"{label}の市区町村が見つかりません")
+    return v
+
+
+def _num_in(v: Any, label: str, lo: float, hi: float) -> Decimal:
+    d = _num(v)
+    if d is None or d < Decimal(str(lo)) or d > Decimal(str(hi)):
+        raise ValueError(f"{label}は {lo:g}〜{hi:g} の数で入れてください")
+    return d
+
+
+def _local_dt(v: Any, label: str) -> datetime:
+    try:
+        if not isinstance(v, str) or not v:
+            raise ValueError
+        return datetime.fromisoformat(v).replace(tzinfo=None, second=0, microsecond=0)
+    except ValueError:
+        raise ValueError(f"{label}は 2026-11-13T17:00 のような日時で入れてください") from None
+
+
+def build_registered_trip(body: dict[str, Any]) -> dict[str, Any]:
+    """登録の入力から便の辞書を作る（値段と id 以外）。誤りは ValueError（日本語）。"""
+    o, d = _code(body.get("origin_code"), "発地"), _code(body.get("dest_code"), "着地")
+    if o == d:
+        raise ValueError("発地と着地が同じ市区町村です")
+    veh_key = body.get("vehicle")
+    veh = REGISTER_VEHICLES.get(veh_key) if isinstance(veh_key, str) else None
+    if veh is None:
+        raise ValueError("車種は " + "・".join(v["label"] for v in REGISTER_VEHICLES.values()) + " から選んでください")
+    dep, arr = _local_dt(body.get("depart_at"), "出発日時"), _local_dt(body.get("arrive_at"), "到着日時")
+    if arr <= dep:
+        raise ValueError("到着日時は出発日時より後にしてください")
+    if arr - dep > timedelta(days=7):
+        raise ValueError("出発から到着までは 7 日以内にしてください")
+    slack = _num_in(body.get("weight_slack_kg"), "重さの余り（kg）", 1, veh["max_load_kg"])
+    fp = body.get("unit_footprint_mm")
+    if not isinstance(fp, (list, tuple)) or len(fp) != 2:
+        raise ValueError("1口の底面は縦と横の 2 つの数で入れてください")
+    fw, fd = _num_in(fp[0], "1口の底面の縦（mm）", 100, 20000), _num_in(fp[1], "1口の底面の横（mm）", 100, 20000)
+    height = _num_in(body.get("clear_height_mm"), "空きの高さ（mm）", 100, 4000)
+    piece = _num_in(body.get("max_piece_kg"), "1個の重さの上限（kg）", 1, veh["max_load_kg"])
+    drops = body.get("drop_points")
+    if not isinstance(drops, list) or not drops or len(drops) > 12:
+        raise ValueError("降ろせる地点は 1〜12 か所入れてください")
+    drops = list(dict.fromkeys(_code(c, "降ろせる地点") for c in drops))
+    return {
+        "carrier_id": SELF_CARRIER_ID, "carrier_name": SELF_CARRIER["name"], "vehicle": veh["label"],
+        "route_label": f"{muni_name(o)}→{muni_name(d)}（登録した帰り便）",
+        "origin_code": o, "dest_code": d, "depart_at": dep.strftime("%Y-%m-%dT%H:%M"), "arrive_at": arr.strftime("%Y-%m-%dT%H:%M"),
+        "space_type": "free_bed", "clear_height_mm": int(height), "unit_footprint_mm": [int(fw), int(fd)],
+        "max_load_kg": veh["max_load_kg"], "floor_total_m2": veh["floor_total_m2"],
+        "max_piece_kg": float(piece), "weight_slack_kg": float(slack), "drop_points": drops,
+        "container_required": False, "rb_owner_consent": False, "max_upper_per_rb_kg": None,
+        "shelf_fixed": False, "shelf_rated_kg": None, "price_unit": "1件", "refused_categories": [],
+        "registered": True, "tariff_region": register_region(o),
+    }
+
+
+def default_register_price(trip: dict[str, Any], cargo: BShipment) -> dict[str, Any]:
+    """登録する便の値段の既定値（§21.6 の式。基準積載率 70%、割引 0%）。距離は便の発地 → 着地の道路距離。
+    式を出せないとき（海を渡る経路など）は price を None にして理由を返す。"""
+    try:
+        km, note = road_km(trip["origin_code"], trip["dest_code"])
+        ref = per_unit_reference(trip, BShipment(cargo.pieces, trip["dest_code"], origin_code=trip["origin_code"]),
+                                 DEFAULT_BASE_LOAD_RATE, 0, trip.get("tariff_region") or "関東", km=km, km_note=note)
+    except ValueError as e:
+        return {"price_ex_tax_yen": None, "basis": f"値段の既定値を出せません（{e}）。値段を入れてください", "reference": None}
+    price = int(round(ref["reference_yen"] / 100) * 100)  # 百円の単位に丸める（入力しやすくするため）
+    return {"price_ex_tax_yen": price, "reference": ref,
+            "basis": f"{REGISTER_PRICE_BASIS}。{ref['region']}運輸局 {ref['tariff_class']}、道路 {ref['km']:,.0f}km"
+                     + (f"。{note}" if note else "")}

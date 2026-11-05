@@ -247,9 +247,11 @@ def test_g99_lite_page_rows_in_headless_edge():
         page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")
         got = page.js("""(function(){
           const o = {};
-          document.querySelectorAll('table.res tr[data-opt]').forEach((tr) => { o[tr.dataset.opt] = {cls: tr.className, noamt: !!tr.querySelector('.noamt'), ask: (document.querySelector('#asks [data-ask=' + tr.dataset.opt + ']') || {textContent: ''}).textContent,
-            rowAsk: tr.querySelector('.ask') ? tr.querySelector('.ask').textContent : '',
-            links: [...document.querySelectorAll('#asks [data-ask=' + tr.dataset.opt + '] a')].map((a) => a.href + '|' + a.target + '|' + a.rel)}; });
+          document.querySelectorAll('table.res tr[data-opt]').forEach((tr) => { o[tr.dataset.opt] = {cls: tr.className, noamt: !!tr.querySelector('.noamt'),
+            rowAsk: tr.querySelector('.ask') ? tr.querySelector('.ask').textContent : ''}; });
+          // 見積を頼む先: 送り方の見出しを持たず、会社を五十音順に並べる（SPEC §31.2）
+          o._asks = {byMode: document.querySelectorAll('#asks [data-ask]').length, text: (document.querySelector('#asks') || {textContent: ''}).textContent,
+            links: [...document.querySelectorAll('#asks a')].map((a) => a.textContent + '|' + a.href + '|' + a.target + '|' + a.rel)};
           return o;
         })()""")
         # 小さな荷では軽貨物が ○、路線便が ○。額を出せないと書き、頼む先を出す
@@ -257,16 +259,18 @@ def test_g99_lite_page_rows_in_headless_edge():
           document.querySelector('#km').value = '492'; render(); })()""")
         small = page.js("""(function(){ const o = {}; document.querySelectorAll('table.res tr[data-opt]').forEach((tr) => { o[tr.dataset.opt] = {cls: tr.className, noamt: !!tr.querySelector('.noamt'), ask: !!tr.querySelector('.ask')}; }); return o; })()""")
     # 額を出せない文は ○ / △ の行に出て、× の行には出ない
-    # 窓口の会社名は送り方の行とは分け、結果の表の下の「見積を頼む先」の欄に出す（SPEC §30.1）
+    # 窓口の会社名は送り方の行とは分け、結果の表の下の「見積を頼む先」の欄に、送り方の見出しなしで五十音順に出す（SPEC §31.2）
     assert got["rosen"]["noamt"] and got["rosen"]["rowAsk"].startswith("見積を頼む先") and "日本通運" not in got["rosen"]["rowAsk"]
-    assert got["rosen"]["ask"].startswith("路線便")
-    assert got["rosen"]["links"] and all(x.endswith("|_blank|noopener") for x in got["rosen"]["links"])
-    assert any("nipponexpress.com" in x for x in got["rosen"]["links"]) and any("meitetsuunyu.co.jp" in x for x in got["rosen"]["links"])
-    assert got["kei"]["cls"] == "o-ng" and not got["kei"]["noamt"] and got["kei"]["ask"] == ""
-    assert got["takuhai"]["cls"] == "o-ng" and got["takuhai"]["ask"] == ""
-    assert got["kashikiri_4t"]["cls"] == "o-ok" and "公式の窓口は" not in got["kashikiri_4t"]["ask"] and "会社ごとに問い合わせます" in got["kashikiri_4t"]["ask"]
-    assert not got["kashikiri_4t"]["links"]
-    assert got["home"]["ask"].startswith("帰り便") or "デモ" in got["home"]["ask"]
+    asks = got["_asks"]
+    assert asks["byMode"] == 0 and asks["text"].startswith("見積を頼む先")
+    names = [x.split("|")[0][:4] for x in asks["links"]]
+    assert names == ["佐川急便", "日本通運", "名鉄NX", "ヤマト運"]
+    assert all(x.endswith("|_blank|noopener") for x in asks["links"])
+    assert any("nipponexpress.com" in x for x in asks["links"]) and any("meitetsuunyu.co.jp" in x for x in asks["links"])
+    assert "路線便" not in asks["text"] and "カゴ台車" not in asks["text"]
+    assert got["kei"]["cls"] == "o-ng" and not got["kei"]["noamt"] and got["kei"]["rowAsk"] == ""
+    assert got["takuhai"]["cls"] == "o-ng" and got["takuhai"]["rowAsk"] == ""
+    assert got["kashikiri_4t"]["cls"] == "o-ok" and got["kashikiri_4t"]["rowAsk"].startswith("見積を頼む先")
     assert small["kei"] == {"cls": "o-ok", "noamt": True, "ask": True}  # 行には「下の欄」の案内が出る
     assert small["rosen"]["noamt"] and small["takuhai"]["ask"] and small["jitbox"]["cls"] == "o-check"
 

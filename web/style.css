@@ -713,7 +713,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 #m-credits::before { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 84px; z-index: -1; pointer-events: none; background: linear-gradient(to top, rgba(5,8,14,.92), rgba(5,8,14,0)); }
 
 /* ---------- 空きを探す・つなぐ（SPEC §16.2、架空のデモ） ---------- */
-#find-view { position: fixed; left: var(--gutter); top: 76px; width: 372px; z-index: 19; padding: 14px 16px 10px; max-height: calc(100vh - 300px); overflow: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+#find-view { position: fixed; left: var(--gutter); top: 76px; width: 372px; z-index: 19; padding: 14px 16px 10px; max-height: calc(100vh - 76px - var(--fn-h, 224px) - 20px - 14px); overflow: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
 #find-view [hidden] { display: none !important; }
 .f-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 10px; }
 .f-row .lbl, #find-view .lbl { font-size: 11px; color: var(--muted); letter-spacing: .04em; }

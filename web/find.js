@@ -83,7 +83,9 @@ const Find = (() => {
         try { F.scList = (await Work.api('/api/scenarios')).scenarios; F.scList.forEach((x) => { F.scBack[x.id] = x.backhaul || null; }); F.scLoaded = true; } catch (e) { /* 場面の追加項目が無くても動く */ }
       }
       F.loaded = true;
-      if (!F.geo.T) buildGeo();
+      if (F.carriers.length && !F.carriers.some((c) => c.id === F.carrier)) F.carrier = F.carriers[0].id; // 登録した便を戻すと「架空 自社」は消える
+      if (F.sel && !byId(F.sel)) F.sel = null;
+      buildGeo();
     } catch (e) { F.err = e.message; }
     F.ver++;
   }
@@ -121,23 +123,32 @@ const Find = (() => {
 
   function buildGeo() {
     F.geo.T = true;
+    const ids = new Set(F.trips.map((t) => t.id));
+    for (const id of Object.keys(F.geo)) if (id !== 'T' && !ids.has(id)) delete F.geo[id]; // 戻して消えた便（登録した便）の線を捨てる
+    for (const [id, m] of [...F.markers]) if (!ids.has(id)) { m.mk.remove(); F.markers.delete(id); }
     const groups = {};
     F.trips.forEach((t) => { const k = `${prefOf(t.origin_code)}>${prefOf(t.dest_code)}`; (groups[k] = groups[k] || []).push(t.id); });
     F.trips.forEach((t, ti) => {
+      if (F.geo[t.id]) return;
       const a = lonlat(t.origin_code), b = lonlat(t.dest_code);
       if (!a || !b) return;
       const g = groups[`${prefOf(t.origin_code)}>${prefOf(t.dest_code)}`], n = g.indexOf(t.id);
       const bulge = (n % 2 === 0 ? 1 : -1) * (0.11 + 0.05 * Math.floor(n / 2));
-      // 架空の便でも道路は実在する。OSRM の道路の経路（SPEC §17.2）。なければ弧
+      // 架空の便でも道路は実在する。OSRM の道路の経路（SPEC §17.2）。なければ直線の弧（登録した便と、経路のデータが無い便。SPEC §31.4・§31.5 #9）
       const real = Rt.tripPath(t.id);
       const rt = real && real.length > 2 ? makeRoute(real, 'road', null, null) : makeRoute(arcPath(a, b, bulge, 72), 'arc', null, null);
       const dur = Math.min(PERIOD - 3, 4.5 + rt.total / 110);
       const ph = (ti * 2.3) % Math.max(1, PERIOD - dur);
       const items = [];
       for (const sh of [0, -PERIOD]) items.push({ id: t.id, path: rt.path, ts: rt.cum.map((c) => (c / rt.total) * dur + ph + sh) });
-      F.geo[t.id] = { a, b, rt, items, dur, ph };
+      F.geo[t.id] = { a, b, rt, items, dur, ph, arc: rt.kind === 'arc' };
     });
   }
+
+  // 直線の弧で出す便の注記（SPEC §31.4・§31.5 #9）
+  const ARC_NOTE_REG = '登録した便は直線で表示しています';
+  const ARC_NOTE_NODATA = '経路のデータが無いので直線で表示しています';
+  const arcNote = (t) => (F.geo[t.id] && F.geo[t.id].arc ? `<div class="f-arcnote">${t.registered ? ARC_NOTE_REG : ARC_NOTE_NODATA}</div>` : '');
 
   // 地図での明るさ。荷に合う便は明るく、合わない便・別の区間の便は薄く
   function level(t) {
@@ -152,7 +163,7 @@ const Find = (() => {
     const ts = F.trips.filter((t) => F.geo[t.id]);
     if (!ts.length) return out;
     const items = ts.flatMap((t) => F.geo[t.id].items);
-    const lv = (d) => level(byId(d.id));
+    const lv = (d) => { const t = byId(d.id); return t ? level(t) : 0; }; // 戻して消えた便の線が 1 コマ残っても落ちない
     const emph = (d) => (d.id === F.sel ? 1.35 : 1);
     const trig = [F.ver, F.sel];
     const paths = ts.map((t) => ({ id: t.id, path: F.geo[t.id].rt.path }));
@@ -217,6 +228,7 @@ const Find = (() => {
       }
       const lv = level(t), r = F.role === 'shipper' ? F.results[t.id] : null;
       m.el.textContent = `${t.id} 架空${r ? (r.ok ? ' ○' : ' ×') : ''}`;
+      m.el.title = g.arc ? (t.registered ? ARC_NOTE_REG : ARC_NOTE_NODATA) : '';
       m.el.classList.toggle('dim', lv < 0.5);
       m.el.classList.toggle('on', t.id === F.sel);
       m.el.style.display = F.active ? '' : 'none';
@@ -319,7 +331,7 @@ const Find = (() => {
     return `<article class="f-card${ok ? ' ok' : ''}${r && !ok ? ' ng' : ''}${selCls}${scope ? '' : ' off'}" data-t="${t.id}" tabindex="0">` +
       `<div class="f-top"><span class="f-id">${t.id}</span><b class="f-veh">${esc(t.vehicle)}</b>${chip}</div>` +
       `<div class="f-sub">${esc(t.carrier_name)}${scope ? '' : ' ・ <em>別の区間の便</em>'}</div>` +
-      `<div class="f-route">${esc(t.route_label)}</div>` +
+      `<div class="f-route">${esc(t.route_label)}</div>` + arcNote(t) +
       `<div class="f-when num">${esc(muniName(t.origin_code))} ${hhmm(t.depart_at)} 発 → ${esc(muniName(t.dest_code))} ${hhmm(t.arrive_at)} 着</div>` +
       barHtml(t, c ? c.w : null) +
       `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>${esc(t.price_unit || '1口')}・税抜・架空</small></div>` +
@@ -342,7 +354,7 @@ const Find = (() => {
       `<div class="f-top"><span class="f-id">${t.id}</span><b class="f-veh">${esc(t.vehicle)}</b>` +
       (F.dir && prefOf(t.origin_code) === F.dir.from && prefOf(t.dest_code) === F.dir.to ? '<span class="chip ok">この向き</span>' : '') +
       (pending.length ? `<span class="chip check">承諾待ち ${pending.length}</span>` : '') + '</div>' +
-      `<div class="f-route">${esc(t.route_label)}</div>` +
+      `<div class="f-route">${esc(t.route_label)}</div>` + arcNote(t) +
       `<div class="f-when num">${esc(muniName(t.origin_code))} ${hhmm(t.depart_at)} 発 → ${esc(muniName(t.dest_code))} ${hhmm(t.arrive_at)} 着</div>` +
       barHtml(t, null) +
       `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>${esc(t.price_unit || '1口')}・税抜・架空</small>` +
@@ -366,6 +378,8 @@ const Find = (() => {
     [/RB/, 'RB の持ち主の同意が無い、または 1 口の重さが上段の上限を超える'], [/直方体の箱/, '箱でない荷は受けない便'], [/壊れ物/, '壊れ物は受けない便'], [/品目/, '品目が便の受けない品目に入る'],
   ];
   const kindOf = (r) => { const k = REASON_KINDS.find((x) => x[0].test(r)); return k ? k[1] : r; };
+  // 名前に「（架空）」が含まれるときは足さない（SPEC §31.5 #13）
+  const fict = (name) => (/[（(]架空[）)]/.test(String(name)) ? String(name) : `${name}（架空）`);
   const zeroTrips = () => (F.pair && F.role === 'shipper' && F.loaded ? F.trips.filter(isReverse) : []);
 
   function zeroHtml() {
@@ -382,7 +396,7 @@ const Find = (() => {
       (top.length ? `<p class="f-zero-h">合わない理由の多い順（${rs.length} 便のうち）</p><ol class="f-zero-why">${top.map((x) => `<li>${esc(x[0])}<span class="num">${x[1]} 便</span></li>`).join('')}</ol>`
         : '<p class="f-zero-h">この向きの便がありません。</p>') +
       '<div class="f-zero-btns">' +
-      (sc ? `<button type="button" class="btn-primary sm" data-act="try-ex">この向きの便に合う例の荷で試す</button><small>場面 ${esc(sc.id)} ${esc(sc.name)}（架空）</small>` : '') +
+      (sc ? `<button type="button" class="btn-primary sm" data-act="try-ex">この向きの便に合う例の荷で試す</button><small>場面 ${esc(sc.id)} ${esc(fict(sc.name))}</small>` : '') +
       '<button type="button" class="btn-ghost sm" data-act="to-compare-now">送り方を比べて見積依頼文を作る</button></div></div>';
   }
 
@@ -497,33 +511,175 @@ const Find = (() => {
     q('#f-edit-note').textContent = Object.keys(F.edits).length ? `画面の中だけで変えた便: ${Object.keys(F.edits).join('、')}` : '';
   }
 
-  /* 運送会社の役で登録する向き（市場を見るの区間の帰りの向きで埋める。SPEC §30.3）。新しい便を足す機能は無く、向きに合う架空の便を見せる */
+  /* ------------------------------------------------------------ 運送会社の役で帰り便を登録する（SPEC §31.4）
+     市場を見るの区間の帰りの向き（発地の県・着地の県）で、登録の欄を埋めて開く。登録した便は、この来訪者の状態（サーバーの盤）にだけ足され、
+     空き便の一覧・照合・地図に出る。「最初の状態に戻す」で消える。運送会社の名前は「架空 自社」で固定。値段の既定値は値段の式（§21.6）の参考額。 */
+  const PREF_CAPITAL = {
+    北海道: '札幌市', 青森県: '青森市', 岩手県: '盛岡市', 宮城県: '仙台市', 秋田県: '秋田市', 山形県: '山形市', 福島県: '福島市', 茨城県: '水戸市', 栃木県: '宇都宮市', 群馬県: '前橋市',
+    埼玉県: 'さいたま市', 千葉県: '千葉市', 東京都: '新宿区', 神奈川県: '横浜市', 新潟県: '新潟市', 富山県: '富山市', 石川県: '金沢市', 福井県: '福井市', 山梨県: '甲府市', 長野県: '長野市',
+    岐阜県: '岐阜市', 静岡県: '静岡市', 愛知県: '名古屋市', 三重県: '津市', 滋賀県: '大津市', 京都府: '京都市', 大阪府: '大阪市', 兵庫県: '神戸市', 奈良県: '奈良市', 和歌山県: '和歌山市',
+    鳥取県: '鳥取市', 島根県: '松江市', 岡山県: '岡山市', 広島県: '広島市', 山口県: '山口市', 徳島県: '徳島市', 香川県: '高松市', 愛媛県: '松山市', 高知県: '高知市', 福岡県: '福岡市',
+    佐賀県: '佐賀市', 長崎県: '長崎市', 熊本県: '熊本市', 大分県: '大分市', 宮崎県: '宮崎市', 鹿児島県: '鹿児島市', 沖縄県: '那覇市',
+  };
+  // 県の県庁所在地の市区（東京都は新宿区）。政令市は中央区・中区があればそれ、無ければ最初の区
+  function capitalOf(pref) {
+    const city = PREF_CAPITAL[pref];
+    if (!city) return '';
+    const hit = S.idx.codes.filter((c, i) => S.idx.prefs[i] === pref && S.idx.names[i].startsWith(city));
+    return hit.find((c) => /(中央区|中区)$/.test(muniName(c))) || hit[0] || '';
+  }
+  const fullIdx = () => (F.fullMap || (F.fullMap = new Map(S.idx.codes.map((c, i) => [S.idx.prefs[i] + S.idx.names[i], c]))));
+  const codeOfName = (t) => fullIdx().get(String(t || '').trim()) || '';
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const dtLocal = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  function regDefaults(from, to) {
+    const dep = new Date(); dep.setDate(dep.getDate() + 1); dep.setHours(17, 0, 0, 0);
+    const arr = new Date(dep.getTime() + 17 * 3600 * 1000);
+    const o = capitalOf(from), d = capitalOf(to);
+    return { o, d, dep: dtLocal(dep), arr: dtLocal(arr), veh: '4t', drops: d ? muniFull(d) : '', price: '', priceDirty: false, basis: '', err: '', done: '', busy: false, tok: 0, ...vehFill('4t') };
+  }
+  function vehFill(k) {
+    const v = (F.regVeh || {})[k];
+    return v ? { slack: v.weight_slack_kg, fw: v.footprint_mm[0], fd: v.footprint_mm[1], h: v.clear_height_mm, piece: v.max_piece_kg } : { slack: '', fw: '', fd: '', h: '', piece: '' };
+  }
+  async function loadRegVeh() {
+    if (F.regVeh || F.regVehBusy) return;
+    F.regVehBusy = true;
+    try { F.regVeh = (await Work.api('/api/b/register_defaults', {})).vehicles; } catch (e) { F.regVeh = null; } finally { F.regVehBusy = false; }
+    if (F.regVeh) { if (F.reg) Object.assign(F.reg, vehFill(F.reg.veh)); const el = q('#f-dir'); if (el) el.dataset.k = ''; renderDir(); }
+  }
+  function ensureMuniList() {
+    if (document.getElementById('f-munis')) return;
+    const dl = document.createElement('datalist');
+    dl.id = 'f-munis';
+    dl.innerHTML = S.idx.codes.map((c, i) => `<option value="${esc(S.idx.prefs[i] + S.idx.names[i])}"></option>`).join('');
+    document.body.appendChild(dl);
+  }
+  function regFormHtml() {
+    const r = F.reg, vs = F.regVeh;
+    if (!vs) return '<p class="f-hint">登録の欄を読み込んでいます</p>';
+    const inp = (id, lbl, val, type = 'text', extra = '') => `<label><span class="lbl">${lbl}</span><input id="${id}" class="ctl sm${type === 'number' ? ' num' : ''}" type="${type}" value="${esc(val)}" ${extra}></label>`;
+    return '<div class="f-reg" id="f-reg">' +
+      '<div class="f-grid">' +
+      inp('fr-o', '発地の市区町村', r.o ? muniFull(r.o) : '', 'text', 'list="f-munis" autocomplete="off"') + inp('fr-d', '着地の市区町村', r.d ? muniFull(r.d) : '', 'text', 'list="f-munis" autocomplete="off"') +
+      inp('fr-dep', '出発日時', r.dep, 'datetime-local') + inp('fr-arr', '到着日時', r.arr, 'datetime-local') + '</div>' +
+      `<div class="f-grid"><label><span class="lbl">車種</span><select id="fr-veh" class="ctl sm">${Object.entries(vs).map(([k, v]) => `<option value="${k}"${k === r.veh ? ' selected' : ''}>${esc(v.label)}</option>`).join('')}</select></label>` +
+      inp('fr-slack', '重さの余り（kg）', r.slack, 'number', 'min="1" step="any"') + '</div>' +
+      '<div class="f-grid3">' + inp('fr-fw', '1口の底面 縦（mm）', r.fw, 'number', 'min="100" step="any"') + inp('fr-fd', '1口の底面 横（mm）', r.fd, 'number', 'min="100" step="any"') +
+      inp('fr-h', '空きの高さ（mm）', r.h, 'number', 'min="100" step="any"') + '</div>' +
+      '<div class="f-grid">' + inp('fr-piece', '1個の重さの上限（kg）', r.piece, 'number', 'min="1" step="any"') +
+      inp('fr-price', '値段（円・税抜・1件）', r.price, 'number', 'min="0" step="100"') + '</div>' +
+      `<p class="f-hint" id="fr-basis">${esc(r.basis || '値段は、荷が確定していて発地・着地の道路距離があるとき、値段の式の既定値で埋めます。空にして登録すると同じ既定値になります')}</p>` +
+      inp('fr-drops', '降ろせる地点（「、」で区切る。市区町村の正式な名前）', r.drops, 'text', 'autocomplete="off"') +
+      '<p class="f-hint">運送会社: <b>架空 自社</b>（固定）。この便はこの画面を開いている来訪者の状態にだけ足され、サーバーのほかの来訪者には見えません。</p>' +
+      `<div class="f-btns"><button type="button" class="btn-sm" id="fr-go"${r.busy ? ' disabled' : ''}>この便を登録する</button></div>` +
+      `<p class="f-reg-err" id="fr-err" role="status">${esc(r.err)}</p><p class="f-hint" id="fr-done">${esc(r.done)}</p></div>`;
+  }
   const dirTrips = () => (F.dir && F.dir.from && F.dir.to ? F.trips.filter((t) => prefOf(t.origin_code) === F.dir.from && prefOf(t.dest_code) === F.dir.to) : []);
   function renderDir() {
     const el = q('#f-dir');
     if (!el) return;
     el.hidden = F.role !== 'carrier';
     if (el.hidden) return;
+    loadRegVeh();
+    ensureMuniList();
     const prefs = Market.state.d ? Market.state.d.prefs : [];
     const opt = (v) => `<option value="">指定なし</option>${prefs.map((p) => `<option value="${esc(p)}"${p === v ? ' selected' : ''}>${esc(p)}</option>`).join('')}`;
-    const d = F.dir || { from: '', to: '' };
-    if (el.dataset.k !== `${d.from}>${d.to}`) {
-      el.dataset.k = `${d.from}>${d.to}`;
+    const d = F.dir || { from: '', to: '' }, key = `${d.from}>${d.to}`;
+    if (el.dataset.k !== key) {
+      el.dataset.k = key;
+      if (!F.reg || F.reg.dirKey !== key) { F.reg = regDefaults(d.from, d.to); F.reg.dirKey = key; }
       const ts = dirTrips();
-      el.innerHTML = '<div class="m-h f-sub-h">登録する向き<span class="m-tag">帰りの向き</span></div>' +
+      el.innerHTML = '<div class="m-h f-sub-h">帰り便を登録する<span class="m-tag">帰りの向き</span></div>' +
         `<div class="f-grid"><label><span class="lbl">発地の県</span><select id="f-dir-from" class="ctl sm">${opt(d.from)}</select></label>` +
         `<label><span class="lbl">着地の県</span><select id="f-dir-to" class="ctl sm">${opt(d.to)}</select></label></div>` +
-        (d.from && d.to ? `<p class="f-hint">${esc(d.from)}→${esc(d.to)}の便: ${ts.length ? ts.map((t) => esc(t.id)).join('・') : 'まだありません'}（架空）。` +
-          '便の空きと料金は下の欄で、この画面の中だけ変えられます。新しい便を足す機能は、この版にはありません。</p>' : '');
+        (d.from && d.to ? `<p class="f-hint">${esc(d.from)}→${esc(d.to)}の便: ${ts.length ? ts.map((t) => esc(t.id)).join('・') : 'まだありません'}（架空）。下の欄で、この向きの帰り便を 1 本登録できます。</p>` + regFormHtml()
+          : '<p class="f-hint">発地の県と着地の県を選ぶと、帰り便を登録する欄が開きます。</p>');
+      scheduleRegPrice();
     }
   }
-  function openCarrier(pair) {
+  // 市場を見るの区間（荷が多い向き）を受け取り、その逆向き（帰りの向き）で登録の欄を開く。(pair) か (荷が多い向きの発地の県, 着地の県)
+  function openCarrier(a, b) {
+    const pair = a && typeof a === 'object' ? a : (a && b ? { from: a, to: b } : null);
     if (!pair) return;
     F.dir = { from: pair.to, to: pair.from }; // 荷が多い向きの逆が、帰り便の向き
+    F.reg = null;
+    const el = q('#f-dir');
+    if (el) el.dataset.k = '';
     F.role = 'carrier';
     App.setView('find');
     F.ver++;
     render();
+  }
+
+  function regPriceBox(r) {
+    const p = q('#fr-price'), bs = q('#fr-basis');
+    if (p && document.activeElement !== p) p.value = r.price;
+    if (bs && r.basis) bs.textContent = r.basis;
+  }
+  // 値段の既定値。発地・着地・車種・荷が変わったとき、利用者が値段を直していなければ、値段の式（§21.6）の参考額で埋める
+  function scheduleRegPrice() {
+    const r = F.reg, c = cargoOf();
+    if (!r || r.priceDirty || !r.o || !r.d || r.o === r.d || !c || !F.regVeh) return;
+    const tok = ++r.tok;
+    Work.api('/api/b/register_defaults', { origin_code: r.o, dest_code: r.d, vehicle: r.veh, shipment: { items: c.sh.items } })
+      .then((res) => { if (tok !== r.tok || r.priceDirty) return; r.price = res.price.price_ex_tax_yen ?? ''; r.basis = res.price.basis; regPriceBox(r); })
+      .catch((e) => { if (tok === r.tok) { r.basis = e.message; regPriceBox(r); } });
+  }
+  function regInput(e) {
+    const r = F.reg, t = e.target;
+    if (!r || !t.id || !t.id.startsWith('fr-')) return;
+    const v = t.value;
+    if (t.id === 'fr-o') { r.o = codeOfName(v); if (e.type === 'change') scheduleRegPrice(); }
+    else if (t.id === 'fr-d') {
+      const was = r.d ? muniFull(r.d) : '';
+      r.d = codeOfName(v);
+      if (e.type === 'change') {
+        if (r.d && (r.drops === was || !r.drops)) { r.drops = muniFull(r.d); q('#fr-drops').value = r.drops; }
+        scheduleRegPrice();
+      }
+    }
+    else if (t.id === 'fr-dep') r.dep = v;
+    else if (t.id === 'fr-arr') r.arr = v;
+    else if (t.id === 'fr-veh') {
+      r.veh = v; Object.assign(r, vehFill(v));
+      for (const [id, k] of [['fr-slack', 'slack'], ['fr-fw', 'fw'], ['fr-fd', 'fd'], ['fr-h', 'h'], ['fr-piece', 'piece']]) q('#' + id).value = r[k];
+      scheduleRegPrice();
+    }
+    else if (t.id === 'fr-slack') r.slack = v;
+    else if (t.id === 'fr-fw') r.fw = v;
+    else if (t.id === 'fr-fd') r.fd = v;
+    else if (t.id === 'fr-h') r.h = v;
+    else if (t.id === 'fr-piece') r.piece = v;
+    else if (t.id === 'fr-drops') r.drops = v;
+    else if (t.id === 'fr-price') { r.price = v; r.priceDirty = v !== ''; if (v === '') scheduleRegPrice(); }
+  }
+  async function registerTrip() {
+    const r = F.reg, c = cargoOf(), fail = (m) => { r.err = m; r.done = ''; const el = q('#fr-err'); if (el) el.textContent = m; };
+    if (!r || r.busy) return;
+    if (!r.o) return fail('発地の市区町村を、一覧から選ぶか正式な名前（例: 東京都新宿区）で入れてください');
+    if (!r.d) return fail('着地の市区町村を、一覧から選ぶか正式な名前（例: 兵庫県神戸市中央区）で入れてください');
+    const names = String(r.drops).split(/[、,，\n]/).map((x) => x.trim()).filter(Boolean), drops = [];
+    for (const n of names) { const code = codeOfName(n); if (!code) return fail(`降ろせる地点「${n}」は、市区町村の正式な名前（例: 兵庫県神戸市中央区）で入れてください`); drops.push(code); }
+    r.busy = true; r.err = '';
+    const go = q('#fr-go');
+    if (go) go.disabled = true;
+    try {
+      const res = await Work.api('/api/b/register_trip', {
+        origin_code: r.o, dest_code: r.d, depart_at: r.dep, arrive_at: r.arr, vehicle: r.veh, weight_slack_kg: Number(r.slack),
+        unit_footprint_mm: [Number(r.fw), Number(r.fd)], clear_height_mm: Number(r.h), max_piece_kg: Number(r.piece), drop_points: drops,
+        ...(r.price !== '' ? { price_ex_tax_yen: Number(r.price) } : {}), ...(c ? { shipment: { items: c.sh.items } } : {}),
+      });
+      const t = res.trip;
+      F.carrier = t.carrier_id; F.sel = t.id;
+      await loadTrips();
+      await runMatch();
+      r.done = `${t.id} を登録しました（${muniName(t.origin_code)}→${muniName(t.dest_code)}、${n0(t.price_ex_tax_yen)} 円・税抜）。一覧と地図に出ています。`;
+      render();
+      const dn = q('#fr-done'); if (dn) { dn.textContent = r.done; dn.scrollIntoView({ block: 'nearest' }); }
+      fitTrips([t.id]);
+      toast(`${t.id} を登録しました。「最初の状態に戻す」で消えます`);
+    } catch (e) { fail(e.message); toast(e.message); } finally { r.busy = false; const g = q('#fr-go'); if (g) g.disabled = false; }
   }
 
   function syncEditForm(force) {
@@ -617,7 +773,17 @@ const Find = (() => {
     renderList();
     syncTags();
     q('#f-fiction').textContent = F.fiction || '架空の運送会社と便です。';
+    arcPara();
     q('#f-booking').textContent = F.booking || '積むかどうか、どこにどう積むかは運送会社が決めます。受付で量って条件に合わないときは受け付けません。';
+  }
+
+  // 地図の凡例の欄に、直線で表示している便がある旨を 1 行足す
+  function arcPara() {
+    const any = F.trips.some((t) => F.geo[t.id] && F.geo[t.id].arc), nt = q('#find-notes');
+    let p = q('#f-arc');
+    if (!any) { if (p) p.remove(); return; }
+    if (!p && nt) { p = document.createElement('p'); p.id = 'f-arc'; p.className = 'f-n3'; nt.insertBefore(p, nt.querySelector('.f-lg')); }
+    if (p) p.textContent = '地図で直線の弧で表示している便は、経路のデータが無い便と、登録した便です。';
   }
 
   function tick() {
@@ -735,6 +901,9 @@ const Find = (() => {
       const ts = dirTrips();
       if (ts.length) { F.carrier = ts[0].carrier_id; F.sel = ts[0].id; F.ver++; render(); fitTrips(ts.map((t) => t.id)); }
     });
+    q('#f-dir').addEventListener('input', regInput);
+    q('#f-dir').addEventListener('change', regInput);
+    q('#f-dir').addEventListener('click', (e) => { if (e.target.id === 'fr-go') registerTrip(); });
     q('#f-apply').addEventListener('click', () => {
       const t = byId(q('#f-trip-sel').value);
       if (!t) return;
@@ -753,7 +922,9 @@ const Find = (() => {
       await Work.api('/api/b/reset', {});
       F.mine.clear(); F.edits = {}; F.results = {};
       q('#f-slack-in').dataset.t = '';
-      toast('仮予約と重さの余りを最初の架空データに戻しました');
+      F.reg = null; F.fm.data = null; F.fm.key = '';
+      const dEl = q('#f-dir'); if (dEl) dEl.dataset.k = '';
+      toast('仮予約・登録した便・重さの余りを最初の架空データに戻しました');
     }));
     q('#find-right').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-act]'), card = e.target.closest('.f-card');
@@ -845,6 +1016,9 @@ const Find = (() => {
   /* ------------------------------------------------------------ 公開 */
 
   async function init() {
+    if (!document.querySelector('link[href$="find_extra.css"]')) { // 登録の欄の見た目（index.html に <link> があれば何もしない）
+      const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'find_extra.css'; document.head.appendChild(l);
+    }
     bind();
     await loadTrips();
     if (F.loaded) {
@@ -872,7 +1046,7 @@ const Find = (() => {
     await runMatch();
     render();
     fitTrips((rev.length ? rev : F.trips).map((t) => t.id));
-    if (pair && window.Sheet) Sheet.scrollTo(F.role === 'carrier' ? '#find-view' : '#find-right');
+    if (pair && typeof Sheet !== 'undefined') Sheet.scrollTo(F.role === 'carrier' ? '#find-view' : '#find-right');
   }
   function leave() { F.active = false; F.markers.forEach((m) => { m.el.style.display = 'none'; }); q('#f-contract').hidden = true; }
   function onCargo() { if (F.loaded) runMatch(); }

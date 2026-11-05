@@ -153,6 +153,7 @@ const Market = (() => {
       return `<span style="left:${pos}%">${lab(v)}</span>`;
     }).join('');
     q('#mlg-jartic').hidden = !M.jartic;
+    if (M.j && M.j.period) { const t = q('#mlg-jartic-t'); const w = `${weekText()}の大型車の点`; if (t && t.textContent !== w) t.textContent = w; }
     q('#mlg-flow').hidden = false;
   }
 
@@ -327,7 +328,16 @@ const Market = (() => {
 
   /* ------------------------------------------------------------ 選択 */
 
-  const padding = () => (innerWidth <= 1100 ? { top: 120, bottom: 60, left: 40, right: 40 } : { top: 150, bottom: 190, left: 430, right: (document.body.classList.contains('m-right-collapsed') ? 300 : (q('#m-right').offsetWidth || 480)) + 80 });
+  // 区間の両端が上の要約と右の欄（区間の一覧と重ねる切り替えの列）に隠れないよう、実際の大きさから余白を決める（SPEC §31.5 #8）
+  const padding = () => {
+    if (innerWidth <= 1100) return { top: 120, bottom: 60, left: 40, right: 40 };
+    const shown = (e) => (e && e.getClientRects().length ? e.getBoundingClientRect() : null);
+    const sum = shown(q('#m-summary')), rt = shown(q('#m-right')), ly = shown(q('#layers'));
+    const top = Math.max(150, sum ? Math.ceil(sum.bottom) + 28 : 0);
+    const edge = Math.min(rt ? rt.left : innerWidth, ly ? ly.left : innerWidth);
+    const right = edge < innerWidth ? innerWidth - edge + 28 : 560;
+    return { top, bottom: 190, left: 430, right };
+  };
 
   function fitPair(r) {
     const a = M.d.cap[r.fi], b = M.d.cap[r.ti];
@@ -348,7 +358,12 @@ const Market = (() => {
     syncMarkers();
     syncHash();
     const row = q(`#m-tbody tr[data-k="${k}"]`);
-    if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (typeof Sheet !== 'undefined' && Sheet.narrow()) {
+      // 狭い画面: 下のパネルは先頭（区間の名前と数字）から見せる。表の行に合わせてスクロールしない（SPEC §31.5 #14）
+      const top = () => { const p = q('#m-right'); if (p && p.scrollTop !== 0) p.scrollTop = 0; };
+      top();
+      setTimeout(top, 120);
+    } else if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     if (fly) fitPair(r);
   }
 
@@ -396,7 +411,7 @@ const Market = (() => {
     if (pts.length) {
       if (!pts.some((p) => p.id === M.jpId)) M.jpId = pts[0].id;
       const cur = pts.find((p) => p.id === M.jpId);
-      h += `<div class="mp-j"><div class="mp-jh"><b>今週の道路の大型車</b><span>国の常設観測点（JARTIC）・1 時間ごと</span></div>` +
+      h += `<div class="mp-j"><div class="mp-jh"><b>${esc(weekText())}の道路の大型車</b><span>国の常設観測点（JARTIC）・1 時間ごと</span></div>` +
         `<div class="mp-chips" role="group" aria-label="観測点">${pts.map((p, i) => `<button data-act="pt" data-id="${p.id}" aria-pressed="${p.id === M.jpId}">地点 ${i + 1}</button>`).join('')}</div>` +
         `<div class="mp-read" id="ch-read"></div><div id="ch-box">${chartSvg(cur)}</div>` +
         `<div class="mp-jstat num"><span><i class="dot dot-up"></i>上り計 <b>${n0(cur.up_total)}</b> 台</span><span><i class="dot dot-down"></i>下り計 <b>${n0(cur.down_total)}</b> 台</span>` +
@@ -409,14 +424,25 @@ const Market = (() => {
     h += '<div class="mp-roles">' +
       '<div class="mp-role"><span>荷主の役</span><button class="btn-primary mp-go" data-act="find">この向きの空き便を探す</button></div>' +
       `<div class="mp-role"><span>運送会社の役</span><button class="btn-ghost mp-go" data-act="carrier">この向きの帰り便を登録する</button></div></div>`;
-    if (r.km >= CLO_KM) {
+    const clo = cloTarget(r);
+    if (clo && r.km >= CLO_KM) {
       h += `<div class="mp-clo"><p>直線 ${n0(r.km)} km あります。トラックから鉄道・船に移せるかを、日数と目安額の差で見られます。</p>` +
-        '<button class="btn-ghost mp-go" data-act="clo">鉄道・船を含めて送り方を比べる</button></div>';
+        `<button class="btn-ghost mp-go" data-act="clo">鉄道・船を含めて送り方を比べる（発地 ${esc(clo.oName)} → 着地 ${esc(clo.dName)}）</button></div>`;
+    } else if (!clo) {
+      h += '<div class="mp-clo"><p class="mp-clo-why">発地に選べるのは関東の 7 か所だけなので、この区間は送り方の比べに移れません。</p></div>';
+    } else {
+      h += `<div class="mp-clo"><p class="mp-clo-why">直線が ${CLO_KM}km に届かないので、鉄道・船を含めた送り方の比べへの入口は出していません。</p></div>`;
     }
     box.innerHTML = h;
     box.hidden = false;
     const hd = box.querySelector('.mp-jh');
     if (hd) hideRead();
+  }
+
+  // データの期間を見出しに出す（取得した週が過ぎても誤りにならないよう、日付で書く）。例: 10/27〜11/2 の 1 週間
+  function weekText() {
+    const p = M.j.period, f = (s) => `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))}`;
+    return `${f(p.start)}〜${f(p.end)} の ${p.hours === 168 ? '1 週間' : `${p.hours} 時間`}`;
   }
 
   function periodText() {
@@ -434,8 +460,8 @@ const Market = (() => {
     else if (b.dataset.act === 'clo') { cloCompare(); }
   }
 
-  /* 直線 500km 以上の区間から、鉄道・船を含めて送り方を比べる（SPEC §30.5）。県庁所在地の市（東京は新宿区）を発地・着地にする */
-  const CLO_KM = 500;
+  /* 直線 400km 以上の区間から、鉄道・船を含めて送り方を比べる（SPEC §30.5・§31.3）。県庁所在地の市（東京は新宿区）を発地・着地にする */
+  const CLO_KM = 400;
   const CAPITAL = {
     '北海道': '01101', '青森県': '02201', '岩手県': '03201', '宮城県': '04101', '秋田県': '05201', '山形県': '06201', '福島県': '07201',
     '茨城県': '08201', '栃木県': '09201', '群馬県': '10201', '埼玉県': '11107', '千葉県': '12101', '東京都': '13104', '神奈川県': '14104',
@@ -445,17 +471,23 @@ const Market = (() => {
     '徳島県': '36201', '香川県': '37201', '愛媛県': '38201', '高知県': '39201', '福岡県': '40132', '佐賀県': '41201', '長崎県': '42201',
     '熊本県': '43101', '大分県': '44201', '宮崎県': '45201', '鹿児島県': '46201', '沖縄県': '47201',
   };
-  function cloCompare() {
-    const r = selected();
-    if (!r) return;
-    const fromP = M.d.prefs[r.fi], toP = M.d.prefs[r.ti];
+  // 区間のどちらかの端が発地に選べる関東の都県で、直線 CLO_KM 以上のときだけ入口を出す（SPEC §31.3）。
+  // 発地 = 関東の端、着地 = もう一方の県庁所在地の市区（東京は新宿区）。どちらも関東なら区間の発側を発地にする
+  function cloTarget(r) {
+    if (!r) return null;
     const origins = S.meta.origins.map((o) => o.code);
-    let o = CAPITAL[fromP], d = CAPITAL[toP], note = '';
+    const fromP = M.d.prefs[r.fi], toP = M.d.prefs[r.ti];
+    let o = CAPITAL[fromP], d = CAPITAL[toP];
     if (!origins.includes(o)) {
-      if (origins.includes(d)) { [o, d] = [d, o]; note = `発地に選べるのは関東の 7 都市だけなので、${toP}の県庁所在地を発地、${fromP}を着地にしました（道路距離は同じです）`; }
-      else { o = null; note = `道路距離を持つ発地は関東の 7 都市だけなので、発地はいまの選択のまま、着地を${toP}の県庁所在地にしました`; }
+      if (!origins.includes(d)) return null;
+      [o, d] = [d, o];
     }
-    App.compareTo(o, d).then(() => { if (note) toast(note); });
+    const nm = (c) => { const i = S.idx.codes.indexOf(c); return i >= 0 ? S.idx.names[i] : c; };
+    return { o, d, oName: nm(o), dName: nm(d) };
+  }
+  function cloCompare() {
+    const r = selected(), t = r && r.km >= CLO_KM ? cloTarget(r) : null;
+    if (t) App.compareTo(t.o, t.d);
   }
 
   // 折れ線（SVG）。上りと下りを 1 時間ごとに。欠測（null）では線を切る。値の変換は座標への写像だけ。

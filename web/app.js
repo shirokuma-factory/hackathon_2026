@@ -971,6 +971,13 @@ async function main() {
   });
   map.touchZoomRotate.disableRotation();
   Sheet.init(map); // 幅 600px 以下のパネルと、fitBounds の余白（SPEC §30.7）
+  // 空きを探す・つなぐ: 左のパネルの高さを、下の注意と凡例の欄の上端までに限る（重ならないように、SPEC §31.5 #7）。値が変わるときだけ書く
+  const fn = document.querySelector('#find-notes');
+  if (fn && window.ResizeObserver) {
+    const setFn = () => { const h = String(Math.ceil(fn.offsetHeight)); if (document.documentElement.style.getPropertyValue('--fn-h') !== h + 'px' && fn.offsetHeight > 0) document.documentElement.style.setProperty('--fn-h', h + 'px'); };
+    new ResizeObserver(setFn).observe(fn);
+    setFn();
+  }
   map.addControl(new maplibregl.AttributionControl({
     compact: false,
     customAttribution: ['国土数値情報（行政区域データ）（国土交通省）を加工して作成', '国土数値情報（鉄道データ）（国土交通省）を加工して作成', '道路・フェリー・空港: OSRM・OpenStreetMap（© OpenStreetMap contributors, ODbL）'],

@@ -274,7 +274,8 @@ const Own = (() => {
 
 
   /* ------------------------------------------------------------ 荷待ちを入れる（SPEC §23）
-     計算は /api/waiting/calc（tools/serve_web.py → src/shipcompare/waiting.py）。ここは入力を送って、返った値を並べるだけで、金額も回数も計算しない。 */
+     計算はブラウザの中だけで行う（web/waiting_calc.js の WaitingShared.calc。単独ページ waiting.html と同じ関数、SPEC §31.1）。サーバーの /api/waiting は呼ばない。
+     告示の表は data/waiting_tariff.json（静的なファイル）。入れた記録は外に送らない。 */
 
   const W_COLS = [
     { k: 'date', t: '日付', ph: '10/5', w: 76 }, { k: 'vehicle_no', t: '車番', w: 58 },
@@ -475,12 +476,23 @@ const Own = (() => {
     return rows;
   }
 
+  // 告示の表（静的なファイル）。1 度だけ読む。記録は含まない
+  let tariffP = null;
+  const loadTariff = () => (tariffP = tariffP || fetch('data/waiting_tariff.json').then((r) => { if (!r.ok) throw new Error('告示の表を読めませんでした'); return r.json(); }).catch((e) => { tariffP = null; throw e; }));
+
+  function localCalc(rows, tariff) {
+    const res = WaitingShared.calc(rows, W.year, tariff);
+    res.tariff = tariff;
+    return res;
+  }
+
   async function waitCalc() {
     const rows = collectRows(), tok = ++W.tok;
     if (!rows.length) { W.res = null; W.err = ''; waitRefresh(); return; }
     try {
-      const res = await Work.api('/api/waiting/calc', { year: W.year, rows });
+      const tariff = await loadTariff();
       if (tok !== W.tok) return;
+      const res = localCalc(rows, tariff);
       W.res = res; W.err = '';
     } catch (e) { if (tok !== W.tok) return; W.res = null; W.err = e.message; }
     waitRefresh();
@@ -516,11 +528,12 @@ const Own = (() => {
     const text = q('#w-paste').value;
     if (!text.trim()) { toast('貼り付ける欄が空です'); return; }
     try {
-      const res = await Work.api('/api/waiting/calc', { year: W.year, text });
-      const inp = res.input_rows || [];
+      const pf = WaitingShared.parsePasteFull(text);
+      if (pf.rows.length > WaitingShared.MAX_ROWS) throw new Error(`行が多すぎます（${WaitingShared.MAX_ROWS.toLocaleString('ja-JP')} 行まで）`);
+      const inp = pf.rows;
       W.rows = inp.length ? inp.map((r) => ({ ...blankRow(), ...r })) : [blankRow(), blankRow(), blankRow()];
       W.pasteMsg = `${inp.length} 行を表に入れました`;
-      W.pasteNote = ((res.defaulted || []).includes('shipper_fault') ? [W_DEFAULT_FAULT_NOTE] : []).concat(res.notes || []).join('\n');
+      W.pasteNote = (pf.defaulted.includes('shipper_fault') ? [W_DEFAULT_FAULT_NOTE] : []).concat(pf.notes || []).join('\n');
     } catch (e) { W.pasteMsg = e.message; }
     renderLeft();
     waitCalc();
@@ -652,7 +665,16 @@ const Own = (() => {
   // 地図に収める範囲の余白。画面の大きさで決める（狭い画面で余白が地図より大きくならないように）
   function fitPad(wait) {
     const w = window.innerWidth, h = window.innerHeight;
-    if (w <= 600) return { top: 60, bottom: Math.round(h * 0.5), left: 24, right: 24 };
+    if (w <= 600) {
+      if (!wait) return { top: 60, bottom: Math.round(h * 0.5), left: 24, right: 24 };
+      // 荷待ちの点: 点の半径ぶんを足して、地図の端と出典の文字（下のパネルのすぐ上）に重ならないようにする（SPEC §31.5 #15）
+      const r = Math.ceil(WaitingMap.maxRadius()), at = document.querySelector('.maplibregl-ctrl-attrib');
+      // 出典の文字は狭い画面で折り返して高さが変わるので、測った位置と「下のパネルの上端 − 4 行ぶん」の小さいほうを使う
+      const sh = document.querySelector('#own-sheet'), shTop = sh && sh.getBoundingClientRect().height ? sh.getBoundingClientRect().top : h * 0.56;
+      const edge = Math.min(shTop - 72, at && at.getBoundingClientRect().height ? at.getBoundingClientRect().top : h);
+      return { top: 60 + r, bottom: Math.round(h - edge + r + 8 + 26),  // 26 は点の下の場所の名前の高さ
+         left: 24 + r, right: 24 + r };
+    }
     const lw = (q('#own-view') && q('#own-view').offsetWidth) || 440, rw = (q('#own-right') && q('#own-right').offsetWidth) || 540;
     let pad = wait ? { top: 80, bottom: 80, left: lw + 40, right: rw + 40 } : { top: 70, bottom: 150, left: 500, right: rw + 60 };
     const over = (pad.left + pad.right) / (w * 0.8);
@@ -670,7 +692,13 @@ const Own = (() => {
     if (!b) return;
     const changed = WaitingMap.fitKeyChanged(WaitingMap.key());
     if (!changed && !force) return;
-    map.fitBounds(b, { padding: fitPad(true), maxZoom: 10, duration: 900, essential: true });
+    const opts = { padding: fitPad(true), maxZoom: 10 };
+    if (window.innerWidth <= 600) {
+      // 狭い画面では sheet.js が map.fitBounds / cameraForBounds の余白を固定の値に置き換えるので、元のメソッドで位置を求めて移す（SPEC §31.5 #15）
+      const cam = maplibregl.Map.prototype.cameraForBounds.call(map, b, opts);
+      if (cam) { map.easeTo({ center: cam.center, zoom: cam.zoom, duration: 900, essential: true }); return; }
+    }
+    map.fitBounds(b, { ...opts, duration: 900, essential: true });
   }
 
   async function enter() {

@@ -20,7 +20,6 @@ import pytest
 
 from shipcompare import geo
 from shipcompare.estimate import estimate_all, summarize
-from shipcompare.guide import contacts_for_rows
 from shipcompare.models import COST_KEYS
 from shipcompare.quotes import compare_quotes, line_amounts_ex_tax
 from shipcompare.request import build_request
@@ -154,13 +153,11 @@ def test_spec15_4_request_matches_direct(srv):
         d = build_request(s, info)
         assert r["text"] == d.text and r["status"] == d.status
         assert r["missing_required"] == d.missing_required and r["missing_optional"] == d.missing_optional
-        want = contacts_for_rows(estimate_all(s))
-        assert [(c["mode"], c["name"], c["url"], c["condition"], c["checked_on"]) for c in r["contacts"]] == \
-            [(c.mode, c.name, c.url, c.condition, c.checked_on) for c in want]
+        # 手段の列を持たず、窓口のある会社を五十音順に並べる（SPEC §31.2）。手元の版は 4 社すべて
+        assert all(set(c) == {"name", "url", "condition", "checked_on", "has_window"} for c in r["contacts"])
+        assert [c["name"][:4] for c in r["contacts"]] == ["佐川急便", "日本通運", "名鉄NX", "ヤマト運"]
+        assert r["contacts_note"] is None
         assert f"{sc['name']}（想定の荷主）の例です" in r["text"]
-    # 貸切は窓口がないので「窓口の確認が必要」の行になる（連絡先を足さない）
-    kashikiri = [c for c in r["contacts"] if c["mode"] == "kashikiri"]
-    assert kashikiri and all(c["url"] is None and c["has_window"] is False for c in kashikiri)
 
 
 def test_spec15_5_compare_matches_direct_and_breakdown_sums(srv):

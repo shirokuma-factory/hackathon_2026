@@ -7,7 +7,9 @@
         "name": "佐川急便 送る・物流改善に関するお問い合わせ（種別「見積りが欲しい」）",
         "url": "https://www2.sagawa-exp.co.jp/contact/logistics/",
         "condition": "法人・個人どちらも選べる。後日、営業担当から連絡",
-        "checked_on": "2026-11-03"
+        "checked_on": "2026-11-03",
+        "reading": "さがわきゅうびん",
+        "company": "佐川急便"
       }
     ],
     "rosen": [
@@ -15,13 +17,17 @@
         "name": "日本通運 Webによるお問い合わせ（国内輸送「トラック輸送」）",
         "url": "https://www.nipponexpress.com/jp/ja/contact/",
         "condition": "法人のお客様が対象。個人あての配送はしていない。運送は名鉄NX運輸の「こぐまアロー便」",
-        "checked_on": "2026-11-03"
+        "checked_on": "2026-11-03",
+        "reading": "にっぽんつううん",
+        "company": "日本通運"
       },
       {
         "name": "名鉄NX運輸 当社物流サービスに関するご相談（「路線輸送」）",
         "url": "https://www.meitetsuunyu.co.jp/meitetsu-nx/inquiry/luggage/",
         "condition": "法人のお客様が対象。個人あての配送はしていない。運送は名鉄NX運輸の「こぐまアロー便」",
-        "checked_on": "2026-11-03"
+        "checked_on": "2026-11-03",
+        "reading": "めいてつえぬえっくすうんゆ",
+        "company": "名鉄NX運輸"
       }
     ],
     "jitbox": [
@@ -29,7 +35,9 @@
         "name": "ヤマト運輸 JITBOXチャーター便 ご相談・お見積り依頼窓口",
         "url": "https://pages.kuronekoyamato.co.jp/jitquotation_input.html",
         "condition": "法人発→法人着。事前の契約が必要（法人・団体・個人事業主）",
-        "checked_on": "2026-11-03"
+        "checked_on": "2026-11-03",
+        "reading": "やまとうんゆ",
+        "company": "ヤマト運輸"
       }
     ],
     "kashikiri": [

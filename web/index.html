@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="find_extra.css">
 <link rel="stylesheet" href="loadview.css">
 <link rel="stylesheet" href="own.css">
 <link rel="stylesheet" href="compare.css">
@@ -197,7 +198,7 @@
       <div class="mlg-sec" id="mlg-flow"><div class="mlg-t">動く線と乗り物<small>区間ごと</small></div>
         <div class="mlg-row"><svg class="mlg-ar" viewBox="0 0 60 14" aria-hidden="true"><path d="M2 7h40" stroke="#cfeaff" stroke-width="2" stroke-linecap="round"/><path d="M42 2l14 5-14 5z" fill="#eaf6ff"/></svg>
           <span>向き = 荷が多い向き（乗り物の進む向き） ／ 太さ = 不足量 ／ 明るさ = 偏りの比が小さいほど明るい ／ 下の細い線の色 = 手段</span></div></div>
-      <div class="mlg-sec" id="mlg-jartic"><div class="mlg-t">今週の大型車の点<small>国の観測点（JARTIC）</small></div>
+      <div class="mlg-sec" id="mlg-jartic"><div class="mlg-t"><span id="mlg-jartic-t">大型車の点</span><small>国の観測点（JARTIC）</small></div>
         <div class="mlg-row"><i class="dot dot-up"></i><span>上りが多い</span><i class="dot dot-down"></i><span>下りが多い</span><span class="mlg-faint">濃いほど差が大きい。▲▼は多い側</span></div>
         <div class="mlg-note">上り・下りは道路の定義で、区間の行き帰りとは一致しません。</div></div>
       <div class="lg-hubs" hidden></div>

@@ -230,3 +230,11 @@
 - 2026-11-05 10:54 `0b2f6ca` Revise gap analysis: exclude demo video, add public-version and new points
 - 2026-11-05 11:21 `cec16cf` Correct ComfyUI status in gap analysis
 - 2026-11-05 12:00 `9eaa9f4` Add findings from other sessions and SPEC 30 status to gap analysis
+
+## 2026-11-05 r2 の残り 17 件（SPEC §31）
+- 地図の荷待ちのタブは `web/waiting_calc.js` だけでブラウザの中で計算し、`/api/waiting` を呼ばない（画面の「外に送りません」と合わせた）。点の平均は定期報告の定義にそろえた。点の位置がずれていた原因は own.css の `position: relative` だった。
+- 見積依頼の問い合わせ先から手段の列を外し、会社の五十音順にした。公開版では 1 社しかない宅配・カゴ台車の窓口を出さない。
+- 区間から運送会社が帰り便を登録できるようにした（来訪者ごとの状態、照合と地図に出る、戻すと消える）。
+- 鉄道・船の比べの入口は、関東の端がある 400km 以上の区間だけ。ほかは理由の文を常に出す。大型車の見出しは期間を出す。区間の余白、距離と運転時間のそろえ、経路が取れないときの最後の行き先、横棒の日数の折り返し、400 のパネルの先頭、出典からリポジトリのファイル名を外した。
+- 本線が直した: 距離だけそろえて運転時間が食い違っていた（routes.js）、`window.Sheet` が const で常に偽だった（find.js）、荷待ちのページの照合の記録に残っていたファイル名。
+- 試験 764 件合格。画面写真 `docs/assets/2026-11-05_v32_*`。
