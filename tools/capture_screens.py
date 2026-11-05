@@ -65,7 +65,7 @@ def find_edge() -> str:
     found = shutil.which("msedge")
     if found:
         return found
-    raise SystemExit("Edge が見つかりません。環境変数 EDGE_PATH に msedge.exe のパスを指定してください。")
+    raise SystemExit("Edge が見つかりません。環境変数 EDGE_PATH に msedge.exe のパスを指定してください（Linux では google-chrome / chromium のパスでも動きます）。")
 
 
 def free_port() -> int:
