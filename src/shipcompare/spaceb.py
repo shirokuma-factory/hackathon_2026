@@ -171,19 +171,38 @@ def _md(d: date) -> str:
     return f"{d.month}/{d.day}"
 
 
+def _depart_dt(trip: dict[str, Any]) -> datetime | None:
+    v = trip.get("depart_at")
+    try:
+        return datetime.fromisoformat(v).replace(tzinfo=None) if isinstance(v, str) and v else None
+    except ValueError:
+        return None
+
+
+def _trip_floor(trip: dict[str, Any]) -> Any:
+    """便の床の空き m²（登録値）。floor_free_m2、無ければ車の床の総面積 floor_total_m2、どちらも無ければ None。"""
+    if trip.get("floor_free_m2") is not None:
+        return trip["floor_free_m2"]
+    return trip.get("floor_total_m2")
+
+
 def _arrive_day(trip: dict[str, Any]) -> date | None:
     v = trip.get("arrive_at")
     return date.fromisoformat(v[:10]) if isinstance(v, str) and v else None
 
 
 def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf_kg: Any = None,
-          floor_m2: Any = None) -> tuple[bool, list[str]]:
+          floor_m2: Any = None, now: datetime | None = None) -> tuple[bool, list[str]]:
     """荷物が便の空きに載るか。(合否, 合わない理由の一覧)。理由は日本語で、合えば空。
 
     slack_kg・shelf_kg・floor_m2 は盤が持つ「いまの残り」。省略すると便の登録値を使う。
-    SPEC §21.2: 日の幅と集荷の距離は荷物に日の幅・出発地があれば全便で調べる。床の合計は便に floor_free_m2 があるときだけ。
+    SPEC §21.2: 日の幅と集荷の距離は荷物に日の幅・出発地があれば全便で調べる。
+    SPEC §34.1: 床の合計は必ず調べる（残りは floor_m2、無ければ便の floor_free_m2、それも無ければ floor_total_m2）。
+    SPEC §34.2: now（現在時刻）を渡すと、出発済みの便を断る。盤は必ず渡す。
     """
     reasons: list[str] = []
+    if now is not None and _depart_dt(trip) is not None and _depart_dt(trip) <= now:
+        reasons.append("この便は出発済みです")
     st = trip["space_type"]
     slack = _dec(trip["weight_slack_kg"] if slack_kg is None else slack_kg)
 
@@ -239,11 +258,12 @@ def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf
                 reasons.append(f"集荷の地点が便の空く地点から {km:.1f}km で、この便の上限 {_fmt(radius)}km を超えます")
 
     # 床の合計
-    if trip.get("floor_free_m2") is not None:
-        free = _dec(trip["floor_free_m2"] if floor_m2 is None else floor_m2)
+    free_src = floor_m2 if floor_m2 is not None else _trip_floor(trip)
+    if free_src is not None:
+        free = _dec(free_src)
         need = shipment.total_floor_m2
         if need > free:
-            reasons.append(f"床の合計 {need:.2f}m² がこの便の床の空き {free:.2f}m² を超えます")
+            reasons.append(f"床の空き {free:.2f}m² に対して荷の床 {need:.2f}m² で、超えます")
 
     # 容器
     if trip["container_required"] and not shipment.in_container:
@@ -307,7 +327,7 @@ class Board:
         self._reg_seq = 0
         self._cap = {t["id"]: _Cap(_dec(t["weight_slack_kg"]),
                                    _dec(t["shelf_rated_kg"]) if t["space_type"] in SHELF_TYPES else None,
-                                   _dec(t["floor_free_m2"]) if t.get("floor_free_m2") is not None else None)
+                                   _dec(_trip_floor(t)) if _trip_floor(t) is not None else None)
                      for t in self._trips}
         self._holds: dict[str, _Hold] = {}
         self._seq = 0
@@ -382,7 +402,8 @@ class Board:
             t = dict(trip, id=f"R{self._reg_seq}")
             self._trips.append(t)
             self._by_id[t["id"]] = t
-            self._cap[t["id"]] = _Cap(_dec(t["weight_slack_kg"]), None, None)
+            self._cap[t["id"]] = _Cap(_dec(t["weight_slack_kg"]), None,
+                                      _dec(_trip_floor(t)) if _trip_floor(t) is not None else None)
             return self._trip_dict(t)
 
     def holds(self) -> list[dict[str, Any]]:
@@ -395,9 +416,10 @@ class Board:
         with self._lock:
             self._sweep()
             out = []
+            now = self._clock()
             for t in self._trips:
                 cap = self._cap[t["id"]]
-                ok, reasons = match(shipment, t, cap.slack, cap.shelf, cap.floor)
+                ok, reasons = match(shipment, t, cap.slack, cap.shelf, cap.floor, now)
                 out.append({"trip_id": t["id"], "ok": ok, "reasons": reasons})
             return out
 
@@ -418,9 +440,12 @@ class Board:
             expires = self._parse_until(hold_until, now) if hold_until is not None \
                 else now + timedelta(minutes=hold_minutes)
             cap = self._cap[trip["id"]]
-            ok, reasons = match(shipment, trip, cap.slack, cap.shelf, cap.floor)
+            ok, reasons = match(shipment, trip, cap.slack, cap.shelf, cap.floor, now)
             if not ok:
                 raise BoardError("この便には仮予約できません: " + "。".join(reasons))
+            depart = _depart_dt(trip)
+            if depart is not None and expires > depart:
+                expires = depart  # 仮予約の締切は出発日時を超えない（SPEC §34.2）
             weight, floor = shipment.total_kg, shipment.total_floor_m2
             cap.slack -= weight
             if cap.shelf is not None:
@@ -522,8 +547,17 @@ def _contract_draft(h: _Hold, trip: dict[str, Any], carrier: dict[str, Any], fue
     cargo = "、".join(f"{_fmt(p.length_mm / 10)}×{_fmt(p.width_mm / 10)}×{_fmt(p.height_mm / 10)}cm {_fmt(p.weight_kg)}kg を {p.count} 点"
                       for p in pieces)
     price = f"{trip['price_ex_tax_yen']:,}円（税抜）／{trip['price_unit']}"
-    transport = (f"{muni_name(trip['origin_code'])} から {muni_name(trip['dest_code'])} まで。{hm(trip['depart_at'])} 発、"
-                 f"{hm(trip['arrive_at'])} 着の予定。荷物: {cargo}。対価: {price}")
+    # 運送の行は予約した荷の集荷地・着地・日時から作る。便の区間は別の行（SPEC §34.3）
+    pick_code = (s.origin_code if s and s.origin_code else None) or trip["origin_code"]
+    drop_code = s.dest_code if s else trip["dest_code"]
+    when = f"{hm(trip['depart_at'])} 発の便に積む"
+    if s and s.window_from and s.window_to:
+        when += f"。届けばよい日: {_md(s.window_from)}〜{_md(s.window_to)}"
+    else:
+        when += f"。便の終点の到着: {hm(trip['arrive_at'])} の予定"
+    transport = f"{muni_name(pick_code)} から {muni_name(drop_code)} まで。{when}。荷物: {cargo}。対価: {price}"
+    trip_line = (f"{muni_name(trip['origin_code'])} → {muni_name(trip['dest_code'])}"
+                 f"（{hm(trip['depart_at'])} 発、{hm(trip['arrive_at'])} 着）")
     heavy = max((p.weight_kg for p in pieces), default=Decimal(0))
     handling = ("1個 %skg の荷があるため、積む側と降ろす側がそれぞれ 2 人を出す" % _fmt(heavy)) if heavy >= 100 \
         else "積み降ろしは運送会社と荷主で当日に決める"
@@ -533,6 +567,7 @@ def _contract_draft(h: _Hold, trip: dict[str, Any], carrier: dict[str, Any], fue
     shipper_party = f"荷主: {sh['name']}（{sh['address']}）" if sh.get("name") and sh.get("address") else None
     items = [
         {"key": "transport", "legal": True, "label": "運送の内容と対価", "value": transport},
+        {"key": "trip", "legal": False, "label": "便", "value": trip_line},
         {"key": "ancillary", "legal": True, "label": "附帯業務の対価",
          "value": trip.get("ancillary_note") or "別料金なし（積み込み・荷降ろしの人手は荷役の欄のとおり）"},
         {"key": "surcharge", "legal": True, "label": "燃料サーチャージなどの料金", "value": fuel, "by": "carrier"},
@@ -736,6 +771,7 @@ def build_registered_trip(body: dict[str, Any]) -> dict[str, Any]:
         "origin_code": o, "dest_code": d, "depart_at": dep.strftime("%Y-%m-%dT%H:%M"), "arrive_at": arr.strftime("%Y-%m-%dT%H:%M"),
         "space_type": "free_bed", "clear_height_mm": int(height), "unit_footprint_mm": [int(fw), int(fd)],
         "max_load_kg": veh["max_load_kg"], "floor_total_m2": veh["floor_total_m2"],
+        "floor_free_m2": veh["floor_total_m2"],
         "max_piece_kg": float(piece), "weight_slack_kg": float(slack), "drop_points": drops,
         "container_required": False, "rb_owner_consent": False, "max_upper_per_rb_kg": None,
         "shelf_fixed": False, "shelf_rated_kg": None, "price_unit": "1件", "refused_categories": [],
