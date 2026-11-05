@@ -22,7 +22,9 @@ STATUTORY = ("集荷地点等", "荷待ち地点", "到着日時", "到着の日
 
 
 def _js_aliases() -> dict[str, str]:
-    body = TEMPLATE[TEMPLATE.index("const HEADER_ALIASES = {"):TEMPLATE.index("const CLASS_ALIASES")]
+    # 見出しの別名の表は、地図の画面と共有する web/waiting_calc.js にある（SPEC §31.1）
+    src = (ROOT / "web" / "waiting_calc.js").read_text(encoding="utf-8")
+    body = src[src.index("const HEADER_ALIASES = {"):src.index("const CLASS_ALIASES")]
     return dict(re.findall(r"'([^']+)': '([^']+)'", body))
 
 

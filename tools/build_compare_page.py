@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -32,10 +33,13 @@ def _js(obj: object) -> str:
 def _filled() -> str:
     html = TEMPLATE.read_text(encoding="utf-8")
     tariffs = {"関東": json.loads(KANTO.read_text(encoding="utf-8")), "近畿": json.loads(KINKI.read_text(encoding="utf-8"))}
+    for t in tariffs.values():  # 照合の記録に、リポジトリの中の文書の節（「調査 §L」）が入っている。公開するページには載せない（SPEC §31.5 #17）
+        if t.get("verified_by"):
+            t["verified_by"] = re.sub(r"、調査 §[A-Z]+）", "）", t["verified_by"])
     vectors = json.loads(VECTORS.read_text(encoding="utf-8"))
     # 各社の公式の問い合わせ・申し込みページ（data/contacts.json）。ページは通信をしないので、ビルドのときに埋め込む
     raw = json.loads(CONTACTS.read_text(encoding="utf-8"))
-    contacts = {"checked_on": raw["checked_on"], "contacts": {k: [{"name": c["name"], "url": c["url"], "condition": c["condition"]} for c in v] for k, v in raw["contacts"].items()}}
+    contacts = {"checked_on": raw["checked_on"], "contacts": {k: [{"name": c["name"], "url": c["url"], "condition": c["condition"], "reading": c.get("reading", "")} for c in v] for k, v in raw["contacts"].items()}}
     for key, val in (("/*__TARIFFS__*/null", _js(tariffs)), ("/*__VECTORS__*/null", _js(vectors)), ("/*__CONTACTS__*/null", _js(contacts))):
         if html.count(key) != 1:
             raise SystemExit(f"テンプレートに {key} が 1 つありません")

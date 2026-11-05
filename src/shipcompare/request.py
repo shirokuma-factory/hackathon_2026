@@ -80,7 +80,9 @@ def missing_items(shipment: Shipment, totals: Totals | None = None) -> tuple[lis
     return required, optional
 
 
-def build_request(shipment: Shipment, scenario: dict | None = None) -> RequestDraft:
+def build_request(shipment: Shipment, scenario: dict | None = None, place: dict | None = None) -> RequestDraft:
+    """place は地図で選んだ発地・着地（label は「新宿区 → 大阪市中央区」、km は道路距離、note は距離の注記）。
+    あれば「発着」の行に区間の想定の値ではなく、この市区町村と道路距離を書く（SPEC §31.5 #16）。"""
     totals = summarize(shipment)
     required, optional = missing_items(shipment, totals)
     status = STATUS_READY if not required else STATUS_DRAFT
@@ -104,6 +106,9 @@ def build_request(shipment: Shipment, scenario: dict | None = None) -> RequestDr
     route = ROUTES.get(shipment.route or "")
     if route is None:
         lines.append("  発着: 未入力")
+    elif place and place.get("label") and place.get("km"):
+        note = f"。{place['note']}" if place.get("note") else ""
+        lines.append(f"  発着: {place['label']}（道路距離 {place['km']:,.1f}km{note}）")
     elif shipment.route == ROUTE_OTHER:
         lines.append(f"  発着: その他（距離 {_fmt(to_decimal(shipment.distance_km))} km）")
     else:

@@ -11,6 +11,8 @@ const CompareChart = (() => {
     if (!d) return '';
     const m = /^運転だけで(\d+)日/.exec(d);
     if (m) return `運転のみ ${m[1]} 日`;
+    const k = /^(\d+km)圏内は預かりの翌日、\d+km以上は翌々日/.exec(d);
+    if (k) return `${k[1]}まで翌日、超は翌々日`; // 2 行に収まる短い言い方（全文はツールチップ）
     return String(d).replace(/（.*$/, '').replace(/\s*https?:\/\/\S+/, '').trim();
   }
 

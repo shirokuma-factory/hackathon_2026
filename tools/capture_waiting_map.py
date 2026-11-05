@@ -1,7 +1,7 @@
 """地図の画面の「自社の運行」→「荷待ちを入れる」を、例を入れた状態で撮る（SPEC §30.4、G132）。1920x1080 と 400x800。
 
 使い方: uv run python tools/capture_waiting_map.py
-保存先: docs/assets/2026-11-05_v31_waiting_map_1920.jpg と 2026-11-05_v31_waiting_map_400.jpg（400 は上の地図と、下へ送った表の 2 枚）
+保存先: docs/assets/2026-11-05_v32_waiting_1920.jpg と 2026-11-05_v32_waiting_400.jpg（400 は上の地図と、下へ送った表の 2 枚）
 """
 
 from __future__ import annotations
@@ -55,13 +55,13 @@ def session(base_port: int, w: int, h: int):
     dbg = cs.free_port()
     proc = subprocess.Popen(
         [edge, "--headless=new", f"--remote-debugging-port={dbg}", f"--window-size={w},{h}", f"--user-data-dir={profile}", "--hide-scrollbars",
-         "--force-device-scale-factor=1", "--no-first-run", "--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader", "about:blank"],
+         "--force-device-scale-factor=1", "--no-first-run", "--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader", *cs.EDGE_CLEAN_FLAGS, "about:blank"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     targets = []
     for _ in range(60):
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{dbg}/json/list", timeout=2) as r:
-                targets = [t for t in json.load(r) if t.get("type") == "page"]
+                targets = cs.blank_targets(json.load(r))
             if targets:
                 break
         except Exception:
@@ -95,17 +95,17 @@ def main() -> int:
             info = page.js("""JSON.stringify({pts: document.querySelectorAll('.wm-pt').length,
               unplaced: !!document.querySelector('#wm-unplaced'), legend: !!document.querySelector('.wm-lg'), errs: window.__errs})""")
             print("1920:", info)
-            shot(page, OUT / "2026-11-05_v31_waiting_map_1920.jpg", 1920, 1080)
+            shot(page, OUT / "2026-11-05_v32_waiting_1920.jpg", 1920, 1080)
         finally:
             close(proc, profile)
         page, proc, profile = session(port, 400, 800)
         try:
             open_wait(page, base, 400, 800)
             print("400 横スクロール:", page.js("document.documentElement.scrollWidth > document.documentElement.clientWidth"), "エラー:", page.js("window.__errs"))
-            shot(page, OUT / "2026-11-05_v31_waiting_map_400.jpg", 400, 800)
+            shot(page, OUT / "2026-11-05_v32_waiting_400.jpg", 400, 800)
             page.js("document.querySelector('#hotspots').scrollIntoView({block:'start'})")
             time.sleep(0.6)
-            shot(page, OUT / "2026-11-05_v31_waiting_map_400_table.jpg", 400, 800)
+            shot(page, OUT / "2026-11-05_v32_waiting_400_table.jpg", 400, 800)
         finally:
             close(proc, profile)
     except Exception as e:  # noqa: BLE001

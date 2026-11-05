@@ -41,6 +41,16 @@ class SceneError(Exception):
 
 # ------------------------------------------------------------------ 起動と終了
 
+# Edge の起動に足す引数。この PC は拡張機能（MetaMask など）を新しいプロファイルに同期するので、拡張機能のページが先頭の対象に混ざる。
+# 拡張機能と同期を切り、接続先は about:blank のページだけにする（blank_targets）
+EDGE_CLEAN_FLAGS = ["--disable-extensions", "--disable-sync"]
+
+
+def blank_targets(targets):
+    """/json/list の一覧から、about:blank のページだけを返す（拡張機能のページを選ばない）。"""
+    return [t for t in targets if t.get("type") == "page" and str(t.get("url", "")).startswith("about:blank")]
+
+
 def find_edge() -> str:
     env = os.environ.get("EDGE_PATH")
     if env and Path(env).exists():
@@ -586,13 +596,13 @@ def main() -> int:
         edge_proc = subprocess.Popen(
             [edge, "--headless=new", f"--remote-debugging-port={dbg}", f"--window-size={W},{H}",
              f"--user-data-dir={profile}", "--hide-scrollbars", "--force-device-scale-factor=1",
-             "--no-first-run", "about:blank"],
+             "--no-first-run", *EDGE_CLEAN_FLAGS, "about:blank"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         targets = []
         for _ in range(60):
             try:
                 with urllib.request.urlopen(f"http://127.0.0.1:{dbg}/json/list", timeout=2) as r:
-                    targets = [t for t in json.load(r) if t.get("type") == "page"]
+                    targets = blank_targets(json.load(r))
                 if targets:
                     break
             except Exception:

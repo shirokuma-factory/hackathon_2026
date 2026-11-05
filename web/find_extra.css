@@ -1,0 +1,12 @@
+/* 空きを探す・つなぐ: 帰り便の登録の欄と、直線で表示する便の注記（SPEC §31.4・§31.5 #9）。index.html から style.css のあとに読む */
+.f-arcnote { font-size: 11px; color: var(--faint); line-height: 1.5; }
+.f-reg { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.f-reg .f-grid, .f-reg .f-grid3 { margin-bottom: 0; }
+.f-reg label { min-width: 0; }
+.f-reg input.ctl, .f-reg select.ctl { width: 100%; box-sizing: border-box; }
+.f-reg input[type="datetime-local"].ctl { color-scheme: dark; text-align: left; }
+.f-reg-err { margin: 0; min-height: 0; font-size: 12px; color: var(--error); }
+.f-reg-err:empty { display: none; }
+@media (max-width: 600px) {
+  .f-reg .f-grid, .f-reg .f-grid3 { grid-template-columns: 1fr; }
+}

@@ -1,6 +1,6 @@
 'use strict';
 /* 地図の画面の荷待ちのタブ（web/own.js）に足す部分（SPEC §30.4）。
-   計算と文言は web/waiting_calc.js（単独ページ waiting.html と同じ関数）を使い、数字は /api/waiting/calc の返り値（src/shipcompare/waiting.py）を並べるだけ。
+   計算と文言は web/waiting_calc.js（単独ページ waiting.html と同じ関数）を使い、数字は WaitingShared.calc（ブラウザの中で計算。サーバーには送らない、SPEC §31.1）の返り値を並べるだけ。
    ここで足すのは、どこで・いつ待っているかの表、場所ごと・月ごとの表、書面の「荷待ちを減らすためのご相談」、地図の上の点（場所の文字の先頭の市区町村名で位置を決める）。 */
 
 const WaitingMap = (() => {
@@ -62,14 +62,15 @@ const WaitingMap = (() => {
 
   /* ------------------------------------------------------------ 場所ごとの点 */
 
-  // 場所ごとに、荷待ちの計（分）と平均を作る。回数に荷主等の都合でない到着も入れる（hotspots と同じ）
+  // 場所ごとに、荷待ちの計（分）と平均を作る。数え方は場所ごと・月ごとの表と同じ（定期報告の定義: report_wait_min。SPEC §31.5 #6）。
+  // 荷主等の都合でない到着も回数に入れる。待機時間料の計算に使う wait_min とは数え方が違う
   function placesOf(res) {
     const by = new Map();
     for (const r of (res ? res.rows : [])) {
       const k = r.place || SH.NO_PLACE;
       if (!by.has(k)) by.set(k, { place: k, count: 0, total: 0 });
       const e = by.get(k);
-      e.count += 1; e.total += r.wait_min;
+      e.count += 1; e.total += r.report_wait_min;
     }
     return [...by.values()].map((e) => ({ ...e, avg: SH.halfUp(e.total, e.count) })).sort((a, b) => b.total - a.total || SH.cmp(a.place, b.place));
   }
@@ -112,7 +113,7 @@ const WaitingMap = (() => {
     el.style.width = el.style.height = `${sz}px`;
     el.style.background = rgbCss(c, 0.82);
     el.style.borderColor = rgbCss(c, 1);
-    el.setAttribute('aria-label', `${p.place}。荷待ちの計 ${p.total} 分、平均 ${p.avg} 分。押すと時間帯ごとの行を出します`);
+    el.setAttribute('aria-label', `${p.place}。荷待ちの計 ${p.total} 分、平均 ${p.avg} 分（国への定期報告と同じ数え方）。押すと時間帯ごとの行を出します`);
     el.innerHTML = `<span class="wm-n">${n0(p.avg)}</span><span class="wm-t">${esc(p.place)}</span>`;
     el.addEventListener('click', (e) => { e.stopPropagation(); select(p.place); });
     return el;
@@ -146,13 +147,15 @@ const WaitingMap = (() => {
     return [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]];
   }
   function fitKeyChanged(key) { if (key === M.fitKey) return false; M.fitKey = key; return true; }
+  // 点の外側の半径の最大（画面の端や出典の文字に重ならない余白を、own.js が決めるのに使う）
+  const maxRadius = () => (M.pts.length ? Math.max(...M.pts.map((p) => sizeOf(p.total))) / 2 + 6 : 0);
   const key = () => M.pts.map((p) => p.place).join('|');
 
   /* ------------------------------------------------------------ 右の欄に足す表 */
 
   function legendHtml() {
     return `<div class="wm-lg" aria-label="地図の点の凡例"><b>地図の点</b>
-      <span class="wm-lg-s">大きさ = 荷待ちの計（分）。点の中の数字 = 平均の荷待ち（分）</span>
+      <span class="wm-lg-s">大きさ = 荷待ちの計（分）。点の中の数字 = 平均の荷待ち（分）。平均は国への定期報告と同じ数え方です（場所ごと・月ごとの表と同じ。待機時間料の計算とは違います）</span>
       ${BANDS.map((b) => `<span class="wm-lg-i"><i style="background:${rgbCss(b.rgb, 0.85)}"></i>平均 ${b.label}</span>`).join('')}</div>`;
   }
 
@@ -162,7 +165,7 @@ const WaitingMap = (() => {
     const e = M.pts.find((p) => p.place === M.sel) || M.unplaced.find((p) => p.place === M.sel);
     const rows = hs.map((h) => `<tr><td data-l="相手">${esc(h.partner)}</td><td data-l="到着の時間帯">${esc(h.band)}</td><td class="num" data-l="回数">${h.count}</td><td class="num" data-l="平均の荷待ち">${h.avg_minutes} 分</td>
       <td class="num" data-l="最長">${h.max_minutes} 分</td><td class="num" data-l="1 時間以上">${h.over_1h_count}</td><td class="num" data-l="荷待ちの計">${h.wait_minutes} 分</td><td class="w-small wm-c3">${SH.hotspotNotes(h, false).map((x) => `（${esc(x)}）`).join('')}</td></tr>`).join('');
-    return `<div class="wm-detail" id="wm-detail"><b>${esc(M.sel)}</b><span class="w-small">　荷待ちの計 ${e ? hm(e.total) : '—'}、${e ? e.count : 0} 回</span>
+    return `<div class="wm-detail" id="wm-detail"><b>${esc(M.sel)}</b><span class="w-small">　荷待ちの計 ${e ? hm(e.total) : '—'}（定期報告の数え方）、${e ? e.count : 0} 回</span>
       <div class="w-recw"><table class="w-par wm-card" id="wm-detail-tab"><thead><tr><th>契約の相手</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>荷待ちの計</th><th>注記</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
@@ -213,5 +216,5 @@ const WaitingMap = (() => {
     return [...base, SH.BASIS_FACTS[0], SH.gmenBasis(res ? res.by_partner : []), SH.BASIS_FACTS[1]];
   }
 
-  return { BANDS, bandOf, locate, compute, paint, show, select, onChange, bounds, fitKeyChanged, key, mapSectionHtml, hotspotsHtml, consultHtml, basisItems, state: M, sizeOf };
+  return { BANDS, bandOf, locate, compute, paint, show, select, onChange, bounds, fitKeyChanged, key, maxRadius, mapSectionHtml, hotspotsHtml, consultHtml, basisItems, state: M, sizeOf };
 })();

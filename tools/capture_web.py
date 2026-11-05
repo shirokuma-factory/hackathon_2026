@@ -111,14 +111,14 @@ def edge_page(w: int = 1920, h: int = 1080):
     dbg = cs.free_port()
     proc = subprocess.Popen(
         [edge, "--headless=new", f"--remote-debugging-port={dbg}", f"--window-size={w},{h}", f"--user-data-dir={profile}",
-         "--hide-scrollbars", "--force-device-scale-factor=1", "--no-first-run", "--allow-file-access-from-files", "about:blank"],
+         "--hide-scrollbars", "--force-device-scale-factor=1", "--no-first-run", *cs.EDGE_CLEAN_FLAGS, "--allow-file-access-from-files", "about:blank"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         targets = []
         for _ in range(60):
             try:
                 with urllib.request.urlopen(f"http://127.0.0.1:{dbg}/json/list", timeout=2) as r:
-                    targets = [t for t in json.load(r) if t.get("type") == "page"]
+                    targets = cs.blank_targets(json.load(r))
                 if targets:
                     break
             except Exception:
@@ -465,7 +465,7 @@ def main() -> int:
     edge_proc = subprocess.Popen(
         [edge, "--headless=new", f"--remote-debugging-port={dbg}", f"--window-size={w},{h}", f"--user-data-dir={profile}",
          "--hide-scrollbars", "--force-device-scale-factor=1", "--no-first-run", "--enable-webgl", "--ignore-gpu-blocklist",
-         "--enable-unsafe-swiftshader", "about:blank"],
+         "--enable-unsafe-swiftshader", *cs.EDGE_CLEAN_FLAGS, "about:blank"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     rc = 0
     try:
@@ -473,7 +473,7 @@ def main() -> int:
         for _ in range(60):
             try:
                 with urllib.request.urlopen(f"http://127.0.0.1:{dbg}/json/list", timeout=2) as r:
-                    targets = [t for t in json.load(r) if t.get("type") == "page"]
+                    targets = cs.blank_targets(json.load(r))
                 if targets:
                     break
             except Exception:

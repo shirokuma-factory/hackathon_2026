@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -21,6 +22,7 @@ SHARED = ROOT / "web" / "waiting_calc.js"   # 地図の画面（web/own.js）と
 OUT_ARTIFACT = ROOT / "web" / "publish" / "waiting_artifact.html"
 TITLE = "荷待ち協議の書面"
 OUT = ROOT / "web" / "waiting.html"
+OUT_TARIFF = ROOT / "web" / "data" / "waiting_tariff.json"   # 地図の画面が通信せずに計算するための告示の表（SPEC §31.1）
 
 
 def _js(obj: object) -> str:
@@ -28,9 +30,17 @@ def _js(obj: object) -> str:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
 
+def public_tariff() -> dict:
+    """公開するページに埋める告示の表。照合の記録からリポジトリの中のファイル名を外す（SPEC §31.5 #17）。"""
+    tariff = json.loads(TARIFF.read_text(encoding="utf-8"))
+    if tariff.get("verified_by"):
+        tariff["verified_by"] = re.sub(r"（docs/[^、）]*、", "（", tariff["verified_by"])
+    return tariff
+
+
 def _filled() -> str:
     html = TEMPLATE.read_text(encoding="utf-8")
-    tariff = json.loads(TARIFF.read_text(encoding="utf-8"))
+    tariff = public_tariff()
     vectors = json.loads(VECTORS.read_text(encoding="utf-8"))
     shared = SHARED.read_text(encoding="utf-8").strip("\n").replace("</", "<\\/")
     for key, val in (("/*__WAITING_CALC__*/", shared), ("/*__TARIFF__*/null", _js(tariff)), ("/*__VECTORS__*/null", _js(vectors))):
@@ -54,6 +64,10 @@ def main() -> int:
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             f.write(html)
         print(f"保存: {path}  {path.stat().st_size} B")
+    OUT_TARIFF.parent.mkdir(parents=True, exist_ok=True)
+    with open(OUT_TARIFF, "w", encoding="utf-8", newline="\n") as f:
+        f.write(_js(public_tariff()) + "\n")
+    print(f"保存: {OUT_TARIFF}  {OUT_TARIFF.stat().st_size} B")
     return 0
 
 

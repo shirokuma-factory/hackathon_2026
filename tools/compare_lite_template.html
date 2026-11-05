@@ -54,8 +54,8 @@ ul.rs li { margin: 1px 0; }
 .ask .cond, .asks .cond { color: var(--muted); font-size: 11.5px; }
 .asks { margin-top: 14px; font-size: 12.5px; }
 .asks h3 { margin: 0 0 4px; font-size: 14px; }
-.ask-row { padding: 6px 0; border-top: 1px solid var(--row-line); }
-.ask-row a { color: var(--accent); }
+.ask-co { padding: 6px 0; border-top: 1px solid var(--row-line); }
+.ask-co a { color: var(--accent); }
 .home { margin-top: 4px; padding: 4px 8px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; font-size: 12.5px; }
 .sum { font-size: 12.5px; color: var(--muted); margin: 4px 0 8px; }
 textarea#quote { width: 100%; height: 190px; line-height: 1.55; }
@@ -112,11 +112,11 @@ body.selftest #selftest { display: block; }
 <script>
 "use strict";
 /* 通信はしません（外部へ送る API も、外部の script も使いません）。入れた条件はこのページの中だけで判定します。
-   貸切の運賃は src/shipcompare/estimate.py の kashikiri_fares と同じ式です。同じ試験表（tests/data/compare_lite_vectors.json）を ?selftest=1 で通します。 */
+   貸切の運賃は地図の画面の計算と同じ式です。同じ試験表を ?selftest=1 で通します。 */
 const TARIFFS = /*__TARIFFS__*/null;
 const VECTORS = /*__VECTORS__*/null;
 const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Artifact 用の版（navigator.clipboard でコピーし、断られたら枠の文を選ぶ）
-const CONTACTS = /*__CONTACTS__*/null;   // data/contacts.json の問い合わせ・申し込みページ（ビルドのときに埋め込む。ページは通信しない）
+const CONTACTS = /*__CONTACTS__*/null;   // 各社の問い合わせ・申し込みページ（ビルドのときに埋め込む。ページは通信しない）
 
 const GUARD = '目安です。最後は各社の見積で確かめてください';
 const PREFS = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県', '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県',
@@ -126,27 +126,27 @@ const KANTO = ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', 
 const KINKI = ['福井県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'];
 const FLEX_DAYS = [0, 1, 2, 3, 4, 5, 7, 10, 14];
 
-// 規則の数字。出典は docs/plan/2026-11-04_顧客の今のやり方の調査.md の §C と §F
+// 規則の数字。出典は下の SOURCES（公式ページの条件）
 const RULES = {
-  takuhaiS: { sum3: 200, side: 170, kg: 30 },                // §C 大手の宅配（標準の上限）
+  takuhaiS: { sum3: 200, side: 170, kg: 30 },                // 大手の宅配（標準の上限）
   takuhaiL: { sum3: 260, kg: 50 },                            // 大手の宅配の大型サイズ（公式ページで確認）
-  kazai: { kg: 150, sum3: 450, longest: 250, height: 200 },   // §F-3 家財おまかせ便
-  akabane: { kg: 350 },                                       // §C 赤帽
-  kei: { kg: 350, m3: 2.8, box: [180, 130, 120], boxSeat: [250, 130, 120] }, // §F-2 ハコベル・PickGo（軽）
-  jitbox: { box: [170, 104, 104], m3: 1.8, kg: 500 },         // §C カゴ台車 1 本単位のボックス
+  kazai: { kg: 150, sum3: 450, longest: 250, height: 200 },   // 家財おまかせ便
+  akabane: { kg: 350 },                                       // 赤帽
+  kei: { kg: 350, m3: 2.8, box: [180, 130, 120], boxSeat: [250, 130, 120] }, // 軽貨物マッチング（軽）
+  jitbox: { box: [170, 104, 104], m3: 1.8, kg: 500 },         // カゴ台車 1 本単位のボックス
   rosen: { kgPerM3: 280, quoteOverKg: 1000 },                 // 路線便の計算重量
-  t2: { floorM2: 1.77 * 3.10, longest: 440, shortLen: 310 },  // §F-2 ハコベル 2t ショート 177×310cm、ロング 440cm
+  t2: { floorM2: 1.77 * 3.10, longest: 440, shortLen: 310 },  // 2t のショート 177×310cm、ロング 440cm
   t4home: { kg: 3500, floorM2: 13.0 },                        // 地図の画面のデモの便 T7（架空）
   homeFlexDays: 3,
 };
 const BOX_NOTE = '同じ名前のサービスを複数の会社が出している（条件は会社ごとに違う）';
 const SOURCES = [
-  '宅配・赤帽・カゴ台車・路線便: 調査 顧客の今のやり方（2026-11-04）§C（大手の宅配、赤帽、カゴ台車、積合せ便の公式の条件。会社名と各社の表は載せません）',
-  '大手の宅配の大型サイズ（3 辺合計 260cm・50kg）: 公式ページで確認（docs/plan/2026-11-04_顧客の今のやり方の調査.md §L）',
-  '家財おまかせ便、軽貨物マッチング（ハコベル・PickGo）: 同 §F-2・§F-3（2026-11-05 に確認。法人・店舗への配達、赤帽の荷台寸法は未確認）',
-  '2t・4t の貸切の目安額: 標準的運賃（2024 年 3 月 22 日告示）の距離制運賃。関東運輸局・近畿運輸局の表。値は官報の告示本文（令和 6 年国土交通省告示第 209 号）と照合済み（同 §L）',
-  `見積を頼む先: 各社の公式の問い合わせ・申し込みページ（data/contacts.json、${CONTACTS.checked_on} に確認）。記録が無い送り方は、記録が無いと書いて、窓口を作り出していない`,
-  '帰り便: このリポジトリの地図の画面のデモ（架空の便。デモの便 T7 は最大 3,500kg・床 13.0m²）',
+  '宅配・赤帽・カゴ台車・路線便: 各社の公式ページに載っている荷物の条件（2026-11-04 に確認。会社名と各社の表は載せません）',
+  '大手の宅配の大型サイズ（3 辺合計 260cm・50kg）: 公式ページで確認（2026-11-05）',
+  '家財おまかせ便、軽貨物マッチング: 各社の公式ページ（2026-11-05 に確認。法人・店舗への配達、赤帽の荷台寸法は未確認）',
+  '2t・4t の貸切の目安額: 国土交通省 標準的運賃（2024 年 3 月 22 日告示）の距離制運賃。関東運輸局・近畿運輸局の表。値は官報の告示本文（令和 6 年国土交通省告示第 209 号）と照合済み',
+  `見積を頼む先: 各社の公式の問い合わせ・申し込みページ（${CONTACTS.checked_on} に確認）。記録が無い送り方は、記録が無いと書いて、窓口を作り出していない`,
+  '帰り便: このサイトの地図の画面のデモ（架空の便。デモの便 T7 は最大 3,500kg・床 13.0m²）',
 ];
 
 /* ---------------------------------------------------------------- 貸切の運賃（kashikiri_fares と同じ） */
@@ -355,30 +355,21 @@ function inputs() { return { rows: S.rows, from: $('#from').value, to: $('#to').
 
 const NO_ESTIMATE = '目安額は出せません（運賃表の全体を持っていないため）';
 const NO_ESTIMATE_IDS = ['rosen', 'kei'];   // 路線便・軽貨物マッチング（公開の運賃表の全体を持っていない）
-const ASK_KEY = { takuhai: 'takuhai', jitbox: 'jitbox', rosen: 'rosen', kashikiri_2t: 'kashikiri', kashikiri_4t: 'kashikiri' };
-const ASK_NOTE = {
-  kei: 'ハコベル・PickGo の公式の申し込みページは、記録している一覧にありません。各社のサイトの会員登録から見積を取ります',
-};
 
-// 見積を頼む先。使える ○ と要確認 △ の送り方だけ。URL は data/contacts.json にあるものだけで、無いものは「記録が無い」と書く。
-// 窓口の会社名は送り方の行とは分け、結果の表の下の「見積を頼む先」の欄に並べる（SPEC §30.1）
-function askInner(o) {
-  if (o.id === 'home') return '地図の画面（デモ）の「空きを探す・つなぐ」。デモの便は架空で、実在の運送会社への窓口はありません';
-  const list = (ASK_KEY[o.id] && CONTACTS.contacts[ASK_KEY[o.id]]) || [];
-  const parts = list.map((c) => (c.url
-    ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a><div class="cond">${esc(c.condition)}</div>`
-    : `<span class="cond">${esc(c.condition)}</span>`));
-  if (ASK_NOTE[o.id]) parts.push(`<span class="cond">${esc(ASK_NOTE[o.id])}</span>`);
-  if (!parts.length) parts.push('<span class="cond">公式の窓口は、記録している一覧にありません。各社のサイトの問い合わせ先から頼みます</span>');
-  return parts.join('');
-}
+// 見積を頼む先。試算額を出した送り方と会社を結び付けないため、送り方の見出しの下には置かず、窓口のある会社を五十音順に並べる（SPEC §31.2）。
+// 送り方の状態では絞らない（いつも同じ一覧）。URL は記録にあるものだけ
 function askHtml(o) {
   if (o.status === 'ng') return '';
   return '<div class="ask"><b>見積を頼む先</b>: 下の「見積を頼む先」の欄</div>';
 }
 function asksSection(options) {
-  const rows = options.filter((o) => o.status !== 'ng').map((o) => `<div class="ask-row" data-ask="${esc(o.id)}"><b>${esc(o.name)}</b><div>${askInner(o)}</div></div>`).join('');
-  return rows ? `<div class="asks" id="asks"><h3>見積を頼む先</h3>${rows}</div>` : '';
+  if (!options.some((o) => o.status !== 'ng')) return '';
+  const list = Object.values(CONTACTS.contacts).flat().filter((c) => c.url)
+    .sort((x, y) => String(x.reading || x.name).localeCompare(String(y.reading || y.name), 'ja'));
+  const rows = list.map((c) => `<div class="ask-co"><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a><div class="cond">${esc(c.condition)}</div></div>`).join('');
+  const home = options.some((o) => o.home && o.status !== 'ng') ? '<div class="ask-co"><span class="cond">地図の画面（デモ）の「空きを探す・つなぐ」の便は架空で、実在の運送会社への窓口はありません</span></div>' : '';
+  const other = '<div class="ask-co"><span class="cond">この一覧にない送り方（貸切、軽貨物のマッチングなど）は、公式の窓口を記録していません。各社のサイトの問い合わせ先から頼みます</span></div>';
+  return `<div class="asks" id="asks"><h3>見積を頼む先</h3>${rows}${home}${other}</div>`;
 }
 
 function optRow(o) {

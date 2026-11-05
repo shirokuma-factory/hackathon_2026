@@ -288,7 +288,21 @@ const Rt = (() => {
     const isCap = !!d && hav(d.ll, ll) < 6; // 県庁所在地（の市区）なら、作ってある経路をそのまま使う
     const sets = {};
     for (const m of ORDER) sets[m] = buildSet(m, d ? d.m[m] : null, d ? (d.why && d.why[m]) || '' : '', names);
-    R.cur = { tok, oc, i, sets, names, ll, isCap, ver: 0, note: '', noteKind: '', tl: null };
+    // 県庁所在地の着地: 上の欄（詳細パネル）に道路距離があるときは、トラックのカードも同じ値にする（SPEC §31.5 #10）
+    if (isCap && sets.truck.ok) {
+      const roadKm = curOd() && curOd().km ? curOd().km[i] : null;
+      if (roadKm !== null && roadKm !== undefined) {
+        sets.truck.km = roadKm;
+        if (sets.truck.legs.length === 1) sets.truck.legs[0].km = roadKm;
+        // 運転時間も上の欄と同じ値にそろえる（距離だけそろえると、時間が食い違う）
+        const roadMin = curOd().min ? curOd().min[i] : null;
+        if (roadMin !== null && roadMin !== undefined) {
+          sets.truck.truckMin = roadMin;
+          if (sets.truck.legs.length === 1) sets.truck.legs[0].minutes = roadMin;
+        }
+      }
+    }
+    R.cur = { tok, oc, i, sets, names, ll, isCap, capLL: d ? d.ll : null, ver: 0, note: '', noteKind: '', tl: null };
     schedule(R.cur);
     if (!isCap) refine(tok);
     render();
@@ -319,7 +333,10 @@ const Rt = (() => {
         const hasRoad = roadKm !== null && roadKm !== undefined;
         const km = hasRoad ? roadKm : (fb ? Math.round(hav(ll[0], ll[ll.length - 1]) * 10) / 10 : j.km);
         const straight = fb && !hasRoad;
-        const leg = mkLeg('truck', km, fb ? null : j.minutes, `${cur.names.o}→${cur.names.d}`, ll, { fallback: fb, straight });
+        // 距離を上の欄の道路距離にそろえたときは、運転時間も上の欄の値にそろえる
+        const roadMin = hasRoad && curOd().min ? curOd().min[cur.i] : null;
+        const mins = roadMin !== null && roadMin !== undefined ? roadMin : (fb ? null : j.minutes);
+        const leg = mkLeg('truck', km, mins, `${cur.names.o}→${cur.names.d}`, ll, { fallback: fb, straight });
         const ferry = !!(curOd().ferry && curOd().ferry[cur.i]);
         cur.sets.truck = { mode: 'truck', ok: true, why: '', legs: [leg], hubs: [], stops: [cur.names.o, cur.names.d], km: leg.km, truckMin: leg.minutes || 0, vfp: ferry, fallback: fb, straight };
         if (fb) failedTruck = true;
@@ -327,7 +344,13 @@ const Rt = (() => {
         const s = cur.sets[m], last = s.legs.at(-1);
         s.legs[s.legs.length - 1] = mkLeg('truck', j.km, j.minutes, `${s.stops[s.stops.length - 2]}→${cur.names.d}`, j.coordinates);
         recount(s);
-      } else failedTail = true;
+      } else {
+        failedTail = true;
+        // 着地までの経路が取れなかった電車・船・飛行機は、線が県庁所在地の市区までのまま。最後の行き先もそう書く（SPEC §31.5 #11）
+        const s = cur.sets[m];
+        s.stops[s.stops.length - 1] = `${capitalName(cur)}（県庁所在地）まで`;
+        s.capTail = true;
+      }
       schedule(cur);
       render();
       App.onRt(false);
@@ -343,6 +366,19 @@ const Rt = (() => {
       cur.noteKind = 'info';
     }
     render();
+  }
+  // 着地と同じ県の県庁所在地の市区の名前（作ってある経路の着地の位置に最も近い市区）。見つからなければ県の名前
+  function capitalName(cur) {
+    const pref = S.idx.prefs[cur.i];
+    const d = cur.capLL || null;
+    if (!d) return `${pref}の`;
+    let best = -1, bd = 1e9;
+    for (let j = 0; j < S.idx.codes.length; j++) {
+      if (S.idx.prefs[j] !== pref) continue;
+      const k = hav(d, [S.idx.lon[j], S.idx.lat[j]]);
+      if (k < bd) { bd = k; best = j; }
+    }
+    return best >= 0 ? S.idx.names[best] : `${pref}の`;
   }
   const curOdPoint = () => { const o = S.meta.origins.find((x) => x.code === S.origin); return [o.lon, o.lat]; };
 

@@ -63,7 +63,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from shipcompare import geo, loadplan, spaceb, waiting  # noqa: E402
 from shipcompare import routes as route_lib  # noqa: E402
 from shipcompare.estimate import ST_NOCALC, estimate_all, summarize  # noqa: E402
-from shipcompare.guide import contacts_for_rows, load_transit_days, mode_group, transit_days, transit_days_text  # noqa: E402
+from shipcompare.guide import load_transit_days, mode_group, request_contacts, transit_days, transit_days_text  # noqa: E402
 from shipcompare.models import COST_KEYS, KIND_AMOUNT, KIND_INCLUDED, KIND_UNKNOWN  # noqa: E402
 from shipcompare.quotes import compare_quotes, line_amounts_ex_tax  # noqa: E402
 from shipcompare.request import build_request  # noqa: E402
@@ -388,17 +388,33 @@ def api_request(body: Any) -> dict[str, Any]:
     scenario = body.get("scenario")
     if scenario is not None and not isinstance(scenario, dict):
         raise BadRequest("scenario は辞書か null で渡してください")
-    draft = build_request(s, scenario)
-    contacts = contacts_for_rows(estimate_all(s))
+    place = _place_of(body.get("place"))
+    draft = build_request(s, scenario, place)
+    contacts, pointer = request_contacts(public=_CTX.public)  # 手段の名前も列も持たない（SPEC §31.2）
     return {
         "status": draft.status,
         "missing_required": draft.missing_required,
         "missing_optional": draft.missing_optional,
         "text": draft.text,
-        "contacts": [{"mode": c.mode, "mode_label": c.mode_label, "name": c.name, "url": c.url,
-                      "condition": c.condition, "checked_on": c.checked_on, "has_window": c.has_window}
-                     for c in contacts],
+        "contacts": contacts,
+        "contacts_note": pointer,
     }
+
+
+def _place_of(v: Any) -> dict[str, Any] | None:
+    """依頼文の区間。地図で選んだ発地・着地の名前と道路距離（SPEC §31.5 #16）。"""
+    if v is None:
+        return None
+    if not isinstance(v, dict):
+        raise BadRequest("place は辞書か null で渡してください")
+    label, km, note = v.get("label"), v.get("km"), v.get("note")
+    if not isinstance(label, str) or not label.strip() or len(label) > 80:
+        raise BadRequest("place.label は 80 文字以内の文字列で渡してください")
+    if isinstance(km, bool) or not isinstance(km, (int, float)) or not 0 < km < 10000:
+        raise BadRequest("place.km は 0 より大きい数で渡してください")
+    if note is not None and (not isinstance(note, str) or len(note) > 120):
+        raise BadRequest("place.note は 120 文字以内の文字列で渡してください")
+    return {"label": label.strip(), "km": float(km), "note": note}
 
 
 def evaluation_dict(e) -> dict[str, Any]:
@@ -629,7 +645,7 @@ def api_route(query: dict[str, list[str]]) -> dict[str, Any]:
 
 def api_b_trips(query: dict[str, list[str]]) -> dict[str, Any]:
     demo = spaceb.load_demo()
-    return {"note": demo["note"], "carriers": demo["carriers"], "trips": _board().trips(),
+    return {"note": demo["note"], "carriers": demo["carriers"] + _board().extra_carriers(), "trips": _board().trips(),
             "holds": _board().holds(), **_b_notices()}
 
 
@@ -673,18 +689,66 @@ def api_b_decide(body: Any) -> dict[str, Any]:
 def api_b_price_formula(body: Any) -> dict[str, Any]:
     """帰り便の値段の式（SPEC §21.6）。基準積載率は 0〜1（既定 0.7）、リードタイムの割引は 0〜0.5 の 0.1 刻み、地域は 近畿 / 関東。"""
     body = _need_dict(body)
-    trip = next((t for t in spaceb.load_trips() if t["id"] == body.get("trip_id")), None)
-    if trip is None:
-        raise BadRequest(f"便 {body.get('trip_id')!r} が見つかりません")
+    try:
+        trip = _board().trip(body.get("trip_id"))  # 登録した便も含む（来訪者ごとの盤）
+    except spaceb.BoardError as e:
+        raise BadRequest(f"便 {body.get('trip_id')!r} が見つかりません") from e
     s = _b_shipment({**body, "dest_code": body.get("dest_code") or trip["dest_code"]})
     carrier = next((c for c in spaceb.load_demo()["carriers"] if c["id"] == trip["carrier_id"]), {})
     try:
         ref = spaceb.per_unit_reference(trip, s, body.get("base_load_rate", spaceb.DEFAULT_BASE_LOAD_RATE),
-                                        body.get("lead_discount", 0), body.get("region") or carrier.get("tariff_region") or "関東",
+                                        body.get("lead_discount", 0),
+                                        body.get("region") or trip.get("tariff_region") or carrier.get("tariff_region") or "関東",
                                         min_fee_yen=body.get("min_fee_yen"))
     except ValueError as e:
         raise BadRequest(str(e)) from e
     return {"reference": ref, **_b_notices()}
+
+
+def _register_cargo(body: dict[str, Any]) -> spaceb.BShipment | None:
+    """値段の既定値に使う荷。荷物が無い・読めないときは None。"""
+    if body.get("shipment") is None:
+        return None
+    return _b_shipment({**body, "dest_code": body.get("dest_code") or "0"})
+
+
+def api_b_register_defaults(body: Any) -> dict[str, Any]:
+    """登録の入力欄の既定値（車種ごとの値と、値段の式の既定値）。SPEC §31.4。"""
+    body = _need_dict(body)
+    out: dict[str, Any] = {"vehicles": {k: dict(v) for k, v in spaceb.REGISTER_VEHICLES.items()},
+                           "price_basis": spaceb.REGISTER_PRICE_BASIS, "max_registered": spaceb.MAX_REGISTERED}
+    if body.get("origin_code") and body.get("dest_code"):
+        try:
+            trip = spaceb.build_registered_trip({**_REG_PLACEHOLDER, "drop_points": [body.get("dest_code")], **body})
+            cargo = _register_cargo(body)
+        except ValueError as e:
+            raise BadRequest(str(e)) from e
+        out["price"] = spaceb.default_register_price(trip, cargo) if cargo else             {"price_ex_tax_yen": None, "basis": "荷物が確定していないため、値段の既定値を出せません", "reference": None}
+    return out
+
+
+_REG_PLACEHOLDER = {"vehicle": "4t", "depart_at": "2026-01-01T09:00", "arrive_at": "2026-01-01T18:00",
+                    "weight_slack_kg": 1, "unit_footprint_mm": [1000, 1000], "clear_height_mm": 1000, "max_piece_kg": 1}
+
+
+def api_b_register_trip(body: Any) -> dict[str, Any]:
+    """運送会社の役で帰り便を登録する（SPEC §31.4）。来訪者の盤にだけ足す。値段を省くと §21.6 の式の既定値（荷が要る）。"""
+    body = _need_dict(body)
+    try:
+        trip = spaceb.build_registered_trip({**{"drop_points": [body.get("dest_code")]}, **body})
+        price = body.get("price_ex_tax_yen")
+        if price in (None, ""):
+            cargo = _register_cargo(body)
+            price = spaceb.default_register_price(trip, cargo)["price_ex_tax_yen"] if cargo else None
+            if price is None:
+                raise ValueError("値段を入れてください（既定値を出せませんでした）")
+        else:
+            price = spaceb._num_in(price, "値段（円・税抜）", 0, 10_000_000)
+        trip["price_ex_tax_yen"] = int(price)
+        reg = _board().register(trip)
+    except (ValueError, spaceb.BoardError) as e:
+        raise BadRequest(str(e)) from e
+    return {"trip": reg, "carriers": spaceb.load_demo()["carriers"] + _board().extra_carriers(), **_b_notices()}
 
 
 def api_b_reset(body: Any) -> dict[str, Any]:
@@ -730,6 +794,7 @@ POST_ROUTES = {
     "/api/confirm": api_confirm, "/api/add_quote": api_add_quote, "/api/add_demo_quotes": api_add_demo_quotes,
     "/api/b/match": api_b_match, "/api/b/hold": api_b_hold, "/api/b/decide": api_b_decide, "/api/b/reset": api_b_reset,
     "/api/b/contract": api_b_contract, "/api/b/price_formula": api_b_price_formula,
+    "/api/b/register_defaults": api_b_register_defaults, "/api/b/register_trip": api_b_register_trip,
 }
 
 

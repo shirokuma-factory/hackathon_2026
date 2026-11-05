@@ -5,7 +5,7 @@
 const W = {
   hooks: {}, scenarios: [], C: null, draft: null, scenarioSel: '', cargoOpen: false,
   open: false, everOpened: false, step: 1, qform: null, request: null, requestKey: '', cmp: null,
-  issuesText: '', saved: null, token: 0,
+  issuesText: '', saved: null, token: 0, place: null, // place: 着地のパネルで選んだ発地・着地の名前と道路距離（依頼文の区間に使う。SPEC §31.5 #16）
 };
 const $w = (s) => document.querySelector(s);
 const wesc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -64,7 +64,7 @@ const newQForm = () => {
   for (const [k] of COSTS) lines[k] = { kind: 'unknown', amount: '' };
   return { carrier: '', product: '', tax: '税抜', received_on: isoLocal(t), valid_until: isoLocal(v), is_demo: false, lines, error: '' };
 };
-const versionSig = () => JSON.stringify([confirmedShipment(), curVer() && curVer().scenario]);
+const versionSig = () => JSON.stringify([confirmedShipment(), curVer() && curVer().scenario, W.place]);
 
 function scenarioOfVersion() {
   const v = curVer();
@@ -245,6 +245,8 @@ async function startFromDestination(est) {
     const r = await wapi('/api/confirm', { case: caseForApi(), shipment: est.shipment, scenario_id: v && v.scenario ? v.scenario.id : null });
     const changed = r.changed;
     W.C = r.case;
+    const g = est.geo, label = W.hooks.routeLabel ? W.hooks.routeLabel() : '';
+    W.place = g && g.km && !g.no_route && !g.ferry && label ? { label, km: g.km, note: g.origin_note || null } : null;
     for (const k of ['route', 'distance_km', 'origin_in_kanto']) W.draft[k] = est.shipment[k];
     afterCase(changed);
     if (changed) toast(`着地の区間を当てはめて、条件の版 ${curVer().number} にしました`);
@@ -300,7 +302,7 @@ async function loadStep() {
     if (W.step === 1) {
       const key = versionSig();
       if (!W.request || W.requestKey !== key) {
-        W.request = await wapi('/api/request', { shipment: sh, scenario: v.scenario });
+        W.request = await wapi('/api/request', { shipment: sh, scenario: v.scenario, ...(W.place ? { place: W.place } : {}) });
         W.requestKey = key;
       }
     } else {
@@ -323,8 +325,10 @@ function renderRequest() {
   const r = W.request;
   const miss = r.missing_required.length ? `<p class="miss"><b>荷主側で未入力の必須項目:</b> ${r.missing_required.map(wesc).join('、')}</p>` : '';
   const opt = r.missing_optional.length ? `<details class="miss-opt"><summary>任意の未入力 ${r.missing_optional.length}件</summary><p>${r.missing_optional.map(wesc).join('、')}</p></details>` : '';
-  const rows = r.contacts.map((c) => `<tr><td class="nw">${wesc(c.mode_label)}</td><td>${c.has_window
+  // 見積を頼む先。手段の列も名前も持たない（試算額を出した手段と会社を結び付けない。SPEC §31.2）
+  const rows = r.contacts.map((c) => `<tr><td>${c.has_window
     ? `<a href="${wesc(c.url)}" target="_blank" rel="noopener">${wesc(c.name)}</a>` : `<span class="no-win">${wesc(c.name)}</span> <b class="need">窓口の確認が必要</b>`}</td><td>${wesc(c.condition)}</td><td class="nw num">${wesc(c.checked_on)}</td></tr>`).join('');
+  const pointer = r.contacts_note ? `<p class="hint">${wesc(r.contacts_note)}。</p>` : '';
   return `<section class="sec">
     <div class="sec-h"><h3>見積依頼文</h3><span class="chip ${r.status === '依頼準備完了' ? 'ok' : 'check'}">${wesc(r.status)}</span></div>
     ${miss}${opt}
@@ -333,8 +337,8 @@ function renderRequest() {
       <span class="hint">送信はしません。運送会社の窓口に貼り付けて使います。</span></div>
   </section>
   <section class="sec">
-    <div class="sec-h"><h3>問い合わせ先</h3><span class="hint">状態が「使えない」以外の手段だけ（確認日つき）</span></div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>手段</th><th>窓口</th><th>条件</th><th>確認日</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="sec-h"><h3>見積を頼む先</h3><span class="hint">会社の五十音順（確認日つき）</span></div>
+    ${rows ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>窓口</th><th>条件</th><th>確認日</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}${pointer}
   </section>`;
 }
 function bindRequest() {

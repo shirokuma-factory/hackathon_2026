@@ -118,8 +118,8 @@ def test_g131_return_direction_is_the_reverse_of_the_market_pair():
 
 def test_g133_clo_entry_for_500km_pairs():
     mk = read("market.js")
-    assert "const CLO_KM = 500;" in mk and "r.km >= CLO_KM" in mk
-    assert "鉄道・船を含めて送り方を比べる" in mk and 'data-act="clo"' in mk and "App.compareTo(o, d)" in mk
+    assert "const CLO_KM = 400;" in mk and "r.km >= CLO_KM" in mk  # §31.3 で 500km から 400km に変えた
+    assert "鉄道・船を含めて送り方を比べる" in mk and 'data-act="clo"' in mk and "App.compareTo(t.o, t.d)" in mk
     app = read("app.js")
     assert "App.compareTo = async (originCode, destCode)" in app
 
