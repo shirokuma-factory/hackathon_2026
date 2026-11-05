@@ -224,11 +224,37 @@ const Muni = (() => {
     return out;
   }
 
+  // 施設層のデータ配列を、元データと種別の選択が同じ間は同じ参照で返す
+  const facMemo = {};
+  function facP31() {
+    const sig = Object.keys(U.types).filter((k) => U.types[k]).join(',');
+    const m = facMemo.p31;
+    if (m && m.src === U.p31Items && m.sig === sig) return m.v;
+    const v = U.p31Items.filter((x) => U.types[x.kind]);
+    facMemo.p31 = { src: U.p31Items, sig, v };
+    return v;
+  }
+  function facAir() {
+    const m = facMemo.air;
+    if (m && m.src === U.c28) return m.v;
+    const v = U.c28.items.map(([lon, lat, name, status]) => ({ p: [lon, lat], name, status }));
+    facMemo.air = { src: U.c28, v };
+    return v;
+  }
+  function facHalo() {
+    const a = U.p31Items ? facP31() : null, b = U.c28 && U.types.air ? facAir() : null;
+    const m = facMemo.halo;
+    if (m && m.a === a && m.b === b) return m.v;
+    const v = [...(a || []), ...(b || [])];
+    facMemo.halo = { a, b, v };
+    return v;
+  }
+
   function facLayers(zoom) {
     const L = deck, out = [], size = Math.max(9, Math.min(17, 6 + (zoom - 3) * 1.6));
     const halo = [];
     if (U.p31Items) {
-      const items = U.p31Items.filter((x) => U.types[x.kind]);
+      const items = facP31(); // 同じ参照を返す（毎フレーム新しい配列を渡すと属性が毎回作り直される）
       out.push(new L.IconLayer({
         id: 'fac-p31', data: items, getPosition: (d) => d.p, getIcon: (d) => ICON[d.kind], getSize: size, sizeUnits: 'pixels',
         getColor: (d) => [...GLYPH[d.kind][2], 245], pickable: true, updateTriggers: { getSize: [Math.round(size)] },
@@ -236,7 +262,7 @@ const Muni = (() => {
       halo.push(...items);
     }
     if (U.c28 && U.types.air) {
-      const air = U.c28.items.map(([lon, lat, name, status]) => ({ p: [lon, lat], name, status }));
+      const air = facAir();
       out.push(new L.IconLayer({
         id: 'fac-air', data: air, getPosition: (d) => d.p, getIcon: () => ICON.air, getSize: size + 3, sizeUnits: 'pixels', getColor: [...GLYPH.air[2], 255], pickable: true,
         updateTriggers: { getSize: [Math.round(size)] },
@@ -245,14 +271,16 @@ const Muni = (() => {
     }
     if (halo.length) {
       out.unshift(new L.ScatterplotLayer({
-        id: 'fac-halo', data: halo, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: size * 0.72, filled: true, getFillColor: [8, 12, 22, 175],
+        id: 'fac-halo', data: facHalo(), getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: size * 0.72, filled: true, getFillColor: [8, 12, 22, 175],
         updateTriggers: { getRadius: [Math.round(size)], data: [halo.length] },
       }));
     }
     if (U.types.osm && U.osm) {
       if (zoom >= 11) {
+        // 全国 8 万件を毎フレーム描くと、内蔵 GPU では 1 フレームに約 20ms かかる（SPEC §19.5）。画面の周りの分だけ渡す
+        const cv = Cull.view('fac-osm', U.osm.items, (d) => [d[0], d[1], d[0], d[1]], typeof map !== 'undefined' ? map : null);
         out.push(new L.ScatterplotLayer({
-          id: 'fac-osm', data: U.osm.items, getPosition: (d) => [d[0], d[1]], radiusUnits: 'pixels', getRadius: 3.2, filled: true, getFillColor: [238, 206, 120, 215],
+          id: 'fac-osm', data: cv.items, getPosition: (d) => [d[0], d[1]], radiusUnits: 'pixels', getRadius: 3.2, filled: true, getFillColor: [238, 206, 120, 215],
           stroked: true, getLineColor: [10, 14, 24, 220], lineWidthUnits: 'pixels', getLineWidth: 0.8, pickable: true,
         }));
       } else if (U.d) {

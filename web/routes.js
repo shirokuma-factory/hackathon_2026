@@ -491,18 +491,20 @@ const Rt = (() => {
       }));
     }
     // 乗り換えの印（貨物駅・港・空港）
-    const hubs = sets.flatMap((s) => s.hubs.map((h) => ({ ...h, a: A(s.mode) })));
+    // 配列は元データ・強調・版が同じ間は同じ参照で返す（毎フレーム作り直すと属性が毎回作り直される）
+    const hubs = stableData('rt-hubs', [...sets, F, cur.ver], () => sets.flatMap((s) => s.hubs.map((h) => ({ ...h, a: A(s.mode) }))));
     if (hubs.length) {
-      out.push(new L.ScatterplotLayer({
+      const hubNames = stableData('rt-hub-names', [hubs, !!F, zoom >= 7], () => hubs.filter((h) => h.a >= 0.9 && (F || zoom >= 7)));
+      out.push(memoLayer('rt-hubs', hubs, F + '|' + cur.ver, () => new L.ScatterplotLayer({
         id: 'rt-hubs', data: hubs, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 5.5, filled: true, stroked: true, getFillColor: (d) => [10, 15, 25, 240 * d.a],
         getLineColor: (d) => withA(col(d.mode), 255 * d.a), lineWidthUnits: 'pixels', getLineWidth: 2.4, updateTriggers: { getFillColor: trig, getLineColor: trig },
-      }));
-      out.push(new L.TextLayer({
-        id: 'rt-hub-names', data: hubs.filter((h) => h.a >= 0.9 && (F || zoom >= 7)), getPosition: (d) => d.p, getText: (d) => d.name, getSize: 12, sizeUnits: 'pixels',
+      })));
+      out.push(memoLayer('rt-hub-names', hubNames, F + '|' + cur.ver, () => new L.TextLayer({
+        id: 'rt-hub-names', data: hubNames, getPosition: (d) => d.p, getText: (d) => d.name, getSize: 12, sizeUnits: 'pixels',
         getColor: (d) => withA(lightCol(d.mode), 250), getPixelOffset: [0, 14], getTextAnchor: 'middle', getAlignmentBaseline: 'top', fontFamily: '"Noto Sans JP", sans-serif',
         characterSet: 'auto', outlineWidth: 3, outlineColor: [8, 12, 20, 240], fontSettings: { sdf: true }, billboard: true,
         updateTriggers: { getText: trig },
-      }));
+      })));
     }
     // 乗り物
     const veh = [];
@@ -516,11 +518,12 @@ const Rt = (() => {
       if (data.length) out.push(...vehLayers('rt-veh-' + m, data, m, (F === m ? 1.12 : 1) * SIZE[m], zoom, { updateTriggers: { getSize: [F] } }, F === m ? 1.12 : 1));
     }
     if (lead) {
-      out.push(new L.ScatterplotLayer({
-        id: 'rt-lead-halo', data: [{ p: lead.p }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 24, filled: true, getFillColor: withA(col(lead.mode), 70),
+      const leadD = stableData('rt-lead-halo', [lead.p[0], lead.p[1]], () => [{ p: lead.p }]);
+      out.push(memoLayer('rt-lead-halo', leadD, lead.mode, () => new L.ScatterplotLayer({
+        id: 'rt-lead-halo', data: leadD, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 24, filled: true, getFillColor: withA(col(lead.mode), 70),
         stroked: true, getLineColor: withA(col(lead.mode), 220), lineWidthUnits: 'pixels', getLineWidth: 1.6, updateTriggers: { getFillColor: [lead.mode], getLineColor: [lead.mode] },
-      }));
-      out.push(...vehLayers('rt-lead', [{ p: lead.p, ang: lead.ang }], lead.mode, SIZE[lead.mode] * 1.3, zoom, {}, 1.3));
+      })));
+      out.push(...vehLayers('rt-lead', stableData('rt-lead', [lead.p[0], lead.p[1], lead.ang], () => [{ p: lead.p, ang: lead.ang }]), lead.mode, SIZE[lead.mode] * 1.3, zoom, {}, 1.3));
     }
     // 1 日の運転（9 時間）の終わりの印（トラックだけの経路のとき）
     const tl = timeline();
