@@ -1068,3 +1068,29 @@ Blender で作った glTF（`web/models/*.glb`）を、拡大したときだけ 
 - 「荷主等の都合」の欄が無いときの既定は はい（作成指示）。欄が空欄の行は従来どおり誤りにする（欄がある貼り付けで空欄を はい とみなさない）。
 - 荷役のあとの待ちの 2 時間の境は、荷役の途中にある運転者の荷役の境（待機の始まり + 2 時間、時計の時刻）を変えない。待機の分の通算で 2 時間を超えた部分を 2 時間超の単価にする点は、荷主側の荷役を待機に入れる既存の扱いと同じ。
 - 秒つきの時刻の秒は読み捨てる（切り上げない）。Excel の通し番号の時刻（0.375 など）は読まない（作成指示）。
+
+## 26 公開用の版（claude.ai の Artifact、2026-11-05）
+
+`web/waiting.html` と `web/compare_lite.html` の動きを変えずに、claude.ai の Artifact に載せる版を、同じテンプレートから別に作ります。`uv run python tools/build_waiting_page.py` と `tools/build_compare_page.py` が、ローカルの版と `web/publish/waiting_artifact.html`・`web/publish/compare_lite_artifact.html` を両方書きます。変換は `tools/artifact_build.py` です。
+
+### 26.1 置き場の決まりへの対応
+
+- doctype・html・head・body を書かない。先頭は `<title>`（「荷待ち協議の書面」「荷物の送り方比べ」）、次に `<meta name="claude:viewport-fit-sides" content="cover">`、`<style>`、本文、`<script>`。
+- 印刷（`window.print`、印刷の CSS）とファイルの保存（`a.download`、Blob）は、テンプレートの印（`PRINT-START`、`LOCAL-ONLY-START/END`）の間にあり、Artifact の版では取り除く。代わりに「書面の文をコピー」（記録の一覧、合計、根拠を含む文）と「CSV をコピー」を出す。`navigator.clipboard.writeText` をクリックの中で呼び、断られたら見える枠に文を出して選ぶ。比べるページの「文をコピーする」も同じ。
+- CSV の読み込みは、ファイル選択（`input type=file` と FileReader）と、CSV の文の貼り付けの両方。
+- `confirm` 等は使わない。「保存した記録を消す」は、同じボタンを 2 回押す（1 回目で文言が変わり、6 秒か他の操作で戻る）。
+- 色は全部 CSS のカスタムプロパティ（裸の `:root` が明るい値、`prefers-color-scheme: dark` の中と `:root[data-theme="dark"]` が暗い値）。body に背景。横の余白は `max(16px, env(safe-area-inset-*))`。表は `overflow-x: auto` の枠に入れ、狭いときは 1 段にする。表示の切り替えは `hidden`。
+- ローカルの版にも同じ色の変数、ダーク、狭い画面の CSS を入れた。印刷と CSV の保存は残している（印刷は明るい値に戻す）。
+
+### 26.2 受入条件
+
+| 番号 | 内容 |
+|---|---|
+| G101 | Artifact の版のファイルがあり、テンプレートから作ったものと同じで、タグの決まりと先頭の並びを満たす |
+| G102 | 通信・外部読み込み・印刷・download・alert/confirm/prompt が無く、`navigator.clipboard.writeText` がある |
+| G103 | `:root` とテーマの 3 か所以外の CSS に、色の直書きが無い（16 進、rgb、色名）。暗い側が明るい側と同じ変数を持つ。ローカルの版は印刷と CSV の保存を残す |
+| G104 | 殻（doctype）で包んで開いた自己確認が、両方の Artifact の版で通る（ヘッドレス Edge） |
+| G105 | 幅 400px で横スクロールが出ず、body の左余白が 16px。明るい・暗いの両方（ヘッドレス Edge） |
+| G106 | コピー（断られた場合の枠と、許された場合の文）、CSV の貼り付けでの読み戻し、記録を消す 2 回押し |
+
+画面写真: `docs/assets/2026-11-05_v26_{waiting,compare}_{400,1440}_{light,dark}.png`（`tools/capture_artifact.py`）。

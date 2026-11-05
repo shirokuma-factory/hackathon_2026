@@ -6,14 +6,19 @@
 <title>送り方を比べる（荷主向け・ページ 1 枚）</title>
 <!-- このファイルは tools/build_compare_page.py が tools/compare_lite_template.html から作ります。直すときはテンプレートを直してください。 -->
 <style>
-:root { --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #5b6475; --faint: #8a93a3; --line: #d9dde5; --accent: #1b5fbf; --ok: #1a7a3c; --ok-bg: #e8f5ec; --chk: #8a5a00; --chk-bg: #fff4d6; --ng: #b3261e; --ng-bg: #fdecea; --hi: #eef4fd; }
+:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #7a8393; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; --ok: #1a7a3c; --ok-bg: #e8f5ec; --chk: #8a5a00; --chk-bg: #fff4d6; --ng: #b3261e; --ng-bg: #fdecea; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #8791a3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; --ok: #6fd08c; --ok-bg: #17301f; --chk: #f0c060; --chk-bg: #3a2e10; --ng: #ff9a90; --ng-bg: #3a1f1d; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #8791a3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; --ok: #6fd08c; --ok-bg: #17301f; --chk: #f0c060; --chk-bg: #3a2e10; --ng: #ff9a90; --ng-bg: #3a1f1d; color-scheme: dark; }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.6 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; }
-header.top { padding: 14px 24px 6px; }
+body { margin: 0; padding-block: 0 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--bg); color: var(--text); font: 14px/1.6 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; overflow-wrap: anywhere; }
+[hidden] { display: none !important; }
+.col-in, .col-out { min-width: 0; }
+.scroll-x { overflow-x: auto; max-width: 100%; }
+header.top { padding: 14px 0 6px; }
 header.top h1 { margin: 0 0 4px; font-size: 20px; }
 header.top p { margin: 0; color: var(--muted); font-size: 13px; }
-.guard { margin: 6px 24px 10px; padding: 8px 14px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; font-size: 13px; }
-main { display: grid; grid-template-columns: minmax(0, 620px) minmax(0, 1fr); gap: 16px; padding: 0 24px 24px; align-items: start; }
+.guard { margin: 6px 0 10px; padding: 8px 14px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; font-size: 13px; }
+main { display: grid; grid-template-columns: minmax(0, 620px) minmax(0, 1fr); gap: 16px; padding: 0; align-items: start; }
 @media (max-width: 1250px) { main { grid-template-columns: minmax(0, 1fr); } }
 section.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
 section.card h2 { margin: 0 0 6px; font-size: 15px; }
@@ -21,19 +26,19 @@ section.card h2 { margin: 0 0 6px; font-size: 15px; }
 .small { color: var(--muted); font-size: 12px; }
 button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--text); cursor: pointer; }
 button:hover { background: var(--hi); }
-select, input[type=text], input[type=number], textarea { font: inherit; font-size: 13px; color: var(--text); background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; }
+select, input[type=text], input[type=number], textarea { font: inherit; font-size: 13px; color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; }
 table.in { border-collapse: collapse; width: 100%; font-size: 12.5px; }
 table.in th { text-align: left; font-weight: 500; font-size: 11.5px; color: var(--muted); padding: 3px 4px; border-bottom: 1px solid var(--line); }
 table.in td { padding: 2px; }
 table.in input { width: 100%; height: 26px; padding: 0 4px; }
-.del { border: 0; background: transparent; color: var(--faint); padding: 0 6px; }
+.del { border: 0; background: none; color: var(--faint); padding: 0 6px; }
 label.f { display: block; font-size: 12px; color: var(--muted); }
 label.f select, label.f input { display: block; margin-top: 2px; color: var(--text); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 8px 0; }
 .errs { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--ng); border-radius: 8px; background: var(--ng-bg); color: var(--ng); font-size: 12.5px; }
 table.res { border-collapse: collapse; width: 100%; font-size: 13px; }
 table.res th { text-align: left; font-weight: 500; font-size: 12px; color: var(--muted); padding: 4px 8px; border-bottom: 1px solid var(--line); }
-table.res td { padding: 6px 8px; border-bottom: 1px solid #eceff4; vertical-align: top; }
+table.res td { padding: 6px 8px; border-bottom: 1px solid var(--row-line); vertical-align: top; }
 table.res td.nm { font-weight: 700; white-space: nowrap; }
 .badge { display: inline-block; min-width: 4.8em; text-align: center; padding: 1px 8px; border-radius: 10px; font-weight: 700; font-size: 12.5px; white-space: nowrap; }
 .badge.ok { background: var(--ok-bg); color: var(--ok); }
@@ -51,8 +56,9 @@ ul.rs li { margin: 1px 0; }
 textarea#quote { width: 100%; height: 190px; line-height: 1.55; }
 .sources ul { margin: 4px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
 .empty { color: var(--muted); margin: 10px 2px; }
-#selftest { display: none; margin: 8px 24px; padding: 8px 12px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; white-space: pre-wrap; }
+#selftest { display: none; margin: 8px 0; padding: 8px 12px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; white-space: pre-wrap; }
 body.selftest #selftest { display: block; }
+@media (max-width: 640px) { .grid2 { grid-template-columns: minmax(0, 1fr); } table.res td.nm { white-space: normal; } }
 </style>
 </head>
 <body>
@@ -65,7 +71,7 @@ body.selftest #selftest { display: block; }
   <div class="col-in">
     <section class="card" id="input">
       <h2>荷物</h2>
-      <table class="in" aria-label="荷物の表"><thead><tr><th>個数</th><th>縦 cm</th><th>横 cm</th><th>高さ cm</th><th>1 個の重さ kg</th><th></th></tr></thead><tbody id="pbody"></tbody></table>
+      <div class="scroll-x"><table class="in" aria-label="荷物の表"><thead><tr><th>個数</th><th>縦 cm</th><th>横 cm</th><th>高さ cm</th><th>1 個の重さ kg</th><th></th></tr></thead><tbody id="pbody"></tbody></table></div>
       <div class="bar"><button type="button" id="b-add">行を足す</button><button type="button" id="b-example">例を入れる</button><button type="button" id="b-clear">表を空にする</button></div>
       <div class="grid2">
         <label class="f">集荷する都道府県<select id="from"></select></label>
@@ -102,6 +108,7 @@ body.selftest #selftest { display: block; }
    貸切の運賃は src/shipcompare/estimate.py の kashikiri_fares と同じ式です。同じ試験表（tests/data/compare_lite_vectors.json）を ?selftest=1 で通します。 */
 const TARIFFS = /*__TARIFFS__*/null;
 const VECTORS = /*__VECTORS__*/null;
+const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Artifact 用の版（navigator.clipboard でコピーし、断られたら枠の文を選ぶ）
 const CONTACTS = /*__CONTACTS__*/null;   // data/contacts.json の問い合わせ・申し込みページ（ビルドのときに埋め込む。ページは通信しない）
 
 const GUARD = '目安です。最後は各社の見積で確かめてください';
@@ -380,7 +387,7 @@ function render() {
   } else {
     const t = res.totals;
     $('#sum').textContent = `荷物の合計: ${t.count} 個、${f1(t.kg)}kg、${f1(t.m3)}m³、床面 ${f1(t.floor)}m²、最長辺 ${t.longest}cm`;
-    $('#res').innerHTML = `<table class="res"><thead><tr><th>送り方</th><th>判定</th><th>理由・目安額</th></tr></thead><tbody>${res.options.map(optRow).join('')}</tbody></table>`;
+    $('#res').innerHTML = `<div class="scroll-x"><table class="res"><thead><tr><th>送り方</th><th>判定</th><th>理由・目安額</th></tr></thead><tbody>${res.options.map(optRow).join('')}</tbody></table></div>`;
     $('#quote').value = quoteText(inp, res);
   }
   $('#guard2').textContent = `${GUARD}。表の ○ は、公開されている条件に荷が当たるという意味で、受けてもらえる保証ではありません。`;
@@ -410,10 +417,20 @@ function init() {
     else if (t.id === 'b-clear') { S.rows = [blank(), blank()]; renderRows(); render(); }
     else if (t.id === 'b-add') { S.rows.push(blank()); renderRows(); }
     else if (t.id === 'b-copy') {
-      const q = $('#quote'); q.select();
+      const q = $('#quote'), msg = $('#copy-msg');
+      const manual = () => { q.focus(); q.select(); msg.textContent = '自動でコピーできませんでした。枠の中の文を選んであります。Ctrl+C（スマートフォンは長押し）でコピーしてください'; };
+      if (ARTIFACT) {
+        // クリックの中で navigator.clipboard.writeText を呼ぶ。断られたら、見える枠の文を選ぶ
+        try {
+          if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+          navigator.clipboard.writeText(q.value).then(() => { msg.textContent = 'コピーしました'; }, manual);
+        } catch (err) { manual(); }
+        return;
+      }
+      q.select();
       let ok = false;
       try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
-      $('#copy-msg').textContent = ok ? 'コピーしました' : '枠の中の文を選んで、コピーしてください';
+      msg.textContent = ok ? 'コピーしました' : '枠の中の文を選んで、コピーしてください';
     } else if (t.dataset && t.dataset.del !== undefined) { S.rows.splice(Number(t.dataset.del), 1); renderRows(); render(); }
   });
   const qs = new URLSearchParams(location.search);

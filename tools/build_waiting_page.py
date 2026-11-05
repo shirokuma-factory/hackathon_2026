@@ -10,10 +10,15 @@ import json
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import artifact_build  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "tools" / "waiting_page_template.html"
 TARIFF = ROOT / "data" / "tariffs" / "mlit_standard_fare_waiting.json"
 VECTORS = ROOT / "tests" / "data" / "waiting_vectors.json"
+OUT_ARTIFACT = ROOT / "web" / "publish" / "waiting_artifact.html"
+TITLE = "荷待ち協議の書面"
 OUT = ROOT / "web" / "waiting.html"
 
 
@@ -22,7 +27,7 @@ def _js(obj: object) -> str:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
 
-def build() -> str:
+def _filled() -> str:
     html = TEMPLATE.read_text(encoding="utf-8")
     tariff = json.loads(TARIFF.read_text(encoding="utf-8"))
     vectors = json.loads(VECTORS.read_text(encoding="utf-8"))
@@ -33,11 +38,20 @@ def build() -> str:
     return html
 
 
+def build() -> str:
+    return artifact_build.local_flag(_filled())
+
+
+def build_artifact() -> str:
+    return artifact_build.to_artifact(_filled(), TITLE)
+
+
 def main() -> int:
-    html = build()
-    with open(OUT, "w", encoding="utf-8", newline="\n") as f:
-        f.write(html)
-    print(f"保存: {OUT}  {OUT.stat().st_size} B")
+    OUT_ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
+    for path, html in ((OUT, build()), (OUT_ARTIFACT, build_artifact())):
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(html)
+        print(f"保存: {path}  {path.stat().st_size} B")
     return 0
 
 

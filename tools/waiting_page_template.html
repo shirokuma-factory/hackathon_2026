@@ -6,15 +6,20 @@
 <title>荷待ち・荷役の記録から協議の書面を作る</title>
 <!-- このファイルは tools/build_waiting_page.py が tools/waiting_page_template.html から作ります。直すときはテンプレートを直してください。 -->
 <style>
-:root { --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #5b6475; --faint: #8a93a3; --line: #d9dde5; --accent: #1b5fbf; --warn: #b3261e; --warn-bg: #fdecea; --hi: #eef4fd; }
+:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #7a8393; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --warn-bg: #fdecea; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #8791a3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a90; --warn-bg: #3a1f1d; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #8791a3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a90; --warn-bg: #3a1f1d; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; color-scheme: dark; }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.65 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; }
-header.top { padding: 14px 24px 8px; }
+body { margin: 0; padding-block: 0 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--bg); color: var(--text); font: 14px/1.65 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; overflow-wrap: anywhere; }
+[hidden] { display: none !important; }
+.col-in, .col-out { min-width: 0; }
+.scroll-x { overflow-x: auto; max-width: 100%; }
+header.top { padding: 14px 0 8px; }
 header.top h1 { margin: 0 0 4px; font-size: 20px; }
 header.top p { margin: 0; color: var(--muted); font-size: 13px; }
-.protect { margin: 6px 24px 12px; padding: 8px 14px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; font-size: 13px; }
+.protect { margin: 6px 0 12px; padding: 8px 14px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; font-size: 13px; }
 .protect p { margin: 2px 0; }
-main { display: grid; grid-template-columns: minmax(0, 800px) minmax(0, 1fr); gap: 16px; padding: 0 24px 24px; align-items: start; }
+main { display: grid; grid-template-columns: minmax(0, 800px) minmax(0, 1fr); gap: 16px; padding: 0; align-items: start; }
 @media (max-width: 1500px) { main { grid-template-columns: minmax(0, 1fr); } }
 section.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
 section.card h2 { margin: 0 0 6px; font-size: 15px; }
@@ -22,17 +27,17 @@ section.card h2 { margin: 0 0 6px; font-size: 15px; }
 .bar small, .small { color: var(--muted); font-size: 12px; }
 button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--text); cursor: pointer; }
 button:hover { background: var(--hi); }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-button.primary:hover { background: #164f9f; }
-select, input[type=text], textarea { font: inherit; font-size: 12.5px; color: var(--text); background: #fff; border: 1px solid var(--line); border-radius: 5px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+button.primary:hover { background: var(--accent-hover); }
+select, input[type=text], textarea { font: inherit; font-size: 12.5px; color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: 5px; }
 .tw { overflow: auto; max-height: 440px; border: 1px solid var(--line); border-radius: 8px; }
 table.in { border-collapse: collapse; width: 100%; font-size: 12.5px; }
-table.in th { position: sticky; top: 0; z-index: 1; background: #eceff4; text-align: left; font-weight: 500; font-size: 11px; color: var(--muted); padding: 4px 4px; border-bottom: 1px solid var(--line); line-height: 1.3; }
-table.in td { padding: 2px; border-bottom: 1px solid #eceff4; }
+table.in th { position: sticky; top: 0; z-index: 1; background: var(--head-bg); text-align: left; font-weight: 500; font-size: 11px; color: var(--muted); padding: 4px 4px; border-bottom: 1px solid var(--line); line-height: 1.3; }
+table.in td { padding: 2px; border-bottom: 1px solid var(--row-line); }
 table.in td.n { color: var(--faint); text-align: right; padding: 0 6px; font-size: 11px; }
 table.in tr.bad td { background: var(--warn-bg); }
 table.in input, table.in select { width: 100%; height: 26px; padding: 0 4px; }
-.del { border: 0; background: transparent; color: var(--faint); padding: 0 6px; }
+.del { border: 0; background: none; color: var(--faint); padding: 0 6px; }
 .errs { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--warn); border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: 12.5px; }
 .errs b { display: block; }
 details { margin-top: 8px; }
@@ -41,15 +46,17 @@ textarea { width: 100%; padding: 6px 8px; resize: vertical; }
 table.par, table.rec { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 6px 0; }
 table.par th, table.rec th { text-align: right; font-weight: 500; color: var(--muted); font-size: 11.5px; padding: 4px 6px; border-bottom: 1px solid var(--line); line-height: 1.35; }
 table.par th:first-child, table.rec th:first-child { text-align: left; }
-table.par td, table.rec td { padding: 4px 6px; border-bottom: 1px solid #eceff4; }
+table.par td, table.rec td { padding: 4px 6px; border-bottom: 1px solid var(--row-line); }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.par { min-width: 560px; }
+table.in td.n { white-space: nowrap; }
 table.par tr[data-pick] { cursor: pointer; }
 table.par tr.on td { background: var(--hi); }
 table.rec td, table.rec th { white-space: nowrap; }
 .rec-w { overflow-x: auto; }
 table.rec small, table.rec th small { display: block; color: var(--faint); font-size: 10.5px; font-weight: 400; }
 .wrap { display: flex; gap: 14px; align-items: flex-start; }
-#wait-doc { flex: 1 1 0; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: #fff; }
+#wait-doc { flex: 1 1 0; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: var(--card); }
 #wait-doc h3 { margin: 0 0 8px; font-size: 16px; }
 #wait-doc h4 { margin: 12px 0 2px; font-size: 13px; }
 #wait-doc p { margin: 4px 0; }
@@ -62,15 +69,25 @@ aside#process b { display: block; margin-bottom: 4px; font-size: 13.5px; }
 aside#process ul { margin: 0; padding-left: 16px; } aside#process li { margin-bottom: 6px; overflow-wrap: anywhere; }
 .basis ul { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); }
 .empty { color: var(--muted); margin: 10px 2px; }
-#selftest { display: none; margin: 8px 24px; padding: 8px 12px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; white-space: pre-wrap; }
+#selftest { display: none; margin: 8px 0; padding: 8px 12px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; white-space: pre-wrap; }
 body.selftest #selftest { display: block; }
 .note { margin: 6px 0; padding: 6px 10px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; font-size: 12.5px; }
 .note:empty { display: none; }
-.w-in::placeholder { color: #c9ced8; }
+.w-in::placeholder { color: var(--placeholder); }
 .keep { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
 #wait-doc .printnote { display: none; }
+@media (max-width: 760px) {
+  .wrap { flex-direction: column; }
+  .wrap > * { width: 100%; }
+  aside#process { flex: 1 1 auto; position: static; }
+  #wait-doc { padding: 10px 10px; }
+  .tw { max-height: 360px; }
+}
+@media (max-width: 480px) { dl.dl { grid-template-columns: 1fr; } }
+/*PRINT-START*/
 @page { size: A4 portrait; margin: 12mm; }
 @media print {
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #7a8393; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --warn-bg: #fdecea; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; color-scheme: light; }
   /* 書面だけを A4 縦に流す。隠すものは display:none にして、余白の白紙ページが出ないようにする */
   html, body { background: #fff; margin: 0; padding: 0; }
   header.top, .protect, #selftest, .col-in, #partners, #draft-area > h2, #draft-area > .bar, aside#process { display: none !important; }
@@ -128,6 +145,11 @@ body.selftest #selftest { display: block; }
         <textarea id="paste" rows="3" placeholder="ここに貼り付け" aria-label="Excel から貼り付ける欄"></textarea>
         <div class="bar"><button type="button" id="b-paste">貼り付けた内容を表に入れる</button><span class="small" id="paste-msg"></span></div>
       </details>
+      <div id="csvpaste-box" hidden>
+        <p class="small">CSV の文（「CSV をコピー」で取り出したもの）を貼り付けて、表の後ろに足すこともできます。</p>
+        <textarea id="csvpaste" rows="3" placeholder="ここに CSV の文を貼り付け" aria-label="CSV の文を貼り付ける欄"></textarea>
+        <div class="bar"><button type="button" id="b-csvpaste">貼り付けた CSV を表に足す</button><span class="small" id="csvpaste-msg"></span></div>
+      </div>
     </section>
     <section class="card basis" id="basis"></section>
   </div>
@@ -146,6 +168,7 @@ body.selftest #selftest { display: block; }
    計算は src/shipcompare/waiting.py と同じ数え方です。同じ試験表（tests/data/waiting_vectors.json）を ?selftest=1 で通します。 */
 const TARIFF = /*__TARIFF__*/null;
 const VECTORS = /*__VECTORS__*/null;
+const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Artifact 用の版（印刷と CSV の保存は使えないので、文と CSV をコピーする）
 
 const COLUMNS = ['date', 'vehicle_no', 'vehicle_class', 'partner', 'place', 'arrive', 'start', 'end', 'depart', 'handler', 'method', 'shipper_fault', 'appointed', 'side_work', 'side_min', 'post_wait'];
 const HEADER_ALIASES = {
@@ -606,6 +629,13 @@ function errsHtml() {
 
 const partnerRows = (name) => (S.res ? S.res.rows.filter((r) => r.partner === name) : []);
 
+const calcNote = (t) => `標準的運賃（${t.applies_from} 告示）の別紙の表に当てた額です。待機は到着時刻（指定の到着時刻があって実際の到着が早いときは指定の時刻）から数え、最初の ${t.free_minutes} 分を差し引き、${t.unit_minutes} 分までごとに通常の額、到着から ${t.threshold_minutes / 60} 時間を超える部分は ${t.unit_minutes} 分までごとに 2 時間超の額です（Q&A 集 Q29）。荷主側が荷役をした時間も待機に入れています。出典: ${t.source_url}`;
+const clauseList = (t) => [
+  `待機時間料: 荷主等の都合による待機について、到着（指定の到着時刻があるときは、その時刻）から ${t.free_minutes} 分を超えた時間に、${t.unit_minutes} 分までごとに上の単価（到着から 2 時間を超える部分は 2 時間超の単価）。`,
+  `積込料・取卸料: 運転者が荷役をしたとき、荷役の時間に ${t.unit_minutes} 分までごとに上の単価（手積み / フォークリフト等で別）。`,
+  '附帯業務: 内容と、実費として収受する額の扱い。',
+  '荷主等の都合でない待機（予期せぬ渋滞など）は対象にしません。'];
+
 function draftHtml(p) {
   const t = TARIFF, rows = partnerRows(p.partner);
   const classes = [...new Set(rows.map((r) => r.vehicle_class))];
@@ -620,18 +650,46 @@ function draftHtml(p) {
     <div class="rec-w"><table class="rec"><thead><tr><th>日付</th><th>車番</th><th>車種</th><th>場所</th><th>到着</th><th>荷役開始</th><th>荷役終了</th><th>荷役をした人</th><th>待機（分）</th><th>荷役（分）</th><th>附帯業務（記録のみ）</th><th>参考額（円）</th></tr></thead><tbody>${rec}</tbody></table></div>
     <h4>参考額と計算の根拠</h4>
     <p>参考額の合計 <b>${yen(p.amount)}</b>（税抜。待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}）。待機の合計 ${hm(p.wait_minutes)}、運転者の荷役の合計 ${hm(p.handling_minutes)}。</p>
-    <p class="small">標準的運賃（${esc(t.applies_from)} 告示）の別紙の表に当てた額です。待機は到着時刻（指定の到着時刻があって実際の到着が早いときは指定の時刻）から数え、最初の ${t.free_minutes} 分を差し引き、${t.unit_minutes} 分までごとに通常の額、到着から ${t.threshold_minutes / 60} 時間を超える部分は ${t.unit_minutes} 分までごとに 2 時間超の額です（Q&A 集 Q29）。荷主側が荷役をした時間も待機に入れています。出典: ${esc(t.source_url)}</p>
+    <p class="small">${esc(calcNote(t))}</p>
     <p class="small">${esc(BASIS_QUOTE)}</p>
     ${rows.some((r) => r.post_wait) ? `<p class="small">${esc(POST_WAIT_NOTE)}</p>` : ''}
     <div class="rec-w"><table class="rec"><thead><tr><th>使った車種の単価（税抜・円）</th><th>待機時間料<small>${t.unit_minutes} 分までごと</small></th><th>2 時間超</th>${methods.map((m) => `<th>${esc(m)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
     <h4>次の契約の書面（運送引受書）に入れる欄の案</h4>
-    <ul class="list"><li>待機時間料: 荷主等の都合による待機について、到着（指定の到着時刻があるときは、その時刻）から ${t.free_minutes} 分を超えた時間に、${t.unit_minutes} 分までごとに上の単価（到着から 2 時間を超える部分は 2 時間超の単価）。</li>
-      <li>積込料・取卸料: 運転者が荷役をしたとき、荷役の時間に ${t.unit_minutes} 分までごとに上の単価（手積み / フォークリフト等で別）。</li>
-      <li>附帯業務: 内容と、実費として収受する額の扱い。</li>
-      <li>荷主等の都合でない待機（予期せぬ渋滞など）は対象にしません。</li></ul>
+    <ul class="list">${clauseList(t).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
     <p class="sentence">下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。</p>
     <p class="printnote">${esc(PROTECT[0])}</p>`;
 }
+
+function draftText(p) {
+  const t = TARIFF, rows = partnerRows(p.partner);
+  const classes = [...new Set(rows.map((r) => r.vehicle_class))];
+  const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
+  const L = [];
+  L.push('荷待ち・荷役に関する協議のお願い（下書き）', '', `相手: ${p.partner} 御中`, `期間: ${p.date_from} 〜 ${p.date_to}（${p.count} 回）`, '差出人: （運送会社の名称・担当者を書き入れてください）', '');
+  L.push('【記録の一覧】', ['日付', '車番', '車種', '場所', '到着', '荷役開始', '荷役終了', '荷役をした人', '待機（分）', '荷役（分）', '附帯業務（記録のみ）', '参考額（円）'].join('\t'));
+  rows.forEach((r) => {
+    const notes = [r.handler === '荷主側' && r.wait_min > 0 && r.end ? '荷主側の荷役を待機に含む' : '', r.post_wait_min > 0 ? `荷役のあとの待ち ${r.post_wait_min} 分を含む` : '', r.wait_base_min > 0 ? `指定 ${r.appointed} から` : ''].filter(Boolean);
+    L.push([r.date, r.vehicle_no, r.vehicle_class, r.place, r.arrive, r.start, r.end, r.handler, r.wait_min + (notes.length ? `（${notes.join('、')}）` : ''), r.handling_min,
+      (r.side_work || '') + (r.side_min ? ` ${r.side_min} 分` : ''), n0(r.amount)].join('\t'));
+  });
+  L.push('', '【参考額と計算の根拠】',
+    `参考額の合計 ${yen(p.amount)}（税抜。待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}）。待機の合計 ${hm(p.wait_minutes)}、運転者の荷役の合計 ${hm(p.handling_minutes)}。`,
+    calcNote(t), BASIS_QUOTE);
+  if (rows.some((r) => r.post_wait)) L.push(POST_WAIT_NOTE);
+  L.push('', '【使った車種の単価（税抜・円）】');
+  classes.forEach((c) => L.push(`${t.class_labels[c] || c}: 待機時間料 ${n0(t.waiting.normal[c])}（${t.unit_minutes} 分までごと）、2 時間超 ${n0(t.waiting.over_2h[c])}` +
+    methods.map((m) => `、${m}の積込料・取卸料 ${n0(t.handling[m].normal[c])} / 2 時間超 ${n0(t.handling[m].over_2h[c])}`).join('')));
+  L.push('', '【次の契約の書面（運送引受書）に入れる欄の案】', ...clauseList(t).map((x) => `・${x}`), '',
+    `下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。`, '',
+    PROTECT[0], '', '【根拠】', ...BASIS.map((x) => `・${x}`));
+  return L.join('\n');
+}
+
+// 書面の上の操作。Artifact の版では印刷と保存ができないので、文と CSV をコピーするボタンにする
+const docBar = () => (ARTIFACT
+  ? '<div class="bar"><button type="button" class="primary" id="b-copydoc">書面の文をコピー</button><button type="button" id="b-copycsv">CSV をコピー</button><span class="small" id="copymsg" role="status"></span></div>' +
+    '<div id="copybox" hidden><p class="small">自動でコピーできませんでした。下の枠の文を選んで、Ctrl+C（スマートフォンは長押し）でコピーしてください。</p><textarea id="copyta" rows="8" readonly aria-label="コピーする文"></textarea></div>'
+  : '<div class="bar"><button type="button" class="primary" id="b-print">印刷して残す</button><button type="button" id="b-csv">計算結果を CSV で書き出す</button></div>');
 
 const processHtml = () => `<aside id="process" aria-label="協議の進め方"><b>協議の進め方</b><ul>${PROCESS.map((x) => `<li>${x.includes('https://') ? esc(x.split('https://')[0]) + `<a href="https://${esc(x.split('https://')[1])}" target="_blank" rel="noopener">https://${esc(x.split('https://')[1])}</a>` : esc(x)}</li>`).join('')}</ul></aside>`;
 
@@ -648,9 +706,9 @@ function renderResult() {
   const tb = r.by_partner.map((x) => `<tr class="${x.partner === sel ? 'on' : ''}" data-pick="${esc(x.partner)}"><td>${esc(x.partner)}</td><td class="num">${x.count}</td><td class="num">${hm(x.wait_minutes)}</td>` +
     `<td class="num">${hm(x.handling_minutes)}</td><td class="num"><b>${n0(x.amount)}</b></td><td class="num">${x.over_1h_count}</td><td class="num">${x.over_2h_count}</td></tr>`).join('');
   $('#partners').innerHTML = `<h2>契約の相手ごと<span class="small">　参考額は税抜・円。行を押すと相手を切り替えます</span></h2>
-    <table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th>運転者の荷役の合計</th><th>参考額</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">2 時間以上の荷待ち・荷役</th></tr></thead><tbody>${tb}</tbody></table>`;
+    <div class="scroll-x"><table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th>運転者の荷役の合計</th><th>参考額</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">2 時間以上の荷待ち・荷役</th></tr></thead><tbody>${tb}</tbody></table></div>`;
   $('#draft-area').innerHTML = `<h2>協議の書面の下書き</h2>
-    <div class="bar"><button type="button" class="primary" id="b-print">印刷して残す</button><button type="button" id="b-csv">計算結果を CSV で書き出す</button></div>
+    ${docBar()}
     <div class="wrap"><article id="wait-doc">${draftHtml(p)}</article>${processHtml()}</div>`;
 }
 
@@ -739,6 +797,19 @@ function storeLoad() {
 function storeClear() { try { localStorage.removeItem(STORE_KEY); return true; } catch (e) { return false; } }
 function keepMsg(t) { const el = $('#keep-msg'); if (el) el.textContent = t ? `　${t}` : ''; }
 
+// Artifact の版: クリックの中で navigator.clipboard.writeText を呼ぶ。断られたら、見える枠に文を出して選ぶ
+function copyOut(text, what) {
+  const box = $('#copybox'), ta = $('#copyta'), msg = $('#copymsg');
+  if (!box || !ta || !msg) return;
+  ta.value = text;
+  const fallback = () => { box.hidden = false; msg.textContent = ''; ta.focus(); ta.select(); };
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+    navigator.clipboard.writeText(text).then(() => { box.hidden = true; msg.textContent = `${what}をコピーしました`; }, fallback);
+  } catch (e) { fallback(); }
+}
+
+/*LOCAL-ONLY-START*/
 function downloadCsv() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csvText()], { type: 'text/csv;charset=utf-8' }));
@@ -747,6 +818,7 @@ function downloadCsv() {
   a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
+/*LOCAL-ONLY-END*/
 
 function pasteIn() {
   const text = $('#paste').value;
@@ -775,7 +847,32 @@ function csvIn(file) {
   fr.readAsText(file, 'utf-8');
 }
 
+// CSV の文を貼り付けた欄から行を足す（Artifact の版では、ファイルの選択のほかに、貼り付けでも読み込める）
+function csvPasteIn() {
+  const text = $('#csvpaste').value;
+  if (!text.trim()) { $('#csvpaste-msg').textContent = '貼り付ける欄が空です'; return; }
+  try {
+    const inp = csvToRows(text);
+    const keep = S.rows.filter((r) => !isBlank(r));
+    S.rows = keep.concat(inp);
+    if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
+    $('#csvpaste-msg').textContent = `CSV の ${inp.length} 行を表の後ろに足しました`;
+    renderTable(); doCalc();
+  } catch (e) { $('#csvpaste-msg').textContent = e.message; }
+}
+
+// 保存した記録を消す。Artifact の版では confirm が使えないので、同じボタンを 2 回押す
+function forgetRecords() {
+  const ok = storeClear();
+  S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult();
+  keepMsg(ok ? '保存した記録を消しました' : 'このブラウザでは保存が使えません');
+}
+function disarmForget() { S.armed = false; clearTimeout(S.armTm); const b = $('#b-forget'); if (b) b.textContent = '保存した記録を消す'; }
+
 function init() {
+  if (ARTIFACT) {
+    $('#b-csvin').hidden = true; $('#csvfile').hidden = false; $('#csvpaste-box').hidden = false;
+  }
   $('#protect').innerHTML = PROTECT.map((x) => `<p>${esc(x)}</p>`).join('');
   $('#basis').innerHTML = `<h2>根拠</h2><ul>${BASIS.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
   $('#year').innerHTML = [2024, 2025, 2026, 2027].map((y) => `<option value="${y}"${y === S.year ? ' selected' : ''}>${y} 年</option>`).join('');
@@ -792,6 +889,7 @@ function init() {
   });
   document.addEventListener('click', (e) => {
     const t = e.target;
+    if (S.armed && t.id !== 'b-forget') disarmForget();
     if (t.id === 'b-example') { S.rows = exampleRows(); renderTable(); doCalc(); }
     else if (t.id === 'b-clear') { $('#paste-note').textContent = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult(); }
     else if (t.id === 'b-add') { S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
@@ -802,12 +900,17 @@ function init() {
     else if (t.id === 'b-fill-class') fillDown('vehicle_class', '車種');
     else if (t.id === 'b-csvin') $('#csvfile').click();
     else if (t.id === 'b-forget') {
-      const ok = storeClear();
-      S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult();
-      keepMsg(ok ? '保存した記録を消しました' : 'このブラウザでは保存が使えません');
+      if (ARTIFACT && !S.armed) {
+        S.armed = true; t.textContent = 'もう一度押すと、保存した記録を消します'; clearTimeout(S.armTm); S.armTm = setTimeout(disarmForget, 6000);
+      } else { disarmForget(); forgetRecords(); }
     }
+    else if (t.id === 'b-copydoc') { const p = S.res && S.res.by_partner.find((x) => x.partner === S.partner); if (p) copyOut(draftText(p), '書面の文'); }
+    else if (t.id === 'b-copycsv') { if (S.res && S.res.rows.length) copyOut(csvText(), 'CSV'); }
+    else if (t.id === 'b-csvpaste') csvPasteIn();
+/*LOCAL-ONLY-START*/
     else if (t.id === 'b-print') window.print();
     else if (t.id === 'b-csv') { if (S.res && S.res.rows.length) downloadCsv(); }
+/*LOCAL-ONLY-END*/
     else if (t.dataset && t.dataset.del !== undefined) { S.rows.splice(Number(t.dataset.del), 1); renderTable(); doCalc(); }
     else { const tr = t.closest && t.closest('tr[data-pick]'); if (tr) { S.partner = tr.dataset.pick; renderResult(); } }
   });
