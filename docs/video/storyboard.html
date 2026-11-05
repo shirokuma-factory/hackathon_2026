@@ -1,0 +1,131 @@
+<title>Backfull デモ動画の構成</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* 縦 1 列。上から 秒の帯 → 点の推移 → 区間ごとの脚本 → MCP → 決めること */
+:root {
+  --bg: #f6f7f8; --surface: #ffffff; --fg: #1d2329; --muted: #5d6873; --line: #d9dee3;
+  --c1: #2f6db5; --c2: #2e8a5a; --c3: #b5652f; --c4: #7a55b0;
+  --font: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15191d; --surface: #1d2329; --fg: #e6eaee; --muted: #9aa5b0; --line: #333c45;
+  --c1: #6ea3e0; --c2: #5cc08b; --c3: #e09a63; --c4: #b293e0; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #15191d; --surface: #1d2329; --fg: #e6eaee; --muted: #9aa5b0; --line: #333c45;
+  --c1: #6ea3e0; --c2: #5cc08b; --c3: #e09a63; --c4: #b293e0; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.7; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+h1 { font-size: 1.5rem; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.1rem; margin: 0 0 10px; }
+p { margin: 0; }
+.lead { color: var(--muted); }
+section { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.bar { display: flex; height: 56px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+.seg { display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-size: .78rem; min-width: 0; border-right: 1px solid var(--surface); }
+.seg span { opacity: .9; font-size: .7rem; }
+.c-課題 { background: var(--c1); } .c-デモ { background: var(--c2); } .c-Claude { background: var(--c3); } .c-深さ { background: var(--c4); }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: .85rem; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+svg { width: 100%; max-width: 640px; height: auto; display: block; }
+svg .g { stroke: var(--line); } svg .ax { fill: var(--muted); font-size: 11px; }
+svg .line { fill: none; stroke: var(--c1); stroke-width: 2.5; } svg .pt { fill: var(--c1); }
+svg .lbl { fill: var(--fg); font-size: 11px; font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { border-top: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: .8rem; }
+td.id { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.t { color: var(--muted); font-size: .8rem; }
+.tag { display: inline-block; color: #fff; font-size: .7rem; padding: 0 6px; border-radius: 3px; margin-top: 4px; }
+.part { font-weight: 700; }
+.nar { margin: 4px 0 6px; }
+details summary { color: var(--muted); cursor: pointer; font-size: .82rem; }
+details p { font-size: .85rem; margin-top: 6px; }
+.note { color: var(--muted); }
+td.mcp { font-size: .8rem; color: var(--muted); min-width: 180px; }
+.ok { color: var(--c2); font-weight: 700; } .mid { color: var(--c3); font-weight: 700; } .ng { color: var(--muted); font-weight: 700; }
+.stat { font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { td.mcp { display: none; } th.mcp { display: none; } }
+</style>
+<div class="wrap">
+<header>
+  <h1>Backfull デモ動画の構成（脚本 v11）</h1>
+  <p class="lead">3 分の動画の秒割り、脚本、使う MCP です。架空の 2 社（兵庫の運送会社と東京の木工所）を 1 本の区間でたどります。秒は字数からの見積もりで、音声を作ったあとに実測で直します。</p>
+</header>
+
+<section>
+  <h2>秒の割り振り（合計 175 秒 / 上限 180 秒）</h2>
+  <div class="bar"><div class="seg c-課題" style="width:8.889%" title="冒頭 0–16秒"><b>S1</b><span>16秒</span></div><div class="seg c-課題" style="width:7.778%" title="課題の大きさ（見せる） 16–30秒"><b>S2</b><span>14秒</span></div><div class="seg c-デモ" style="width:7.222%" title="自社で確かめる（帰りの空き） 30–43秒"><b>S3</b><span>13秒</span></div><div class="seg c-デモ" style="width:14.444%" title="自社で確かめる（荷待ち） 43–69秒"><b>S4</b><span>26秒</span></div><div class="seg c-デモ" style="width:22.222%" title="つなぐ（荷主と帰り便） 69–109秒"><b>S5</b><span>40秒</span></div><div class="seg c-Claude" style="width:21.111%" title="Claude Code での作り方 109–147秒"><b>S6</b><span>38秒</span></div><div class="seg c-深さ" style="width:5.556%" title="試行錯誤と、安心して使える理由 147–157秒"><b>S7</b><span>10秒</span></div><div class="seg c-課題" style="width:10.000%" title="今日から使える範囲と次の一歩 157–175秒"><b>S8</b><span>18秒</span></div></div>
+  <div class="legend"><span><i class="c-課題"></i>課題 30 点</span><span><i class="c-デモ"></i>デモ 25 点</span><span><i class="c-Claude"></i>Claude の活用 25 点</span><span><i class="c-深さ"></i>深さと実行力 20 点</span></div>
+</section>
+
+<section>
+  <h2>脚本の採点の推移（自作の基準、毎回前の点を知らない Opus）</h2>
+  <svg viewBox="0 0 560 220" role="img" aria-label="採点の推移 r1 60点から r10 93点"><line x1="40" x2="544" y1="188.0" y2="188.0" class="g"/><text x="34" y="192.0" class="ax" text-anchor="end">50</text><line x1="40" x2="544" y1="153.6" y2="153.6" class="g"/><text x="34" y="157.6" class="ax" text-anchor="end">60</text><line x1="40" x2="544" y1="119.2" y2="119.2" class="g"/><text x="34" y="123.2" class="ax" text-anchor="end">70</text><line x1="40" x2="544" y1="84.8" y2="84.8" class="g"/><text x="34" y="88.8" class="ax" text-anchor="end">80</text><line x1="40" x2="544" y1="50.4" y2="50.4" class="g"/><text x="34" y="54.4" class="ax" text-anchor="end">90</text><line x1="40" x2="544" y1="16.0" y2="16.0" class="g"/><text x="34" y="20.0" class="ax" text-anchor="end">100</text><polyline points="40.0,153.6 96.0,126.1 152.0,53.8 208.0,57.3 264.0,64.2 320.0,50.4 376.0,50.4 432.0,29.8 488.0,33.2 544.0,40.1" class="line"/><circle cx="40.0" cy="153.6" r="3.5" class="pt"/><text x="40.0" y="145.6" class="lbl" text-anchor="middle">60</text><text x="40.0" y="210" class="ax" text-anchor="middle">r1</text><circle cx="96.0" cy="126.1" r="3.5" class="pt"/><text x="96.0" y="118.1" class="lbl" text-anchor="middle">68</text><text x="96.0" y="210" class="ax" text-anchor="middle">r2</text><circle cx="152.0" cy="53.8" r="3.5" class="pt"/><text x="152.0" y="45.8" class="lbl" text-anchor="middle">89</text><text x="152.0" y="210" class="ax" text-anchor="middle">r3</text><circle cx="208.0" cy="57.3" r="3.5" class="pt"/><text x="208.0" y="49.3" class="lbl" text-anchor="middle">88</text><text x="208.0" y="210" class="ax" text-anchor="middle">r4</text><circle cx="264.0" cy="64.2" r="3.5" class="pt"/><text x="264.0" y="56.2" class="lbl" text-anchor="middle">86</text><text x="264.0" y="210" class="ax" text-anchor="middle">r5</text><circle cx="320.0" cy="50.4" r="3.5" class="pt"/><text x="320.0" y="42.4" class="lbl" text-anchor="middle">90</text><text x="320.0" y="210" class="ax" text-anchor="middle">r6</text><circle cx="376.0" cy="50.4" r="3.5" class="pt"/><text x="376.0" y="42.4" class="lbl" text-anchor="middle">90</text><text x="376.0" y="210" class="ax" text-anchor="middle">r7</text><circle cx="432.0" cy="29.8" r="3.5" class="pt"/><text x="432.0" y="21.8" class="lbl" text-anchor="middle">96</text><text x="432.0" y="210" class="ax" text-anchor="middle">r8</text><circle cx="488.0" cy="33.2" r="3.5" class="pt"/><text x="488.0" y="25.2" class="lbl" text-anchor="middle">95</text><text x="488.0" y="210" class="ax" text-anchor="middle">r9</text><circle cx="544.0" cy="40.1" r="3.5" class="pt"/><text x="544.0" y="32.1" class="lbl" text-anchor="middle">93</text><text x="544.0" y="210" class="ax" text-anchor="middle">r10</text></svg>
+  <p class="lead" style="margin-top:8px">r8 から 93〜96 点で止まりました。残りの指摘は同じ秒の声と画面の合わせ方で、録画と音声ができてから詰めます。点は AI の見立てで、審査の予測ではありません。</p>
+</section>
+
+<section>
+  <h2>区間ごとの脚本</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>区間</th><th>ナレーション（字幕）</th><th class="mcp">使う MCP・道具</th></tr></thead>
+    <tbody><tr><td class="id"><b>S1</b><br><span class="t">0–16秒</span><br><span class="tag c-課題">課題</span></td>
+<td><div class="part">冒頭</div><p class="nar">Backfullは、東京から空で帰る兵庫のトラックと、大阪へ棚を送りたい東京の木工所をつなぎます。木工所に分かる値段は、トラック1台を借り切る約11万円だけでした。</p>
+<details><summary>画面と注記</summary><p>0〜4秒: 夜の高速を走る荷台が空のトラック（C1）と名札「架空 播磨ライン運輸（兵庫県加古川市・8両）」。4〜8秒: 木工所の長い棚（C2）と名札「架空 東雲木工（東京都江東区・5人）」。8秒〜終わり: アプリの地図で兵庫県→東京都の区間を選んで線を強調し（帰りはこの逆の向き、の字幕）、題名「Backfull 帰りの荷台を、中小の荷主の荷で埋める」</p><p class="note">映像はイメージです。播磨ライン運輸・東雲木工は架空の会社です。約11万円は国の標準的運賃からの目安（新宿区→大阪市中央区 491.8km の 2t 貸切、税抜）</p></details></td>
+<td class="mcp">local-ai MCP: comfy_run_workflow（静止画 Z-Image Turbo → 4秒の動き Wan2.2 I2V → 1920×1080 へ拡大）。11/6 正午までに採用が無ければ、C1 は暗い地図の上を動くトラックの 3D の録画、C2 は比べる画面の S6 の荷の寸法の行の録画に替える<br>録画用スクリプト（Edge の CDP）: 地図の録画</td></tr><tr><td class="id"><b>S2</b><br><span class="t">16–30秒</span><br><span class="tag c-課題">課題</span></td>
+<td><div class="part">課題の大きさ（見せる）</div><p class="nar">営業用トラックは、積める量の39%しか使っていません。国の目標は44%です。兵庫から東京へは3万7千トン、逆の向きは3千トンで、帰りが空きます。</p>
+<details><summary>画面と注記</summary><p>0〜4秒: 市場を見るの上部の要約の上 2 行（38.97% / 目標 44%）だけを拡大（下の 39.08% のカードは枠の外）。4〜6秒: 38.97% と 44% の差（約 5 ポイント）を highlight で囲む。6〜8秒: 区間の一覧から兵庫県→東京都を選ぶ。8秒〜終わり: 道路の上を動く帰り便の偏りと 37,326t / 3,127t、画面の大きい字幕「2021年の3日間の調査」</p><p class="note">出典: 国土交通省 自動車輸送統計年報 2025年度（38.97%、営業用）、国の基本的な方針（44%、2028 年度の目標。対象の範囲は国の資料で未確認）、国土交通省の試算（2030 年度に輸送能力が 34.1% 不足のおそれ）、全国貨物純流動調査 2021 の3日間調査（37,326t / 3,127t）</p></details></td>
+<td class="mcp">録画用スクリプト（Edge の CDP）</td></tr><tr><td class="id"><b>S3</b><br><span class="t">30–43秒</span><br><span class="tag c-デモ">デモ</span></td>
+<td><div class="part">自社で確かめる（帰りの空き）</div><p class="nar">播磨ライン運輸の10月の配車表、つまり便の予定表の見本です。帰りの53便のうち20便が空で、木曜の夜に出た便は5回とも帰りが空でした。</p>
+<details><summary>画面と注記</summary><p>「自社の運行」のタブを開く（見本の配車表の結果がすでに出ている状態から始める）→ 帰りの空きの表（53 便中 20 便、11,144km）→ 木曜の夜に加古川を出た 5 便の帰りがすべて空、の行を highlight → 「帰り便の下書き」と、11/13 の帰り便 T7 がこの下書きから登録された、の文（アプリの文）</p><p class="note">例の会社と配車表は架空の見本です。自社のファイルの取り込みは次の版です</p></details></td>
+<td class="mcp">録画用スクリプト（Edge の CDP）</td></tr><tr><td class="id"><b>S4</b><br><span class="t">43–69秒</span><br><span class="tag c-デモ">デモ</span></td>
+<td><div class="part">自社で確かめる（荷待ち）</div><p class="nar">帰り便と別の損が、荷待ち、着いてから積むまで待たされる時間です。国の平均に当てると、中型1台で最大で月2万から4万円です。法律で付ける業務記録に、相手と車種の列を足して貼ると、例では相手ごとの額と、どこで何時に待つかが地図に出て、待ちを減らす相談の書面までできます。</p>
+<details><summary>画面と注記</summary><p>0〜11秒: 荷待ちのタブを開き、「表を空にする」（data-w=clear）→ 表計算からコピーした業務記録（半月分の例、18 行）を貼り付けの欄に貼る（台本で文字列を固定）→「貼り付けた内容を表に入れる」（data-w=paste）を押す。この間は字幕「国の平均: 中型 1 台 月 2〜4 万円」。11〜16秒: 相手ごとの参考額（33,550 円 / 13,230 円、字幕「例の会社の額」）。16〜20秒: 地図の点（地点07、8 時台 平均 98 分）。20〜25秒: 書面の「荷待ちを減らすためのご相談」。最後の 2 秒: `web/waiting.html?selftest=1` の試験表の合格表示を highlight で囲み、字幕「計算の試験 ○件 すべて合格」</p><p class="note">中型 1 台で月 11〜16 時間（1 か月 22 運行、その半分で荷待ちと仮定し、国の調査の平均から計算）。額は待機時間料がまったく払われていない場合の上限で、8 両がすべて中型なら最大で月約 31 万円です。貼った記録は架空の例（2 社・18 行）で、画面の額はその例の値です。記録はブラウザの中だけで計算し、外に送りません</p></details></td>
+<td class="mcp">録画用スクリプト（Edge の CDP）: 録画中に通信の記録を取り、/api/waiting が 0 件であることを S7 の素材にする</td></tr><tr><td class="id"><b>S5</b><br><span class="t">69–109秒</span><br><span class="tag c-デモ">デモ</span></td>
+<td><div class="part">つなぐ（荷主と帰り便）</div><p class="nar">長さ2m40cmの棚は、宅配と家財の配送の大きさを超え、軽トラックには重すぎて、値段が分かるのは約11万円の貸切だけでした。空いた帰り便は主に運送会社どうしの掲示板に載り、荷主は入れません。大きな荷主には物流の責任者がいますが、木工所では社長が一人で探します。関西へ帰る便を探すと、播磨ライン運輸の便が見つかり、載らない便には理由が出ます。例の値段は、貸切の約11万円に対し4万3千円で、運送会社が決めて承諾します。</p>
+<details><summary>画面と注記</summary><p>0〜5秒: 地図の「送り方を比べる」で場面 S6 を読み込む（発地は選べる 7 か所のうち近い新宿区 → 大阪市中央区 491.8km）→ 手段の横棒の図（宅配「使えない」、路線便「問い合わせ」、2t 貸切 109,750 円）。5〜11秒: 単独の比べるページ `web/compare_lite.html` に S6 の荷を入れた判定（家財 △ の行で棚の理由「3 辺合計 500cm は 450cm まで」を highlight、赤帽 × の理由「合計 400kg は軽トラック 1 台の最大積載 350kg を超える（台数を分けるなら要相談）」）。takes.json では別のテイク。11〜16秒: 地図に戻り、比べる図の貸切の行へゆっくり拡大し、字幕「帰り便の空きは、荷主の画面に出てこない」。16〜22秒: 同じページのまま市場を見るへ移り、区間の欄（兵庫県→東京都）で「この向きの空き便を探す」を押す（矢印とクリックの輪。荷は S6 のまま）、字幕「大きな荷主には物流の責任者（2026年4月から）。木工所は社長一人」。22〜32秒: つなぐの画面の区間の帯の 2 行目「荷が少ない逆向き（東京都→兵庫県）の帰りの便は ○ 本です。」を highlight → T7（播磨ライン運輸、江東区 → 加古川市、降ろせる地点に大阪市中央区）が載り、ほかの便は理由つきで載らない。32秒〜終わり: 仮予約 → 運送会社の役で承諾のボタンを押す → 承諾のカードの「料金は運送会社が決めた架空の額（税抜）です。」と書面の「Backfull は運送の当事者ではなく、運賃を受け取りません。」を highlight</p><p class="note">路線便は見積が要ります（図の「問い合わせ」）。便と値段は架空です。2t 貸切は国の標準的運賃からの目安（税抜）。物流の責任者は年 9 万トン以上の特定荷主に 2026 年 4 月から。全日本トラック協会・日貨協連の求貨求車の掲示板（WebKIT）の会員規約では荷主は対象外です。比べる画面の発地は近い新宿区で計算</p></details></td>
+<td class="mcp">録画用スクリプト（Edge の CDP）: 入力値（荷 S6、便 T7）を台本に固定</td></tr><tr><td class="id"><b>S6</b><br><span class="t">109–147秒</span><br><span class="tag c-Claude">Claude</span></td>
+<td><div class="part">Claude Code での作り方</div><p class="nar">1人で4日間に、Claude Codeが無ければ作れなかった量、アプリと自動テスト約790件を作りました。主に書くのはSonnet、確かめるのは前の点を知らない別のOpusと分け、審査員や運送会社の役で採点させ、指摘を仕様とテストに直しました。荷待ちの記録をサーバーへ送る作りの誤りも、採点で見つかりました。3DはBlender、動画はResolveをClaude Codeが操作して作りました。</p>
+<details><summary>画面と注記</summary><p>(a) 0〜10秒: G1a の 2 枚目「Claude Code が無ければ 1 人・4 日では作れなかったもの: 公的な出典 111 件の照合（researcher 11 回） / 3D モデル 18 種（うち 7 種は Blender MCP で） / この動画の組み立て（Resolve MCP）」。(b) 10〜23秒: G1a「採点 ○回 → 直した指摘 ○件 / 主に書く: coder（Sonnet）○回 / 確かめる: Opus（reviewer ○回、前の点を知らない採点者 ○回）」と G1b・G1c（MCP と自作の道具、フック、「作ったが使っていない」の欄）。(c) 23〜31秒: 採点の 1 件を 1 枚の 4 分割で: `docs/reviews/2026-11-05_思想と公開版_r2.md` 11 行の実際の文 → SPEC §31.1 → 試験 G137 の合格 → コミット a6b0f63。該当行を太枠で囲み、右下に同じ採点の点の推移（版を固定した日の値。11/5 夜で 64 → 68 → 87 → 89）。(d) 31〜34秒: Blender MCP で作ったモデル 7 種の回転映像（truck・freight_train・ferry・cargo_plane・warehouse・terminal・port_crane）。(e) 34秒〜終わり: R6 Resolve の窓の 8 倍速</p><p class="note">日数・回数・件数は版を固定した日に数え直し、読みもその数で作ります（動画の道具の試験は除く）。点は自作の基準での AI の採点で、審査の予測ではありません。早回しの区間は 8 倍速です</p></details></td>
+<td class="mcp">DaVinci Resolve MCP: 1 回目の組み立てを ffmpeg の gdigrab で Resolve の窓だけ録画（R6、-i title=…。Claude Code の窓とデスクトップ全体は撮らない）。どの MCP の道具を呼んだかは字幕「Claude Code が Resolve MCP で組み立て中（AppendToTimeline など）」で出す。前日に 10 秒の試し撮りで窓が黒く写らないか確かめ、黒く写るなら Resolve の画面を Resolve 自身の書き出し（タイムラインの再生）で代える。全コマの一覧で確かめてから 2 回目の組み立てで入れる<br>Blender MCP で作ったモデル 7 種の回転映像（outputs/turntables、11/4 に描き出したもの）</td></tr><tr><td class="id"><b>S7</b><br><span class="t">147–157秒</span><br><span class="tag c-深さ">深さ</span></td>
+<td><div class="part">試行錯誤と、安心して使える理由</div><p class="nar">最初の版は見積の表で、作成者の考えた地図と違いました。荷待ちの記録の送信も、1件から0件に直しました。</p>
+<details><summary>画面と注記</summary><p>0〜4秒: 11/3 の見積の表の画面（docs/assets/2026-11-03_S1_quotes_ranked.jpg）→ 今の地図の画面。4〜8秒: 直す前（a013529）の通信の記録に /api/waiting/calc が出る → 直したあとは 0 件（字幕「荷待ちの記録の送信 1 件 → 0 件」）</p><p class="note"></p></details></td>
+<td class="mcp">録画用スクリプト: a013529 を git worktree で別のフォルダに出し、その版の serve_web.py で撮る。撮れなければ web/own.js 482 行の差分の画面</td></tr><tr><td class="id"><b>S8</b><br><span class="t">157–175秒</span><br><span class="tag c-課題">課題</span></td>
+<td><div class="part">今日から使える範囲と次の一歩</div><p class="nar">30分以上の荷待ちは、2025年4月から全車両で記録が義務です。業務記録に相手と車種の列を足して毎月貼れば、待たされた場所と相談の書面が出ます。帰り便は次に、実際の1区間で試します。</p>
+<details><summary>画面と注記</summary><p>0〜7秒: できること（○）/ まだのこと（△）の表を 1 行ずつ出す。7〜13秒: R4 の「貼る → 地図の点 → 相談の書面」を 3 倍速、字幕「毎月、貼る（相手と車種の列を足す）」。13秒〜終わり: 題名と公開の URL（出さない場合は作成者が決めた案内）</p><p class="note">荷主の都合による 30 分以上の荷待ちが記録の対象です。紙の日報の会社は、表に手で入れても使えます</p></details></td>
+<td class="mcp">Artifact: 終わりの表 G4 の元の HTML</td></tr></tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>MCP と道具（11/5 夜の状態）</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>道具</th><th>状態</th><th>動画での使い道</th></tr></thead>
+    <tbody>
+      <tr><td>録画用スクリプト（Edge を外から操作）</td><td class="ok">○</td><td>アプリの本物の操作を 1920×1080・30fps で撮る。矢印・クリックの輪・強調の枠を試し撮りで確認済み</td></tr>
+      <tr><td>Blender MCP</td><td class="ok">○</td><td>11/4 に作った 3D モデル 7 種の回転映像を S6 に</td></tr>
+      <tr><td>DaVinci Resolve MCP</td><td class="mid">△</td><td>本体は停止中。素材の読み込み・タイムライン・字幕・書き出し。組み立ての様子を S6 に</td></tr>
+      <tr><td>local-ai MCP の ComfyUI</td><td class="mid">△</td><td>停止中。冒頭の 2 カット（イメージ）。採用が無ければ地図の録画に替える</td></tr>
+      <tr><td>ElevenLabs</td><td class="mid">△</td><td>キーの有無は未確認。無ければ Resolve の音声合成、だめなら作成者の録音</td></tr>
+      <tr><td>Ollama・Unity・Unreal</td><td class="ng">×</td><td>使わない</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>作成者に決めてもらうこと</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>項目</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>ElevenLabs の API キーと使ってよい予算</td><td>有料の生成。キーは Claude が扱わない</td></tr>
+      <tr><td>ComfyUI を起動してよいか</td><td>GPU を使う</td></tr>
+      <tr><td>冒頭の映像の採否</td><td>候補の一覧画像で決める</td></tr>
+      <tr><td>動画の最後に出す URL（地図のアプリか荷待ちのページか、出さないか）</td><td>公開に関わる</td></tr>
+      <tr><td>「帰り便は次に、実際の1区間で試します」と言ってよいか</td><td>作成者の約束になる。断る場合の代わりの文は用意済み</td></tr>
+    </tbody>
+  </table></div>
+</section>
+</div>
