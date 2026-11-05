@@ -225,3 +225,7 @@
 - 荷待ちの計算を `web/waiting_calc.js` に出し、`waiting.html` と地図の荷待ちのタブで同じものを使う。荷待ちの場所を地図の点にした。手段ごとの横棒の図を足した。経路が取れないときの案内と距離の食い違いを直した。幅 600px 以下は下のパネルを 1 枚ずつ出す。
 - 本線が見つけた不具合: `web/sheet.js` の MutationObserver が body の class を毎回書き直し、無限ループで地図の画面が起動しなかった。撮影の時間切れの原因はこれで、Edge の数ではなかった。値が変わるときだけ書き換えるように直した。
 - 試験 727 件合格。画面写真 `docs/assets/2026-11-05_v31_*`。
+- 2026-11-05 07:39 `55e3e0a` Add gap analysis against the official judging criteria
+- 2026-11-05 07:39 `372f9eb` Merge remote-tracking branch 'origin/claude/exciting-bell-uj2kvl' into claude/exciting-bell-uj2kvl
+- 2026-11-05 10:54 `0b2f6ca` Revise gap analysis: exclude demo video, add public-version and new points
+- 2026-11-05 11:21 `cec16cf` Correct ComfyUI status in gap analysis
