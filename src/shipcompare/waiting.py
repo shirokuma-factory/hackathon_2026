@@ -491,8 +491,26 @@ def hotspots(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         total = sum(r["wait_min"] for r in rs)
         out.append({"partner": partner, "place": place, "band": band, "count": len(rs), "wait_minutes": total,
                     "avg_minutes": _half_up(total, len(rs)), "max_minutes": max(r["wait_min"] for r in rs),
-                    "over_1h_count": sum(1 for r in rs if r["over_1h"]), "amount": sum(r["amount"] for r in rs)})
+                    "over_1h_count": sum(1 for r in rs if r["over_1h"]), "amount": sum(r["amount"] for r in rs),
+                    # SPEC §28.1: 注記の条件になる回数（指定の到着時刻が入っている回数、荷役をした人が荷主側の回数）
+                    "designated_count": sum(1 for r in rs if r["appointed"]),
+                    "shipper_handling_count": sum(1 for r in rs if r["handler"] == "荷主側")})
     out.sort(key=lambda h: (-h["wait_minutes"], h["partner"], h["place"], h["band"]))
+    return out
+
+
+def by_place_month(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """場所ごと・月ごとの平均の荷待ち（SPEC §28.2）。鍵は（場所、月 YYYY-MM）。場所が空なら「（場所の記入なし）」。
+    並びは場所の文字の順、月の順。"""
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for r in rows:
+        groups.setdefault((r["place"] or NO_PLACE, r["month"]), []).append(r)
+    out = []
+    for (place, month), rs in groups.items():
+        total = sum(r["wait_min"] for r in rs)
+        out.append({"place": place, "month": month, "count": len(rs), "wait_minutes": total, "avg_minutes": _half_up(total, len(rs)),
+                    "over_1h_count": sum(1 for r in rs if r["over_1h"])})
+    out.sort(key=lambda x: (x["place"], x["month"]))
     return out
 
 
@@ -513,7 +531,7 @@ def aggregate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def calc(rows: list[Any], year: int | None = None, tariff: dict[str, Any] | None = None) -> dict[str, Any]:
-    """記録の行を計算する。返り値は {rows, by_partner, hotspots, errors, tariff}。
+    """記録の行を計算する。返り値は {rows, by_partner, hotspots, by_place_month, errors, tariff}。
 
     errors は {row, message}（row は 1 始まりの行番号）。読めない行は計算から外す。"""
     if not isinstance(rows, list):
@@ -538,6 +556,7 @@ def calc(rows: list[Any], year: int | None = None, tariff: dict[str, Any] | None
         "rows": done,
         "by_partner": aggregate(done),
         "hotspots": hotspots(done),
+        "by_place_month": by_place_month(done),
         "errors": errors,
         "tariff": {"source_url": t["source_url"], "applies_from": t["applies_from"], "checked_on": t["checked_on"],
                    "tax": t["tax"], "unit_minutes": t["unit_minutes"], "free_minutes": t["free_minutes"],

@@ -82,8 +82,8 @@ def test_example_has_the_8_vs_10_contrast_at_the_same_place():
             assert h["avg_minutes"] >= 60 and by[(partner, place, "10時台")]["avg_minutes"] <= 20
             seen += 1
     assert seen >= 1
-    assert (len(rows), sum(r["wait_min"] for r in res["rows"]), sum(r["amount"] for r in res["rows"])) == (18, 822, 38_840)
-    assert [(p["partner"], p["count"], p["amount"]) for p in res["by_partner"]] == [("架空 元請A物流", 12, 27_500), ("架空 B食品", 6, 11_340)]
+    assert (len(rows), sum(r["wait_min"] for r in res["rows"]), sum(r["amount"] for r in res["rows"])) == (18, 982, 46_780)
+    assert [(p["partner"], p["count"], p["amount"]) for p in res["by_partner"]] == [("架空 元請A物流", 12, 33_550), ("架空 B食品", 6, 13_230)]
 
 
 # ---------------------------------------------------------------- 画面（ヘッドレス Edge）
@@ -121,7 +121,7 @@ SCREEN_JS = """(function(){
   const t = document.querySelector('#hotspots');
   const rows = t ? [...t.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent)) : [];
   return {rows, head: t ? [...t.querySelectorAll('th')].map(th => th.textContent) : [],
-          line: document.querySelector('#partners').textContent.includes('この期間の荷主等の都合の荷待ちは計 13 時間 42 分です。'),
+          line: document.querySelector('#partners').textContent.includes('この期間の荷主等の都合の荷待ちは計 16 時間 22 分です。'),
           basis: document.querySelector('#basis').textContent, doc: document.querySelector('#wait-doc').textContent,
           h2: [...document.querySelectorAll('#partners h2')].map(h => h.firstChild.textContent)};
 })()"""
@@ -138,10 +138,10 @@ def test_g115_g116_g118_screen_basis_and_document(path):
         info = page.js(SCREEN_JS)
         # G115: 上位 5 組、合計 0 の組を出さない。列は 27.2 のとおり
         assert info["h2"] == ["契約の相手ごと", "どこで・いつ待っているか"] and info["line"]
-        assert info["head"] == ["契約の相手", "場所", "到着の時間帯", "回数", "平均の荷待ち", "最長", "1 時間以上の回数", "参考額（円）"]
+        assert info["head"] == ["契約の相手", "場所", "到着の時間帯", "回数", "平均の荷待ち", "最長", "1 時間以上の回数", "参考額（円）", "注記"]
         rows = info["rows"]
         assert len(rows) == 5
-        assert rows[0][:7] == ["架空 元請A物流", "江東区 地点07", "8時台", "5", "77 分", "105 分", "5"]
+        assert rows[0][:7] == ["架空 元請A物流", "江東区 地点07", "8時台", "5", "98 分", "135 分", "5"]
         assert rows[1][:3] == ["架空 B食品", "市川市 地点03", "8時台"]
         assert not any(r[0] == "架空 B食品" and r[1] == "川崎市 地点12" for r in rows)   # 合計 0 の組（B・地点12・13時台）は出さない
         # G118: 同じ場所の 8時台と 10時台の対比
@@ -157,9 +157,9 @@ def test_g115_g116_g118_screen_basis_and_document(path):
         # G116: 書面にご相談が入り、その相手の上位 3 組を出す。Gメンの「恒常的」の文は書面に入れない
         d = info["doc"]
         assert "荷待ちを減らすためのご相談" in d and "恒常的" not in d
-        assert "江東区 地点07に8時台に到着した 5 回の荷待ちは、平均 77 分、最長 105 分でした。" in d
-        assert "川崎市 地点12に13時台に到着した 2 回の荷待ちは、平均 40 分、最長 40 分でした。" in d
-        assert "江東区 地点07に10時台に到着した 4 回の荷待ちは、平均 15 分、最長 20 分でした。" in d
+        assert "江東区 地点07に8時台に到着した 5 回の荷待ちは、平均 98 分、最長 135 分でした。" in d
+        assert "川崎市 地点12に13時台に到着した 2 回の荷待ちは、平均 40 分、最長 40 分でした。（指定の到着時刻の無い到着を含みます）" in d
+        assert "江東区 地点07に10時台に到着した 4 回の荷待ちは、平均 15 分、最長 20 分でした。（指定の到着時刻の無い到着を含みます）" in d
         assert "江東区 地点07に9時台に到着した" not in d   # 4 組目は出さない（上位 3 組まで）
         assert "荷待ちが減れば、待機時間料の対象も減ります。到着の時刻の指定、受付の予約、荷役を始める順番などの見直しをご相談させてください。" in d
         assert "荷待ちが残る場合に備えて、次回からの契約の書面に、" in d
@@ -168,11 +168,11 @@ def test_g115_g116_g118_screen_basis_and_document(path):
         page.js("document.querySelector('tr[data-pick=\"架空 B食品\"]').click()")
         d2 = page.js("document.querySelector('#wait-doc').textContent")
         consult = d2.split("荷待ちを減らすためのご相談")[1].split("次の契約の書面")[0]
-        assert "市川市 地点03に8時台に到着した 3 回の荷待ちは、平均 72 分、最長 75 分でした。" in consult and "江東区" not in consult
+        assert "市川市 地点03に8時台に到着した 3 回の荷待ちは、平均 90 分、最長 100 分でした。" in consult and "江東区" not in consult
         # コピーする文
         text = page.js("draftText(S.res.by_partner.find((x) => x.partner === S.partner))")
         assert "【荷待ちを減らすためのご相談】" in text and "恒常的" not in text
-        assert "・市川市 地点03に10時台に到着した 2 回の荷待ちは、平均 15 分、最長 15 分でした。" in text
+        assert "・市川市 地点03に10時台に到着した 2 回の荷待ちは、平均 15 分、最長 15 分でした。（指定の到着時刻の無い到着を含みます）（回数が少ない）" in text
         assert text.index("【荷待ちを減らすためのご相談】") < text.index("【次の契約の書面（運送引受書）に入れる欄の案】")
         assert "荷待ちが残る場合に備えて、次回からの契約の書面に、" in text
 

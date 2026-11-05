@@ -35,6 +35,16 @@
       "wait_minutes": 60
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -42,10 +52,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -144,6 +156,16 @@
       "wait_minutes": 135
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 135,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 135
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -151,10 +173,12 @@
       "avg_minutes": 135,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 135,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 135
      }
     ],
@@ -253,6 +277,16 @@
       "wait_minutes": 61
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 31,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 61
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -260,10 +294,12 @@
       "avg_minutes": 31,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 31,
       "over_1h_count": 0,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 61
      }
     ],
@@ -414,6 +450,16 @@
       "wait_minutes": 572
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 52,
+      "count": 11,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 572
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -421,10 +467,12 @@
       "avg_minutes": 52,
       "band": "9時台",
       "count": 11,
+      "designated_count": 0,
       "max_minutes": 52,
       "over_1h_count": 0,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 572
      }
     ],
@@ -1043,6 +1091,16 @@
       "wait_minutes": 70
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 70,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 70
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -1050,10 +1108,12 @@
       "avg_minutes": 70,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 70,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 1,
       "wait_minutes": 70
      }
     ],
@@ -1152,6 +1212,16 @@
       "wait_minutes": 110
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 110,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 110
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -1159,10 +1229,12 @@
       "avg_minutes": 110,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 110,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 110
      }
     ],
@@ -1261,6 +1333,16 @@
       "wait_minutes": 130
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 130,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 130
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -1268,10 +1350,12 @@
       "avg_minutes": 130,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 130,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 130
      }
     ],
@@ -1370,6 +1454,16 @@
       "wait_minutes": 0
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 0,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 0
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -1377,10 +1471,12 @@
       "avg_minutes": 0,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 0,
       "over_1h_count": 0,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 0
      }
     ],
@@ -1479,6 +1575,16 @@
       "wait_minutes": 0
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 0,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 0
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -1486,10 +1592,12 @@
       "avg_minutes": 0,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 0,
       "over_1h_count": 0,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 0
      }
     ],
@@ -1588,6 +1696,16 @@
       "wait_minutes": 70
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 70,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 70
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -1595,10 +1713,12 @@
       "avg_minutes": 70,
       "band": "23時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 70,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 70
      }
     ],
@@ -1698,6 +1818,16 @@
       "wait_minutes": 70
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 70,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 70
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -1705,10 +1835,12 @@
       "avg_minutes": 70,
       "band": "22時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 70,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 1,
       "wait_minutes": 70
      }
     ],
@@ -1808,6 +1940,16 @@
       "wait_minutes": 140
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 70,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 140
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -1815,10 +1957,12 @@
       "avg_minutes": 70,
       "band": "8時台",
       "count": 2,
+      "designated_count": 1,
       "max_minutes": 80,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 140
      }
     ],
@@ -1970,6 +2114,16 @@
       "wait_minutes": 60
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -1977,10 +2131,12 @@
       "avg_minutes": 60,
       "band": "8時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -2080,6 +2236,16 @@
       "wait_minutes": 120
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 120
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -2087,10 +2253,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 2,
+      "designated_count": 1,
       "max_minutes": 60,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 120
      }
     ],
@@ -2242,6 +2410,16 @@
       "wait_minutes": 0
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 0,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 0
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -2249,10 +2427,12 @@
       "avg_minutes": 0,
       "band": "8時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 0,
       "over_1h_count": 0,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 0
      }
     ],
@@ -2352,6 +2532,16 @@
       "wait_minutes": 120
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 120
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -2359,10 +2549,12 @@
       "avg_minutes": 60,
       "band": "0時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      },
      {
@@ -2370,10 +2562,12 @@
       "avg_minutes": 60,
       "band": "23時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -2526,6 +2720,16 @@
       "wait_minutes": 230
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 115,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 230
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -2533,10 +2737,12 @@
       "avg_minutes": 115,
       "band": "8時台",
       "count": 2,
+      "designated_count": 1,
       "max_minutes": 125,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 230
      }
     ],
@@ -2688,6 +2894,16 @@
       "wait_minutes": 70
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 70,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 70
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -2695,10 +2911,12 @@
       "avg_minutes": 70,
       "band": "8時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 70,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 1,
       "wait_minutes": 70
      }
     ],
@@ -2798,6 +3016,16 @@
       "wait_minutes": 180
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 3,
+      "month": "2026-10",
+      "over_1h_count": 3,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 180
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -2805,10 +3033,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 3,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 3,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 180
      }
     ],
@@ -3015,6 +3245,16 @@
       "wait_minutes": 671
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 61,
+      "count": 11,
+      "month": "2026-10",
+      "over_1h_count": 3,
+      "place": "江東区 地点07",
+      "wait_minutes": 671
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -3022,10 +3262,12 @@
       "avg_minutes": 57,
       "band": "9時台",
       "count": 10,
+      "designated_count": 0,
       "max_minutes": 75,
       "over_1h_count": 2,
       "partner": "架空 元請A物流",
       "place": "江東区 地点07",
+      "shipper_handling_count": 8,
       "wait_minutes": 566
      },
      {
@@ -3033,10 +3275,12 @@
       "avg_minutes": 105,
       "band": "8時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 105,
       "over_1h_count": 1,
       "partner": "架空 元請A物流",
       "place": "江東区 地点07",
+      "shipper_handling_count": 0,
       "wait_minutes": 105
      }
     ],
@@ -3635,25 +3879,25 @@
    "expect": {
     "by_partner": [
      {
-      "amount": 27500,
+      "amount": 33550,
       "count": 12,
       "date_from": "2026-10-01",
       "date_to": "2026-10-16",
-      "handling_fee": 4620,
+      "handling_fee": 5040,
       "handling_minutes": 40,
       "months": [
        {
-        "amount": 27500,
+        "amount": 33550,
         "count": 12,
-        "handling_fee": 4620,
+        "handling_fee": 5040,
         "handling_minutes": 40,
         "month": "2026-10",
         "over_1h_count": 5,
         "over_2h_count": 1,
         "side_work_count": 1,
         "side_work_minutes": 20,
-        "wait_fee": 22880,
-        "wait_minutes": 577
+        "wait_fee": 28510,
+        "wait_minutes": 682
        }
       ],
       "over_1h_count": 5,
@@ -3662,11 +3906,11 @@
       "partner": "架空 元請A物流",
       "side_work_count": 1,
       "side_work_minutes": 20,
-      "wait_fee": 22880,
-      "wait_minutes": 577
+      "wait_fee": 28510,
+      "wait_minutes": 682
      },
      {
-      "amount": 11340,
+      "amount": 13230,
       "count": 6,
       "date_from": "2026-10-02",
       "date_to": "2026-10-15",
@@ -3674,7 +3918,7 @@
       "handling_minutes": 0,
       "months": [
        {
-        "amount": 11340,
+        "amount": 13230,
         "count": 6,
         "handling_fee": 0,
         "handling_minutes": 0,
@@ -3683,8 +3927,8 @@
         "over_2h_count": 0,
         "side_work_count": 0,
         "side_work_minutes": 0,
-        "wait_fee": 11340,
-        "wait_minutes": 245
+        "wait_fee": 13230,
+        "wait_minutes": 300
        }
       ],
       "over_1h_count": 3,
@@ -3693,43 +3937,75 @@
       "partner": "架空 B食品",
       "side_work_count": 0,
       "side_work_minutes": 0,
-      "wait_fee": 11340,
-      "wait_minutes": 245
+      "wait_fee": 13230,
+      "wait_minutes": 300
+     }
+    ],
+    "by_place_month": [
+     {
+      "avg_minutes": 27,
+      "count": 3,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "川崎市 地点12",
+      "wait_minutes": 80
+     },
+     {
+      "avg_minutes": 60,
+      "count": 5,
+      "month": "2026-10",
+      "over_1h_count": 3,
+      "place": "市川市 地点03",
+      "wait_minutes": 300
+     },
+     {
+      "avg_minutes": 60,
+      "count": 10,
+      "month": "2026-10",
+      "over_1h_count": 5,
+      "place": "江東区 地点07",
+      "wait_minutes": 602
      }
     ],
     "errors": [],
     "hotspots": [
      {
-      "amount": 22220,
-      "avg_minutes": 77,
+      "amount": 28270,
+      "avg_minutes": 98,
       "band": "8時台",
       "count": 5,
-      "max_minutes": 105,
+      "designated_count": 5,
+      "max_minutes": 135,
       "over_1h_count": 5,
       "partner": "架空 元請A物流",
       "place": "江東区 地点07",
-      "wait_minutes": 385
+      "shipper_handling_count": 0,
+      "wait_minutes": 490
      },
      {
-      "amount": 11340,
-      "avg_minutes": 72,
+      "amount": 13230,
+      "avg_minutes": 90,
       "band": "8時台",
       "count": 3,
-      "max_minutes": 75,
+      "designated_count": 3,
+      "max_minutes": 100,
       "over_1h_count": 3,
       "partner": "架空 B食品",
       "place": "市川市 地点03",
-      "wait_minutes": 215
+      "shipper_handling_count": 0,
+      "wait_minutes": 270
      },
      {
       "amount": 3520,
       "avg_minutes": 40,
       "band": "13時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 40,
       "over_1h_count": 0,
       "partner": "架空 元請A物流",
       "place": "川崎市 地点12",
+      "shipper_handling_count": 0,
       "wait_minutes": 80
      },
      {
@@ -3737,10 +4013,12 @@
       "avg_minutes": 15,
       "band": "10時台",
       "count": 4,
+      "designated_count": 0,
       "max_minutes": 20,
       "over_1h_count": 0,
       "partner": "架空 元請A物流",
       "place": "江東区 地点07",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      },
      {
@@ -3748,10 +4026,12 @@
       "avg_minutes": 52,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 52,
       "over_1h_count": 0,
       "partner": "架空 元請A物流",
       "place": "江東区 地点07",
+      "shipper_handling_count": 1,
       "wait_minutes": 52
      },
      {
@@ -3759,10 +4039,12 @@
       "avg_minutes": 15,
       "band": "10時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 15,
       "over_1h_count": 0,
       "partner": "架空 B食品",
       "place": "市川市 地点03",
+      "shipper_handling_count": 0,
       "wait_minutes": 30
      },
      {
@@ -3770,18 +4052,20 @@
       "avg_minutes": 0,
       "band": "13時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 0,
       "over_1h_count": 0,
       "partner": "架空 B食品",
       "place": "川崎市 地点12",
+      "shipper_handling_count": 0,
       "wait_minutes": 0
      }
     ],
     "rows": [
      {
       "amount": 3520,
-      "appointed": "",
-      "arrive": "08:10",
+      "appointed": "08:00",
+      "arrive": "08:00",
       "crosses_midnight": false,
       "date": "2026-10-01",
       "depart": "",
@@ -3812,17 +4096,17 @@
       "wait_base_min": 0,
       "wait_fee": 3520,
       "wait_from": "到着",
-      "wait_min": 75,
+      "wait_min": 85,
       "wait_normal_rate": 1760,
       "wait_normal_units": 2,
       "wait_over_rate": 2110,
       "wait_over_units": 0,
-      "wait_raw_min": 75
+      "wait_raw_min": 85
      },
      {
       "amount": 3520,
-      "appointed": "",
-      "arrive": "08:05",
+      "appointed": "08:00",
+      "arrive": "08:00",
       "crosses_midnight": false,
       "date": "2026-10-02",
       "depart": "",
@@ -3853,17 +4137,17 @@
       "wait_base_min": 0,
       "wait_fee": 3520,
       "wait_from": "到着",
-      "wait_min": 75,
+      "wait_min": 80,
       "wait_normal_rate": 1760,
       "wait_normal_units": 2,
       "wait_over_rate": 2110,
       "wait_over_units": 0,
-      "wait_raw_min": 75
+      "wait_raw_min": 80
      },
      {
       "amount": 3520,
-      "appointed": "",
-      "arrive": "08:20",
+      "appointed": "08:00",
+      "arrive": "08:00",
       "crosses_midnight": false,
       "date": "2026-10-05",
       "depart": "",
@@ -3894,17 +4178,17 @@
       "wait_base_min": 0,
       "wait_fee": 3520,
       "wait_from": "到着",
-      "wait_min": 70,
+      "wait_min": 90,
       "wait_normal_rate": 1760,
       "wait_normal_units": 2,
       "wait_over_rate": 2110,
       "wait_over_units": 0,
-      "wait_raw_min": 70
+      "wait_raw_min": 90
      },
      {
-      "amount": 1760,
-      "appointed": "",
-      "arrive": "08:40",
+      "amount": 5280,
+      "appointed": "08:00",
+      "arrive": "08:00",
       "crosses_midnight": false,
       "date": "2026-10-06",
       "depart": "",
@@ -3933,30 +4217,30 @@
       "vehicle_class": "中型",
       "vehicle_no": "",
       "wait_base_min": 0,
-      "wait_fee": 1760,
+      "wait_fee": 5280,
       "wait_from": "到着",
-      "wait_min": 60,
+      "wait_min": 100,
       "wait_normal_rate": 1760,
-      "wait_normal_units": 1,
+      "wait_normal_units": 3,
       "wait_over_rate": 2110,
       "wait_over_units": 0,
-      "wait_raw_min": 60
+      "wait_raw_min": 100
      },
      {
-      "amount": 9900,
-      "appointed": "08:30",
-      "arrive": "08:10",
+      "amount": 12430,
+      "appointed": "08:00",
+      "arrive": "08:00",
       "crosses_midnight": false,
       "date": "2026-10-07",
       "depart": "11:05",
       "end": "10:55",
       "handler": "運転者",
-      "handling_fee": 4620,
+      "handling_fee": 5040,
       "handling_min": 40,
       "handling_normal_rate": 2100,
-      "handling_normal_units": 1,
+      "handling_normal_units": 0,
       "handling_over_rate": 2520,
-      "handling_over_units": 1,
+      "handling_over_units": 2,
       "has_side_work": true,
       "method": "手積み",
       "month": "2026-10",
@@ -3973,15 +4257,15 @@
       "start": "10:15",
       "vehicle_class": "中型",
       "vehicle_no": "",
-      "wait_base_min": 20,
-      "wait_fee": 5280,
-      "wait_from": "指定の到着時刻",
-      "wait_min": 105,
+      "wait_base_min": 0,
+      "wait_fee": 7390,
+      "wait_from": "到着",
+      "wait_min": 135,
       "wait_normal_rate": 1760,
       "wait_normal_units": 3,
       "wait_over_rate": 2110,
-      "wait_over_units": 0,
-      "wait_raw_min": 125
+      "wait_over_units": 1,
+      "wait_raw_min": 135
      },
      {
       "amount": 1760,
@@ -4272,8 +4556,8 @@
      },
      {
       "amount": 3780,
-      "appointed": "",
-      "arrive": "08:15",
+      "appointed": "08:00",
+      "arrive": "08:00",
       "crosses_midnight": false,
       "date": "2026-10-02",
       "depart": "",
@@ -4304,17 +4588,17 @@
       "wait_base_min": 0,
       "wait_fee": 3780,
       "wait_from": "到着",
-      "wait_min": 75,
+      "wait_min": 90,
       "wait_normal_rate": 1890,
       "wait_normal_units": 2,
       "wait_over_rate": 2270,
       "wait_over_units": 0,
-      "wait_raw_min": 75
+      "wait_raw_min": 90
      },
      {
-      "amount": 3780,
-      "appointed": "",
-      "arrive": "08:30",
+      "amount": 5670,
+      "appointed": "08:00",
+      "arrive": "08:00",
       "crosses_midnight": false,
       "date": "2026-10-05",
       "depart": "",
@@ -4343,19 +4627,19 @@
       "vehicle_class": "大型",
       "vehicle_no": "",
       "wait_base_min": 0,
-      "wait_fee": 3780,
+      "wait_fee": 5670,
       "wait_from": "到着",
-      "wait_min": 70,
+      "wait_min": 100,
       "wait_normal_rate": 1890,
-      "wait_normal_units": 2,
+      "wait_normal_units": 3,
       "wait_over_rate": 2270,
       "wait_over_units": 0,
-      "wait_raw_min": 70
+      "wait_raw_min": 100
      },
      {
       "amount": 3780,
-      "appointed": "",
-      "arrive": "08:10",
+      "appointed": "08:00",
+      "arrive": "08:00",
       "crosses_midnight": false,
       "date": "2026-10-09",
       "depart": "",
@@ -4386,12 +4670,12 @@
       "wait_base_min": 0,
       "wait_fee": 3780,
       "wait_from": "到着",
-      "wait_min": 70,
+      "wait_min": 80,
       "wait_normal_rate": 1890,
       "wait_normal_units": 2,
       "wait_over_rate": 2270,
       "wait_over_units": 0,
-      "wait_raw_min": 70
+      "wait_raw_min": 80
      },
      {
       "amount": 0,
@@ -4521,8 +4805,8 @@
    "name": "example_waiting_page_18_rows",
    "rows": [
     {
-     "appointed": "",
-     "arrive": "08:10",
+     "appointed": "08:00",
+     "arrive": "08:00",
      "date": "2026-10-01",
      "depart": "",
      "end": "",
@@ -4539,8 +4823,8 @@
      "vehicle_no": ""
     },
     {
-     "appointed": "",
-     "arrive": "08:05",
+     "appointed": "08:00",
+     "arrive": "08:00",
      "date": "2026-10-02",
      "depart": "",
      "end": "",
@@ -4557,8 +4841,8 @@
      "vehicle_no": ""
     },
     {
-     "appointed": "",
-     "arrive": "08:20",
+     "appointed": "08:00",
+     "arrive": "08:00",
      "date": "2026-10-05",
      "depart": "",
      "end": "",
@@ -4575,8 +4859,8 @@
      "vehicle_no": ""
     },
     {
-     "appointed": "",
-     "arrive": "08:40",
+     "appointed": "08:00",
+     "arrive": "08:00",
      "date": "2026-10-06",
      "depart": "",
      "end": "",
@@ -4593,8 +4877,8 @@
      "vehicle_no": ""
     },
     {
-     "appointed": "08:30",
-     "arrive": "08:10",
+     "appointed": "08:00",
+     "arrive": "08:00",
      "date": "2026-10-07",
      "depart": "11:05",
      "end": "10:55",
@@ -4737,8 +5021,8 @@
      "vehicle_no": ""
     },
     {
-     "appointed": "",
-     "arrive": "08:15",
+     "appointed": "08:00",
+     "arrive": "08:00",
      "date": "2026-10-02",
      "depart": "",
      "end": "",
@@ -4755,8 +5039,8 @@
      "vehicle_no": ""
     },
     {
-     "appointed": "",
-     "arrive": "08:30",
+     "appointed": "08:00",
+     "arrive": "08:00",
      "date": "2026-10-05",
      "depart": "",
      "end": "",
@@ -4773,8 +5057,8 @@
      "vehicle_no": ""
     },
     {
-     "appointed": "",
-     "arrive": "08:10",
+     "appointed": "08:00",
+     "arrive": "08:00",
      "date": "2026-10-09",
      "depart": "",
      "end": "",
@@ -4882,6 +5166,24 @@
       "wait_minutes": 110
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 55,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "X",
+      "wait_minutes": 110
+     },
+     {
+      "avg_minutes": 0,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "Y",
+      "wait_minutes": 0
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -4889,10 +5191,12 @@
       "avg_minutes": 55,
       "band": "8時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 70,
       "over_1h_count": 1,
       "partner": "A",
       "place": "X",
+      "shipper_handling_count": 0,
       "wait_minutes": 110
      },
      {
@@ -4900,10 +5204,12 @@
       "avg_minutes": 0,
       "band": "13時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 0,
       "over_1h_count": 0,
       "partner": "A",
       "place": "Y",
+      "shipper_handling_count": 0,
       "wait_minutes": 0
      }
     ],
@@ -5140,6 +5446,32 @@
       "wait_minutes": 191
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 38,
+      "count": 3,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "Y",
+      "wait_minutes": 115
+     },
+     {
+      "avg_minutes": 48,
+      "count": 5,
+      "month": "2026-10",
+      "over_1h_count": 3,
+      "place": "Z",
+      "wait_minutes": 240
+     },
+     {
+      "avg_minutes": 51,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 101
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -5147,10 +5479,12 @@
       "avg_minutes": 38,
       "band": "9時台",
       "count": 3,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A",
       "place": "Y",
+      "shipper_handling_count": 0,
       "wait_minutes": 115
      },
      {
@@ -5158,10 +5492,12 @@
       "avg_minutes": 51,
       "band": "10時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 51,
       "over_1h_count": 0,
       "partner": "B",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 101
      },
      {
@@ -5169,10 +5505,12 @@
       "avg_minutes": 45,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A",
       "place": "Z",
+      "shipper_handling_count": 0,
       "wait_minutes": 90
      },
      {
@@ -5180,10 +5518,12 @@
       "avg_minutes": 45,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "B",
       "place": "Z",
+      "shipper_handling_count": 0,
       "wait_minutes": 90
      },
      {
@@ -5191,10 +5531,12 @@
       "avg_minutes": 60,
       "band": "23時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A",
       "place": "Z",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -5740,6 +6082,1024 @@
    "expect": {
     "by_partner": [
      {
+      "amount": 13440,
+      "count": 4,
+      "date_from": "2026-10-05",
+      "date_to": "2026-10-05",
+      "handling_fee": 0,
+      "handling_minutes": 0,
+      "months": [
+       {
+        "amount": 13440,
+        "count": 4,
+        "handling_fee": 0,
+        "handling_minutes": 0,
+        "month": "2026-10",
+        "over_1h_count": 4,
+        "over_2h_count": 0,
+        "side_work_count": 0,
+        "side_work_minutes": 0,
+        "wait_fee": 13440,
+        "wait_minutes": 302
+       }
+      ],
+      "over_1h_count": 4,
+      "over_1h_share": 100,
+      "over_2h_count": 0,
+      "partner": "A",
+      "side_work_count": 0,
+      "side_work_minutes": 0,
+      "wait_fee": 13440,
+      "wait_minutes": 302
+     },
+     {
+      "amount": 3680,
+      "count": 2,
+      "date_from": "2026-10-05",
+      "date_to": "2026-10-05",
+      "handling_fee": 2000,
+      "handling_minutes": 20,
+      "months": [
+       {
+        "amount": 3680,
+        "count": 2,
+        "handling_fee": 2000,
+        "handling_minutes": 20,
+        "month": "2026-10",
+        "over_1h_count": 0,
+        "over_2h_count": 0,
+        "side_work_count": 0,
+        "side_work_minutes": 0,
+        "wait_fee": 1680,
+        "wait_minutes": 50
+       }
+      ],
+      "over_1h_count": 0,
+      "over_1h_share": 0,
+      "over_2h_count": 0,
+      "partner": "B",
+      "side_work_count": 0,
+      "side_work_minutes": 0,
+      "wait_fee": 1680,
+      "wait_minutes": 50
+     }
+    ],
+    "by_place_month": [
+     {
+      "avg_minutes": 76,
+      "count": 4,
+      "month": "2026-10",
+      "over_1h_count": 4,
+      "place": "X",
+      "wait_minutes": 302
+     },
+     {
+      "avg_minutes": 25,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "Y",
+      "wait_minutes": 50
+     }
+    ],
+    "errors": [],
+    "hotspots": [
+     {
+      "amount": 13440,
+      "avg_minutes": 76,
+      "band": "7時台",
+      "count": 4,
+      "designated_count": 2,
+      "max_minutes": 92,
+      "over_1h_count": 4,
+      "partner": "A",
+      "place": "X",
+      "shipper_handling_count": 1,
+      "wait_minutes": 302
+     },
+     {
+      "amount": 3680,
+      "avg_minutes": 25,
+      "band": "10時台",
+      "count": 2,
+      "designated_count": 1,
+      "max_minutes": 50,
+      "over_1h_count": 0,
+      "partner": "B",
+      "place": "Y",
+      "shipper_handling_count": 1,
+      "wait_minutes": 50
+     }
+    ],
+    "rows": [
+     {
+      "amount": 1680,
+      "appointed": "08:00",
+      "arrive": "07:55",
+      "crosses_midnight": false,
+      "date": "2026-10-05",
+      "depart": "",
+      "end": "",
+      "handler": "",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-10",
+      "over_1h": true,
+      "over_2h_total": false,
+      "partner": "A",
+      "place": "X",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 1,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "09:00",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 5,
+      "wait_fee": 1680,
+      "wait_from": "指定の到着時刻",
+      "wait_min": 60,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 1,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 65
+     },
+     {
+      "amount": 3360,
+      "appointed": "",
+      "arrive": "07:50",
+      "crosses_midnight": false,
+      "date": "2026-10-05",
+      "depart": "",
+      "end": "",
+      "handler": "",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-10",
+      "over_1h": true,
+      "over_2h_total": false,
+      "partner": "A",
+      "place": "X",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 2,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "09:00",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 3360,
+      "wait_from": "到着",
+      "wait_min": 70,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 2,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 70
+     },
+     {
+      "amount": 5040,
+      "appointed": "",
+      "arrive": "07:58",
+      "crosses_midnight": false,
+      "date": "2026-10-05",
+      "depart": "",
+      "end": "09:30",
+      "handler": "荷主側",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-10",
+      "over_1h": true,
+      "over_2h_total": false,
+      "partner": "A",
+      "place": "X",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 3,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "09:00",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 5040,
+      "wait_from": "到着",
+      "wait_min": 92,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 3,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 62
+     },
+     {
+      "amount": 3360,
+      "appointed": "08:00",
+      "arrive": "07:59",
+      "crosses_midnight": false,
+      "date": "2026-10-05",
+      "depart": "",
+      "end": "",
+      "handler": "",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-10",
+      "over_1h": true,
+      "over_2h_total": false,
+      "partner": "A",
+      "place": "X",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 4,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "09:20",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 1,
+      "wait_fee": 3360,
+      "wait_from": "指定の到着時刻",
+      "wait_min": 80,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 2,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 81
+     },
+     {
+      "amount": 0,
+      "appointed": "10:00",
+      "arrive": "10:00",
+      "crosses_midnight": false,
+      "date": "2026-10-05",
+      "depart": "",
+      "end": "11:20",
+      "handler": "荷主側",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-10",
+      "over_1h": false,
+      "over_2h_total": false,
+      "partner": "B",
+      "place": "Y",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 5,
+      "shipper_fault": false,
+      "side_min": 0,
+      "side_work": "",
+      "start": "11:00",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 0,
+      "wait_from": "到着",
+      "wait_min": 0,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 0,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 60
+     },
+     {
+      "amount": 3680,
+      "appointed": "",
+      "arrive": "10:10",
+      "crosses_midnight": false,
+      "date": "2026-10-05",
+      "depart": "",
+      "end": "11:20",
+      "handler": "運転者",
+      "handling_fee": 2000,
+      "handling_min": 20,
+      "handling_normal_rate": 2000,
+      "handling_normal_units": 1,
+      "handling_over_rate": 2400,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "手積み",
+      "month": "2026-10",
+      "over_1h": false,
+      "over_2h_total": false,
+      "partner": "B",
+      "place": "Y",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 6,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "11:00",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 1680,
+      "wait_from": "到着",
+      "wait_min": 50,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 1,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 50
+     }
+    ]
+   },
+   "name": "hotspots_designated_and_shipper_handling_counts",
+   "rows": [
+    {
+     "appointed": "08:00",
+     "arrive": "07:55",
+     "date": "2026-10-05",
+     "end": "",
+     "handler": "",
+     "method": "",
+     "partner": "A",
+     "place": "X",
+     "shipper_fault": "はい",
+     "start": "09:00",
+     "vehicle_class": "小型"
+    },
+    {
+     "arrive": "07:50",
+     "date": "2026-10-05",
+     "end": "",
+     "handler": "",
+     "method": "",
+     "partner": "A",
+     "place": "X",
+     "shipper_fault": "はい",
+     "start": "09:00",
+     "vehicle_class": "小型"
+    },
+    {
+     "arrive": "07:58",
+     "date": "2026-10-05",
+     "end": "09:30",
+     "handler": "荷主側",
+     "method": "",
+     "partner": "A",
+     "place": "X",
+     "shipper_fault": "はい",
+     "start": "09:00",
+     "vehicle_class": "小型"
+    },
+    {
+     "appointed": "08:00",
+     "arrive": "07:59",
+     "date": "2026-10-05",
+     "end": "",
+     "handler": "",
+     "method": "",
+     "partner": "A",
+     "place": "X",
+     "shipper_fault": "はい",
+     "start": "09:20",
+     "vehicle_class": "小型"
+    },
+    {
+     "appointed": "10:00",
+     "arrive": "10:00",
+     "date": "2026-10-05",
+     "end": "11:20",
+     "handler": "荷主側",
+     "method": "",
+     "partner": "B",
+     "place": "Y",
+     "shipper_fault": "いいえ",
+     "start": "11:00",
+     "vehicle_class": "小型"
+    },
+    {
+     "arrive": "10:10",
+     "date": "2026-10-05",
+     "end": "11:20",
+     "handler": "運転者",
+     "method": "手積み",
+     "partner": "B",
+     "place": "Y",
+     "shipper_fault": "はい",
+     "start": "11:00",
+     "vehicle_class": "小型"
+    }
+   ],
+   "year": 2026
+  },
+  {
+   "expect": {
+    "by_partner": [
+     {
+      "amount": 15780,
+      "count": 6,
+      "date_from": "2026-09-30",
+      "date_to": "2026-11-03",
+      "handling_fee": 0,
+      "handling_minutes": 0,
+      "months": [
+       {
+        "amount": 9060,
+        "count": 1,
+        "handling_fee": 0,
+        "handling_minutes": 0,
+        "month": "2026-09",
+        "over_1h_count": 1,
+        "over_2h_count": 1,
+        "side_work_count": 0,
+        "side_work_minutes": 0,
+        "wait_fee": 9060,
+        "wait_minutes": 180
+       },
+       {
+        "amount": 5040,
+        "count": 4,
+        "handling_fee": 0,
+        "handling_minutes": 0,
+        "month": "2026-10",
+        "over_1h_count": 1,
+        "over_2h_count": 0,
+        "side_work_count": 0,
+        "side_work_minutes": 0,
+        "wait_fee": 5040,
+        "wait_minutes": 151
+       },
+       {
+        "amount": 1680,
+        "count": 1,
+        "handling_fee": 0,
+        "handling_minutes": 0,
+        "month": "2026-11",
+        "over_1h_count": 1,
+        "over_2h_count": 0,
+        "side_work_count": 0,
+        "side_work_minutes": 0,
+        "wait_fee": 1680,
+        "wait_minutes": 60
+       }
+      ],
+      "over_1h_count": 3,
+      "over_1h_share": 50,
+      "over_2h_count": 1,
+      "partner": "A",
+      "side_work_count": 0,
+      "side_work_minutes": 0,
+      "wait_fee": 15780,
+      "wait_minutes": 391
+     },
+     {
+      "amount": 7050,
+      "count": 1,
+      "date_from": "2026-11-02",
+      "date_to": "2026-11-02",
+      "handling_fee": 0,
+      "handling_minutes": 0,
+      "months": [
+       {
+        "amount": 7050,
+        "count": 1,
+        "handling_fee": 0,
+        "handling_minutes": 0,
+        "month": "2026-11",
+        "over_1h_count": 1,
+        "over_2h_count": 1,
+        "side_work_count": 0,
+        "side_work_minutes": 0,
+        "wait_fee": 7050,
+        "wait_minutes": 135
+       }
+      ],
+      "over_1h_count": 1,
+      "over_1h_share": 100,
+      "over_2h_count": 1,
+      "partner": "B",
+      "side_work_count": 0,
+      "side_work_minutes": 0,
+      "wait_fee": 7050,
+      "wait_minutes": 135
+     }
+    ],
+    "by_place_month": [
+     {
+      "avg_minutes": 56,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "X",
+      "wait_minutes": 111
+     },
+     {
+      "avg_minutes": 135,
+      "count": 1,
+      "month": "2026-11",
+      "over_1h_count": 1,
+      "place": "X",
+      "wait_minutes": 135
+     },
+     {
+      "avg_minutes": 180,
+      "count": 1,
+      "month": "2026-09",
+      "over_1h_count": 1,
+      "place": "Y",
+      "wait_minutes": 180
+     },
+     {
+      "avg_minutes": 0,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "Y",
+      "wait_minutes": 0
+     },
+     {
+      "avg_minutes": 40,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 40
+     },
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-11",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
+    "errors": [],
+    "hotspots": [
+     {
+      "amount": 9060,
+      "avg_minutes": 90,
+      "band": "9時台",
+      "count": 2,
+      "designated_count": 0,
+      "max_minutes": 180,
+      "over_1h_count": 1,
+      "partner": "A",
+      "place": "Y",
+      "shipper_handling_count": 0,
+      "wait_minutes": 180
+     },
+     {
+      "amount": 7050,
+      "avg_minutes": 135,
+      "band": "9時台",
+      "count": 1,
+      "designated_count": 0,
+      "max_minutes": 135,
+      "over_1h_count": 1,
+      "partner": "B",
+      "place": "X",
+      "shipper_handling_count": 0,
+      "wait_minutes": 135
+     },
+     {
+      "amount": 3360,
+      "avg_minutes": 56,
+      "band": "9時台",
+      "count": 2,
+      "designated_count": 0,
+      "max_minutes": 60,
+      "over_1h_count": 1,
+      "partner": "A",
+      "place": "X",
+      "shipper_handling_count": 0,
+      "wait_minutes": 111
+     },
+     {
+      "amount": 3360,
+      "avg_minutes": 50,
+      "band": "9時台",
+      "count": 2,
+      "designated_count": 0,
+      "max_minutes": 60,
+      "over_1h_count": 1,
+      "partner": "A",
+      "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
+      "wait_minutes": 100
+     }
+    ],
+    "rows": [
+     {
+      "amount": 1680,
+      "appointed": "",
+      "arrive": "09:00",
+      "crosses_midnight": false,
+      "date": "2026-10-05",
+      "depart": "",
+      "end": "",
+      "handler": "",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-10",
+      "over_1h": true,
+      "over_2h_total": false,
+      "partner": "A",
+      "place": "X",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 1,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "10:00",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 1680,
+      "wait_from": "到着",
+      "wait_min": 60,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 1,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 60
+     },
+     {
+      "amount": 1680,
+      "appointed": "",
+      "arrive": "09:00",
+      "crosses_midnight": false,
+      "date": "2026-10-06",
+      "depart": "",
+      "end": "",
+      "handler": "",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-10",
+      "over_1h": false,
+      "over_2h_total": false,
+      "partner": "A",
+      "place": "X",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 2,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "09:51",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 1680,
+      "wait_from": "到着",
+      "wait_min": 51,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 1,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 51
+     },
+     {
+      "amount": 7050,
+      "appointed": "",
+      "arrive": "09:00",
+      "crosses_midnight": false,
+      "date": "2026-11-02",
+      "depart": "",
+      "end": "",
+      "handler": "",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-11",
+      "over_1h": true,
+      "over_2h_total": true,
+      "partner": "B",
+      "place": "X",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 3,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "11:15",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 7050,
+      "wait_from": "到着",
+      "wait_min": 135,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 3,
+      "wait_over_rate": 2010,
+      "wait_over_units": 1,
+      "wait_raw_min": 135
+     },
+     {
+      "amount": 1680,
+      "appointed": "",
+      "arrive": "09:00",
+      "crosses_midnight": false,
+      "date": "2026-10-07",
+      "depart": "",
+      "end": "",
+      "handler": "",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-10",
+      "over_1h": false,
+      "over_2h_total": false,
+      "partner": "A",
+      "place": "",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 4,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "09:40",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 1680,
+      "wait_from": "到着",
+      "wait_min": 40,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 1,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 40
+     },
+     {
+      "amount": 9060,
+      "appointed": "",
+      "arrive": "09:00",
+      "crosses_midnight": false,
+      "date": "2026-09-30",
+      "depart": "",
+      "end": "",
+      "handler": "",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-09",
+      "over_1h": true,
+      "over_2h_total": true,
+      "partner": "A",
+      "place": "Y",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 5,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "12:00",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 9060,
+      "wait_from": "到着",
+      "wait_min": 180,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 3,
+      "wait_over_rate": 2010,
+      "wait_over_units": 2,
+      "wait_raw_min": 180
+     },
+     {
+      "amount": 0,
+      "appointed": "",
+      "arrive": "09:00",
+      "crosses_midnight": false,
+      "date": "2026-10-01",
+      "depart": "",
+      "end": "",
+      "handler": "",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-10",
+      "over_1h": false,
+      "over_2h_total": false,
+      "partner": "A",
+      "place": "Y",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 6,
+      "shipper_fault": false,
+      "side_min": 0,
+      "side_work": "",
+      "start": "09:20",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 0,
+      "wait_from": "到着",
+      "wait_min": 0,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 0,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 20
+     },
+     {
+      "amount": 1680,
+      "appointed": "",
+      "arrive": "09:00",
+      "crosses_midnight": false,
+      "date": "2026-11-03",
+      "depart": "",
+      "end": "",
+      "handler": "",
+      "handling_fee": 0,
+      "handling_min": 0,
+      "handling_normal_rate": 0,
+      "handling_normal_units": 0,
+      "handling_over_rate": 0,
+      "handling_over_units": 0,
+      "has_side_work": false,
+      "method": "",
+      "month": "2026-11",
+      "over_1h": true,
+      "over_2h_total": false,
+      "partner": "A",
+      "place": "",
+      "post_wait": false,
+      "post_wait_min": 0,
+      "row": 7,
+      "shipper_fault": true,
+      "side_min": 0,
+      "side_work": "",
+      "start": "10:00",
+      "vehicle_class": "小型",
+      "vehicle_no": "",
+      "wait_base_min": 0,
+      "wait_fee": 1680,
+      "wait_from": "到着",
+      "wait_min": 60,
+      "wait_normal_rate": 1680,
+      "wait_normal_units": 1,
+      "wait_over_rate": 2010,
+      "wait_over_units": 0,
+      "wait_raw_min": 60
+     }
+    ]
+   },
+   "name": "by_place_month_basic",
+   "rows": [
+    {
+     "arrive": "09:00",
+     "date": "2026-10-05",
+     "end": "",
+     "handler": "",
+     "method": "",
+     "partner": "A",
+     "place": "X",
+     "shipper_fault": "はい",
+     "start": "10:00",
+     "vehicle_class": "小型"
+    },
+    {
+     "arrive": "09:00",
+     "date": "2026-10-06",
+     "end": "",
+     "handler": "",
+     "method": "",
+     "partner": "A",
+     "place": "X",
+     "shipper_fault": "はい",
+     "start": "09:51",
+     "vehicle_class": "小型"
+    },
+    {
+     "arrive": "09:00",
+     "date": "2026-11-02",
+     "end": "",
+     "handler": "",
+     "method": "",
+     "partner": "B",
+     "place": "X",
+     "shipper_fault": "はい",
+     "start": "11:15",
+     "vehicle_class": "小型"
+    },
+    {
+     "arrive": "09:00",
+     "date": "2026-10-07",
+     "end": "",
+     "handler": "",
+     "method": "",
+     "partner": "A",
+     "place": "",
+     "shipper_fault": "はい",
+     "start": "09:40",
+     "vehicle_class": "小型"
+    },
+    {
+     "arrive": "09:00",
+     "date": "2026-09-30",
+     "end": "",
+     "handler": "",
+     "method": "",
+     "partner": "A",
+     "place": "Y",
+     "shipper_fault": "はい",
+     "start": "12:00",
+     "vehicle_class": "小型"
+    },
+    {
+     "arrive": "09:00",
+     "date": "2026-10-01",
+     "end": "",
+     "handler": "",
+     "method": "",
+     "partner": "A",
+     "place": "Y",
+     "shipper_fault": "いいえ",
+     "start": "09:20",
+     "vehicle_class": "小型"
+    },
+    {
+     "arrive": "09:00",
+     "date": "2026-11-03",
+     "end": "",
+     "handler": "",
+     "method": "",
+     "partner": "A",
+     "place": "  ",
+     "shipper_fault": "はい",
+     "start": "10:00",
+     "vehicle_class": "小型"
+    }
+   ],
+   "year": 2026
+  },
+  {
+   "expect": {
+    "by_partner": [
+     {
       "amount": 13680,
       "count": 2,
       "date_from": "2026-09-30",
@@ -5828,6 +7188,32 @@
       "wait_minutes": 195
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 180,
+      "count": 1,
+      "month": "2026-09",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 180
+     },
+     {
+      "avg_minutes": 60,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 120
+     },
+     {
+      "avg_minutes": 135,
+      "count": 1,
+      "month": "2026-11",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 135
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -5835,10 +7221,12 @@
       "avg_minutes": 120,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 180,
       "over_1h_count": 2,
       "partner": "B商事",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 240
      },
      {
@@ -5846,10 +7234,12 @@
       "avg_minutes": 98,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 135,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 195
      }
     ],
@@ -6104,6 +7494,16 @@
       "wait_minutes": 330
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 66,
+      "count": 5,
+      "month": "2026-10",
+      "over_1h_count": 5,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 330
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -6111,10 +7511,12 @@
       "avg_minutes": 66,
       "band": "9時台",
       "count": 5,
+      "designated_count": 0,
       "max_minutes": 90,
       "over_1h_count": 5,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 1,
       "wait_minutes": 330
      }
     ],
@@ -6421,6 +7823,16 @@
       "wait_minutes": 120
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 120
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -6428,10 +7840,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 120
      }
     ],
@@ -6582,6 +7996,16 @@
       "wait_minutes": 60
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
     "errors": [
      {
       "message": "日付「10/5」の年が分かりません（年を選んでください）",
@@ -6594,10 +8018,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -6707,6 +8133,16 @@
       "wait_minutes": 120
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 120
+     }
+    ],
     "errors": [
      {
       "message": "到着「25:00」を読めません（9:00、09時00分、0900 のように入れてください）",
@@ -6775,10 +8211,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 2,
+      "designated_count": 1,
       "max_minutes": 60,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 120
      }
     ],
@@ -7127,6 +8565,24 @@
       "wait_minutes": 40
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 135,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "川崎",
+      "wait_minutes": 135
+     },
+     {
+      "avg_minutes": 40,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 40
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -7135,10 +8591,12 @@
       "avg_minutes": 135,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 135,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "川崎",
+      "shipper_handling_count": 0,
       "wait_minutes": 135
      },
      {
@@ -7146,10 +8604,12 @@
       "avg_minutes": 40,
       "band": "8時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 40,
       "over_1h_count": 0,
       "partner": "B商事",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 40
      }
     ],
@@ -7343,6 +8803,24 @@
       "wait_minutes": 40
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 135,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "川崎",
+      "wait_minutes": 135
+     },
+     {
+      "avg_minutes": 40,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 40
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -7351,10 +8829,12 @@
       "avg_minutes": 135,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 135,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "川崎",
+      "shipper_handling_count": 0,
       "wait_minutes": 135
      },
      {
@@ -7362,10 +8842,12 @@
       "avg_minutes": 40,
       "band": "8時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 40,
       "over_1h_count": 0,
       "partner": "B商事",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 40
      }
     ],
@@ -7530,6 +9012,16 @@
       "wait_minutes": 40
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 40,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 40
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -7538,10 +9030,12 @@
       "avg_minutes": 40,
       "band": "9時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 40,
       "over_1h_count": 0,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 40
      }
     ],
@@ -7643,6 +9137,16 @@
       "wait_minutes": 165
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 83,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 165
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -7651,10 +9155,12 @@
       "avg_minutes": 105,
       "band": "8時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 105,
       "over_1h_count": 1,
       "partner": "B商事",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 105
      },
      {
@@ -7662,10 +9168,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "B商事",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -7825,6 +9333,16 @@
       "wait_minutes": 60
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -7833,10 +9351,12 @@
       "avg_minutes": 60,
       "band": "8時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -7946,6 +9466,16 @@
       "wait_minutes": 1020
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 17,
+      "month": "2026-10",
+      "over_1h_count": 17,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 1020
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -7953,10 +9483,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 17,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 17,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 1020
      }
     ],
@@ -8926,6 +10458,40 @@
       "wait_minutes": 300
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "1989-01",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     },
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2019-04",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     },
+     {
+      "avg_minutes": 60,
+      "count": 2,
+      "month": "2019-05",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 120
+     },
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
     "errors": [
      {
       "message": "日付「10月32日」を読めません（2026-10-05、2026/10/5、10/5、10月5日、R8.10.5、令和8年10月5日 のように入れてください）",
@@ -8946,10 +10512,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 5,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 5,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 300
      }
     ],
@@ -9289,6 +10857,16 @@
       "wait_minutes": 120
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 120
+     }
+    ],
     "errors": [
      {
       "message": "日付「10月5日」の年が分かりません（年を選んでください）",
@@ -9301,10 +10879,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 120
      }
     ],
@@ -9466,6 +11046,16 @@
       "wait_minutes": 725
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 12,
+      "month": "2026-10",
+      "over_1h_count": 12,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 725
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -9473,10 +11063,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 12,
+      "designated_count": 0,
       "max_minutes": 65,
       "over_1h_count": 12,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 725
      }
     ],
@@ -10115,6 +11707,7 @@
   {
    "expect": {
     "by_partner": [],
+    "by_place_month": [],
     "errors": [
      {
       "message": "到着「24:00」を読めません（9:00、09時00分、0900 のように入れてください）",
@@ -10280,6 +11873,16 @@
       "wait_minutes": 1380
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 23,
+      "month": "2026-10",
+      "over_1h_count": 23,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 1380
+     }
+    ],
     "errors": [
      {
       "message": "車種「20t」を読めません（小型（2t）/ 中型（4t）/ 大型（10t）/ トレーラー）",
@@ -10300,10 +11903,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 23,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 23,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 1380
      }
     ],
@@ -11579,6 +13184,16 @@
       "wait_minutes": 600
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 35,
+      "count": 17,
+      "month": "2026-10",
+      "over_1h_count": 10,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 600
+     }
+    ],
     "errors": [
      {
       "message": "荷主等の都合の待機か「たぶん」を読めません（はい / いいえ）",
@@ -11591,10 +13206,12 @@
       "avg_minutes": 35,
       "band": "9時台",
       "count": 17,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 10,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 600
      }
     ],
@@ -12536,6 +14153,16 @@
       "wait_minutes": 142
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 71,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 142
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -12543,10 +14170,12 @@
       "avg_minutes": 90,
       "band": "8時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 90,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 90
      },
      {
@@ -12554,10 +14183,12 @@
       "avg_minutes": 52,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 52,
       "over_1h_count": 0,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 1,
       "wait_minutes": 52
      }
     ],
@@ -12711,6 +14342,16 @@
       "wait_minutes": 52
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 52,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 52
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -12718,10 +14359,12 @@
       "avg_minutes": 52,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 52,
       "over_1h_count": 0,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 1,
       "wait_minutes": 52
      }
     ],
@@ -12821,6 +14464,16 @@
       "wait_minutes": 500
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 100,
+      "count": 5,
+      "month": "2026-10",
+      "over_1h_count": 3,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 500
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -12828,10 +14481,12 @@
       "avg_minutes": 100,
       "band": "9時台",
       "count": 5,
+      "designated_count": 0,
       "max_minutes": 232,
       "over_1h_count": 3,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 5,
       "wait_minutes": 500
      }
     ],
@@ -13148,6 +14803,16 @@
       "wait_minutes": 275
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 138,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 275
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -13155,10 +14820,12 @@
       "avg_minutes": 138,
       "band": "8時台",
       "count": 2,
+      "designated_count": 2,
       "max_minutes": 170,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 275
      }
     ],
@@ -13314,6 +14981,16 @@
       "wait_minutes": 0
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 0,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 0,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 0
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -13321,10 +14998,12 @@
       "avg_minutes": 0,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 0,
       "over_1h_count": 0,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 1,
       "wait_minutes": 0
      }
     ],
@@ -13425,6 +15104,16 @@
       "wait_minutes": 160
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 160,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 160
+     }
+    ],
     "errors": [],
     "hotspots": [
      {
@@ -13432,10 +15121,12 @@
       "avg_minutes": 160,
       "band": "22時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 160,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 1,
       "wait_minutes": 160
      }
     ],
@@ -13504,6 +15195,7 @@
   {
    "expect": {
     "by_partner": [],
+    "by_place_month": [],
     "errors": [
      {
       "message": "荷役のあとの待ちを数えるときは、荷役終了と出発を入れてください",
@@ -13629,6 +15321,40 @@
       "wait_minutes": 210
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "千葉",
+      "wait_minutes": 60
+     },
+     {
+      "avg_minutes": 68,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "川崎",
+      "wait_minutes": 135
+     },
+     {
+      "avg_minutes": 75,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "横浜",
+      "wait_minutes": 75
+     },
+     {
+      "avg_minutes": 98,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "船橋",
+      "wait_minutes": 195
+     }
+    ],
     "defaulted": [
      "shipper_fault"
     ],
@@ -13639,10 +15365,12 @@
       "avg_minutes": 98,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 120,
       "over_1h_count": 2,
       "partner": "B商事",
       "place": "船橋",
+      "shipper_handling_count": 0,
       "wait_minutes": 195
      },
      {
@@ -13650,10 +15378,12 @@
       "avg_minutes": 68,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 75,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "川崎",
+      "shipper_handling_count": 1,
       "wait_minutes": 135
      },
      {
@@ -13661,10 +15391,12 @@
       "avg_minutes": 75,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 75,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "横浜",
+      "shipper_handling_count": 0,
       "wait_minutes": 75
      },
      {
@@ -13672,10 +15404,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "B商事",
       "place": "千葉",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -14055,6 +15789,16 @@
       "wait_minutes": 172
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 86,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 172
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -14063,10 +15807,12 @@
       "avg_minutes": 86,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 172,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 2,
       "wait_minutes": 172
      }
     ],
@@ -14222,6 +15968,16 @@
       "wait_minutes": 80
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 40,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 80
+     }
+    ],
     "defaulted": [
      "shipper_fault"
     ],
@@ -14232,10 +15988,12 @@
       "avg_minutes": 40,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 80
      }
     ],
@@ -14420,6 +16178,24 @@
       "wait_minutes": 105
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 150,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "三木DC",
+      "wait_minutes": 150
+     },
+     {
+      "avg_minutes": 53,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "加古川DC",
+      "wait_minutes": 105
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -14428,10 +16204,12 @@
       "avg_minutes": 150,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 150,
       "over_1h_count": 1,
       "partner": "B商事",
       "place": "三木DC",
+      "shipper_handling_count": 0,
       "wait_minutes": 150
      },
      {
@@ -14439,10 +16217,12 @@
       "avg_minutes": 105,
       "band": "8時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 105,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "加古川DC",
+      "shipper_handling_count": 0,
       "wait_minutes": 105
      },
      {
@@ -14450,10 +16230,12 @@
       "avg_minutes": 0,
       "band": "9時台",
       "count": 1,
+      "designated_count": 1,
       "max_minutes": 0,
       "over_1h_count": 0,
       "partner": "A運輸",
       "place": "加古川DC",
+      "shipper_handling_count": 0,
       "wait_minutes": 0
      }
     ],
@@ -14678,6 +16460,16 @@
       "wait_minutes": 170
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 85,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "加古川DC",
+      "wait_minutes": 170
+     }
+    ],
     "defaulted": [
      "shipper_fault"
     ],
@@ -14688,10 +16480,12 @@
       "avg_minutes": 85,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 90,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "加古川DC",
+      "shipper_handling_count": 0,
       "wait_minutes": 170
      }
     ],
@@ -14853,6 +16647,16 @@
       "wait_minutes": 60
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -14861,10 +16665,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -14966,6 +16772,16 @@
       "wait_minutes": 60
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
     "defaulted": [
      "shipper_fault"
     ],
@@ -14976,10 +16792,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -15080,6 +16898,16 @@
       "wait_minutes": 60
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -15088,10 +16916,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -15198,6 +17028,16 @@
       "wait_minutes": 225
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 75,
+      "count": 3,
+      "month": "2026-10",
+      "over_1h_count": 3,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 225
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -15206,10 +17046,12 @@
       "avg_minutes": 75,
       "band": "9時台",
       "count": 3,
+      "designated_count": 0,
       "max_minutes": 75,
       "over_1h_count": 3,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 225
      }
     ],
@@ -15420,6 +17262,16 @@
       "wait_minutes": 150
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 75,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 2,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 150
+     }
+    ],
     "defaulted": [],
     "errors": [],
     "hotspots": [
@@ -15428,10 +17280,12 @@
       "avg_minutes": 75,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 75,
       "over_1h_count": 2,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 150
      }
     ],
@@ -15587,6 +17441,16 @@
       "wait_minutes": 60
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 30,
+      "count": 2,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
     "defaulted": [],
     "errors": [
      {
@@ -15604,10 +17468,12 @@
       "avg_minutes": 30,
       "band": "9時台",
       "count": 2,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],
@@ -15771,6 +17637,16 @@
       "wait_minutes": 60
      }
     ],
+    "by_place_month": [
+     {
+      "avg_minutes": 60,
+      "count": 1,
+      "month": "2026-10",
+      "over_1h_count": 1,
+      "place": "（場所の記入なし）",
+      "wait_minutes": 60
+     }
+    ],
     "defaulted": [
      "shipper_fault"
     ],
@@ -15781,10 +17657,12 @@
       "avg_minutes": 60,
       "band": "9時台",
       "count": 1,
+      "designated_count": 0,
       "max_minutes": 60,
       "over_1h_count": 1,
       "partner": "A運輸",
       "place": "（場所の記入なし）",
+      "shipper_handling_count": 0,
       "wait_minutes": 60
      }
     ],

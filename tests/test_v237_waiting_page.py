@@ -53,7 +53,7 @@ def test_g82_python_matches_the_vectors_file():
         else:
             rows = c["rows"]
         res = waiting.calc(rows, c["year"])
-        got = {"rows": res["rows"], "by_partner": res["by_partner"], "hotspots": res["hotspots"], "errors": res["errors"]}
+        got = {"rows": res["rows"], "by_partner": res["by_partner"], "hotspots": res["hotspots"], "by_place_month": res["by_place_month"], "errors": res["errors"]}
         if c.get("paste"):
             got["input_rows"] = rows
             got["defaulted"] = defaulted
@@ -120,7 +120,7 @@ def test_page_has_the_required_texts_and_sections():
                  "次回からの契約の書面に、待機時間料と積込料・取卸料の欄を入れてもらうよう頼みます",
                  "過去分を求めるかどうかは、運送会社が決めます",
                  "国交省のリーフレットは、記録を待機時間料などを収受する根拠にできると書いています",
-                 "トラック・物流Gメン（国交省）への通報も報復措置の禁止の対象になりました（条番号は未確認です）",
+                 "国土交通大臣（トラック・物流Gメン）などに知らせたことを理由にした取引の停止などの不利益な扱いが禁じられています（第 5 条第 1 項第 7 号）",
                  "https://truck-logistics-gmen.mlit.go.jp/s/"):
         assert text in html, text
     # 協議の進め方は計算の結果が無いときも描く（renderResult の空の分岐にも processHtml がある）
@@ -131,7 +131,7 @@ def test_page_has_the_required_texts_and_sections():
 def test_own_js_has_the_process_panel_and_new_columns():
     for text in ("協議の進め方", "w-process", "次回からの契約の書面に、待機時間料と積込料・取卸料の欄を入れてもらうよう頼みます",
                  "国交省のリーフレットは、記録を待機時間料などを収受する根拠にできると書いています",
-                 "（条番号は未確認です）", "https://truck-logistics-gmen.mlit.go.jp/s/",
+                 "（第 5 条第 1 項第 7 号）", "https://truck-logistics-gmen.mlit.go.jp/s/",
                  "t: '指定の到着時刻'", "t: '附帯業務の内容'", "t: '附帯業務の分'"):
         assert text in OWN_JS, text
 
@@ -171,10 +171,10 @@ def test_page_ui_example_draft_and_csv_in_headless_edge():
           const sum = document.querySelector('#partners table.par tbody tr').textContent;
           const doc = document.querySelector('#wait-doc').textContent;
           const side = document.querySelector('#process').getBoundingClientRect(), d = document.querySelector('#wait-doc').getBoundingClientRect();
-          return {rows, sum, sentence: doc.includes('計 27,500 円（税抜）'), side: doc.includes('検品・仕分け'), from: doc.includes('指定 08:30 から'),
+          return {rows, sum, sentence: doc.includes('計 33,550 円（税抜）'), side: doc.includes('検品・仕分け'),
                   beside: side.left >= d.right - 1 && Math.abs(side.top - d.top) < 40, csv: typeof csvText === 'function' ? csvText() : ''};
         })()""")
-    assert info["rows"] == 18 and "27,500" in info["sum"] and info["sentence"] and info["side"] and info["from"]
+    assert info["rows"] == 18 and "33,550" in info["sum"] and info["sentence"] and info["side"]
     assert info["beside"], "協議の進め方は書面の下書きの横に出す"
     csv = info["csv"]
     assert csv.startswith("﻿日付,車番,") and "指定の到着時刻,附帯業務の内容,附帯業務の分,荷役のあとの待ちを荷主等の都合として数える,待機の数え始め" in csv.split("\r\n")[0]

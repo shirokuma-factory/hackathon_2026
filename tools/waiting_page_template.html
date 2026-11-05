@@ -24,6 +24,8 @@ main { display: grid; grid-template-columns: minmax(0, 800px) minmax(0, 1fr); ga
 section.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
 section.card h2 { margin: 0 0 6px; font-size: 15px; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 6px 0; font-size: 13px; }
+#hotspots td.num, #hotspots th { white-space: nowrap; }
+#hotspots td.small { min-width: 260px; }
 .bar small, .small { color: var(--muted); font-size: 12px; }
 button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--text); cursor: pointer; }
 button:hover { background: var(--hi); }
@@ -256,7 +258,7 @@ const basisHtml = () => `<h2>根拠</h2><ul>${[...BASIS, BASIS_FACTS[0], gmenBas
 const PROCESS = [
   '次回からの契約の書面に、待機時間料と積込料・取卸料の欄を入れてもらうよう頼みます。過去分を求めるかどうかは、運送会社が決めます。',
   '国交省のリーフレットは、記録を待機時間料などを収受する根拠にできると書いています。',
-  '取適法では、トラック・物流Gメン（国交省）への通報も報復措置の禁止の対象になりました（条番号は未確認です）。',
+  '取適法では、相手（元請など）が規模の基準（資本金か従業員数）に当たるとき、国土交通大臣（トラック・物流Gメン）などに知らせたことを理由にした取引の停止などの不利益な扱いが禁じられています（第 5 条第 1 項第 7 号）。相手が基準に当たらないときは使えません。',
   'トラック・物流Gメンの窓口: https://truck-logistics-gmen.mlit.go.jp/s/',
   '指定の到着時刻より早く着いたときは、指定の時刻から待機を数えています（控えめな扱い）。附帯業務は記録して一覧に出しますが、告示で実費として収受とされているため、参考額は付けていません。',
 ];
@@ -266,12 +268,13 @@ const POST_WAIT_NOTE = '「荷役のあとの待ちを荷主等の都合とし�
 // [日, 相手, 場所, 車種, 到着, 荷役開始, 荷役終了, 出発, 荷役をした人, 荷役の方法, 指定の到着時刻, 附帯業務の内容, 附帯業務の分, 荷主等の都合]
 const EX_A = '架空 元請A物流', EX_B = '架空 B食品', P7 = '江東区 地点07', P12 = '川崎市 地点12', P3 = '市川市 地点03';
 const EXAMPLE = [
-  [1, EX_A, P7, '中型', '08:10', '09:25'], [2, EX_A, P7, '中型', '08:05', '09:20'], [5, EX_A, P7, '中型', '08:20', '09:30'], [6, EX_A, P7, '中型', '08:40', '09:40'],
-  [7, EX_A, P7, '中型', '08:10', '10:15', '10:55', '11:05', '運転者', '手積み', '08:30', '検品・仕分け', '20'],
+  [1, EX_A, P7, '中型', '08:00', '09:25', '', '', '', '', '08:00'], [2, EX_A, P7, '中型', '08:00', '09:20', '', '', '', '', '08:00'], [5, EX_A, P7, '中型', '08:00', '09:30', '', '', '', '', '08:00'],
+  [6, EX_A, P7, '中型', '08:00', '09:40', '', '', '', '', '08:00'],
+  [7, EX_A, P7, '中型', '08:00', '10:15', '10:55', '11:05', '運転者', '手積み', '08:00', '検品・仕分け', '20'],
   [15, EX_A, P7, '中型', '09:00', '09:30', '09:52', '10:00', '荷主側'],
   [8, EX_A, P7, '中型', '10:05', '10:20'], [9, EX_A, P7, '中型', '10:10', '10:25'], [13, EX_A, P7, '中型', '10:15', '10:35'], [14, EX_A, P7, '中型', '10:00', '10:10'],
   [8, EX_A, P12, '中型', '13:05', '13:45'], [16, EX_A, P12, '中型', '13:20', '14:00'],
-  [2, EX_B, P3, '大型', '08:15', '09:30'], [5, EX_B, P3, '大型', '08:30', '09:40'], [9, EX_B, P3, '大型', '08:10', '09:20'],
+  [2, EX_B, P3, '大型', '08:00', '09:30', '', '', '', '', '08:00'], [5, EX_B, P3, '大型', '08:00', '09:40', '', '', '', '', '08:00'], [9, EX_B, P3, '大型', '08:00', '09:20', '', '', '', '', '08:00'],
   [13, EX_B, P3, '大型', '10:10', '10:25'], [14, EX_B, P3, '大型', '10:20', '10:35'],
   [15, EX_B, P12, '大型', '13:05', '13:20', '', '', '', '', '', '', '', 'いいえ'],
 ];
@@ -586,9 +589,28 @@ function hotspots(rows) {
     const [partner, place, band] = JSON.parse(key);
     const total = rs.reduce((a, r) => a + r.wait_min, 0);
     out.push({ partner, place, band, count: rs.length, wait_minutes: total, avg_minutes: halfUp(total, rs.length),
-      max_minutes: Math.max(...rs.map((r) => r.wait_min)), over_1h_count: rs.filter((r) => r.over_1h).length, amount: rs.reduce((a, r) => a + r.amount, 0) });
+      max_minutes: Math.max(...rs.map((r) => r.wait_min)), over_1h_count: rs.filter((r) => r.over_1h).length, amount: rs.reduce((a, r) => a + r.amount, 0),
+      designated_count: rs.filter((r) => r.appointed).length, shipper_handling_count: rs.filter((r) => r.handler === '荷主側').length });
   }
   out.sort((a, b) => (b.wait_minutes - a.wait_minutes) || cmp(a.partner, b.partner) || cmp(a.place, b.place) || cmp(a.band, b.band));
+  return out;
+}
+
+// 場所ごと・月ごとの平均の荷待ち（SPEC §28.2）。（場所、月）ごと。並びは場所の文字の順、月の順
+function byPlaceMonth(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    const key = JSON.stringify([r.place || NO_PLACE, r.month]);
+    if (!by.has(key)) by.set(key, []);
+    by.get(key).push(r);
+  }
+  const out = [];
+  for (const [key, rs] of by) {
+    const [place, month] = JSON.parse(key);
+    const total = rs.reduce((a, r) => a + r.wait_min, 0);
+    out.push({ place, month, count: rs.length, wait_minutes: total, avg_minutes: halfUp(total, rs.length), over_1h_count: rs.filter((r) => r.over_1h).length });
+  }
+  out.sort((a, b) => cmp(a.place, b.place) || cmp(a.month, b.month));
   return out;
 }
 
@@ -614,7 +636,7 @@ function calc(rows, year, tariff) {
     const { res, errs } = calcRow(n, raw, year, tariff);
     if (res === null) errs.forEach((e) => errors.push({ row: n, message: e })); else done.push(res);
   });
-  return { rows: done, by_partner: aggregate(done), hotspots: hotspots(done), errors };
+  return { rows: done, by_partner: aggregate(done), hotspots: hotspots(done), by_place_month: byPlaceMonth(done), errors };
 }
 
 /* ---------------------------------------------------------------- 自己確認（?selftest=1） */
@@ -634,7 +656,7 @@ function runSelftest() {
     const rows = c.paste ? pf.rows : c.rows;
     const got = calc(rows, c.year, TARIFF);
     const exp = c.expect;
-    const out = { rows: got.rows, by_partner: got.by_partner, hotspots: got.hotspots, errors: got.errors };
+    const out = { rows: got.rows, by_partner: got.by_partner, hotspots: got.hotspots, by_place_month: got.by_place_month, errors: got.errors };
     if (c.paste) { out.input_rows = rows; out.defaulted = pf.defaulted; out.notes = pf.notes; }
     if (!deepEqual(out, exp)) {
       const bad = Object.keys(exp).filter((k) => !deepEqual(out[k], exp[k]));
@@ -743,8 +765,18 @@ const partnerRows = (name) => (S.res ? S.res.rows.filter((r) => r.partner === na
 
 const calcNote = (t) => `標準的運賃（${t.applies_from} 告示）の別紙の表に当てた額です。待機は到着時刻（指定の到着時刻があって実際の到着が早いときは指定の時刻）から数え、最初の ${t.free_minutes} 分を差し引き、${t.unit_minutes} 分までごとに通常の額、到着から ${t.threshold_minutes / 60} 時間を超える部分は ${t.unit_minutes} 分までごとに 2 時間超の額です（Q&A 集 Q29）。荷主側が荷役をした時間も待機に入れています。出典: ${t.source_url}`;
 // 荷待ちを減らすためのご相談（SPEC §27.3）。その相手の上位 3 組（荷待ちの合計が 0 の組は除く）
+// 偏りの読み方の注意（SPEC §28.1）。当てはまるものだけ、括弧で後ろに
+const hotspotNotes = (h, doc) => [
+  h.designated_count * 2 < h.count ? (doc ? '指定の到着時刻の無い到着を含みます' : '指定の到着時刻が無い到着が多い組です。荷主等の都合に当たるかを相手と確かめてください') : '',
+  h.shipper_handling_count > 0 ? '荷主側の荷役の時間を含む' : '',
+  h.count < 3 ? '回数が少ない' : ''].filter(Boolean);
 const consultLines = (name) => (S.res ? S.res.hotspots : []).filter((h) => h.partner === name && h.wait_minutes > 0).slice(0, 3)
-  .map((h) => `${h.place}に${h.band}に到着した ${h.count} 回の荷待ちは、平均 ${h.avg_minutes} 分、最長 ${h.max_minutes} 分でした。`);
+  .map((h) => `${h.place}に${h.band}に到着した ${h.count} 回の荷待ちは、平均 ${h.avg_minutes} 分、最長 ${h.max_minutes} 分でした。${hotspotNotes(h, true).map((x) => `（${x}）`).join('')}`);
+// 場所ごと・月ごとの表（SPEC §28.2）。書面では、その相手の記録だけで数える
+const monthTable = (name) => (S.res ? byPlaceMonth(S.res.rows.filter((r) => r.partner === name)) : []);
+const PLACE_MONTH_LEAD = '特定荷主は 2026 年 4 月から、施設ごと・月別の平均の荷待ち時間を分単位で国に報告しています。荷主の数字を、運送会社の記録で確かめるときに使えます。';
+const MONTH_CLOSE = '発荷主・着荷主様との調整が必要な場合は、この一覧をそのままお使いください。';
+const monthLabel = (m) => `${m.slice(0, 4)} 年 ${parseInt(m.slice(5), 10)} 月`;
 const CONSULT_TITLE = '荷待ちを減らすためのご相談';
 const CONSULT_CLOSE = '荷待ちが減れば、待機時間料の対象も減ります。到着の時刻の指定、受付の予約、荷役を始める順番などの見直しをご相談させてください。';
 const clauseList = (t) => [
@@ -773,7 +805,9 @@ function draftHtml(p) {
     <div class="rec-w"><table class="rec"><thead><tr><th>使った車種の単価（税抜・円）</th><th>待機時間料<small>${t.unit_minutes} 分までごと</small></th><th>2 時間超</th>${methods.map((m) => `<th>${esc(m)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
     ${consultLines(p.partner).length ? `<h4>${CONSULT_TITLE}</h4>
     <ul class="list">${consultLines(p.partner).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-    <p>${esc(CONSULT_CLOSE)}</p>` : ''}
+    <p>${esc(CONSULT_CLOSE)}</p>
+    <div class="rec-w"><table class="rec" id="doc-placemonth"><thead><tr><th>場所</th><th>月</th><th>回数</th><th>平均の荷待ち（分）</th><th>1 時間以上の回数</th></tr></thead><tbody>${monthTable(p.partner).map((m) => `<tr><td>${esc(m.place)}</td><td>${esc(monthLabel(m.month))}</td><td class="num">${m.count}</td><td class="num">${m.avg_minutes}</td><td class="num">${m.over_1h_count}</td></tr>`).join('')}</tbody></table></div>
+    <p>${esc(MONTH_CLOSE)}</p>` : ''}
     <h4>次の契約の書面（運送引受書）に入れる欄の案</h4>
     <ul class="list">${clauseList(t).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
     <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。</p>
@@ -800,7 +834,10 @@ function draftText(p) {
   classes.forEach((c) => L.push(`${t.class_labels[c] || c}: 待機時間料 ${n0(t.waiting.normal[c])}（${t.unit_minutes} 分までごと）、2 時間超 ${n0(t.waiting.over_2h[c])}` +
     methods.map((m) => `、${m}の積込料・取卸料 ${n0(t.handling[m].normal[c])} / 2 時間超 ${n0(t.handling[m].over_2h[c])}`).join('')));
   const cl = consultLines(p.partner);
-  if (cl.length) L.push('', `【${CONSULT_TITLE}】`, ...cl.map((x) => `・${x}`), CONSULT_CLOSE);
+  if (cl.length) {
+    L.push('', `【${CONSULT_TITLE}】`, ...cl.map((x) => `・${x}`), CONSULT_CLOSE, '', ['場所', '月', '回数', '平均の荷待ち（分）', '1 時間以上の回数'].join('	'),
+      ...monthTable(p.partner).map((m) => [m.place, monthLabel(m.month), m.count, m.avg_minutes, m.over_1h_count].join('	')), MONTH_CLOSE);
+  }
   L.push('', '【次の契約の書面（運送引受書）に入れる欄の案】', ...clauseList(t).map((x) => `・${x}`), '',
     `荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。`, '',
     PROTECT[0], '', '【根拠】', ...BASIS.map((x) => `・${x}`));
@@ -818,10 +855,14 @@ const processHtml = () => `<aside id="process" aria-label="協議の進め方"><
 const hotspotsHtml = (r) => {
   const total = r.rows.reduce((a, x) => a + x.wait_min, 0);
   const top = r.hotspots.filter((h) => h.wait_minutes > 0).slice(0, 5);
-  const tb = top.map((h) => `<tr><td>${esc(h.partner)}</td><td>${esc(h.place)}</td><td>${esc(h.band)}</td><td class="num">${h.count}</td><td class="num">${h.avg_minutes} 分</td><td class="num">${h.max_minutes} 分</td><td class="num">${h.over_1h_count}</td><td class="num">${n0(h.amount)}</td></tr>`).join('');
+  const tb = top.map((h) => `<tr><td>${esc(h.partner)}</td><td>${esc(h.place)}</td><td>${esc(h.band)}</td><td class="num">${h.count}</td><td class="num">${h.avg_minutes} 分</td><td class="num">${h.max_minutes} 分</td><td class="num">${h.over_1h_count}</td><td class="num">${n0(h.amount)}</td><td class="small">${hotspotNotes(h, false).map((x) => `（${esc(x)}）`).join('')}</td></tr>`).join('');
+  const pm = r.by_place_month.map((m) => `<tr><td>${esc(m.place)}</td><td>${esc(monthLabel(m.month))}</td><td class="num">${m.count}</td><td class="num">${m.avg_minutes}</td><td class="num">${m.over_1h_count}</td></tr>`).join('');
   return `<h2>どこで・いつ待っているか<span class="small">　荷待ちの合計が大きい上位 5 組。到着の時間帯は実際の到着で分けています</span></h2>
     <p>この期間の荷主等の都合の荷待ちは計 ${hm(total)}です。</p>
-    ${top.length ? `<div class="scroll-x"><table class="par" id="hotspots"><thead><tr><th>契約の相手</th><th>場所</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>参考額（円）</th></tr></thead><tbody>${tb}</tbody></table></div>` : '<p class="empty">荷待ちのある組はありません。</p>'}`;
+    ${top.length ? `<div class="scroll-x"><table class="par" id="hotspots"><thead><tr><th>契約の相手</th><th>場所</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>参考額（円）</th><th>注記</th></tr></thead><tbody>${tb}</tbody></table></div>` : '<p class="empty">荷待ちのある組はありません。</p>'}
+    <h3>場所ごと・月ごとの平均の荷待ち（分）</h3>
+    <p>${esc(PLACE_MONTH_LEAD)}</p>
+    ${pm.length ? `<div class="scroll-x"><table class="par" id="placemonth"><thead><tr><th>場所</th><th>月</th><th>回数</th><th>平均の荷待ち（分）</th><th>1 時間以上の回数</th></tr></thead><tbody>${pm}</tbody></table></div>` : '<p class="empty">記録を入れると出ます。</p>'}`;
 };
 
 function renderResult() {

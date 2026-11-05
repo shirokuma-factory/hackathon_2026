@@ -138,7 +138,7 @@ def test_g96_page_paste_in_headless_edge_has_zero_errors_and_shows_the_note():
           return {rows: document.querySelectorAll('#tbody tr').length, errs: document.querySelector('#errs').textContent,
                   note: document.querySelector('#paste-note').textContent, msg: document.querySelector('#paste-msg').textContent,
                   noteVisible: document.querySelector('#paste-note').getBoundingClientRect().height > 0,
-                  classes: sel('vehicle_class'), partners: [...document.querySelectorAll('#partners table.par:not(#hotspots) tbody tr td:first-child')].map((t) => t.textContent)};
+                  classes: sel('vehicle_class'), partners: [...document.querySelectorAll('#partners table.par:not(#hotspots):not(#placemonth) tbody tr td:first-child')].map((t) => t.textContent)};
         })()""")
     assert got["rows"] == 6 and got["errs"] == "" and got["note"] == NOTE and got["noteVisible"]
     assert "6 行を表に入れました" in got["msg"]
