@@ -198,9 +198,10 @@ def _cache_name(origin: tuple[float, float], dest: tuple[float, float]) -> str:
 
 def route_on_demand(origin_lonlat: tuple[float, float], dest_lonlat: tuple[float, float], *,
                     base: Path | None = None, client: OsrmClient | None = None,
-                    tolerance_m: float = 50.0) -> dict[str, Any] | None:
+                    tolerance_m: float = 50.0, cache_only: bool = False) -> dict[str, Any] | None:
     """OSRM の道路の経路 {km, minutes, coordinates, cached}。同じ組は cache から返し、二度取らない。
-    失敗したら None（呼ぶ側が直線の弧に戻して「経路を取得できませんでした」と出す）。"""
+    失敗したら None（呼ぶ側が直線の弧に戻して「経路を取得できませんでした」と出す）。
+    cache_only=True（公開版）なら cache にあるときだけ返し、無ければ通信も保存もせず None。"""
     cdir = cache_dir(base)
     path = cdir / _cache_name(origin_lonlat, dest_lonlat)
     if path.exists():
@@ -209,6 +210,8 @@ def route_on_demand(origin_lonlat: tuple[float, float], dest_lonlat: tuple[float
                 return {**json.load(f), "cached": True}
         except (OSError, ValueError):
             pass  # 壊れた cache は取り直す
+    if cache_only:
+        return None
     try:
         r = (client or _ON_DEMAND_CLIENT).route(origin_lonlat, dest_lonlat)
     except Exception:  # 通信・応答の失敗はすべて None にする

@@ -19,8 +19,22 @@ const PARTY = [['法人', '法人'], ['個人事業主', '個人事業主'], ['�
 const STATE_LABEL = { complete: '完全', incomplete: '不完全', history: '条件変更前' };
 const STATE_CHIP = { complete: 'ok', incomplete: 'check', history: 'no' };
 
+// 公開版のサーバーが来訪者ごとの架空の状態（/api/b/*）を分けるための ID。タブごとに 1 つ、sessionStorage に持つ。
+function demoSessionId() {
+  let id = null;
+  try { id = sessionStorage.getItem('demoSession'); } catch (e) { /* 使えない環境 */ }
+  if (!id) {
+    id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+    try { sessionStorage.setItem('demoSession', id); } catch (e) { /* 保存できなくても、このページの間は同じ ID を使う */ }
+  }
+  return id;
+}
+const DEMO_SESSION = demoSessionId();
+
 async function wapi(path, body) {
-  const opt = body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+  const opt = body === undefined ? { headers: { 'X-Demo-Session': DEMO_SESSION } }
+    : { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Demo-Session': DEMO_SESSION }, body: JSON.stringify(body) };
   let r;
   try { r = await fetch(path, opt); } catch (e) { throw new Error('サーバーに接続できません。tools/serve_web.py を起動してください'); }
   let j = null;

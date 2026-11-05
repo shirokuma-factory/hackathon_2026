@@ -18,7 +18,7 @@ from shipcompare import geo, muni
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTICE = "推定です。公開の統計に市区町村単位の流動はありません。県の値を業種の従業者数と人口で分けた目安です"
-P31_MESSAGE = "P31 を取得すると表示します"
+P31_MESSAGE = "物流拠点（国土数値情報 P31）は再配布できないため、この版では表示しません"
 ATTRIBUTIONS = [
     "国土数値情報（物流拠点データ）（国土交通省）2013年",
     "国土数値情報（空港データ）（国土交通省）を加工して作成",

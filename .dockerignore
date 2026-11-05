@@ -1,0 +1,45 @@
+# Cloud Run 用（docs/DEPLOY.md）。.dockerignore と .gcloudignore は同じ中身にする（tests/test_deploy_public.py が確かめる）
+# gcloud run deploy --source . は .gcloudignore を使ってアップロードする。ここにあるものは画像に入らない。
+
+# 版管理・個人設定・秘密
+.git/
+.gitignore
+.gitattributes
+.github/
+.claude/
+.env
+.env.*
+!.env.example
+*.pem
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+*.log
+*.cpuprofile
+*.blend1
+
+# 再配布できないデータと取得元データ（SPEC §18.3）
+web/data/local/
+data/raw/
+data/traffic/
+data/stats/
+data/routes/*.json
+data/geo/*.geojson
+data/geo/osm_*.json
+data/geo/c28_*.json
+
+# 生成物・資料・試験・Streamlit 版・作図用の素材
+outputs/
+docs/
+assets3d/
+tests/
+workflows/
+scripts/
+app/
+uv.lock
+pyproject.toml
+README.md
+SPEC.md
+CLAUDE.md
