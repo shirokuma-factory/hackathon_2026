@@ -90,7 +90,7 @@ def _browser(width: int, height: int):
     import capture_screens as cs
     try:
         edge = cs.find_edge()
-    except Exception:  # noqa: BLE001
+    except (Exception, SystemExit):  # noqa: BLE001
         pytest.skip("Microsoft Edge が見つかりません")
     port, dbg = cs.free_port(), cs.free_port()
     server = subprocess.Popen([sys.executable, str(ROOT / "tools" / "serve_web.py"), "--public", "--port", str(port)], cwd=str(ROOT),
