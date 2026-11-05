@@ -1,7 +1,7 @@
 {
   "carrier": "国土交通省",
   "service": "標準的な運賃（近畿運輸局、距離制）",
-  "source_url": "https://www.mlit.go.jp/report/press/content/001732088.pdf",
+  "source_url": "https://www.mlit.go.jp/jidosha/content/001732621.pdf",
   "applies_from": null,
   "checked_on": "2026-11-05",
   "tax": "税抜",
@@ -32,7 +32,7 @@
       "add_per_step_over_500": 14130
     }
   ],
-  "verified_by": "値は SPEC §5.5 の訂正（2026-11-05、本線の指定）。近畿運輸局の表の原本との照合は未了。出典 URL は国土交通省の告示の報道発表（関東と同じ）",
+  "verified_by": "官報の告示本文（令和6年国土交通省告示第209号、官報号外第66号94ページ）と照合（2026-11-05、調査 §L）",
   "over_500_km": 500,
   "over_500_step_km": 50
 }
