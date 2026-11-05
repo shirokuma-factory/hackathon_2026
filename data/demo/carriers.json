@@ -107,7 +107,7 @@
       "pickup_code": "13108", "pickup_radius_km": 10, "accepts_unboxed": true,
       "container_required": false, "rb_owner_consent": false, "max_upper_per_rb_kg": null,
       "shelf_fixed": false, "shelf_rated_kg": null,
-      "price_ex_tax_yen": 49900, "price_unit": "1件",
+      "price_ex_tax_yen": 43000, "price_unit": "1件",
       "refused_categories": ["危険物", "生鮮食品", "動物"]
     }
   ]

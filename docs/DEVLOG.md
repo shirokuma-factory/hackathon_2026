@@ -182,3 +182,10 @@
 - 2026-11-02 15:22 `1c24f0a` Fix devlog hook: skip DEVLOG-only commits, keep blank line after heading
 - 2026-11-03 12:53 `eaf4ff1` Record validator run from cloud session (100/100)
 - 2026-11-03 22:53 `e94e7f6` Add v4 summary, backhaul data from census 2021 and OSM hubs
+
+## 2026-11-05 荷待ちの指定時刻・附帯業務、単独ページ、帰り便の式の距離（SPEC §23.7・§21.7）
+
+- `waiting.py`: 列に 指定の到着時刻・附帯業務（内容・分）を足した。待機の始まり = max(到着, 指定)、2 時間の境も同じ時刻から。附帯業務は記録だけで額を付けない。「協議の進め方」の欄を書面の下書きの横に常に出す（own.js、waiting.html）。「例を入れる」は 52 分 × 8、75 分 × 2、指定時刻つき 1 の計 31,020 円に変えた。
+- 試験表 `tests/data/waiting_vectors.json`（29 例、waiting.py から生成）。Python と、ヘッドレス Edge で開く `web/waiting.html?selftest=1` の JS が同じ結果（G82）。ページは通信をしない（G83、文字列の試験）。
+- 値段の式の距離は荷を積む区間（江東区 → 大阪市中央区、新宿区の値 491.8km で代用）。T7 の料金は 43,000 円、G81 は 43,060 円。最低保証料（任意）の欄を足した。
+- 画面写真を撮り直した（v21_*、v216_*、v23_*、新しく v237_standalone）。

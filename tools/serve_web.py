@@ -31,7 +31,7 @@ API（POST は Content-Type: application/json の JSON。入力の誤りは 400 
     POST /api/b/hold    {trip_id, shipment, dest_code, ..., hold_minutes? | hold_until?, shipper?}   期限付きの仮予約（余りを減らす。締切は 72 時間まで）
     POST /api/b/decide  {hold_id, decision: accept|decline}                  運送会社の役の承諾か辞退
     POST /api/b/contract {hold_id, fuel_surcharge?, payment_method?}          承諾済みの仮予約から書面の下書き（SPEC §21.3。承諾前は 400）
-    POST /api/b/price_formula {trip_id, shipment, base_load_rate?, lead_discount?, region?}   個建運賃の参考額（SPEC §21.6。運送会社の役の画面で使う）
+    POST /api/b/price_formula {trip_id, shipment, base_load_rate?, lead_discount?, region?, min_fee_yen?}   個建運賃の参考額（SPEC §21.6。運送会社の役の画面で使う）
     POST /api/b/reset   {}                                                    初期の架空データに戻す
 """
 
@@ -593,7 +593,8 @@ def api_b_price_formula(body: Any) -> dict[str, Any]:
     carrier = next((c for c in spaceb.load_demo()["carriers"] if c["id"] == trip["carrier_id"]), {})
     try:
         ref = spaceb.per_unit_reference(trip, s, body.get("base_load_rate", spaceb.DEFAULT_BASE_LOAD_RATE),
-                                        body.get("lead_discount", 0), body.get("region") or carrier.get("tariff_region") or "関東")
+                                        body.get("lead_discount", 0), body.get("region") or carrier.get("tariff_region") or "関東",
+                                        min_fee_yen=body.get("min_fee_yen"))
     except ValueError as e:
         raise BadRequest(str(e)) from e
     return {"reference": ref, **_b_notices()}

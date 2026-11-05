@@ -7,6 +7,8 @@
 - 待機の分 W = 荷役開始 − 到着。「荷主等の都合」が いいえ なら 0。荷役を荷主側がしたら、その時間も W に含める。
 - 待機時間料: 2 時間の境は到着 + 120 分。W から最初の 30 分を差し引き（Q29）、
   到着 + 30 分〜到着 + 120 分を 30 分までごとに通常の額、到着 + 120 分を超える部分を 30 分までごとに 2 時間超の額。端数は切り上げ。
+- 指定の到着時刻（任意、SPEC §23.7）: 指定があり実際の到着がそれより早いときは、指定の時刻から数える（待機の始まり = max(到着, 指定)）。
+  2 時間の境も待機の始まりから数える。附帯業務（内容・分）は記録して一覧に出すだけで、参考額は付けない（告示で実費として収受）。
 - 積込料・取卸料: 運転者が荷役をした行だけ。荷役の時間を到着 + 120 分の前後に分け、30 分までごとに額を付ける。
   最初の 30 分は差し引かない（告示の文言からの読み取り。Q&A の例で確かめたのは待機時間料だけ）。
 """
@@ -23,12 +25,13 @@ MAX_ROWS = 5000
 
 # 入力の列（貼り付けのときの並び順）
 COLUMNS = ("date", "vehicle_no", "vehicle_class", "partner", "place", "arrive", "start", "end", "depart",
-           "handler", "method", "shipper_fault")
+           "handler", "method", "shipper_fault", "appointed", "side_work", "side_min")
 
 _HEADER_ALIASES = {
     "日付": "date", "車番": "vehicle_no", "車種": "vehicle_class", "契約の相手": "partner", "場所": "place",
     "到着": "arrive", "荷役開始": "start", "荷役終了": "end", "出発": "depart", "荷役をした人": "handler",
     "荷役の方法": "method", "荷主等の都合の待機か": "shipper_fault", "荷主等の都合": "shipper_fault",
+    "指定の到着時刻": "appointed", "附帯業務の内容": "side_work", "附帯業務の分": "side_min",
 }
 
 _CLASS_ALIASES = {
@@ -155,6 +158,13 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     start = need_time("start", "荷役開始", True)
     end = need_time("end", "荷役終了", False)
     depart = need_time("depart", "出発", False)
+    appointed = need_time("appointed", "指定の到着時刻", False)
+    side_min = 0
+    if g["side_min"]:
+        if re.fullmatch(r"\d{1,4}", g["side_min"]):
+            side_min = int(g["side_min"])
+        else:
+            errs.append(f"附帯業務の分「{g['side_min']}」を読めません（分を整数で入れてください）")
 
     handler = g["handler"]
     if handler in ("荷主", "荷主側"):
@@ -218,8 +228,24 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     free = int(tariff["free_minutes"])
     thr = int(tariff["threshold_minutes"])
 
+    # 待機の始まり = max(到着, 指定の到着時刻)。指定が到着より早い側にあれば到着から数える（SPEC §23.7）。
+    # 指定と到着の差は 12 時間以内の近い側に取る（23:50 到着で指定 00:10 は 20 分後、翌日の指定）
+    base = 0
+    if appointed is not None:
+        diff = appointed - arrive
+        if diff > 720:
+            diff -= 1440
+        elif diff < -720:
+            diff += 1440
+        base = max(0, diff)
+    boundary = base + thr  # 2 時間の境（到着からの分）
+
     # 待機
-    wait_raw = s_rel + (handling_min if handler == "荷主側" else 0)
+    if handler == "荷主側":
+        wait_raw = max(0, e_rel - max(s_rel, base))  # 指定の時刻より後の荷役だけ
+        wait_raw += max(0, s_rel - base)
+    else:
+        wait_raw = max(0, s_rel - base)
     w = wait_raw if fault else 0
     wn_min = max(0, min(w, thr) - free)
     wo_min = max(0, w - thr)
@@ -232,8 +258,8 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     driver_handling_min = 0
     if handler == "運転者":
         driver_handling_min = handling_min
-        before = max(0, min(e_rel, thr) - min(s_rel, thr))
-        after = max(0, e_rel - max(s_rel, thr))
+        before = max(0, min(e_rel, boundary) - min(s_rel, boundary))
+        after = max(0, e_rel - max(s_rel, boundary))
         hn_units, ho_units = _ceil_div(before, unit), _ceil_div(after, unit)
         hn_rate = tariff["handling"][method]["normal"][vclass]
         ho_rate = tariff["handling"][method]["over_2h"][vclass]
@@ -251,6 +277,10 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         "start": g["start"],
         "end": g["end"],
         "depart": g["depart"],
+        "appointed": g["appointed"],
+        "wait_from": "指定の到着時刻" if base > 0 else "到着",   # 待機の数え始め
+        "wait_base_min": base,                    # 待機の数え始め（到着からの分）
+        "side_work": g["side_work"], "side_min": side_min,   # 附帯業務（記録だけ。参考額は付けない）
         "handler": handler,
         "method": method,
         "shipper_fault": fault,
@@ -268,6 +298,7 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         # SPEC §23.6: 1 時間以上は待機（荷主側の荷役を含む）だけで数え、2 時間以上は待機と運転者の荷役の合計で数える
         "over_1h": w >= 60,
         "over_2h_total": (w + driver_handling_min) >= thr,
+        "has_side_work": bool(g["side_work"]) or side_min > 0,
     }, []
 
 
@@ -281,6 +312,8 @@ def _sum(rows: list[dict[str, Any]]) -> dict[str, int]:
         "amount": sum(r["amount"] for r in rows),
         "over_1h_count": sum(1 for r in rows if r["over_1h"]),
         "over_2h_count": sum(1 for r in rows if r["over_2h_total"]),
+        "side_work_count": sum(1 for r in rows if r["has_side_work"]),
+        "side_work_minutes": sum(r["side_min"] for r in rows),
     }
 
 
