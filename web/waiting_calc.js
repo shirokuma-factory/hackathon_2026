@@ -141,6 +141,10 @@ const WaitingShared = (() => {
   const YES = new Set(['はい', 'yes', 'y', 'true', '1', '○', '〇', '◯', '有', 'あり', '荷主都合', '荷主の都合', '荷主等の都合']);
   const NO = new Set(['いいえ', 'no', 'n', 'false', '0', '×', '✕', '✗', 'x', '無', 'なし', '渋滞', '都合外']);
   const ERA_BASE = { '令和': 2018, 'r': 2018, '平成': 1988, 'h': 1988, '昭和': 1925, 's': 1925 };
+  // 元号の始まりの日。これより前の日付は読めない日付にする（令和元年 1 月 5 日は平成 31 年で、打ち間違い）
+  const ERA_START = { '令和': '2019-05-01', 'r': '2019-05-01', '平成': '1989-01-08', 'h': '1989-01-08', '昭和': '1926-12-25', 's': '1926-12-25' };
+  const YEARLESS = /^[0-9]{1,2}(?:\/|月)[0-9]{1,2}日?(?: ?\([月火水木金土日祝]+\))?$/;
+  const LONG_WAIT_NOTE = '待ちが 1 日（24 時間）を超えています。日付と時刻を確かめてください';
   const MAX_ROWS = 5000;
   // 日時の欄（「2026/10/05 9:00」「10/5 9:00」「R8.10.5 9時00分」）の、時刻の前の日付の部分
   const DT_PREFIX = '(?:[0-9令和平成昭和元RHSrhs/\\-年月日.]+(?: ?\\([月火水木金土日祝]+\\))? )?';
@@ -197,7 +201,9 @@ const WaitingShared = (() => {
     m = /^(令和|平成|昭和|r|h|s)(元|[0-9]{1,2})(?:[-/.]|年)([0-9]{1,2})(?:[-/.]|月)([0-9]{1,2})日?$/i.exec(t);
     if (m) {
       const n = m[2] === '元' ? 1 : Number(m[2]);
-      return mkDate(ERA_BASE[m[1].toLowerCase()] + n, Number(m[3]), Number(m[4]));
+      const key = m[1].toLowerCase();
+      const dt = mkDate(ERA_BASE[key] + n, Number(m[3]), Number(m[4]));
+      return dt !== null && dt >= ERA_START[key] ? dt : null;
     }
     m = /^([0-9]{1,2})(?:\/|月)([0-9]{1,2})日?$/.exec(t);
     if (m && year != null) return mkDate(year, Number(m[1]), Number(m[2]));
@@ -361,20 +367,57 @@ const WaitingShared = (() => {
     }
     if (errs.length) return { res: null, errs };
 
-    let sRel = start - arrive, crosses = false;
-    if (sRel < 0) { sRel += 1440; crosses = true; }
+    // 日時の欄に日付が書いてあるときは、日付と時刻から実際の差を出す（SPEC §38）。日付が無い欄だけ、
+    // 到着を基準に、前の時刻より小さければ +24 時間（日付をまたぐ）として扱う
+    const yr = Number(d.slice(0, 4));
+    const ordOf = (iso) => Date.parse(`${iso}T00:00:00Z`) / 86400000;
+    const fieldDay = (key, ref) => {
+      const part = g[key] ? datePart(g[key]) : '';
+      if (!part) return null;
+      let dd = parseDate(part, yr);
+      if (dd !== null && ref != null && YEARLESS.test(nz(part)) && ordOf(dd) < ref - 180) dd = parseDate(part, yr + 1);   // 年の無い 1/1 が 12/31 の翌日になる場合
+      return dd !== null ? ordOf(dd) : null;
+    };
+    let aDay = fieldDay('arrive', null);
+    if (aDay === null) aDay = ordOf(d);
+    const aAbs = aDay * 1440 + arrive;
+
+    let sRel;
+    const sDay = fieldDay('start', aDay);
+    if (sDay !== null) {
+      sRel = sDay * 1440 + start - aAbs;
+      if (sRel < 0) errs.push('荷役開始が到着より前です（日付と時刻を確かめてください）');
+    } else {
+      sRel = start - arrive;
+      if (sRel < 0) sRel += 1440;
+    }
     let eRel = null;
     if (end !== null) {
-      eRel = end - arrive;
-      while (eRel < sRel) { eRel += 1440; crosses = true; }
+      const eDay = fieldDay('end', aDay);
+      if (eDay !== null) {
+        eRel = eDay * 1440 + end - aAbs;
+        if (eRel < sRel) errs.push('荷役終了が荷役開始より前です（日付と時刻を確かめてください）');
+      } else {
+        eRel = end - arrive;
+        while (eRel < sRel) eRel += 1440;
+      }
     }
     let postMin = 0;   // 荷役終了 → 出発（荷役のあとの待ち）
+    let depRel = null;
     if (depart !== null) {
-      let depRel = depart - arrive;
       const floor = eRel !== null ? eRel : sRel;
-      while (depRel < floor) { depRel += 1440; crosses = true; }
+      const pDay = fieldDay('depart', aDay);
+      if (pDay !== null) {
+        depRel = pDay * 1440 + depart - aAbs;
+        if (depRel < floor) errs.push(`出発が${eRel !== null ? '荷役終了' : '荷役開始'}より前です（日付と時刻を確かめてください）`);
+      } else {
+        depRel = depart - arrive;
+        while (depRel < floor) depRel += 1440;
+      }
       if (postOn && eRel !== null) postMin = depRel - eRel;
     }
+    if (errs.length) return { res: null, errs };
+    const crosses = arrive + Math.max(...[sRel, eRel, depRel].filter((x) => x !== null)) >= 1440;
     const handlingMin = eRel !== null ? eRel - sRel : 0;
 
     const unit = tariff.unit_minutes, free = tariff.free_minutes, thr = tariff.threshold_minutes;
@@ -382,20 +425,28 @@ const WaitingShared = (() => {
     // 待機の始まり = max(到着, 指定の到着時刻)。指定との差は 12 時間以内の近い側に取る（SPEC §23.7）
     let base = 0;
     if (appointed !== null) {
-      let diff = appointed - arrive;
-      if (diff > 720) diff -= 1440;
-      else if (diff < -720) diff += 1440;
+      const apDay = fieldDay('appointed', aDay);
+      let diff;
+      if (apDay !== null) diff = apDay * 1440 + appointed - aAbs;   // 日付があるときは実際の差
+      else {
+        diff = appointed - arrive;
+        if (diff > 720) diff -= 1440;
+        else if (diff < -720) diff += 1440;
+      }
       base = Math.max(0, diff);
     }
     const boundary = base + thr;
 
-    let waitRaw;
-    if (handler === '荷主側') waitRaw = Math.max(0, eRel - Math.max(sRel, base)) + Math.max(0, sRel - base);
-    else waitRaw = Math.max(0, sRel - base);
-    waitRaw += postMin;   // 30 分の差し引きは 1 か所ごとに 1 回、2 時間の境は待機の始まりから（SPEC §25）
+    // 待機。時計の上の区間ごとに、待機の始まり + 120 分の境の前と後に分ける（SPEC §25.6 の訂正、告示 別紙 V）。
+    // 荷役のあとの待ちも、荷役の時間を含めた時計の境で分ける（運転者の荷役の間に境をまたぐ場合を含む）
+    const hi = handler === '荷主側' ? Math.max(base, eRel) : Math.max(base, sRel);   // 荷主側の荷役は待機に含む
+    const nMain = Math.max(0, Math.min(hi, boundary) - base);
+    const oMain = Math.max(0, hi - boundary);
+    const postOver = postMin > 0 ? Math.max(0, depRel - Math.max(eRel, boundary)) : 0;
+    const waitRaw = nMain + oMain + postMin;   // 30 分の差し引きは 1 か所ごとに 1 回（SPEC §25）
     const w = fault ? waitRaw : 0;
-    const wnMin = Math.max(0, Math.min(w, thr) - free);
-    const woMin = Math.max(0, w - thr);
+    const wnMin = Math.max(0, (fault ? nMain + postMin - postOver : 0) - free);
+    const woMin = fault ? oMain + postOver : 0;
     const wnUnits = ceilDiv(wnMin, unit), woUnits = ceilDiv(woMin, unit);
     const wnRate = tariff.waiting.normal[vclass], woRate = tariff.waiting.over_2h[vclass];
     const waitFee = wnUnits * wnRate + woUnits * woRate;
@@ -411,9 +462,11 @@ const WaitingShared = (() => {
     }
     const handlingFee = hnUnits * hnRate + hoUnits * hoRate;
 
+    const rowNotes = handler === UNKNOWN_HANDLER && end !== null ? [UNKNOWN_HANDLER_NOTE] : [];
+    if (waitRaw >= 1440) rowNotes.push(LONG_WAIT_NOTE);
     return {
       res: {
-        row: n, date: d, month: d.slice(0, 7), vehicle_no: g.vehicle_no, vehicle_class: vclass, partner, place: g.place,
+        row: n, date: d, month: d.slice(0, 7), vehicle_no: g.vehicle_no, vehicle_class: vclass, partner, place: nz(g.place),
         arrive: fmtTime(arrive), start: fmtTime(start), end: end !== null ? fmtTime(end) : '', depart: depart !== null ? fmtTime(depart) : '',
         appointed: appointed !== null ? fmtTime(appointed) : '', wait_from: base > 0 ? '指定の到着時刻' : '到着', wait_base_min: base,
         side_work: g.side_work, side_min: sideMin,
@@ -425,7 +478,7 @@ const WaitingShared = (() => {
         amount: waitFee + handlingFee,
         over_1h: w >= 60, over_2h_total: (w + driverHandlingMin) >= thr,
         has_side_work: !!g.side_work || sideMin > 0,
-        ...(handler === UNKNOWN_HANDLER && end !== null ? { notes: [UNKNOWN_HANDLER_NOTE] } : {}),
+        ...(rowNotes.length ? { notes: rowNotes } : {}),
       },
       errs: [],
     };

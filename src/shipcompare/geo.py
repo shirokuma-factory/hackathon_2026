@@ -8,8 +8,9 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from .estimate import kashikiri_fares
-from .tariffs import data_dir
+from .estimate import kashikiri_candidates, kashikiri_fares
+from .loadplan import LoadItem
+from .tariffs import data_dir, load_ferry_only
 
 # 出発地（SPEC §14.2）。関東運輸局の標準的運賃しか持たないので関東の7か所に限る
 ORIGINS: dict[str, str] = {
@@ -154,6 +155,27 @@ def is_ferry_route(km: float | None, minutes: float | None) -> bool:
     return k * 60 < FERRY_MAX_AVG_KMH * m
 
 
+_FERRY_ONLY_CACHE: dict[str, Any] = {}
+
+
+def is_ferry_only_destination(dest_code: str | None) -> bool:
+    """着地が道路で本州とつながっていないか（北海道・沖縄県の全域と、島しょの市町村の一覧。
+    data/geo/ferry_only_destinations.json。洗い出し N2）。フェリー利用料は運賃と別の実費なので、貸切の額と日数を出さない。"""
+    if not dest_code:
+        return False
+    data = _FERRY_ONLY_CACHE.get("data")
+    if data is None:
+        data = _FERRY_ONLY_CACHE["data"] = load_ferry_only()
+    return dest_code[:2] in data["prefectures"] or dest_code in data["municipalities"]
+
+
+def is_ferry_destination(dest_code: str | None, km: float | None, minutes: float | None) -> bool:
+    """フェリーを含む経路か。着地が一覧の地域、または平均速度が 25km/h 未満のとき True。経路がない（km が None）ときは False。"""
+    if km is None:
+        return False  # 経路がない着地は別扱い（no_route）
+    return is_ferry_only_destination(dest_code) or is_ferry_route(km, minutes)
+
+
 def drive_info(origin_code: str, dest_code: str, base: Path | None = None) -> dict[str, Any] | None:
     """出発地から着地への {km, minutes, no_route, ferry, days}。着地のデータが無ければ None。
     経路なし・フェリーの可能性のときは days を None にする（運転日数と貸切の額を出さない）。"""
@@ -161,33 +183,44 @@ def drive_info(origin_code: str, dest_code: str, base: Path | None = None) -> di
     if d is None:
         return None
     km, minutes = d.get("km"), d.get("minutes")
-    ferry = is_ferry_route(km, minutes)
+    ferry = is_ferry_destination(dest_code, km, minutes)
     no_route = km is None
     return {"km": km, "minutes": minutes, "no_route": no_route, "ferry": ferry,
             "days": None if (no_route or ferry) else drive_days(minutes)}
 
 
 def fare_layer(origin_code: str, total_kg: float | None, tariff: dict[str, Any],
-               codes: list[str] | None = None, base: Path | None = None) -> list[int | None]:
-    """codes の順に、貸切の目安額（OSRM の距離、載る最小の車格）。
+               codes: list[str] | None = None, base: Path | None = None,
+               items: list[LoadItem] | None = None) -> list[int | None]:
+    """codes の順に、貸切の目安額（OSRM の距離、載る最小の車格）。items があれば荷の形も見る（カードと同じ選び方）。
     経路なし・フェリーの可能性・200km未満・積載量超過は None。"""
     osrm = load_osrm(origin_code, base)
     out: list[int | None] = []
     for c in codes if codes is not None else sorted(load_points(base)):
         d = osrm.get(c) or {}
-        if is_ferry_route(d.get("km"), d.get("minutes")):
+        if is_ferry_destination(c, d.get("km"), d.get("minutes")):
             out.append(None)
             continue
-        kf = kashikiri_for_distance(d.get("km"), total_kg, tariff)
+        kf = kashikiri_for_distance(d.get("km"), total_kg, tariff, items)
         out.append(kf[1] if kf else None)
     return out
 
 
-def kashikiri_for_distance(km: float | None, total_kg: float | None, tariff: dict[str, Any]) -> tuple[str, int] | None:
+def kashikiri_for_distance(km: float | None, total_kg: float | None, tariff: dict[str, Any],
+                           items: list[LoadItem] | None = None) -> tuple[str, int] | None:
     """道路距離と合計重量から (車格, 額)。載る最小の車格。total_kg が None なら 2t とする。
-    km が None、基本距離（200km）未満、最大積載量を超えるときは None。式は estimate.kashikiri_fares と共通。"""
+    km が None、基本距離（200km）未満、最大積載量を超えるときは None。式は estimate.kashikiri_fares と共通。
+    items（荷物の行）があれば、荷台に載るかも見て、載る候補のうち最も安いものを返す（estimate_kashikiri と同じ選び方）。
+    台数が複数の候補のときは車格を '10t×2' の形で返す。"""
     if km is None or km < tariff["base_km"]:
         return None
+    if items is not None:
+        usable = [c for c in kashikiri_candidates(Decimal(str(km)), items, Decimal(str(total_kg or 0)), tariff)
+                  if c["amount"] is not None]
+        if not usable:
+            return None
+        c = min(usable, key=lambda x: (x["amount"], x["max_kg"]))
+        return (c["class"] if c["vehicles"] == 1 else f"{c['class']}×{c['vehicles']}"), c["amount"]
     fares = kashikiri_fares(Decimal(str(km)), Decimal(str(total_kg or 0)), tariff)
     if not fares:
         return None
@@ -200,6 +233,15 @@ def color_for(value: float | None, vmin: float, vmax: float) -> list[int]:
         return list(GRAY)
     t = 0.5 if vmax <= vmin else min(1.0, max(0.0, (value - vmin) / (vmax - vmin)))
     return [round(a + (b - a) * t) for a, b in zip(_LIGHT, _DARK)] + [_ALPHA]
+
+
+def demo_route_for(origin_code: str | None, dest_code: str | None) -> str | None:
+    """デモの区間の組（DEMO_ROUTES の発地と着地が両方一致）のときだけ区間 ID を返す。それ以外は None。
+    貸切の額は、デモの区間でもそうでなくても OSRM の道路距離で出す。区間 ID は宅配・カゴ台車の代表区間の選択に使う。"""
+    for spec in DEMO_ROUTES.values():
+        if spec["origin"] == origin_code and spec["dest"] == dest_code:
+            return spec["route_id"]
+    return None
 
 
 def route_for(origin_code: str | None, dest_code: str | None) -> str | None:

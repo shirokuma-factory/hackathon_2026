@@ -168,7 +168,8 @@ def test_jitbox_party_types():
 def test_jitbox_box_count_boundaries():
     # 重さ 500kg ちょうどは1本、500.01kg は2本
     assert row_of(rows([Item(1, 10, 10, 10, 500)]), "jitbox").detail["boxes"] == 1
-    assert row_of(rows([Item(1, 10, 10, 10, 500.01)]), "jitbox").detail["boxes"] == 2
+    assert row_of(rows([Item(2, 10, 10, 10, 250.01)]), "jitbox").detail["boxes"] == 2  # 合計 500.02kg（1 個が 500kg を超えると使えない: 洗い出し E1）
+    assert row_of(rows([Item(1, 10, 10, 10, 500.01)]), "jitbox").status == "使えない"
     # 容積 1.84m³ ちょうど(100×100×184)は1本、超えると2本
     assert row_of(rows([Item(1, 100, 100, 184, 10)]), "jitbox").detail["boxes"] == 1
     assert row_of(rows([Item(1, 100, 100, 185, 10)]), "jitbox").detail["boxes"] == 2

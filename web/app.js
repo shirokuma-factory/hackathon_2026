@@ -474,8 +474,15 @@ function placeTruckTag() {
   const tag = $('#truck-tag'), st = Rt.tlState(S.t);
   if (!st || !document.body.classList.contains('has-route')) { tag.classList.remove('on'); return; }
   const p = map.project([st.p[0], st.p[1]]);
-  tag.style.transform = `translate(${Math.round(p.x + 16)}px, ${Math.round(p.y - 34)}px)`;
   tag.textContent = $('#tb-now').textContent + ($('#tb-day').textContent ? ` ・ ${$('#tb-day').textContent}` : '');
+  let x = Math.round(p.x + 16);
+  const y = Math.round(p.y - 34), ly = $('#layers').getBoundingClientRect();
+  // 右の「表示」の欄（#layers）に名札が重なるときは、点の左側に出す（レビュー F9）
+  if (ly.width > 0 && getComputedStyle($('#layers')).display !== 'none') {
+    const w = tag.offsetWidth || 160, h = tag.offsetHeight || 28;
+    if (x + w > ly.left - 6 && x < ly.right && y + h > ly.top && y < ly.bottom) x = Math.max(8, Math.round(p.x - 16 - w));
+  }
+  tag.style.transform = `translate(${x}px, ${y}px)`;
   tag.classList.add('on');
 }
 function bindTimebar() {
@@ -553,8 +560,9 @@ function buildCards(i, est) {
   for (const m of MODES) {
     if (m.key === 'rail' || m.key === 'ferry') {
       const hn = Hubs.nearest(S.origin, i);
-      cards.push({ label: m.label, key: m.key, routeNone: m.key === 'ferry' && S.shipNone, model: CARD_MODEL[m.key], status: '計算できない', amount: null, dim: true, hub: hn ? { kind: m.key, ...hn[m.key] } : null,
-        none: '運賃表を使えません。各社への問い合わせが必要です',
+      cards.push({ label: m.label, key: m.key, routeNone: m.key === 'ferry' && S.shipNone, model: CARD_MODEL[m.key], status: '計算できない', amount: null, dim: true, hub: hn && !(m.key === 'ferry' && S.shipNone) ? { kind: m.key, ...hn[m.key] } : null, // 航路が無い着地では、最寄りの港と点線のボタンは出さない（レビュー F5）
+       
+        none: m.key === 'ferry' && S.shipNone ? 'なし（つながる航路がありません）' : '運賃表を使えません。各社への問い合わせが必要です',
         tip: m.key === 'rail' ? 'JR貨物の運賃は二次利用できないため、金額は出していません' : 'フェリーの運賃は一次資料で確かめられなかったため、金額は出していません' });
       continue;
     }
@@ -564,14 +572,15 @@ function buildCards(i, est) {
     const days = r.transit ? (r.transit.published || m.key === 'jitbox' ? r.transit.display : r.transit.text) : null;
     if (r.amount === null || r.amount === undefined) {
       cards.push({ label: m.label, model: cardModel(m.key, r), status: r.status, amount: null, none: r.reasons[0] || '運賃表なし・問い合わせ', days,
-        tip: r.reasons.concat(notes).join(' / '), src: srcOf(r) });
+        tip: [...new Set(r.reasons.concat(notes))].join(' / '), src: srcOf(r) });
       continue;
     }
     let tip = notes.join('。');
     let dayText = days;
     if (m.key === 'kashikiri') {
       const g = est.geo, o = est.osrm_kashikiri;
-      if (est.route !== 'other') tip = `想定距離 ${est.assumed_km}km で計算した国の目安です` + (tip ? `。${tip}` : '');
+      if (est.kashikiri_basis === 'road') tip = `道路距離 ${est.distance_km !== undefined && est.distance_km !== null ? est.distance_km : (g && g.km)}km で計算した国の目安です` + (tip ? `。${tip}` : '');
+      else if (est.route !== 'other') tip = `想定距離 ${est.assumed_km}km で計算した国の目安です` + (tip ? `。${tip}` : '');
       else tip = `OSRM の道路距離 ${g.km}km で計算した国の目安です。会社ごとに違います`;
       if (o && est.route !== 'other' && o.amount !== r.amount) tip += `。OSRM の道路距離 ${o.km}km で計算すると ${fmt(o.amount)}円です`;
       if (g && g.days) dayText = `運転だけで${g.days}日（積込み・荷待ちを除く）`;
@@ -581,7 +590,7 @@ function buildCards(i, est) {
     // 路線便の試算が出せる区間の限り（比べるページには額が無い理由）は、吹き出しだけでなくカードの本文に出す（SPEC §32 #5）
     const rosenNote = m.key === 'rosen' ? r.notes.find((x) => x.startsWith('路線便の試算は')) : null;
     cards.push({ label: m.label, model: cardModel(m.key, r), sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, note: rosenNote || (r.detail && r.detail.load_note) || '',
-      amount: isEst ? round100(r.amount) : r.amount, low: isEst ? round100(r.low) : r.low, high: isEst ? round100(r.high) : r.high, est: isEst, days: dayText, tip, src: srcOf(r) });
+      amount: isEst ? round100(r.amount) : r.amount, low: isEst ? round100(r.low) : r.low, high: isEst ? round100(r.high) : r.high, est: isEst, days: dayText, tip, why: r.status === '要確認' ? ((r.reasons && r.reasons[0]) || (r.issues && r.issues[0] && r.issues[0].message) || '条件の確認が必要です') : '', src: srcOf(r) });
   }
   return cards;
 }
@@ -606,13 +615,15 @@ function renderCards(cards) {
     const meta = c.days ? `<div class="meta"><span>日数</span><span class="v" title="${escapeHtml(c.days)}">${escapeHtml(c.days)}</span></div>` : '';
     const note = c.note ? `<div class="note">${escapeHtml(c.note)}</div>` : '';
     const src = c.src && !c.src[1] ? `<span class="src" title="${escapeHtml(c.src[0])}">出典: ${escapeHtml(c.src[0])}</span>` : c.src ? `<a class="src" href="${escapeHtml(c.src[1])}" target="_blank" rel="noopener" title="${escapeHtml(c.src[0])}">出典: ${escapeHtml(c.src[0])}</a>` : '';
-    const tip = c.tip ? `<span class="tip" title="${escapeHtml(c.tip)}">補足</span>` : '';
-    const foot = src || tip ? `<div class="foot">${src}${tip}</div>` : '';
-    const none = c.amount === null || c.amount === undefined ? `<span class="amt-none" title="${escapeHtml(c.none)}">${escapeHtml(c.none)}</span>` : '';
+    // 補足は押す・Enter で本文として開く（title だけに置かない。レビュー F06）
+    const tip = c.tip ? `<button type="button" class="tip" aria-expanded="false" aria-controls="tip-${n}">補足</button>` : '';
+    const foot = src || tip ? `<div class="foot">${src}${tip}</div>` + (c.tip ? `<div class="tip-body" id="tip-${n}" hidden>${escapeHtml(c.tip)}</div>` : '') : '';
+    const basis = (c.tip || '').split('。').filter((x) => /想定距離|道路距離|国の目安です|積付けは公表例の荷台での目安です/.test(x)).map((x) => `<div class="note basis">${escapeHtml(x)}</div>`).join('');
+    const none = c.amount === null || c.amount === undefined ? `<span class="amt-none">${escapeHtml(c.none)}</span>` : '';
     const hub = c.hub ? hubHtml(c.hub) : '';
     const th = c.model ? M3D.thumb(c.model, 80, 50, 'mth-card') : '';
     return `<article class="card${c.dim ? ' dim' : ''}${none ? ' none' : ''}" style="--n:${n}"><div class="top">${th}<h3>${c.label}${c.sub ? `<small>${c.sub}</small>` : ''}</h3>` +
-      `${none}<span class="chip ${CHIP[c.status] || 'na'}">${c.status}</span></div>${amt}${note}${meta}${hub}${foot}</article>`;
+      `${none}<span class="chip ${CHIP[c.status] || 'na'}">${c.status}</span></div>${amt}${note}${basis}${meta}${hub}${foot}</article>`;
   }).join('');
   requestAnimationFrame(() => requestAnimationFrame(() => {
     document.querySelectorAll('#cards .bar i').forEach((el) => { el.style.width = el.dataset.w + '%'; });
@@ -1036,7 +1047,11 @@ async function main() {
   document.querySelector('.tgl[data-toggle="conc"]').addEventListener('click', (e) => Muni.setConc(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
   document.querySelector('.tgl[data-toggle="fac"]').addEventListener('click', (e) => Muni.setFac(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
   if (p.get('hubs') === '1') setHubs(true);
-  $('#cards').addEventListener('click', (e) => { const b = e.target.closest('.hub-btn'); if (b) setHubSel(b.dataset.hub); });
+  $('#cards').addEventListener('click', (e) => {
+    const b = e.target.closest('.hub-btn'); if (b) setHubSel(b.dataset.hub);
+    const t = e.target.closest('.tip');
+    if (t) { const body = document.getElementById(t.getAttribute('aria-controls')), open = t.getAttribute('aria-expanded') !== 'true'; t.setAttribute('aria-expanded', String(open)); if (body) body.hidden = !open; }
+  });
 
   $('#origin').addEventListener('change', (e) => setOrigin(e.target.value));
   document.querySelectorAll('.lyr[data-layer]').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.layer)));

@@ -125,6 +125,13 @@ def evaluate_quote(quote: QuoteResponse, current_version: int, today: date) -> Q
     else:
         partial = to_ex_tax(raw, quote.tax)
 
+    if quote.version > current_version:
+        # 壊れたファイルや手での編集でしか起きない。「条件変更前」とは言わず、比較の対象から外す
+        return QuoteEvaluation(
+            quote, STATE_HISTORY, partial_ex_tax=partial, unknown_keys=unknown,
+            reasons=[f"いまの版（版{current_version}）より新しい版（版{quote.version}）の回答です。内容が食い違っているため比較に入れません"],
+        )
+
     if quote.version != current_version:
         return QuoteEvaluation(
             quote, STATE_HISTORY, partial_ex_tax=partial, unknown_keys=unknown,

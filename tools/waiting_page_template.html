@@ -40,6 +40,7 @@ table.in td { padding: 2px; border-bottom: 1px solid var(--row-line); }
 table.in td.n { color: var(--faint); text-align: right; padding: 0 6px; font-size: 11px; }
 table.in tr.bad td { background: var(--warn-bg); }
 table.in input, table.in select { width: 100%; height: 26px; padding: 0 4px; }
+table.in input[data-k=date] { min-width: 11ch; }   /* 2026-10-15 が欠けずに見える幅 */
 .del { border: 0; background: none; color: var(--faint); padding: 0 6px; }
 .errs { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--warn); border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: 12.5px; }
 .errs b { display: block; }
@@ -159,6 +160,7 @@ body.selftest #selftest { display: block; }
         <input type="file" id="csvfile" accept=".csv,text/csv" hidden aria-label="書き出した CSV を選ぶ">
       </div>
       <p class="note" id="example-note" hidden>例の記録が入っています（架空の元請A物流）。『表を空にする』で自分の記録に入れ替えてください</p>
+      <p class="note" id="undo-note" hidden><span id="undo-text"></span> <button type="button" id="b-undo">元に戻す</button></p>
       <div class="bar" id="bulk">
         <label>相手<select id="bulk-partner" aria-label="まとめて変える相手"></select></label>
         <button type="button" id="b-fault-yes">この相手の行をすべて荷主等の都合にする</button>
@@ -208,7 +210,7 @@ const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Art
 
 
 const COLS = [
-  { k: 'date', t: '日付', ph: '10/5', w: 76 }, { k: 'vehicle_no', t: '車番', w: 58 },
+  { k: 'date', t: '日付', ph: '10/5', w: 96 }, { k: 'vehicle_no', t: '車番', w: 58 },
   { k: 'vehicle_class', t: '車種', sel: ['', '小型', '中型', '大型', 'トレーラー'], w: 74 },
   { k: 'partner', t: '契約の相手', w: 110 }, { k: 'place', t: '場所', w: 96 },
   { k: 'arrive', t: '到着', ph: '09:00', w: 50 }, { k: 'start', t: '荷役開始', ph: '09:30', w: 50 },
@@ -566,6 +568,47 @@ function storeLoad() {
   } catch (e) { return null; }
 }
 function storeClear() { try { localStorage.removeItem(STORE_KEY); return true; } catch (e) { return false; } }
+
+// 「例を入れる」で入れ替える前の記録を、元に戻せるように別の鍵にも取っておく（SPEC §38 F1）
+const UNDO_KEY = 'waiting_page_rows_prev_v1';
+function undoLoad() {
+  try {
+    const raw = localStorage.getItem(UNDO_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || !Array.isArray(d.rows) || !d.rows.length) return null;
+    return { year: Number(d.year) || null, rows: d.rows.filter((r) => r && typeof r === 'object').map((r) => ({ ...blankRow(), ...r })) };
+  } catch (e) { return null; }
+}
+function undoSet(u) {
+  S.undo = u;
+  try { if (u) localStorage.setItem(UNDO_KEY, JSON.stringify({ year: u.year, rows: u.rows })); else localStorage.removeItem(UNDO_KEY); } catch (e) { /* 使えなくても、このページを開いている間は戻せる */ }
+  showUndo();
+}
+function showUndo() {
+  const el = $('#undo-note');
+  if (!el) return;
+  el.hidden = !S.undo;
+  if (S.undo) $('#undo-text').textContent = `例に入れ替えました。入れ替える前の記録 ${S.undo.rows.length} 行は、元に戻せます。`;
+}
+function undoRestore() {
+  if (!S.undo) return;
+  const u = S.undo;
+  endExampleAuto();
+  S.rows = u.rows.map((r) => ({ ...blankRow(), ...r }));
+  if (u.year) { S.year = u.year; $('#year').value = String(S.year); }
+  undoSet(null);
+  renderTable(); doCalc();
+  keepMsg(`元の記録 ${S.rows.length} 行に戻しました`);
+}
+// 例を入れる。保存した自分の記録があるときは、同じボタンを 2 回押したときだけ入れ替える（window.confirm は使わない）
+function putExample() {
+  const mine = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
+  if (mine.length) undoSet({ year: S.year, rows: mine.map((r) => ({ ...r })) });
+  endExampleAuto();
+  S.rows = exampleRows(); renderTable(); doCalc();
+}
+function disarmExample() { S.exArmed = false; clearTimeout(S.exArmTm); const b = $('#b-example'); if (b) b.textContent = '例を入れる'; }
 function keepMsg(t) { const el = $('#keep-msg'); if (el) el.textContent = t ? `　${t}` : ''; }
 
 // Artifact の版: クリックの中で navigator.clipboard.writeText を呼ぶ。断られたら、見える枠に文を出して選ぶ
@@ -638,6 +681,7 @@ function csvPasteIn() {
 // 保存した記録を消す。Artifact の版では confirm が使えないので、同じボタンを 2 回押す
 function forgetRecords() {
   const ok = storeClear();
+  undoSet(null);
   S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult();
   keepMsg(ok ? '保存した記録を消しました' : 'このブラウザでは保存が使えません');
 }
@@ -669,7 +713,13 @@ function init() {
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (S.armed && t.id !== 'b-forget') disarmForget();
-    if (t.id === 'b-example') { endExampleAuto(); S.rows = exampleRows(); renderTable(); doCalc(); }
+    if (S.exArmed && t.id !== 'b-example') disarmExample();
+    if (t.id === 'b-example') {
+      if (!S.exampleAuto && S.rows.some((r) => !isBlank(r)) && !S.exArmed) {
+        S.exArmed = true; t.textContent = 'もう一度押すと、いまの記録を例に入れ替えます'; clearTimeout(S.exArmTm); S.exArmTm = setTimeout(disarmExample, 6000);
+      } else { disarmExample(); putExample(); }
+    }
+    else if (t.id === 'b-undo') undoRestore();
     else if (t.id === 'b-clear') { endExampleAuto(); $('#paste-note').innerHTML = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult(); }
     else if (t.id === 'b-add') { endExampleAuto(); S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
     else if (t.id === 'b-paste') pasteIn();
@@ -707,7 +757,12 @@ function init() {
     $('#selftest').textContent = text;
     document.title = text.split('\n')[0];
   }
-  if (qs.get('example') === '1') { S.rows = exampleRows(); renderTable(); doCalc(); }
+  if (!S.noStore) { S.undo = undoLoad(); showUndo(); }
+  if (qs.get('example') === '1') {
+    // 例を見るだけの開き方。保存した記録を上書きしないよう、自動で入れた例と同じ扱いにし、保存した記録があるときはこのタブでは保存しない
+    if (saved && saved.rows.some((r) => !isBlank(r))) { S.noStore = true; $('#example-note').textContent = '例の記録を見ています（架空の元請A物流）。保存した記録は消えていません。このタブでの変更は保存されません'; }
+    S.exampleAuto = true; S.rows = exampleRows(); renderTable(); doCalc(); $('#example-note').hidden = false; keepMsg('');
+  }
   else if (!S.noStore && !(saved && saved.rows.some((r) => !isBlank(r)))) { S.exampleAuto = true; S.rows = exampleRows(); renderTable(); doCalc(); $('#example-note').hidden = false; }
 }
 

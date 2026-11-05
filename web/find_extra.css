@@ -15,3 +15,13 @@
   #find-view .f-reg .f-btns { position: sticky; bottom: -10px; z-index: 2; padding: 8px 0 10px; margin-bottom: -4px; background: rgba(11, 17, 28, .96); border-top: 1px solid var(--line); }
 }
 .rt-detour { color: var(--warn, #b45309); }
+/* デモの時刻（SPEC §34.6）。盤の時計が実際の日付と別であることを、画面の上に常に出す */
+.f-democlock { margin: 0 0 8px; font-size: 12px; color: var(--muted, #9aa7b8); line-height: 1.5; }
+/* 運送会社の役の仮予約の行: 承諾・辞退のボタンを折り返さない。狭い画面ではボタンを次の行に送る（SPEC §38 F6） */
+.f-hbtn { flex-shrink: 0; }
+.f-hbtn button { white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 600px) {
+  .f-hrow { flex-wrap: wrap; }
+}
+/* カードのチップが長くなっても折り返してはみ出さない */
+.f-top .chip.no { white-space: normal; text-align: left; }

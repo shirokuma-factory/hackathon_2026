@@ -106,7 +106,12 @@ def test_spec15_1_estimate_matches_direct_for_every_scenario(srv):
             assert status == 200, r
             direct_s = replace(s, route=geo.route_for("13104", dest), distance_km=None)
             direct = estimate_all(direct_s)
-            assert [row_key(x) for x in r["rows"]] == [direct_key(x) for x in direct], (sc["id"], dest)
+            # 貸切は、デモの区間でも OSRM の道路距離で出す（洗い出し N1）。それ以外の手段は区間の表のまま
+            road_s = replace(s, route="other", distance_km=geo.drive_info("13104", dest)["km"], origin_in_kanto=True)
+            road_k = [x for x in estimate_all(road_s) if x.mode.startswith("kashikiri")]
+            want = sorted([x for x in direct if not x.mode.startswith("kashikiri")] + road_k, key=lambda x: (not x.has_amount(), x.amount or 0))
+            got = [row_key(x) for x in r["rows"]]
+            assert sorted(got, key=str) == sorted((direct_key(x) for x in want), key=str), (sc["id"], dest)
             assert r["route"] == direct_s.route
             t = summarize(direct_s)
             assert r["totals"]["weight_kg"] == (float(t.weight_kg) if t.weight_kg is not None else None) or \
@@ -353,7 +358,7 @@ def test_spec15_13_ferry_and_no_route_have_no_days_or_fare(srv):
     i = codes.index(ferry_code)
     assert od["ferry"][i] is True and od["days"][i] is None and od["fare"][i] is None and od["km"][i] is not None
     assert od["cls"]["days"][i] is None and od["cls"]["fare"][i] is None
-    assert sum(od["ferry"]) == sum(1 for c in codes if geo.is_ferry_route(*(geo.load_osrm("13104")[c][k] for k in ("km", "minutes"))))
+    assert sum(od["ferry"]) == sum(1 for c in codes if geo.is_ferry_destination(c, *(geo.load_osrm("13104")[c][k] for k in ("km", "minutes"))))
 
 
 def test_spec15_14_layer_api_matches_direct_and_follows_cargo(srv):

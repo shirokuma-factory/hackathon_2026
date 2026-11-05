@@ -154,7 +154,7 @@ def test_spec16_credits_are_always_in_the_page():
 def test_spec16_view_switcher_in_page():
     html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
     labels = re.findall(r'<button data-view="(\w+)"[^>]*>([^<]+)</button>', html)
-    assert labels == [("market", "市場を見る"), ("find", "空きを探す・つなぐ"), ("compare", "送り方を比べる"), ("own", "自社の運行")]  # 4 つ目は SPEC §22
+    assert labels == [("market", "全国の物流傾向"), ("find", "空きを探す・つなぐ"), ("compare", "送り方を比べる"), ("own", "自社の運行")]  # 4 つ目は SPEC §22
     assert '<body class="view-market">' in html  # 最初に開く見方は市場を見る
     assert "次の段階で作ります" not in html  # 空きを探す・つなぐは作り込み済み（tests/test_v3_spaceb_ui.py）
     assert 'id="find-right"' in html

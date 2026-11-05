@@ -62,7 +62,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from shipcompare import geo, loadplan, spaceb, waiting  # noqa: E402
 from shipcompare import routes as route_lib  # noqa: E402
-from shipcompare.estimate import ST_NOCALC, estimate_all, summarize  # noqa: E402
+from shipcompare.estimate import ST_NOCALC, estimate_all, rebase_kashikiri_on_road_distance, summarize  # noqa: E402
 from shipcompare.guide import load_transit_days, mode_group, request_contacts, transit_days, transit_days_text  # noqa: E402
 from shipcompare.models import COST_KEYS, KIND_AMOUNT, KIND_INCLUDED, KIND_UNKNOWN  # noqa: E402
 from shipcompare.quotes import compare_quotes, line_amounts_ex_tax  # noqa: E402
@@ -306,7 +306,15 @@ def api_estimate(body: Any) -> dict[str, Any]:
     body = _need_dict(body)
     s = _shipment_of(body)
     info = _apply_destination(body, s)
+    road_basis = info is not None and not (info["no_route"] or info["ferry"])
+    demo_id = geo.demo_route_for(body.get("origin_code"), body.get("dest_code")) if info is not None else None
+    if info is not None and demo_id is None and s.route != "other":
+        s.route = "other"  # デモの区間の組以外は、貸切の額を OSRM の道路距離で出す（洗い出し N1）
+        s.origin_in_kanto = True
+        s.distance_km = info["km"] if road_basis else None
     rows = estimate_all(s)
+    if road_basis and demo_id is not None:
+        rows = rebase_kashikiri_on_road_distance(s, rows, info["km"])  # 荷物の区間と距離は変えない（確定に使うため）
     totals = summarize(s)
     transit_modes = load_transit_days()
     out_rows = [_row_dict(r, s.route, transit_modes) for r in rows]
@@ -326,16 +334,23 @@ def api_estimate(body: Any) -> dict[str, Any]:
         out_rows = kept
     osrm_kashikiri = None
     if info is not None and not (info["no_route"] or info["ferry"]):
+        try:
+            load_items = loadplan.items_from_shipment(s) if totals.ok else None
+        except ValueError:
+            load_items = None
         kf = geo.kashikiri_for_distance(info["km"], float(totals.weight_kg) if totals.weight_kg is not None else None,
-                                        load_tariff("kashikiri"))
+                                        load_tariff("kashikiri"), load_items)
         osrm_kashikiri = {"km": info["km"], "class": kf[0], "amount": kf[1]} if kf else None
     route = ROUTES.get(s.route or "")
     return {
         "route": s.route,
+        "demo_route": demo_id,  # 発地と着地がデモの区間の組と一致したときの区間 ID。それ以外は null
+        # 貸切の額の距離の基準。"road" は OSRM の道路距離（デモの区間の組でも同じ）。道路が無い・海を渡る着地は null
+        "kashikiri_basis": "road" if road_basis else None,
         "shipment": shipment_to_dict(s),  # 着地の区間・距離を当てはめた荷物（確定に使う）
         "route_label": route.label if route else None,
         "assumed_km": route.km if route else None,
-        "distance_km": s.distance_km,
+        "distance_km": info["km"] if road_basis else s.distance_km,  # 貸切の額に使った道路距離
         "geo": info,
         "blocked_reason": blocked,
         "osrm_kashikiri": osrm_kashikiri,
@@ -645,8 +660,10 @@ def api_route(query: dict[str, list[str]]) -> dict[str, Any]:
 
 def api_b_trips(query: dict[str, list[str]]) -> dict[str, Any]:
     demo = spaceb.load_demo()
+    now = _board().now()
     return {"note": demo["note"], "carriers": demo["carriers"] + _board().extra_carriers(), "trips": _board().trips(),
-            "holds": _board().holds(), **_b_notices()}
+            "holds": _board().holds(), "demo_now": demo["demo_now"], "board_now": now.isoformat(timespec="seconds"),
+            "demo_now_label": spaceb.demo_now_label(), **_b_notices()}
 
 
 def api_b_match(body: Any) -> dict[str, Any]:
@@ -716,6 +733,7 @@ def api_b_register_defaults(body: Any) -> dict[str, Any]:
     """登録の入力欄の既定値（車種ごとの値と、値段の式の既定値）。SPEC §31.4。"""
     body = _need_dict(body)
     out: dict[str, Any] = {"vehicles": {k: dict(v) for k, v in spaceb.REGISTER_VEHICLES.items()},
+                           "board_now": _board().now().isoformat(timespec="seconds"),
                            "price_basis": spaceb.REGISTER_PRICE_BASIS, "max_registered": spaceb.MAX_REGISTERED}
     if body.get("origin_code") and body.get("dest_code"):
         try:
@@ -735,7 +753,7 @@ def api_b_register_trip(body: Any) -> dict[str, Any]:
     """運送会社の役で帰り便を登録する（SPEC §31.4）。来訪者の盤にだけ足す。値段を省くと §21.6 の式の既定値（荷が要る）。"""
     body = _need_dict(body)
     try:
-        trip = spaceb.build_registered_trip({**{"drop_points": [body.get("dest_code")]}, **body})
+        trip = spaceb.build_registered_trip({**{"drop_points": [body.get("dest_code")]}, **body}, now=_board().now())
         price = body.get("price_ex_tax_yen")
         if price in (None, ""):
             cargo = _register_cargo(body)
@@ -946,12 +964,27 @@ class Handler(SimpleHTTPRequestHandler):
         return True
 
     # --- POST
+    def _drain_body(self) -> None:
+        """早めにエラーを返す前に、送られてくる本文を（上限つきで）読み捨てる。読み残して閉じると Windows では RST が送られ、相手の受信が中断される。"""
+        try:
+            remaining = int(self.headers.get("Content-Length") or "0")
+        except ValueError:
+            return
+        remaining = min(max(remaining, 0), 8 * MAX_BODY)
+        while remaining > 0:
+            chunk = self.rfile.read(min(65536, remaining))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+
     def do_POST(self) -> None:  # noqa: N802
         if not self._guard():
+            self._drain_body()
             return
         path = urlsplit(self.path).path
         fn = POST_ROUTES.get(path)
         if fn is None:
+            self._drain_body()
             if path in GET_ROUTES:
                 self._send_json(HTTPStatus.METHOD_NOT_ALLOWED, {"error": "この API は GET で呼んでください"})
             else:
@@ -959,6 +992,7 @@ class Handler(SimpleHTTPRequestHandler):
             return
         ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
         if ctype != "application/json":
+            self._drain_body()
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "Content-Type は application/json で送ってください"})
             return
         try:

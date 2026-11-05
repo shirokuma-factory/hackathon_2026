@@ -7,7 +7,7 @@
   --line-strong: rgba(255, 255, 255, 0.16);
   --text: #e8eef8;
   --muted: #8f9db4;
-  --faint: #5d6b82;
+  --faint: #7f8ca3; /* 明暗比 4.5 以上（パネル #0d141f に対し 5.44、明るい地図の上のガラスでも 4.98。レビュー F07） */
   --accent: #5cc8ff;
   --accent-soft: rgba(92, 200, 255, 0.16);
   --ok: #55d6a6;
@@ -179,17 +179,21 @@ body.has-detail .card { animation: cardin .5s var(--ease) forwards; animation-de
 .card .top { gap: 2px 10px; flex-wrap: wrap; }
 .card .top h3 { flex: 1; }
 .card .top .chip { order: 3; }
-.amt-none { order: 5; flex-basis: 100%; min-width: 0; font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.amt-none { order: 5; flex-basis: 100%; min-width: 0; font-size: 12.5px; color: var(--muted); white-space: normal; overflow-wrap: anywhere; } /* 全文を折り返して出す（レビュー F06） */
 .card.none { padding: 9px 14px 8px; }
 .bar { height: 5px; border-radius: 5px; background: rgba(255, 255, 255, 0.07); margin: 4px 0 6px; overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; border-radius: 5px; background: linear-gradient(90deg, #2d7fb0, var(--accent)); transition: width .9s var(--ease) .45s; }
 .meta { display: flex; gap: 10px; font-size: 12px; margin-top: 4px; }
 .meta > span:first-child { color: var(--muted); flex: none; }
-.meta .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.card .note { font-size: 11.5px; color: var(--faint); margin-top: 1px; }
+.meta .v { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.card .note { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
 .card .foot { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-top: 3px; }
 .card .src { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.card .tip { flex: none; font-size: 11px; color: var(--muted); border-bottom: 1px dotted var(--faint); cursor: help; }
+.card .tip { flex: none; font: inherit; font-size: 11px; color: var(--muted); background: transparent; border: 0; border-bottom: 1px dotted var(--faint); border-radius: 0; padding: 2px 0; cursor: pointer; }
+.card .tip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card .tip::after { content: " ▾"; }
+.card .tip[aria-expanded="true"]::after { content: " ▴"; }
+.card .tip-body { margin-top: 4px; font-size: 11.5px; line-height: 1.6; color: var(--muted); overflow-wrap: anywhere; }
 #detail footer { padding: 12px 16px 16px; border-top: 1px solid var(--line); }
 .btn-primary {
   width: 100%; height: 44px; border-radius: 11px; border: 0; font-weight: 700; font-size: 14px; color: #04131c;
@@ -566,7 +570,7 @@ body.view-market #layers { right: calc(var(--gutter) + var(--m-w) + 14px); }
 .sum-row { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: 0 10px; align-items: baseline; }
 .sum-row p { margin: 0; font-size: 13px; line-height: 1.5; }
 .sum-row p b.num { font-size: 16px; }
-.sum-row small { grid-column: 2; font-size: 10.5px; color: var(--faint); line-height: 1.5; }
+.sum-row small { grid-column: 2; font-size: 10.5px; color: var(--muted); line-height: 1.5; }
 .sum-k { font-size: 12px; color: var(--muted); font-weight: 500; }
 .calc-who { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
 .sum-tile { padding: 0 18px; border-left: 1px solid var(--line); min-width: 0; }
@@ -574,7 +578,7 @@ body.view-market #layers { right: calc(var(--gutter) + var(--m-w) + 14px); }
 .sum-num { font-size: 30px; font-weight: 700; line-height: 1.15; letter-spacing: 0.01em; }
 .sum-num small { font-size: 15px; font-weight: 500; margin-left: 2px; color: var(--muted); }
 .sum-lbl { font-size: 12.5px; margin-top: 2px; }
-.sum-src { font-size: 10.5px; color: var(--faint); margin-top: 2px; }
+.sum-src { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
 
 /* ---------- 左の操作 ---------- */
 #m-left { position: fixed; left: var(--gutter); top: 76px; width: 372px; z-index: 18; display: flex; flex-direction: column; gap: 10px; }
@@ -617,6 +621,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 .m-rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .m-rh b { font-size: 14px; }
 .m-rsub { font-size: 11.5px; color: var(--muted); }
+.m-public { margin: 4px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
 .m-rtot { font-size: 11.5px; color: var(--faint); margin-top: 3px; line-height: 1.5; }
 #m-pair { padding: 12px 18px 14px; border-bottom: 1px solid var(--line); overflow: auto; max-height: 68%; flex: none; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; animation: pairin .45s var(--ease); }
 #m-pair[hidden] { display: none; }
@@ -753,7 +758,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 .f-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .f-edit-note { margin: 0 2px 4px; font-size: 11.5px; color: var(--warn); }
 .f-edit-note:empty { display: none; }
-.f-hint { margin: 0 2px; font-size: 11px; color: var(--faint); line-height: 1.6; }
+.f-hint { margin: 0 2px; font-size: 11px; color: var(--muted); line-height: 1.6; }
 .f-foot { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
 
 #find-right { position: fixed; right: 16px; top: 16px; bottom: 16px; width: var(--m-w); z-index: 18; display: flex; flex-direction: column; overflow: hidden; }
@@ -790,7 +795,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 .f-price { display: flex; align-items: baseline; gap: 4px; margin-top: 2px; }
 .f-price b { font-size: 20px; font-weight: 700; }
 .f-price span { font-size: 12px; color: var(--muted); }
-.f-price small { font-size: 11px; color: var(--faint); margin-left: 6px; }
+.f-price small { font-size: 11px; color: var(--muted); margin-left: 6px; }
 .f-edited { margin-left: auto; font-style: normal; font-size: 11px; color: var(--warn); }
 .f-why { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .f-why li { font-size: 12px; color: #d7c08a; line-height: 1.55; padding-left: 14px; position: relative; }

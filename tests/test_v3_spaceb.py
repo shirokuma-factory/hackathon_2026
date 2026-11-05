@@ -29,6 +29,7 @@ def trip(**kw):
         "drop_points": ["28110"], "container_required": False, "rb_owner_consent": False,
         "max_upper_per_rb_kg": None, "shelf_fixed": False, "shelf_rated_kg": 250, "price_ex_tax_yen": 1000,
         "refused_categories": ["危険物"],
+        "floor_free_m2": 100.0,  # 重さの試験が床で落ちないように広くしておく（棚の 1 口の床の試験は test_v38_booking_fixes）
     }
     base.update(kw)
     return base
@@ -301,7 +302,7 @@ def test_spec16_2_api_hold_decide_flow_and_reset(srv):  # noqa: F811
     post(port, "/api/b/reset", {})
     trip_t1 = next(t for t in spaceb.load_trips() if t["id"] == "T1")
     # T1: 余り 300kg、棚 250kg。合計 250kg ちょうどは通り、1kg 足すと断る
-    full = body_of([{"count": 25, "length_cm": 30, "width_cm": 30, "height_cm": 30, "weight_kg": 10}], "28110")
+    full = body_of([{"count": 25, "length_cm": 10, "width_cm": 10, "height_cm": 10, "weight_kg": 10}], "28110")  # T1 の 1 口の床 0.88m² に入る小ささ
     status, r = post(port, "/api/b/hold", dict(full, trip_id="T1", hold_minutes=30))
     assert status == 200, r
     hold = r["hold"]

@@ -8,16 +8,25 @@
 .cc-row { display: grid; grid-template-columns: 4.8em minmax(0, 1fr) 8em; align-items: center; gap: 8px; font-size: 12px; }
 .cc-name { font-weight: 500; line-height: 1.25; }
 .cc-name small { display: block; font-weight: 400; color: var(--muted); font-size: 10.5px; }
-.cc-track { position: relative; display: flex; align-items: center; height: 22px; min-width: 0; }
+.cc-track { position: relative; display: flex; align-items: center; min-height: 22px; min-width: 0; }
 .cc-bar { flex: none; height: 14px; border-radius: 4px; background: #2d7fb0; opacity: 0.85; }
 .cc-row.cheap .cc-bar { background: var(--ok); opacity: 1; }
 .cc-val { padding-left: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .cc-val em { font-style: normal; font-weight: 400; font-size: 10px; color: var(--muted); margin-left: 3px; }
-.cc-mark { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 10.5px; color: var(--ok); border: 1px solid rgba(85, 214, 166, 0.4); background: rgba(7, 11, 18, 0.7); }
-.cc-off { width: 100%; height: 22px; line-height: 20px; padding-left: 8px; border-radius: 4px; border: 1px dashed var(--line-strong); color: var(--faint); font-size: 11.5px; }
+.cc-mark { flex: none; white-space: nowrap; margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 10.5px; color: var(--ok); border: 1px solid rgba(85, 214, 166, 0.4); background: rgba(7, 11, 18, 0.7); }
+.cc-mark.chk { color: var(--warn); border-color: rgba(255, 200, 100, 0.5); }
+.cc-row.chk .cc-bar { background: repeating-linear-gradient(135deg, #7a8ba3 0 4px, #4d5b70 4px 8px); opacity: 0.8; }
+.cc-why { grid-column: 2 / -1; font-size: 11px; line-height: 1.4; color: var(--muted); margin-top: -3px; }
+.cc-off { width: 100%; min-height: 22px; line-height: 1.35; padding: 2px 8px; overflow-wrap: anywhere; border-radius: 4px; border: 1px dashed var(--line-strong); color: var(--faint); font-size: 11.5px; }
 .cc-row.off .cc-name { color: var(--muted); }
 .cc-days { color: var(--muted); font-size: 11px; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; word-break: keep-all; } /* 切らずに 2 行まで折り返す（SPEC §31.5 #12） */
 @media (max-width: 600px) {
   .cc-row { grid-template-columns: 4.4em minmax(0, 1fr); }
   .cc-days { grid-column: 2; margin-top: -4px; }
 }
+/* 狭い画面（下から出るパネル）では、手段ごとの比べの図を経路のカードより上に置く（レビュー F05） */
+html body.sheet-mode #d-scroll { display: flex; flex-direction: column; }
+html body.sheet-mode #cards { display: contents; }
+html body.sheet-mode #cards > * { order: 4; margin: 0 16px 8px; }
+html body.sheet-mode #cards > .cc { order: 1; margin-top: 12px; }
+html body.sheet-mode #rt-modes { order: 3; }

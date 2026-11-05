@@ -37,9 +37,9 @@ def board_with_registered():
 
 def test_g144_repro1_floor_over_is_rejected():
     b, t = board_with_registered()
-    big = ship(count=20, l=600, w=200, h=200, kg=1)  # 240m2、便は 13m2
+    big = ship(count=20, l=600, w=200, h=200, kg=1)  # 240m2、便は 12m2
     r = b.match_all(big)[0]
-    assert not r["ok"] and any("床の空き 13.00m² に対して荷の床 240.00m²" in x for x in r["reasons"])
+    assert not r["ok"] and any("床の空き 12.00m² に対して荷の床 240.00m²" in x for x in r["reasons"])
     with pytest.raises(spaceb.BoardError, match="床の空き"):
         b.hold(t["id"], big)
 
@@ -49,17 +49,17 @@ def test_g144_floor_restored_after_decline_expire_and_kept_on_accept():
     s = ship(count=10, l=100, w=100, h=100, kg=5)  # 10m2, 50kg
     h = b.hold(t["id"], s)
     cur = b.trips()[0]
-    assert cur["remaining_floor_m2"] == 3.0 and cur["remaining_slack_kg"] == 1950
-    # 残り 3m2 に 10m2 は載らない
+    assert cur["remaining_floor_m2"] == 2.0 and cur["remaining_slack_kg"] == 1950
+    # 残り 2m2 に 10m2 は載らない
     with pytest.raises(spaceb.BoardError):
         b.hold(t["id"], s)
     b.decide(h["hold_id"], "decline")
     cur = b.trips()[0]
-    assert cur["remaining_floor_m2"] == 13.0 and cur["remaining_slack_kg"] == 2000
+    assert cur["remaining_floor_m2"] == 12.0 and cur["remaining_slack_kg"] == 2000
     h2 = b.hold(t["id"], s)
     b.decide(h2["hold_id"], "accept")
     cur = b.trips()[0]
-    assert cur["remaining_floor_m2"] == 3.0 and cur["remaining_slack_kg"] == 1950
+    assert cur["remaining_floor_m2"] == 2.0 and cur["remaining_slack_kg"] == 1950
 
 
 def test_g144_floor_restored_on_expire():
@@ -69,10 +69,10 @@ def test_g144_floor_restored_on_expire():
     b = spaceb.Board([], clock=lambda: now[0])
     t = b.register(base)
     b.hold(t["id"], ship(count=10, l=100, w=100, h=100, kg=5))
-    assert b.trips()[0]["remaining_floor_m2"] == 3.0
+    assert b.trips()[0]["remaining_floor_m2"] == 2.0
     now[0] = datetime(2026, 11, 5, 1, 0)
     cur = b.trips()[0]
-    assert cur["remaining_floor_m2"] == 13.0 and cur["remaining_slack_kg"] == 2000
+    assert cur["remaining_floor_m2"] == 12.0 and cur["remaining_slack_kg"] == 2000
 
 
 def test_g144_floor_checked_for_demo_trips_without_free_value():

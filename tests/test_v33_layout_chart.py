@@ -70,7 +70,7 @@ def test_g143_13_entry_button_has_origin_destination_on_its_own_line():
 
 # ---------------------------------------------------------------- 横棒の図（Edge の中で部品を動かす）
 def _card(label, amount=None, **kw):
-    return {"label": label, "amount": amount, "status": "計算できる" if amount else "問い合わせ", **kw}
+    return {"label": label, "amount": amount, "status": "公開条件に合う" if amount else "問い合わせ", **kw}
 
 
 def test_g143_3_7_chart_sentence_ratio_and_ship_row():

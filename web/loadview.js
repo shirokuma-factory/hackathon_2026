@@ -78,15 +78,42 @@ const LoadView = (() => {
       if (e.target.id === 'lv-cont') { V.container = e.target.value; load(); }
       else if (e.target.id === 'lv-stack') { V.stackable = e.target.checked; load(); }
     });
-    addEventListener('keydown', (e) => { if (e.key === 'Escape' && V.open) close(); });
+    addEventListener('keydown', (e) => {
+      if (!V.open) return;
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key !== 'Tab') return;
+      // Tab をダイアログの中で循環させる（レビュー F08）
+      const f = focusables();
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1], cur = document.activeElement;
+      if (!$('#loadview .lv-panel').contains(cur)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && cur === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && cur === last) { e.preventDefault(); first.focus(); }
+    });
   }
+
+  const focusables = () => [...document.querySelectorAll('#loadview .lv-panel button, #loadview .lv-panel select, #loadview .lv-panel input, #loadview .lv-panel a[href], #loadview .lv-panel [tabindex]:not([tabindex="-1"])')]
+    .filter((x) => !x.disabled && x.offsetParent !== null);
+  // 開いている間、背面を操作できなくする（inert）。閉じたら元に戻す
+  const setBackInert = (on) => {
+    const root = $('#loadview');
+    for (const el of document.body.children) {
+      if (el === root || el.tagName === 'SCRIPT') continue;
+      if (on) { if (!el.hasAttribute('inert')) { el.setAttribute('inert', ''); el.dataset.lvInert = '1'; } }
+      else if (el.dataset.lvInert) { el.removeAttribute('inert'); delete el.dataset.lvInert; }
+    }
+  };
 
   /* ---------------------------------------------------------------- 開く・閉じる・読み込み */
   function open(shipment) {
     if (!$('#loadview .lv-panel')) build();
     V.shipment = JSON.parse(JSON.stringify(shipment || { items: [] }));
+    V.opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
     V.open = true;
     $('#loadview').hidden = false;
+    setBackInert(true);
+    const x = $('#loadview .lv-x');
+    if (x) x.focus();
     document.body.classList.add('lv-open');
     load();
   }
@@ -97,6 +124,10 @@ const LoadView = (() => {
     if (V.deck) { V.deck.finalize(); V.deck = null; }
     $('#loadview').hidden = true;
     document.body.classList.remove('lv-open');
+    setBackInert(false);
+    const back = V.opener;
+    V.opener = null;
+    if (back && document.contains(back) && typeof back.focus === 'function') back.focus();
   }
 
   async function load() {

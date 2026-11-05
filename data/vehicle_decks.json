@@ -1,0 +1,54 @@
+{
+ "note": "貸切の車格ごとの荷台の寸法と最大積載量（公表例）。積付け（loadplan）、貸切の候補の絞り込み（estimate）、比べるページ（compare_lite）、空きを探す（spaceb）が同じ値を読む。数値を変えるときはこのファイルだけを直す（洗い出し N7）。",
+ "basis": "最初の計画資料 の 05 の表の公開例（2t ショート箱: オーシャンリンクス、2t 標準: テスココンポ、4t ウイングと 10t ウイング: オーシャンリンクス）。同じ車格でも実車は車種・架装で違う。",
+ "decks": [
+  {
+   "id": "box_2t_short",
+   "class": "2t",
+   "variant": "ショート",
+   "name": "2t 箱車（ショート）",
+   "length_mm": 3000,
+   "width_mm": 1700,
+   "height_mm": 1700,
+   "payload_kg": 2000
+  },
+  {
+   "id": "box_2t",
+   "class": "2t",
+   "variant": "標準（ロング）",
+   "name": "2t 箱車（標準）",
+   "length_mm": 4200,
+   "width_mm": 1800,
+   "height_mm": 2000,
+   "payload_kg": 2000
+  },
+  {
+   "id": "wing_4t",
+   "class": "4t",
+   "variant": "ウイング",
+   "name": "4t ウイング",
+   "length_mm": 6200,
+   "width_mm": 2200,
+   "height_mm": 2400,
+   "payload_kg": 2700
+  },
+  {
+   "id": "wing_10t",
+   "class": "10t",
+   "variant": "ウイング",
+   "name": "10t ウイング",
+   "length_mm": 9600,
+   "width_mm": 2400,
+   "height_mm": 2600,
+   "payload_kg": 13500
+  }
+ ],
+ "tariff_class_deck": {
+  "2t": "box_2t_short",
+  "4t": "wing_4t",
+  "10t": "wing_10t"
+ },
+ "tariff_class_deck_long": {
+  "2t": "box_2t"
+ }
+}
