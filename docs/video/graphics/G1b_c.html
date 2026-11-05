@@ -1,0 +1,26 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>G1b_c</title><link rel="stylesheet" href="common.css">
+<style>
+body{padding:30px 96px}
+h1{font-size:50px;margin-bottom:10px}
+td,th{padding:6px 20px}
+td{font-size:36px}
+td.g{width:400px;white-space:nowrap;color:var(--muted);font-size:32px}
+td small{font-size:32px;color:var(--muted);margin-left:20px}
+tr.sep td{border-top:3px solid var(--line)}
+.foot{font-size:32px;color:var(--muted);margin-top:10px}
+</style></head><body>
+<h1>Claude Code まわりの道具</h1>
+<table>
+<tr><th>区分</th><th>道具</th><th class="mark" style="width:140px;font-size:32px">状態</th></tr>
+<tr><td class="g">MCP</td><td>Blender MCP<small> 3D モデル 7 種を作成</small></td><td class="mark ok">○</td></tr>
+<tr><td class="g"></td><td>DaVinci Resolve MCP<small> この動画の組み立て</small></td><td class="mark ok">○</td></tr>
+<tr><td class="g"></td><td>local-ai MCP（ComfyUI）<small> 冒頭の映像の生成（Z-Image・Wan2.2）</small></td><td class="mark ok">○</td></tr>
+<tr class="sep"><td class="g">自作</td><td>Edge の撮影と録画、validate.py<small> 画面を 1920×1080 で撮る、要件ごとに採点</small></td><td class="mark ok">○</td></tr>
+<tr class="sep"><td class="g">フック</td><td>生成のたびに記録<small> Windows でも動作（generation_log.jsonl）</small></td><td class="mark ok">○</td></tr>
+<tr><td class="g"></td><td>コミットを開発記録に追記<small> クラウドで動作、Windows は未動作</small></td><td class="mark warn">△</td></tr>
+<tr><td class="g"></td><td>.env への書き込みを止める<small> クラウドで確認、Windows は未確認</small></td><td class="mark warn">△</td></tr>
+<tr class="sep"><td class="g">Skill</td><td>comfyui-run<small> 生成と証拠の残し方の手順</small></td><td class="mark ok">○</td></tr>
+<tr class="sep"><td class="g">使っていない</td><td>route-verify（Skill）、Ollama（ローカル LLM）</td><td class="mark ng">×</td></tr>
+</table>
+<div class="foot">○ 使った　△ 一部だけ　× 使っていない</div>
+</body></html>

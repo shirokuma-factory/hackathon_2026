@@ -1,0 +1,19 @@
+{
+  "1": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "Wan2.2-I2V-A14B-HighNoise-Q5_K_M.gguf"}},
+  "2": {"class_type": "LoraLoaderModelOnly", "inputs": {"lora_name": "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors", "strength_model": 1.0, "model": ["1", 0]}},
+  "3": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 5.0, "model": ["2", 0]}},
+  "4": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "Wan2.2-I2V-A14B-LowNoise-Q5_K_M.gguf"}},
+  "5": {"class_type": "LoraLoaderModelOnly", "inputs": {"lora_name": "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors", "strength_model": 1.0, "model": ["4", 0]}},
+  "6": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 5.0, "model": ["5", 0]}},
+  "7": {"class_type": "CLIPLoaderGGUF", "inputs": {"clip_name": "umt5-xxl-encoder-Q4_K_M.gguf", "type": "wan"}},
+  "8": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["7", 0]}},
+  "9": {"class_type": "CLIPTextEncode", "inputs": {"text": "text, letters, logo, watermark, flicker, distorted vehicle, extra wheels", "clip": ["7", 0]}},
+  "10": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
+  "11": {"class_type": "LoadImage", "inputs": {"image": "backfull_c1.png"}},
+  "12": {"class_type": "WanImageToVideo", "inputs": {"width": 832, "height": 480, "length": 65, "batch_size": 1, "positive": ["8", 0], "negative": ["9", 0], "vae": ["10", 0], "start_image": ["11", 0]}},
+  "13": {"class_type": "KSamplerAdvanced", "inputs": {"add_noise": "enable", "noise_seed": 42, "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 0, "end_at_step": 2, "return_with_leftover_noise": "enable", "model": ["3", 0], "positive": ["12", 0], "negative": ["12", 1], "latent_image": ["12", 2]}},
+  "14": {"class_type": "KSamplerAdvanced", "inputs": {"add_noise": "disable", "noise_seed": 42, "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 2, "end_at_step": 10000, "return_with_leftover_noise": "disable", "model": ["6", 0], "positive": ["12", 0], "negative": ["12", 1], "latent_image": ["13", 0]}},
+  "15": {"class_type": "VAEDecode", "inputs": {"samples": ["14", 0], "vae": ["10", 0]}},
+  "16": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["15", 0]}},
+  "17": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "backfull/i2v", "format": "mp4", "codec": "h264", "video": ["16", 0]}}
+}

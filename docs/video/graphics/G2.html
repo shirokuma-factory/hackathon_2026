@@ -1,0 +1,40 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>G2</title><link rel="stylesheet" href="common.css">
+<style>
+body{padding:32px 48px}
+h1{font-size:44px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:380px 520px;gap:20px}
+.p{background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:18px 28px;overflow:hidden}
+.p .t{font-size:32px;color:var(--muted);margin-bottom:8px}
+.p .x{font-size:32px;line-height:1.55}
+.hl{border:5px solid var(--hl);border-radius:8px;padding:6px 12px;display:inline-block}
+code,.mono{font-family:"Cascadia Mono","Consolas","MS Gothic",monospace;font-size:30px;line-height:1.5}
+.ok{color:var(--ok)}.brk{word-break:break-all}
+.chart{margin-top:6px}
+</style></head><body>
+<h1>採点の指摘 1 件が、仕様・試験・コミットになるまで</h1>
+<div class="grid">
+<div class="p"><div class="t">採点の指摘（思想と公開版 r2 の 11 行目）</div>
+ <div class="x"><span class="hl">公開版の地図の荷待ちのタブは「入れた記録はこの PC の中だけで計算し、外に送りません」と出しますが、実際には記録を公開サーバーの <span class="mono">/api/waiting/calc</span> に送って計算しています。</span></div></div>
+<div class="p"><div class="t">仕様 §31.1（最初の項目）</div>
+ <div class="x"><span class="hl">地図の荷待ちのタブの計算を、<span class="mono">web/waiting_calc.js</span> の JS だけでブラウザの中で行う。手元の版・公開版とも <span class="mono">/api/waiting/calc</span> を呼ばない</span>（…）</div></div>
+<div class="p"><div class="t">試験 G137</div>
+ <div class="mono" style="color:var(--muted)">$ uv run pytest -v -k g137</div>
+ <div class="mono brk"><span class="hl">test_g137_map_wait_tab_sends_nothing_to_the_waiting_api_and_numbers_match_g132 <span class="ok">PASSED</span></span></div>
+ <div class="mono ok" style="margin-top:8px">1 passed, 4 deselected in 27.31s</div></div>
+<div class="p" style="display:flex;flex-direction:column"><div class="t">コミット a6b0f63</div>
+ <div class="mono"><span class="hl">Fix the 17 findings of vision review r2 (SPEC 31)</span></div>
+ <div class="mono" style="color:var(--muted)">Date: Thu Nov 5 22:06:14 2026 +0900<br>SPEC.md | 55 ++　74 files changed</div>
+ <svg class="chart" viewBox="0 -24 860 274" width="100%" height="274">
+  <g font-family="Noto Sans JP" font-size="26" fill="#9fb0c1">
+   <line x1="70" y1="20" x2="840" y2="20" stroke="#ef7a7a" stroke-dasharray="8 6" stroke-width="2"/>
+   <text x="72" y="14" fill="#ef7a7a">合格 95</text>
+   <line x1="70" y1="212" x2="840" y2="212" stroke="#2a3745" stroke-width="2"/>
+   <text x="0" y="220">60</text><text x="0" y="28">100</text>
+   <polyline fill="none" stroke="#6cb6ff" stroke-width="5" points="110,177 340,164 570,70 800,63"/>
+   <g fill="#6cb6ff"><circle cx="110" cy="177" r="9"/><circle cx="340" cy="164" r="9"/><circle cx="570" cy="70" r="9"/><circle cx="800" cy="63" r="9"/></g>
+   <g fill="#e9eef4" font-size="30" font-weight="700" text-anchor="middle"><text x="110" y="153">64</text><text x="340" y="140">68</text><text x="570" y="48">87</text><text x="800" y="42">89</text></g>
+   <g text-anchor="middle"><text x="110" y="244">r1</text><text x="340" y="244">r2</text><text x="570" y="244">r3</text><text x="800" y="244">r4</text></g>
+  </g></svg>
+</div>
+</div>
+</body></html>

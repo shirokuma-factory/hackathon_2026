@@ -1,0 +1,27 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>G1a_2</title><link rel="stylesheet" href="common.css">
+<style>
+.row{display:flex;gap:48px;margin-bottom:40px}
+.card{flex:1;min-width:0;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:36px 40px}
+.card .lab{font-size:36px;color:var(--muted)}
+.big{font-size:120px;font-weight:700;line-height:1.1;color:var(--hl)}
+.big small{font-size:44px;color:var(--text);font-weight:500;margin-left:10px}
+.arrow{align-self:center;font-size:64px;color:var(--muted)}
+.who{font-size:44px;font-weight:700;margin-bottom:8px}
+.sub{font-size:34px;color:var(--muted);margin-top:14px}
+.pair{display:flex;gap:24px;margin-top:14px}.pair div{flex:1}.pair .lab{font-size:30px;white-space:nowrap}
+</style></head><body>
+<h1>採点して直す。書く役と確かめる役を分けた</h1>
+<div class="row">
+ <div class="card"><div class="lab">採点（前の点を知らない Opus）</div><div class="big"><span data-count="scoring_rounds">○</span><small>回</small></div></div>
+ <div class="arrow">→</div>
+ <div class="card"><div class="lab">直した指摘</div><div class="big"><span data-count="fixed_findings">○</span><small>件</small></div></div>
+</div>
+<div class="row">
+ <div class="card"><div class="who">主に書く: coder（Sonnet）</div>
+  <div class="big"><span data-count="coder_runs">○</span><small>回</small></div></div>
+ <div class="card"><div class="who">確かめる: Opus</div>
+  <div class="pair"><div><div class="lab">reviewer</div><div class="big"><span data-count="reviewer_runs">○</span><small>回</small></div></div>
+  <div><div class="lab">前の点を知らない採点者</div><div class="big"><span data-count="scorer_runs">○</span><small>回</small></div></div></div></div>
+</div>
+<div class="note">回数は記録の数え直し。点は自作の基準での AI の採点で、審査の予測ではありません</div>
+</body></html>
