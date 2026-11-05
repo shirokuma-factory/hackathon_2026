@@ -126,6 +126,7 @@ body.selftest #selftest { display: block; }
         <button type="button" id="b-forget">保存した記録を消す</button>
         <input type="file" id="csvfile" accept=".csv,text/csv" hidden aria-label="書き出した CSV を選ぶ">
       </div>
+      <p class="note" id="example-note" hidden>例の記録が入っています（架空の元請A物流）。『表を空にする』で自分の記録に入れ替えてください</p>
       <div class="bar" id="bulk">
         <label>相手<select id="bulk-partner" aria-label="まとめて変える相手"></select></label>
         <button type="button" id="b-fault-yes">この相手の行をすべて荷主等の都合にする</button>
@@ -558,7 +559,7 @@ const n0 = (v) => Math.round(v).toLocaleString('ja-JP');
 const yen = (v) => `${n0(v)} 円`;
 const hm = (m) => (m ? `${Math.floor(m / 60)} 時間 ${m % 60} 分` : '0 分');
 
-const S = { year: 2026, rows: [], res: null, err: '', partner: '', idxMap: [], bad: new Set(), tm: null };
+const S = { exampleAuto: false, year: 2026, rows: [], res: null, err: '', partner: '', idxMap: [], bad: new Set(), tm: null };
 const blankRow = () => Object.fromEntries(COLS.map((c) => [c.k, '']));
 const isBlank = (r) => COLS.every((c) => !String(r[c.k] || '').trim());
 
@@ -593,6 +594,7 @@ function refreshBulk() {
 
 // 選んだ相手（「すべての行」なら全部）の行の「荷主等の都合の待機か」を まとめて はい / いいえ にする
 function bulkFault(val) {
+  endExampleAuto();
   const who = $('#bulk-partner').value;
   let n = 0;
   S.rows.forEach((r) => { if (!isBlank(r) && (!who || nz(r.partner) === who)) { r.shipper_fault = val; n += 1; } });
@@ -602,6 +604,7 @@ function bulkFault(val) {
 
 // 空欄の欄を、すぐ上の入っている値で埋める（Excel の結合セルを貼ると下の行が空になるため）
 function fillDown(key, label) {
+  endExampleAuto();
   let last = '', n = 0;
   S.rows.forEach((r) => {
     if (isBlank(r)) return;
@@ -729,7 +732,7 @@ function doCalc() {
   $('#errs').innerHTML = errsHtml();
   renderResult();
   refreshBulk();
-  if (!S.noStore) keepMsg(storeSave() ? (rows.length ? `保存しました（${rows.length} 行）` : '') : 'このブラウザでは保存が使えません（ページはそのまま使えます）');
+  if (!S.noStore && !S.exampleAuto) keepMsg(storeSave() ? (rows.length ? `保存しました（${rows.length} 行）` : '') : 'このブラウザでは保存が使えません（ページはそのまま使えます）');
 }
 
 const calcSoon = () => { clearTimeout(S.tm); S.tm = setTimeout(doCalc, 200); };
@@ -777,6 +780,7 @@ function csvToRows(text) {
 
 /* ---------------------------------------------------------------- このブラウザへの保存（localStorage。使えなくてもページは動く） */
 const STORE_KEY = 'waiting_page_rows_v1';
+function endExampleAuto() { if (S.exampleAuto) { S.exampleAuto = false; const el = $('#example-note'); if (el) el.hidden = true; } }
 function storeSave() {
   try {
     const rows = S.rows.filter((r) => !isBlank(r));
@@ -823,6 +827,7 @@ function downloadCsv() {
 function pasteIn() {
   const text = $('#paste').value;
   if (!text.trim()) { $('#paste-msg').textContent = '貼り付ける欄が空です'; return; }
+  endExampleAuto();
   const pf = parsePasteFull(text), inp = pf.rows;
   S.rows = inp.length ? inp.map((r) => ({ ...blankRow(), ...r })) : [blankRow(), blankRow(), blankRow()];
   $('#paste-msg').textContent = `${inp.length} 行を表に入れました`;
@@ -836,7 +841,8 @@ function csvIn(file) {
   fr.onload = () => {
     try {
       const inp = csvToRows(String(fr.result));
-      const keep = S.rows.filter((r) => !isBlank(r));
+      const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
+      endExampleAuto();
       S.rows = keep.concat(inp);
       if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
       $('#paste-msg').textContent = `CSV の ${inp.length} 行を表の後ろに足しました`;
@@ -853,7 +859,8 @@ function csvPasteIn() {
   if (!text.trim()) { $('#csvpaste-msg').textContent = '貼り付ける欄が空です'; return; }
   try {
     const inp = csvToRows(text);
-    const keep = S.rows.filter((r) => !isBlank(r));
+    const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
+    endExampleAuto();
     S.rows = keep.concat(inp);
     if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
     $('#csvpaste-msg').textContent = `CSV の ${inp.length} 行を表の後ろに足しました`;
@@ -880,7 +887,7 @@ function init() {
   renderResult();
   document.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.classList && t.classList.contains('w-in')) { S.rows[Number(t.dataset.i)][t.dataset.k] = t.value; calcSoon(); }
+    if (t.classList && t.classList.contains('w-in')) { endExampleAuto(); S.rows[Number(t.dataset.i)][t.dataset.k] = t.value; calcSoon(); }
   });
   document.addEventListener('change', (e) => {
     const t = e.target;
@@ -890,9 +897,9 @@ function init() {
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (S.armed && t.id !== 'b-forget') disarmForget();
-    if (t.id === 'b-example') { S.rows = exampleRows(); renderTable(); doCalc(); }
-    else if (t.id === 'b-clear') { $('#paste-note').textContent = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult(); }
-    else if (t.id === 'b-add') { S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
+    if (t.id === 'b-example') { endExampleAuto(); S.rows = exampleRows(); renderTable(); doCalc(); }
+    else if (t.id === 'b-clear') { endExampleAuto(); $('#paste-note').textContent = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult(); }
+    else if (t.id === 'b-add') { endExampleAuto(); S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
     else if (t.id === 'b-paste') pasteIn();
     else if (t.id === 'b-fault-yes') bulkFault('はい');
     else if (t.id === 'b-fault-no') bulkFault('いいえ');
@@ -911,7 +918,7 @@ function init() {
     else if (t.id === 'b-print') window.print();
     else if (t.id === 'b-csv') { if (S.res && S.res.rows.length) downloadCsv(); }
 /*LOCAL-ONLY-END*/
-    else if (t.dataset && t.dataset.del !== undefined) { S.rows.splice(Number(t.dataset.del), 1); renderTable(); doCalc(); }
+    else if (t.dataset && t.dataset.del !== undefined) { endExampleAuto(); S.rows.splice(Number(t.dataset.del), 1); renderTable(); doCalc(); }
     else { const tr = t.closest && t.closest('tr[data-pick]'); if (tr) { S.partner = tr.dataset.pick; renderResult(); } }
   });
   const qs = new URLSearchParams(location.search);
@@ -929,6 +936,7 @@ function init() {
     document.title = text.split('\n')[0];
   }
   if (qs.get('example') === '1') { S.rows = exampleRows(); renderTable(); doCalc(); }
+  else if (!S.noStore && !(saved && saved.rows.some((r) => !isBlank(r)))) { S.exampleAuto = true; S.rows = exampleRows(); renderTable(); doCalc(); $('#example-note').hidden = false; }
 }
 
 init();

@@ -24,6 +24,7 @@ section.card { background: var(--card); border: 1px solid var(--line); border-ra
 section.card h2 { margin: 0 0 6px; font-size: 15px; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; font-size: 13px; }
 .small { color: var(--muted); font-size: 12px; }
+.exnote { margin: 6px 0; padding: 6px 10px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; font-size: 12.5px; }
 button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--text); cursor: pointer; }
 button:hover { background: var(--hi); }
 select, input[type=text], input[type=number], textarea { font: inherit; font-size: 13px; color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; }
@@ -71,6 +72,7 @@ body.selftest #selftest { display: block; }
   <div class="col-in">
     <section class="card" id="input">
       <h2>荷物</h2>
+      <p class="exnote" id="example-note" hidden>例の荷物が入っています（架空）。表を空にして、自分の荷物を入れてください</p>
       <div class="scroll-x"><table class="in" aria-label="荷物の表"><thead><tr><th>個数</th><th>縦 cm</th><th>横 cm</th><th>高さ cm</th><th>1 個の重さ kg</th><th></th></tr></thead><tbody id="pbody"></tbody></table></div>
       <div class="bar"><button type="button" id="b-add">行を足す</button><button type="button" id="b-example">例を入れる</button><button type="button" id="b-clear">表を空にする</button></div>
       <div class="grid2">
@@ -122,21 +124,22 @@ const FLEX_DAYS = [0, 1, 2, 3, 4, 5, 7, 10, 14];
 // 規則の数字。出典は docs/plan/2026-11-04_顧客の今のやり方の調査.md の §C と §F
 const RULES = {
   yamato: { sum3: 200, side: 170, kg: 30 },                  // §C ヤマト宅急便
-  sagawa: { sum3: 260, kg: 50 },                              // 佐川 飛脚ラージサイズ便（指示書の値）
+  sagawa: { sum3: 260, kg: 50 },                              // 佐川 飛脚ラージサイズ便（公式ページで確認）
   kazai: { kg: 150, sum3: 450, longest: 250, height: 200 },   // §F-3 家財おまかせ便
   akabane: { kg: 350 },                                       // §C 赤帽
   kei: { kg: 350, m3: 2.8, box: [180, 130, 120], boxSeat: [250, 130, 120] }, // §F-2 ハコベル・PickGo（軽）
-  jitbox: { box: [170, 104, 104], m3: 1.8, kg: 500 },         // §C 西濃 JITBOX チャーター便
+  jitbox: { box: [170, 104, 104], m3: 1.8, kg: 500 },         // §C JITBOX チャーター便（西濃運輸・ヤマト運輸）
   rosen: { kgPerM3: 280, quoteOverKg: 1000 },                 // 路線便の計算重量
   t2: { floorM2: 1.77 * 3.10, longest: 440, shortLen: 310 },  // §F-2 ハコベル 2t ショート 177×310cm、ロング 440cm
   t4home: { kg: 3500, floorM2: 13.0 },                        // 地図の画面のデモの便 T7（架空）
   homeFlexDays: 3,
 };
+const JITBOX_NOTE = '西濃運輸とヤマト運輸に同名のサービスがある';
 const SOURCES = [
   '宅配・赤帽・JITBOX・路線便: 調査 顧客の今のやり方（2026-11-04）§C（ヤマト宅急便、赤帽、西濃 JITBOX チャーター便・カンガルー特急便の公式の条件）',
-  '佐川 飛脚ラージサイズ便（3 辺合計 260cm・50kg）: 本ページの作成指示の値。公式ページとの照合は未了',
+  '佐川 飛脚ラージサイズ宅配便（3 辺合計 260cm・50kg）: 佐川急便の公式ページで確認（docs/plan/2026-11-04_顧客の今のやり方の調査.md §L）',
   '家財おまかせ便、軽貨物マッチング（ハコベル・PickGo）: 同 §F-2・§F-3（2026-11-05 に確認。法人・店舗への配達、赤帽の荷台寸法は未確認）',
-  '2t・4t の貸切の目安額: 標準的運賃（2024 年 3 月 22 日告示）の距離制運賃。関東運輸局・近畿運輸局の表。近畿の表の原本との照合は未了',
+  '2t・4t の貸切の目安額: 標準的運賃（2024 年 3 月 22 日告示）の距離制運賃。関東運輸局・近畿運輸局の表。値は官報の告示本文（令和 6 年国土交通省告示第 209 号）と照合済み（同 §L）',
   `見積を頼む先: 各社の公式の問い合わせ・申し込みページ（data/contacts.json、${CONTACTS.checked_on} に確認）。記録が無い送り方は、記録が無いと書いて、窓口を作り出していない`,
   '帰り便: このリポジトリの地図の画面のデモ（架空の便。デモの便 T7 は最大 3,500kg・床 13.0m²）',
 ];
@@ -234,13 +237,13 @@ function evalKei(pieces, t) {
 
 function evalJitbox(pieces, t, recv) {
   const J = RULES.jitbox;
-  if (recv === 'person') return opt('jitbox', 'JITBOX チャーター便（西濃）', 'ng', ['法人発・法人着だけ。個人宛ては承っていない']);
+  if (recv === 'person') return opt('jitbox', 'JITBOX チャーター便', 'ng', ['法人発・法人着だけ。個人宛ては承っていない', JITBOX_NOTE]);
   const bad = [];
   if (t.kg > J.kg) bad.push(`合計 ${f1(t.kg)}kg は 1 ボックス 500kg までを超える`);
   if (t.m3 > J.m3) bad.push(`合計の容積 ${f1(t.m3)}m³ は 1 ボックス約 1.8m³ を超える`);
   for (const p of pieces) if (!fitsBox(p, J.box)) bad.push(`${pdesc(p)} は内寸 170×104×104cm に入らない`);
-  if (bad.length) return opt('jitbox', 'JITBOX チャーター便（西濃）', 'ng', bad);
-  return opt('jitbox', 'JITBOX チャーター便（西濃）', 'check', ['1 ボックス（内寸 170×104×104cm、約 1.8m³、500kg）に収まる', '発送する側も法人であること。料金はボックス 1 個ごとに都道府県単位で決まる']);
+  if (bad.length) return opt('jitbox', 'JITBOX チャーター便', 'ng', [...bad, JITBOX_NOTE]);
+  return opt('jitbox', 'JITBOX チャーター便', 'check', ['1 ボックス（内寸 170×104×104cm、約 1.8m³、500kg）に収まる', '発送する側も法人であること。料金はボックス 1 個ごとに都道府県単位で決まる', JITBOX_NOTE]);
 }
 
 function evalRosen(t, recv) {
@@ -332,7 +335,8 @@ function runSelftest() {
 /* ---------------------------------------------------------------- 画面 */
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const S = { rows: [], res: null };
+const S = { rows: [], res: null, exampleAuto: false };
+function endExampleAuto() { if (S.exampleAuto) { S.exampleAuto = false; const el = $('#example-note'); if (el) el.hidden = true; } }
 const blank = () => ({ n: '', l: '', w: '', h: '', kg: '' });
 const LABEL = { ok: '使える ○', check: '要確認 △', ng: '使えない ×' };
 const COLS = [['n', '個数'], ['l', '縦 cm'], ['w', '横 cm'], ['h', '高さ cm'], ['kg', '1 個の重さ kg']];
@@ -407,14 +411,14 @@ function init() {
   renderRows(); render();
   document.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.classList && t.classList.contains('pin')) S.rows[Number(t.dataset.i)][t.dataset.k] = t.value;
+    if (t.classList && t.classList.contains('pin')) { endExampleAuto(); S.rows[Number(t.dataset.i)][t.dataset.k] = t.value; }
     if ((t.classList && t.classList.contains('pin')) || t.id === 'km') render();
   });
-  document.addEventListener('change', (e) => { if (['from', 'to', 'recv', 'flex', 'km'].includes(e.target.id)) render(); });
+  document.addEventListener('change', (e) => { if (['from', 'to', 'recv', 'flex', 'km'].includes(e.target.id)) endExampleAuto(); if (['from', 'to', 'recv', 'flex', 'km'].includes(e.target.id)) render(); });
   document.addEventListener('click', (e) => {
     const t = e.target;
-    if (t.id === 'b-example') example();
-    else if (t.id === 'b-clear') { S.rows = [blank(), blank()]; renderRows(); render(); }
+    if (t.id === 'b-example') { endExampleAuto(); example(); }
+    else if (t.id === 'b-clear') { endExampleAuto(); S.rows = [blank(), blank()]; renderRows(); render(); }
     else if (t.id === 'b-add') { S.rows.push(blank()); renderRows(); }
     else if (t.id === 'b-copy') {
       const q = $('#quote'), msg = $('#copy-msg');
@@ -442,6 +446,7 @@ function init() {
     document.title = text.split('\n')[0];
   }
   if (qs.get('example') === '1') example();
+  else if (qs.get('selftest') !== '1' && !S.rows.some((r) => Object.values(r).some((v) => String(v).trim()))) { example(); S.exampleAuto = true; $('#example-note').hidden = false; }
 }
 
 init();
