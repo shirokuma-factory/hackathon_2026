@@ -615,10 +615,11 @@ def api_waiting_calc(body: Any) -> dict[str, Any]:
         raise BadRequest("year は整数で渡してください")
     pasted = None
     defaulted: list[str] = []
+    notes: list[str] = []
     if body.get("rows") is not None:
         rows = body["rows"]
     elif isinstance(body.get("text"), str):
-        rows, defaulted = waiting.parse_paste_full(body["text"])
+        rows, defaulted, notes = waiting.parse_paste_ex(body["text"])
         pasted = rows
     else:
         raise BadRequest("rows（行の配列）か text（貼り付けたタブ区切り）を渡してください")
@@ -629,6 +630,7 @@ def api_waiting_calc(body: Any) -> dict[str, Any]:
     if pasted is not None:
         res["input_rows"] = pasted  # 画面の表に入れ直すための、貼り付けを読んだ行（見出しの順に従った結果）
         res["defaulted"] = defaulted  # 欄が無くて既定値を入れた列（shipper_fault）。画面が注記を出す
+        res["notes"] = notes  # 読まなかった見出し、列の順で読んだこと、などの注記（SPEC §23.8）
     return res
 
 

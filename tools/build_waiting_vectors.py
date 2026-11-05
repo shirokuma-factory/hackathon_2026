@@ -165,6 +165,44 @@ CASES: list[dict] = [
               "10/6\t4t\tA運輸\t09:00\t09:30\t荷主都合\tはい\t09:52\t11:52\t荷主側\n")},
     {"name": "paste_without_header_and_without_fault_column_is_defaulted", "year": 2026, "paste": True,
      "text": "10/5\t\t中型\tA運輸\t\t09:00\t10:00\n10/6\t\t中型\tA運輸\t\t09:00\t09:20\n"},
+    # ---- SPEC §23.8: 輸送安全規則 第 8 条第 1 項の言葉の見出し（乗務員氏名・荷主の確認の有無の列つき）
+    {"name": "paste_statutory_headings_zero_errors", "year": 2026, "paste": True,
+     "text": ("運行日TT乗務員氏名TT車両登録番号TT車種TT荷主TT集荷地点等TT指定到着日時TT到着日時TT荷役作業の開始日時TT荷役作業の終了日時TT出発日時TT荷役作業等の内容TT荷主の確認の有無TT荷主都合NN"
+              "10/5TT山田 太郎TT姫路100あ1234TT4t車TTA運輸TT加古川DCTT2026/10/05 8:30TT2026/10/05 8:10TT2026/10/05 10:15TT2026/10/05 10:55TT2026/10/05 11:05TT手積みTT有TT○NN"
+              "10/6TT山田 太郎TT姫路100あ1234TT4t車TTA運輸TT加古川DCTT10/6 9:00TT10/6 9:00TT10/6 10:00TT10/6 10:00TT10/6 10:10TTTT有TT×NN"
+              "10/7TT鈴木 花子TT神戸100い5678TT大型車TTB商事TT三木DCTTTT10/7 9:00TT10/7 11:30TT10/7 12:00TT10/7 12:10TTフォークリフトTT無TT○NN").replace("TT", "\t").replace("NN", "\n")},
+    {"name": "paste_statutory_headings_date_only_in_datetime_cells", "year": 2026, "paste": True,
+     "text": ("乗務員氏名TT車両登録番号TT車種TT荷主TT荷待ち地点TT到着の日時TT荷役開始日時TT荷役終了日時TT出発の日時TT荷役作業の内容TT荷主の確認の有無NN"
+              "山田 太郎TT姫路100あ1234TT中型TTA運輸TT加古川DCTT2026/10/05 9:00TT2026/10/05 10:20TT2026/10/05 10:40TT2026/10/05 10:50TT手荷役TT有NN"
+              "山田 太郎TT姫路100あ1234TT中型TTA運輸TT加古川DCTTR8.10.6 9時00分TTR8.10.6 10時30分TTTTR8.10.6 10時40分TTTT有NN").replace("TT", "\t").replace("NN", "\n")},
+    {"name": "paste_unknown_headings_are_reported_by_name", "year": 2026, "paste": True,
+     "text": ("日付TT車種TT契約の相手TT到着TT荷役開始TTXYZTT荷主等の都合TT天気TTXYZNN"
+              "10/5TT中型TTA運輸TT09:00TT10:00TTaaTTはいTTTT雨NN").replace("TT", "\t").replace("NN", "\n")},
+    {"name": "paste_few_known_headings_still_read_by_name", "year": 2026, "paste": True,
+     "text": ("日付TT車種TT契約の相手TT到着TT荷役開始TT謎の列NN"
+              "10/5TT中型TTA運輸TT09:00TT10:00TTaa").replace("TT", "\t").replace("NN", "\n")},
+    {"name": "paste_no_header_says_position_order", "year": 2026, "paste": True,
+     "text": "10/5\t\t中型\tA運輸\t\t09:00\t10:00\t\t\t\t\tはい"},
+    # 荷役をした人の列が無く、荷役終了がある: 荷役作業等の内容があれば運転者、無ければ行は残して荷役の時間を入れない
+    {"name": "paste_no_handler_column_work_content_means_driver", "year": 2026, "paste": True,
+     "text": ("運行日TT車種TT荷主TT到着日時TT荷役開始日時TT荷役終了日時TT荷役作業等の内容TT荷主都合NN"
+              "10/5TT4t車TTA運輸TT09:00TT10:15TT10:55TT手積みTT○NN"
+              "10/6TT4t車TTA運輸TT09:00TT10:15TT10:55TTフォークリフトでパレット積みTT○NN"
+              "10/7TT4t車TTA運輸TT09:00TT10:15TT10:55TT検品TT○").replace("TT", "\t").replace("NN", "\n")},
+    {"name": "paste_no_handler_column_no_work_content_keeps_row_with_note", "year": 2026, "paste": True,
+     "text": ("運行日TT車種TT荷主TT到着日時TT荷役開始日時TT荷役終了日時TT出発日時TT荷主都合NN"
+              "10/5TT4t車TTA運輸TT09:00TT10:15TT10:55TT11:05TT○NN"
+              "10/6TT4t車TTA運輸TT09:00TT10:15TTTTTT○").replace("TT", "\t").replace("NN", "\n")},
+    # 荷主都合の欄があるのに読めない値の行は、はい にせず、値を名指しした誤りにする。欄が無いときだけ はい
+    {"name": "paste_unreadable_shipper_fault_values_are_errors", "year": 2026, "paste": True,
+     "text": ("運行日TT車種TT荷主TT到着TT荷役開始TT荷主都合の有無NN"
+              "10/5TT中型TTA運輸TT09:00TT10:00TT○NN"
+              "10/6TT中型TTA運輸TT09:00TT10:00TT要確認NN"
+              "10/7TT中型TTA運輸TT09:00TT10:00TTNN"
+              "10/8TT中型TTA運輸TT09:00TT10:00TT×").replace("TT", "\t").replace("NN", "\n")},
+    {"name": "paste_header_without_shipper_fault_column_is_defaulted_with_note", "year": 2026, "paste": True,
+     "text": ("運行日TT車種TT荷主TT到着日時TT荷役開始日時NN"
+              "10/5TT中型TTA運輸TT09:00TT10:00").replace("TT", "\t").replace("NN", "\n")},
 ]
 
 
@@ -173,8 +211,9 @@ def build() -> dict:
     for c in CASES:
         c = dict(c)
         defaulted: list[str] = []
+        notes: list[str] = []
         if c.get("paste"):
-            rows, defaulted = waiting.parse_paste_full(c["text"])
+            rows, defaulted, notes = waiting.parse_paste_ex(c["text"])
         else:
             rows = c["rows"]
         res = waiting.calc(rows, c["year"])
@@ -182,6 +221,7 @@ def build() -> dict:
         if c.get("paste"):
             exp["input_rows"] = rows
             exp["defaulted"] = defaulted
+            exp["notes"] = notes
         c["expect"] = exp
         cases.append(c)
     return {"note": "tools/build_waiting_vectors.py が waiting.py の出力から作る。手で直さない（SPEC §23.7 G82）", "cases": cases}
