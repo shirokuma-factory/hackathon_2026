@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>部品の例（架空のデータ）</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+  :root { --bg: #f3f5f8; --card: #fff; --ink: #18222f; --sub: #55627a; --line: #d5dbe4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.7 "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif; }
+  header, main { max-width: 1480px; margin: 0 auto; padding: 0 16px; }
+  header { padding-top: 18px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 8px; }
+  .lead { margin: 0 0 10px; color: var(--sub); }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0 14px; }
+  .bar button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; min-height: 36px; }
+  .bar button:focus-visible { outline: 3px solid #2a7de1; outline-offset: 2px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 600px), 1fr)); padding-bottom: 28px; }
+  section.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
+  section.wide { grid-column: 1 / -1; }
+  .map { height: 380px; border-radius: 8px; overflow: hidden; position: relative; }
+  .side { margin-top: 8px; display: grid; gap: 8px; }
+  .err { color: #a03000; }
+  @media (max-width: 600px) { .map { height: 320px; } h1 { font-size: 19px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>部品の例（架空のデータ）</h1>
+  <p class="lead">地図の部品 4 つと、積付けの 3D の部品 1 つを、<code>data/*.json</code> の架空のデータで並べています。数字は実在の会社・統計のものではありません。</p>
+  <div class="bar"><button type="button" id="toggle" aria-pressed="false">部品を外す</button><span id="status" role="status"></span></div>
+</header>
+<main>
+  <div class="grid">
+    <section class="card" aria-labelledby="h-flows"><h2 id="h-flows">1 量の流れ（Kit.flows）</h2><div class="map" id="m-flows"></div><div class="side" id="d-flows"></div></section>
+    <section class="card" aria-labelledby="h-legs"><h2 id="h-legs">2 運行の区間（Kit.legs）</h2><div class="map" id="m-legs"></div><div class="side" id="d-legs"></div></section>
+    <section class="card" aria-labelledby="h-points"><h2 id="h-points">3 地点の点（Kit.points）</h2><div class="map" id="m-points"></div><div class="side" id="d-points"></div></section>
+    <section class="card" aria-labelledby="h-timeline"><h2 id="h-timeline">4 時間の帯と再生（Kit.timeline）</h2><div class="map" id="m-timeline"></div><div class="side" id="d-timeline"></div></section>
+    <section class="card wide" aria-labelledby="h-load3d"><h2 id="h-load3d">5 積付けの 3D（Kit.load3d）</h2><div id="m-load3d"></div></section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
+<script src="../../web/kit/kit.js"></script>
+<script src="../../web/kit/flows.js"></script>
+<script src="../../web/kit/legs.js"></script>
+<script src="../../web/kit/points.js"></script>
+<script src="../../web/kit/timeline.js"></script>
+<script src="../../web/kit/load3d.js"></script>
+<script>
+'use strict';
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const st = $('status');
+  const OUTLINE = '../../web/data/pref.geojson'; // 都道府県の境界線（国土数値情報）。無ければ背景色だけにする
+  const OUTLINE_ATTR = '国土数値情報（行政区域データ）（国土交通省）を加工して作成';
+  const kit = { maps: {}, parts: {}, data: null, ready: false, mounted: false };
+  window.__kit = kit;
+
+  async function getJSON(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${url} を読めません（${r.status}）`);
+    return r.json();
+  }
+
+  function makeMap(id, outline) {
+    const m = new maplibregl.Map({
+      container: id, style: Kit.baseStyle({ outlineUrl: outline, attribution: outline ? OUTLINE_ATTR : '' }),
+      center: [138.5, 36], zoom: 5, minZoom: 3, maxZoom: 11, dragRotate: false, pitchWithRotate: false, touchPitch: false, fadeDuration: 0,
+    });
+    m.touchZoomRotate.disableRotation();
+    return m;
+  }
+
+  function mountAll() {
+    const D = kit.data, M = kit.maps;
+    kit.parts.flows = Kit.flows.mount(M.flows, D.flows, { legend: { container: $('d-flows') }, names: true });
+    kit.parts.legs = Kit.legs.mount(M.legs, D.legs, { legend: { container: $('d-legs') } });
+    kit.parts.points = Kit.points.mount(M.points, D.points, {
+      unit: '分', levelUnit: '分', legend: { container: $('d-points'), sizeText: '大きさ = 荷待ちの計', colorText: '色と点の中の数字 = 平均の荷待ち ' },
+      onSelect: (p) => { st.textContent = p ? `${p.name} を選びました（荷待ちの計 ${p.value} 分、平均 ${p.level} 分）` : ''; },
+    });
+    kit.parts.timeline = Kit.timeline.mount(M.timeline, D.trips, { container: $('d-timeline') });
+    kit.parts.load3d = Kit.load3d.mount($('m-load3d'), { vehicle: D.vehicle, placement: D.placement }, {});
+    kit.mounted = true;
+  }
+  function destroyAll() {
+    Object.values(kit.parts).forEach((p) => p.destroy());
+    kit.parts = {};
+    kit.mounted = false;
+  }
+
+  $('toggle').addEventListener('click', () => {
+    if (!kit.ready) return;
+    const on = kit.mounted;
+    if (on) destroyAll(); else mountAll();
+    $('toggle').textContent = on ? '部品を付け直す' : '部品を外す';
+    $('toggle').setAttribute('aria-pressed', String(on));
+    st.textContent = on ? '部品を外しました（地図の線・点・名札・凡例・3D は残っていません）' : '部品を付け直しました';
+  });
+
+  (async function main() {
+    try {
+      const names = ['flows', 'legs', 'points', 'trips', 'vehicle', 'placement'];
+      const got = await Promise.all(names.map((n) => getJSON(`data/${n}.json`)));
+      kit.data = Object.fromEntries(names.map((n, i) => [n, got[i]]));
+    } catch (e) {
+      st.className = 'err';
+      st.textContent = `データを読めません。ファイルを直接開かず、このフォルダの 2 つ上（リポジトリの先頭）で python -m http.server を動かして開いてください。（${e.message}）`;
+      return;
+    }
+    let outline = null;
+    try { outline = await getJSON(OUTLINE); } catch (e) { outline = null; }
+    for (const k of ['flows', 'legs', 'points', 'timeline']) kit.maps[k] = makeMap(`m-${k}`, outline);
+    await Promise.all(Object.values(kit.maps).map((m) => new Promise((r) => (m.loaded() ? r() : m.once('load', r)))));
+    mountAll();
+    kit.ready = true;
+    st.textContent = '';
+  })();
+})();
+</script>
+</body>
+</html>

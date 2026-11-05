@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kit/schema/placement.json",
+  "title": "積付けの配置（Kit.load3d のデータ。src/shipcompare/loadplan.py の結果の形）",
+  "description": "container は荷室、items は荷物の行、placements は置いた荷の位置（mm、置いた順）、unplaced は置けなかった荷、summary は集計。",
+  "type": "object",
+  "required": [
+    "container",
+    "items",
+    "placements",
+    "unplaced",
+    "summary"
+  ],
+  "properties": {
+    "container": {
+      "$ref": "#/$defs/container"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/item"
+      }
+    },
+    "placements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/placed"
+      }
+    },
+    "unplaced": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/unplaced"
+      }
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    }
+  },
+  "$defs": {
+    "basis": {
+      "type": "string",
+      "enum": [
+        "実測",
+        "推定",
+        "仮定"
+      ],
+      "description": "実測 = 記録から数えた値、推定 = 計算で求めた値、仮定 = 利用者が置いた値"
+    },
+    "container": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "length_mm",
+        "width_mm",
+        "height_mm",
+        "payload_kg",
+        "basis"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "width_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "payload_kg": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "basis": {
+          "type": "string",
+          "description": "数値の根拠の区分（loadplan.py の表記。例: 公表値、推定、仮定）"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "required": [
+        "count",
+        "length_cm",
+        "width_cm",
+        "height_cm",
+        "weight_kg"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "length_cm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "width_cm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height_cm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "weight_kg": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "stackable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "placed": {
+      "type": "object",
+      "required": [
+        "item",
+        "x",
+        "y",
+        "z",
+        "l",
+        "w",
+        "h",
+        "rotated"
+      ],
+      "properties": {
+        "order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "item": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "items の何番目か（0 始まり）"
+        },
+        "nth": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "x": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "z": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "l": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "w": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "h": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rotated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "unplaced": {
+      "type": "object",
+      "required": [
+        "item",
+        "count",
+        "reason"
+      ],
+      "properties": {
+        "item": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "requested",
+        "placed",
+        "unplaced_count",
+        "floor_area_pct",
+        "volume_pct",
+        "total_weight_kg",
+        "payload_kg",
+        "weight_ok",
+        "verdict",
+        "note"
+      ],
+      "properties": {
+        "fits": {
+          "type": "boolean"
+        },
+        "all_placed": {
+          "type": "boolean"
+        },
+        "requested": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "placed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unplaced_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "floor_area_pct": {
+          "type": "number",
+          "minimum": 0
+        },
+        "volume_pct": {
+          "type": "number",
+          "minimum": 0
+        },
+        "total_weight_kg": {
+          "type": "number",
+          "minimum": 0
+        },
+        "payload_kg": {
+          "type": "number",
+          "minimum": 0
+        },
+        "weight_ok": {
+          "type": "boolean"
+        },
+        "weight_over_kg": {
+          "type": "number",
+          "minimum": 0
+        },
+        "stacked": {
+          "type": "boolean"
+        },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "○",
+            "△",
+            "×"
+          ]
+        },
+        "verdict_reason": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
