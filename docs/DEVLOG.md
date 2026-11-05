@@ -277,3 +277,4 @@
 - 11/5 10:13: 作成者が公開先に Cloud Run（A）を選んだ（`docs/plan/2026-11-05_公開先の検討.md`）。
 - 11/5 19:51: 作成者が、実在 3 社（佐川急便・日本通運・ヤマト運輸）の名前と運賃を画面から外すと決めた（SPEC §30）。
 - ComfyUI は、アプリの開発では生成に使っていない（`comfy_run_workflow` は 0 回）。デモ動画の制作で使う（作成者の方針、11/5）。
+- 2026-11-05 13:32 `7379065` Record work found in other sessions: tools, counts, trial and error
