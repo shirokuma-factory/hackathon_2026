@@ -172,3 +172,28 @@ def test_g127_cards_at_400px(path):
             # 2 行目の数字は 1 行目より下
             assert all(n > t["c1top"] + 4 for n in t["nums"]), t
         assert m["note"] and m["note"]["w"] > 100 and m["note"]["top"] > m["hotspots"]["nums"][0], m
+
+
+PARTNER_MEASURE_JS = """(function(){
+  const rows = [...document.querySelectorAll('#partners table.par:not(#hotspots):not(#placemonth) tbody tr')];
+  return {n: rows.length, sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
+    cards: rows.map((tr) => { const td = tr.querySelector('td[data-l="参考額"]'), r = td.getBoundingClientRect(), b = tr.getBoundingClientRect();
+      return {display: getComputedStyle(tr).display, amountRight: r.right, amountLeft: r.left, amountScroll: td.scrollWidth <= td.clientWidth + 1, rowRight: b.right, text: td.textContent}; })};
+})()"""
+
+
+@pytest.mark.parametrize("path", [PAGE, ART])
+def test_g128_partner_cards_at_400px(path):
+    _edge_or_skip()
+    import capture_web as cw
+    with cw.edge_page(1920, 1080) as page:
+        page.send("Emulation.setDeviceMetricsOverride", width=400, height=900, deviceScaleFactor=1, mobile=False)
+        page.goto(_url(path) + "?example=1")
+        page.wait(lambda: page.js("!!document.querySelector('#hotspots')"), 30, "表")
+        m = page.js(PARTNER_MEASURE_JS)
+        assert m["n"] >= 1 and m["sw"] <= m["cw"], m
+        for c in m["cards"]:
+            assert c["display"] == "flex", c
+            assert c["amountLeft"] >= 0 and c["amountRight"] <= 400 and c["rowRight"] <= 400, c
+            assert c["amountScroll"], c
+            assert c["text"].strip(), c
