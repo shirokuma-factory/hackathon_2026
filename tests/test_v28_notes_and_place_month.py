@@ -27,11 +27,11 @@ import build_waiting_vectors  # noqa: E402
 PAGE = ROOT / "web" / "waiting.html"
 ART = ROOT / "web" / "publish" / "waiting_artifact.html"
 
-NOTE_NO_DESIGNATED = "指定の到着時刻が無い到着が多い組です。荷主等の都合に当たるかを相手と確かめてください"
+NOTE_NO_DESIGNATED = "指定の到着時刻が無い到着が多い組です。相手に到着の時刻を決めてもらうか、自社で到着を遅らせて変わるかを確かめてください"
 DOC_NO_DESIGNATED = "指定の到着時刻の無い到着を含みます"
 NOTE_SHIPPER = "荷主側の荷役の時間を含む"
 NOTE_FEW = "回数が少ない"
-PM_LEAD = "特定荷主は 2026 年 4 月から、施設ごと・月別の平均の荷待ち時間を分単位で国に報告しています。荷主の数字を、運送会社の記録で確かめるときに使えます。"
+PM_LEAD = "特定荷主は 2026 年度から、施設ごと・月別の平均の荷待ち時間を分単位で測り、国に報告します。荷主の数字を、運送会社の記録で確かめるときに使えます。"
 PM_CLOSE = "発荷主・着荷主様との調整が必要な場合は、この一覧をそのままお使いください。"
 TEKIHO = ("取適法では、相手（元請など）が規模の基準（資本金か従業員数）に当たるとき、国土交通大臣（トラック・物流Gメン）などに知らせたことを理由にした"
           "取引の停止などの不利益な扱いが禁じられています（第 5 条第 1 項第 7 号）。相手が基準に当たらないときは使えません。")
@@ -76,7 +76,7 @@ def test_g120_by_place_month_python():
     got = waiting.calc(rows, 2026)["by_place_month"]
     assert [(g["place"], g["month"], g["count"], g["wait_minutes"], g["avg_minutes"], g["over_1h_count"]) for g in got] == [
         ("X", "2026-10", 2, 111, 56, 1), ("X", "2026-11", 1, 135, 135, 1),
-        ("Y", "2026-09", 1, 180, 180, 1), ("Y", "2026-10", 1, 0, 0, 0),
+        ("Y", "2026-09", 1, 180, 180, 1), ("Y", "2026-10", 1, 20, 20, 0),   # 荷主等の都合が いいえ でも、定期報告の定義（§29.1）では数える
         ("（場所の記入なし）", "2026-10", 1, 40, 40, 0), ("（場所の記入なし）", "2026-11", 1, 60, 60, 1)]
     assert waiting.calc([], 2026)["by_place_month"] == []
 
@@ -176,15 +176,15 @@ def test_g121_g123_example_8am_rows_and_place_month_tables(path):
         eight = [r for r in rows if r[2] == "8時台"]
         assert len(eight) == 2 and all(NOTE_NO_DESIGNATED not in r[8] for r in eight)
         ten = [r for r in rows if r[2] == "10時台"]
-        assert ten and all(NOTE_NO_DESIGNATED in r[8] for r in ten)   # 10時台は指定の到着時刻が無いので、注記が出る
+        assert ten and all(NOTE_NO_DESIGNATED not in r[8] for r in ten)   # 10時台は指定が無いが、平均が 30 分未満なので注記は付けない（§29.3）
         doc = page.js("document.querySelector('#wait-doc').textContent")
         assert "江東区 地点07に8時台に到着した 5 回の荷待ちは、平均 98 分、最長 135 分でした。" in doc
         assert "江東区 地点07に8時台に到着した 5 回の荷待ちは、平均 98 分、最長 135 分でした。（" not in doc
         pm = page.js("[...document.querySelectorAll('#placemonth tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent))")
-        assert pm == [["川崎市 地点12", "2026 年 10 月", "3", "27", "0"], ["市川市 地点03", "2026 年 10 月", "5", "60", "3"],
-                      ["江東区 地点07", "2026 年 10 月", "10", "60", "5"]]
+        assert pm == [["川崎市 地点12", "2026 年 10 月", "3", "32", "0"], ["市川市 地点03", "2026 年 10 月", "5", "60", "3"],
+                      ["江東区 地点07", "2026 年 10 月", "10", "58", "5"]]
         dpm = page.js("[...document.querySelectorAll('#doc-placemonth tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent))")
-        assert dpm == [["川崎市 地点12", "2026 年 10 月", "2", "40", "0"], ["江東区 地点07", "2026 年 10 月", "10", "60", "5"]]   # 書面は、その相手の記録だけ
+        assert dpm == [["川崎市 地点12", "2026 年 10 月", "2", "40", "0"], ["江東区 地点07", "2026 年 10 月", "10", "58", "5"]]   # 書面は、その相手の記録だけ
         assert PM_LEAD in page.js("document.querySelector('#partners').textContent")
         assert PM_CLOSE in doc
 
