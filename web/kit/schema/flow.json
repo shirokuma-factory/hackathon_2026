@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kit/schema/flow.json",
+  "title": "量の流れ（Kit.flows のデータ）",
+  "description": "地点の間の量。value は出発から到着への量、return_value は反対向きの量（無ければ省く）。",
+  "type": "object",
+  "required": [
+    "flows"
+  ],
+  "properties": {
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/flow"
+      }
+    }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "description": "ファイルの説明（任意）。架空のデータには fiction: true を付ける",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "fiction": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "place": {
+      "type": "object",
+      "required": [
+        "name",
+        "lon",
+        "lat"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "経度（度）"
+        },
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "緯度（度）"
+        }
+      }
+    },
+    "basis": {
+      "type": "string",
+      "enum": [
+        "実測",
+        "推定",
+        "仮定"
+      ],
+      "description": "実測 = 記録から数えた値、推定 = 計算で求めた値、仮定 = 利用者が置いた値"
+    },
+    "flow": {
+      "type": "object",
+      "required": [
+        "from",
+        "to",
+        "value",
+        "unit",
+        "period",
+        "source",
+        "basis"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "from": {
+          "$ref": "#/$defs/place"
+        },
+        "to": {
+          "$ref": "#/$defs/place"
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "description": "量"
+        },
+        "return_value": {
+          "type": "number",
+          "minimum": 0,
+          "description": "反対向きの量（偏りの比 = return_value ÷ value の元）"
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "description": "量の単位（台、t、円 など）"
+        },
+        "period": {
+          "type": "string",
+          "minLength": 1,
+          "description": "期間（2026年10月 など）"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "出典（統計名と提供元）"
+        },
+        "basis": {
+          "$ref": "#/$defs/basis"
+        }
+      }
+    }
+  }
+}

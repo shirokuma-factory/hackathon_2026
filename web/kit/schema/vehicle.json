@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kit/schema/vehicle.json",
+  "title": "車両（Kit.load3d のデータ）",
+  "description": "荷室の内寸・開口・最大積載量・床面積。寸法は mm、重さは kg、面積は ㎡。",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "inner",
+    "opening",
+    "payload_kg",
+    "floor_area_m2",
+    "basis"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "inner": {
+      "type": "object",
+      "required": [
+        "length_mm",
+        "width_mm",
+        "height_mm"
+      ],
+      "properties": {
+        "length_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "width_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "description": "荷室の内寸（mm）"
+    },
+    "opening": {
+      "type": "object",
+      "required": [
+        "width_mm",
+        "height_mm"
+      ],
+      "properties": {
+        "width_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "description": "開口（mm）"
+    },
+    "payload_kg": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "floor_area_m2": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "basis": {
+      "$ref": "#/$defs/basis"
+    },
+    "source": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "basis": {
+      "type": "string",
+      "enum": [
+        "実測",
+        "推定",
+        "仮定"
+      ],
+      "description": "実測 = 記録から数えた値、推定 = 計算で求めた値、仮定 = 利用者が置いた値"
+    }
+  }
+}

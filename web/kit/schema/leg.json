@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kit/schema/leg.json",
+  "title": "運行の区間（Kit.legs のデータ）",
+  "description": "1 回の走行を、発地から着地までの区間として持つ。判定は loaded（実車）、empty（空車）、unknown（不明）。",
+  "type": "object",
+  "required": [
+    "legs"
+  ],
+  "properties": {
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "legs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/leg"
+      }
+    }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "description": "ファイルの説明（任意）。架空のデータには fiction: true を付ける",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "fiction": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "place": {
+      "type": "object",
+      "required": [
+        "name",
+        "lon",
+        "lat"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "経度（度）"
+        },
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "緯度（度）"
+        }
+      }
+    },
+    "basis": {
+      "type": "string",
+      "enum": [
+        "実測",
+        "推定",
+        "仮定"
+      ],
+      "description": "実測 = 記録から数えた値、推定 = 計算で求めた値、仮定 = 利用者が置いた値"
+    },
+    "datetime": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$",
+      "description": "日時（YYYY-MM-DDTHH:MM。地域の時刻で書く）"
+    },
+    "leg": {
+      "type": "object",
+      "required": [
+        "id",
+        "vehicle",
+        "start",
+        "end",
+        "from",
+        "to",
+        "status",
+        "distance_km",
+        "weight_kg",
+        "basis"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "vehicle": {
+          "type": "string",
+          "description": "車両の呼び名（利用者が決める）"
+        },
+        "start": {
+          "$ref": "#/$defs/datetime"
+        },
+        "end": {
+          "$ref": "#/$defs/datetime"
+        },
+        "from": {
+          "$ref": "#/$defs/place"
+        },
+        "to": {
+          "$ref": "#/$defs/place"
+        },
+        "path": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number"
+            }
+          },
+          "description": "経路の座標 [経度, 緯度] の並び（無ければ発地と着地を結ぶ直線）"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "loaded",
+            "empty",
+            "unknown"
+          ],
+          "description": "判定: 実車・空車・不明"
+        },
+        "distance_km": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "距離（km）。不明は null"
+        },
+        "weight_kg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "積んだ重さ（kg）。不明は null"
+        },
+        "basis": {
+          "$ref": "#/$defs/basis"
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

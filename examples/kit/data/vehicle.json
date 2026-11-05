@@ -1,0 +1,18 @@
+{
+  "id": "V-2T-A",
+  "name": "2t 箱車（架空の自社車両 A）",
+  "inner": {
+    "length_mm": 4200,
+    "width_mm": 1800,
+    "height_mm": 2000
+  },
+  "opening": {
+    "width_mm": 1700,
+    "height_mm": 1900
+  },
+  "payload_kg": 2000,
+  "floor_area_m2": 7.56,
+  "basis": "仮定",
+  "source": "架空の例（実在の統計ではありません）",
+  "note": "寸法は例です。自社の車検証・仕様書の値を入れてください。"
+}
