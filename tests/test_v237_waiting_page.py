@@ -108,7 +108,7 @@ def test_g83_page_makes_no_network_calls():
     for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts", "import(", "navigator.serviceWorker"):
         assert bad not in html, bad
     assert not re.search(r"<script[^>]+src\s*=", html, re.I)
-    assert not re.search(r"<link[^>]+href\s*=", html, re.I)  # 外部の CSS・フォントも読まない
+    assert not re.search(r"<link(?![^>]*href\s*=\s*.data:)[^>]+href\s*=", html, re.I)  # 外部の CSS・フォントも読まない
     assert not re.search(r"@import|url\(\s*['\"]?https?:", html, re.I)
     assert not re.search(r"<(img|iframe|embed|object|video|audio|source)\b", html, re.I)
     assert "<form" not in html

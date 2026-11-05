@@ -3,6 +3,7 @@
 .cc-title { margin: 0 0 4px; font-size: 13px; font-weight: 700; }
 .cc-title small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
 .cc-ratio { margin: 2px 0 8px; font-size: 14px; font-weight: 700; color: var(--warn); }
+.cc-only { margin: 2px 0 8px; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .cc-rows { display: flex; flex-direction: column; gap: 6px; }
 .cc-row { display: grid; grid-template-columns: 4.8em minmax(0, 1fr) 8em; align-items: center; gap: 8px; font-size: 12px; }
 .cc-name { font-weight: 500; line-height: 1.25; }

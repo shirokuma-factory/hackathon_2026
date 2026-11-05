@@ -114,7 +114,7 @@ def test_g89_page_makes_no_network_calls():
     for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts", "import(", "navigator.serviceWorker", "localStorage"):
         assert bad not in html, bad
     assert not re.search(r"<script[^>]+src\s*=", html, re.I)
-    assert not re.search(r"<link[^>]+href\s*=", html, re.I)
+    assert not re.search(r"<link(?![^>]*href\s*=\s*.data:)[^>]+href\s*=", html, re.I)
     assert not re.search(r"@import|url\(\s*['\"]?https?:", html, re.I)
     assert not re.search(r"<(img|iframe|embed|object|video|audio|source|form)\b", html, re.I)
 

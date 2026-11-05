@@ -9,6 +9,8 @@ const Sheet = (() => {
   const mq = window.matchMedia('(max-width: 600px)');
   const q = (s) => document.querySelector(s);
   const SHEET_RATIO = 0.44; // 下のパネルの高さ（画面の高さに対する割合）。地図は残りのうち上の切り替え（約 6%）を引いても 45% 以上見える
+  const SHEET_RATIO_DETAIL = 0.6; // 送り方を比べるの「着地」のタブは、横棒の図と手段のカードが読める高さまで広げる（地図は 40% 残る。SPEC §33 #1）
+  const st0 = { ratio: SHEET_RATIO };
 
   // 見方ごとのタブ。[パネルの id, 名前, 出す条件（body のクラス。省略は常に）]
   const TABS = {
@@ -19,7 +21,7 @@ const Sheet = (() => {
   const st = { pick: {}, prev: new Set(), key: '' };
 
   const narrow = () => mq.matches;
-  const sheetPx = () => Math.round(innerHeight * SHEET_RATIO);
+  const sheetPx = () => Math.round(innerHeight * st0.ratio);
   const view = () => ['market', 'find', 'compare', 'own'].find((v) => document.body.classList.contains('view-' + v)) || 'market';
 
   // 地図に渡す余白。狭い画面は、上の切り替えと下のパネルを避ける。左右は区間の端の名前の札（幅 約 60px）が切れない広さ
@@ -56,6 +58,13 @@ const Sheet = (() => {
     return 'm-right';
   }
 
+  // 下のパネルの高さの割合。値が変わるときだけ、html 要素の --sheet-h を書く（body の class は触らない）
+  function setRatio(r) {
+    if (st0.ratio === r) return;
+    st0.ratio = r;
+    document.documentElement.style.setProperty('--sheet-h', Math.round(r * 100) + 'vh');
+  }
+
   function apply() {
     const b = document.body.classList;
     // body の class は値が変わるときだけ書き換える。classList.add / remove は値が同じでも属性を書き直し、
@@ -65,6 +74,7 @@ const Sheet = (() => {
       if (b.contains('sheet-tabs')) b.remove('sheet-tabs');
       PANELS.forEach((id) => { const e = q('#' + id); if (e) e.classList.remove('sh-on'); });
       q('#sheet-tabs').hidden = true;
+      setRatio(SHEET_RATIO);
       st.key = '';
       return;
     }
@@ -80,6 +90,7 @@ const Sheet = (() => {
       st.pick[v] = pick;
       on = [pick];
     }
+    setRatio(v === 'compare' && on.length === 1 && on[0] === 'detail' ? SHEET_RATIO_DETAIL : SHEET_RATIO);
     const key = v + '|' + on.join() + '|' + tabs.map((t) => t[0]).join() + '|' + (on.length ? st.pick[v] : '');
     if (key === st.key) return;
     st.key = key;

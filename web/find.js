@@ -240,18 +240,37 @@ const Find = (() => {
   function spreadTags() {
     if (!F.active) return;
     const W = 76, H = 26, placed = [];
+    // 左下の注意の欄と右の一覧に隠れる名札は、見える側（欄のすぐ外）に寄せる（SPEC §33 #14）。広い画面だけ。狭い画面は下のパネルが地図の下半分を覆うので扱わない
+    const cr = map.getContainer().getBoundingClientRect(), blocks = [];
+    if (window.innerWidth >= 900) {
+      for (const id of ['#find-notes', '#find-right']) {
+        const e = q(id);
+        if (!e || !e.getClientRects().length) continue;
+        const r = e.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) blocks.push({ l: r.left - cr.left - 4, r: r.right - cr.left + 4, t: r.top - cr.top - 4, b: r.bottom - cr.top + 4 });
+      }
+    }
     const items = F.trips.map((t) => ({ t, m: F.markers.get(t.id) })).filter((x) => x.m);
     for (const { t, m } of items) {
       const g = F.geo[t.id];
       if (!g) continue;
       const p = map.project(m.mk.getLngLat());
-      let k = 0, dy = 0;
+      let k = 0, dy = 0, dx = 0;
       for (; k < 14; k++) {
         dy = k === 0 ? 0 : (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (H + 2);
-        if (!placed.some((r) => Math.abs(r.x - p.x) < W && Math.abs(r.y - (p.y + dy)) < H + 1)) break;
+        dx = 0;
+        // 欄に重なるときは、欄の左端か右端の外まで横にずらす（近い方）
+        for (const b of blocks) {
+          const x = p.x + dx, y = p.y + dy;
+          if (x + W / 2 > b.l && x - W / 2 < b.r && y + H / 2 > b.t && y - H / 2 < b.b) {
+            const toLeft = b.l - W / 2 - p.x, toRight = b.r + W / 2 - p.x;
+            dx = Math.abs(toLeft) <= Math.abs(toRight) ? toLeft : toRight;
+          }
+        }
+        if (!placed.some((r) => Math.abs(r.x - (p.x + dx)) < W && Math.abs(r.y - (p.y + dy)) < H + 1)) break;
       }
-      placed.push({ x: p.x, y: p.y + dy });
-      m.mk.setOffset([0, dy]);
+      placed.push({ x: p.x + dx, y: p.y + dy });
+      m.mk.setOffset([dx, dy]);
     }
   }
 

@@ -9,7 +9,7 @@ const Rt = (() => {
   const ORDER = ['truck', 'rail', 'ferry', 'air'];
   const CODE = { t: 'truck', r: 'rail', f: 'ferry', a: 'air' };
   const DEF_COLORS = { truck: [255, 152, 38], rail: [72, 214, 112], ferry: [58, 196, 255], air: [210, 192, 255] }; // routes_meta.json と同じ値（読み込み前の予備）
-  const LABEL = { truck: 'トラック', rail: '電車', ferry: '船', air: '飛行機' };
+  const LABEL = { truck: 'トラック', rail: '鉄道', ferry: '船', air: '飛行機' };
   const SPK = { truck: 0.016, rail: 0.016, ferry: 0.026, air: 0.0045 }; // 見た目の速さ（1km あたりの秒）。実際の所要時間ではない
   const SIZE = { truck: 30, rail: 46, ferry: 38, air: 54 };
   const ALT_RATIO = 0.2, ALT_MAX = 240000; // 飛行機の弧の高さ（見やすさのための強調で、実際の高度ではない）
@@ -231,7 +231,7 @@ const Rt = (() => {
 
   /* ------------------------------------------------------------ 時間の帯（トラックの区間だけ分で進める） */
 
-  // トラックの区間は分で進める。電車・船・飛行機の区間は所要時間を出せないので、帯の上では固定の幅（gap）にして、
+  // トラックの区間は分で進める。鉄道・船・飛行機の区間は所要時間を出せないので、帯の上では固定の幅（gap）にして、
   // 「所要時間は時刻表で確認」と出す。その幅は時間を表さない。
   function timeline() {
     const cur = R.cur;
@@ -346,7 +346,7 @@ const Rt = (() => {
         recount(s);
       } else {
         failedTail = true;
-        // 着地までの経路が取れなかった電車・船・飛行機は、線が県庁所在地の市区までのまま。最後の行き先もそう書く（SPEC §31.5 #11）
+        // 着地までの経路が取れなかった鉄道・船・飛行機は、線が県庁所在地の市区までのまま。最後の行き先もそう書く（SPEC §31.5 #11）
         const s = cur.sets[m];
         s.stops[s.stops.length - 1] = `${capitalName(cur)}（県庁所在地）まで`;
         s.capTail = true;
@@ -362,7 +362,7 @@ const Rt = (() => {
         (failedTail ? (failedTruck ? '。' : '') + '経路を取得できなかった区間は、県庁所在地までの経路のままです' : '');
       cur.noteKind = 'err';
     } else {
-      cur.note = '電車・船・飛行機の最後の区間は、貨物駅・港・空港から着地までの道路の経路です';
+      cur.note = '鉄道・船・飛行機の最後の区間は、貨物駅・港・空港から着地までの道路の経路です';
       cur.noteKind = 'info';
     }
     render();
@@ -398,7 +398,7 @@ const Rt = (() => {
     fit();
     App.onRt(false);
   }
-  // 市区町村の塗りの濃さ。トラック・電車・船を強調しているときは薄くして、背景の道路・線路が見えるようにする
+  // 市区町村の塗りの濃さ。トラック・鉄道・船を強調しているときは薄くして、背景の道路・線路が見えるようにする
   const fillScale = () => (R.cur && !R.off && (R.focus === 'truck' || R.focus === 'rail' || R.focus === 'ferry') ? 0.36 : 1);
   // 見方を切り替えたとき: 傾きと背景の強調を戻す／もとに戻す
   function suspend() { R.off = true; applyEmphasis(); resetView(); }
@@ -561,15 +561,21 @@ const Rt = (() => {
       if (m === 'air') {
         out.push(iconLayer('rt-shadow-air', data.map((v) => ({ ...v, p: [v.p[0], v.p[1], 0], a: v.a * 0.35 })), 'air', SIZE.air * 0.9, { getColor: (d) => [0, 0, 0, Math.round(150 * d.a)] }));
       }
-      if (data.length) out.push(...vehLayers('rt-veh-' + m, data, m, (F === m ? 1.12 : 1) * SIZE[m], zoom, { updateTriggers: { getSize: [F] } }, F === m ? 1.12 : 1));
+      // 乗り物が 1 台も見えない間も、経路のある手段の層は消さない。消すたびに層が作り直され、アイコン画像の読み込み中に捨てられると
+      // WebGL の INVALID_OPERATION の警告が出る（SPEC §33 #5）。データが空の層は描かないだけで、費用はほとんど無い
+      if (data.length || (cur.sets[m] && cur.sets[m].ok)) out.push(...vehLayers('rt-veh-' + m, data, m, (F === m ? 1.12 : 1) * SIZE[m], zoom, { updateTriggers: { getSize: [F] } }, F === m ? 1.12 : 1));
     }
     if (lead) {
+      R.leadMode = lead.mode;
       const leadD = stableData('rt-lead-halo', [lead.p[0], lead.p[1]], () => [{ p: lead.p }]);
       out.push(memoLayer('rt-lead-halo', leadD, lead.mode, () => new L.ScatterplotLayer({
         id: 'rt-lead-halo', data: leadD, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 24, filled: true, getFillColor: withA(col(lead.mode), 70),
         stroked: true, getLineColor: withA(col(lead.mode), 220), lineWidthUnits: 'pixels', getLineWidth: 1.6, updateTriggers: { getFillColor: [lead.mode], getLineColor: [lead.mode] },
       })));
       out.push(...vehLayers('rt-lead', stableData('rt-lead', [lead.p[0], lead.p[1], lead.ang], () => [{ p: lead.p, ang: lead.ang }]), lead.mode, SIZE[lead.mode] * 1.3, zoom, {}, 1.3));
+    } else if (R.leadMode) {
+      // 先頭の乗り物が無い間（直線の弧など）も、先頭の乗り物の層は消さずに空のデータで残す（SPEC §33 #5）
+      out.push(...vehLayers('rt-lead', stableData('rt-lead-empty', [], () => []), R.leadMode, SIZE[R.leadMode] * 1.3, zoom, {}, 1.3));
     }
     // 1 日の運転（9 時間）の終わりの印（トラックだけの経路のとき）
     const tl = timeline();
@@ -605,6 +611,13 @@ const Rt = (() => {
     }
     return `トラックの区間 計 <b class="num">${fmtMin(s.truckMin)}</b> ／ ${LABEL[s.mode]}の区間は所要時間は時刻表で確認`;
   }
+  // 手段の状態: 'route'（経路あり）、'none'（つながる経路なし）、null（着地が未選択）。横棒の図が同じ言い方にそろえるために使う
+  function modeState(m) {
+    const cur = R.cur;
+    if (!cur) return null;
+    const s = cur.sets[m];
+    return s && s.ok ? 'route' : 'none';
+  }
   function render() {
     const el = q('#rt-modes');
     if (!el) return;
@@ -614,13 +627,22 @@ const Rt = (() => {
     const cards = ORDER.map((m) => {
       const s = cur.sets[m];
       if (!s || !s.ok) {
+        // 船は「つながる航路がありません」と書き、横棒の図（Rt.modeState('ferry') === 'none'）と同じ言い方にする（SPEC §33 #7）
+        if (m === 'ferry') {
+          return `<div class="rt-card off" style="--c:${rgb(col(m))}" data-state="none" title="${esc((s && s.why) || '')}"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b></span>` +
+            '<span class="rt-why">なし（つながる航路がありません）</span></div>';
+        }
         return `<div class="rt-card off" style="--c:${rgb(col(m))}"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b><span class="rt-km">なし</span></span>` +
           `<span class="rt-why">${esc((s && s.why) || '作っていません')}</span></div>`;
       }
+      // 鉄道が道路の 2 倍を超えるときは、貨物駅を回る遠回りだと書く（SPEC §33 #6）
+      const tk = cur.sets.truck;
+      const detour = m === 'rail' && tk && tk.ok && tk.km > 0 && s.km > 2 * tk.km
+        ? '<span class="rt-why rt-detour">貨物駅を回るため、道路より長くなります</span>' : '';
       // 車の大きさはデータにないので、トラックは 10t ウイングのサムネイル（SPEC §19.6）
       return `<button type="button" class="rt-card${F === m ? ' on' : ''}${F && F !== m ? ' dim' : ''}" data-mode="${m}" aria-pressed="${F === m}" style="--c:${rgb(col(m))}">` +
         `<span class="rt-body"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b><span class="rt-km num">${s.straight ? '直線 ' : ''}${km1(s.km)} km</span></span>` +
-        `<span class="rt-time">${timeHtml(s)}</span><span class="rt-legs">${legsHtml(s)}</span></span>${M3D.thumb(M3D.MODE_MODEL[m], 80, 50, 'mth-card')}</button>`;
+        `<span class="rt-time">${timeHtml(s)}</span><span class="rt-legs">${legsHtml(s)}</span>${detour}</span>${M3D.thumb(M3D.MODE_MODEL[m], 80, 50, 'mth-card')}</button>`;
     }).join('');
     const note = cur.note ? `<p class="rt-note ${cur.noteKind}" role="status">${esc(cur.note)}</p>` : '';
     const head = '<div class="rt-head"><b>送り方を比べる</b><small>手段のカードを押すと、その手段の経路を強く出します</small></div>';
@@ -643,6 +665,6 @@ const Rt = (() => {
   return {
     R, ORDER, LABEL, col, icons, iconInline, loadMeta, loadPairs, loadTrips, loadRail, setDestination, setFocus, clear, fit, suspend, resume, fillScale, resetView, applyEmphasis,
     compareLayers, timeline, tlState, render, bind, pairPath, tripPath, iconLayer, railLayer, legendHtml, mountLegend, simplifyLL, dec,
-    get focus() { return R.focus; }, get cur() { return R.cur; }, hasSets: () => !!R.cur,
+    get focus() { return R.focus; }, get cur() { return R.cur; }, hasSets: () => !!R.cur, modeState,
   };
 })();

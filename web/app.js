@@ -530,7 +530,7 @@ function renderLegend() {
 
 const MODES = [
   { key: 'takuhai', label: '宅配' }, { key: 'rosen', label: '路線便' }, { key: 'jitbox', label: 'カゴ台車' },
-  { key: 'kashikiri', label: '貸切' }, { key: 'rail', label: '鉄道' }, { key: 'ferry', label: 'フェリー' },
+  { key: 'kashikiri', label: '貸切' }, { key: 'rail', label: '鉄道' }, { key: 'ferry', label: '船' },
 ];
 const CHIP = { '公開条件に合う': 'ok', '要確認': 'check', '使えない': 'no', '計算できない': 'na' };
 // カードに添えるサムネイル（SPEC §19.6）。貸切は車種（2t・4t・10t）で選ぶ
@@ -543,13 +543,17 @@ const SHORT_LABEL = { takuhai: '宅配', rosen: '路線便', jitbox: 'カゴ台�
 const cardModel = (key, r) => (key !== 'kashikiri' ? CARD_MODEL[key] : r.detail && r.detail.vehicle ? M3D.byVehicle(r.detail.vehicle) : null);
 
 // /api/estimate の行からカードを作る。金額・状態・理由・出典・日数はすべて API の値。
+// 船の経路が無いか。routes.js（Rt）の状態をそのまま読む。経路の読み込み前は false（問い合わせ）
+const shipNoneNow = () => !!(typeof Rt !== 'undefined' && Rt.cur && Rt.cur.sets && Rt.cur.sets.ferry && Rt.cur.sets.ferry.ok === false);
+
 function buildCards(i, est) {
   const cards = [];
+  S.shipNone = shipNoneNow();
   const srcOf = (r) => (r.source && r.source.name ? [r.source.name, r.source.url || ''] : null);
   for (const m of MODES) {
     if (m.key === 'rail' || m.key === 'ferry') {
       const hn = Hubs.nearest(S.origin, i);
-      cards.push({ label: m.label, model: CARD_MODEL[m.key], status: '計算できない', amount: null, dim: true, hub: hn ? { kind: m.key, ...hn[m.key] } : null,
+      cards.push({ label: m.label, key: m.key, routeNone: m.key === 'ferry' && S.shipNone, model: CARD_MODEL[m.key], status: '計算できない', amount: null, dim: true, hub: hn ? { kind: m.key, ...hn[m.key] } : null,
         none: '運賃表を使えません。各社への問い合わせが必要です',
         tip: m.key === 'rail' ? 'JR貨物の運賃は二次利用できないため、金額は出していません' : 'フェリーの運賃は一次資料で確かめられなかったため、金額は出していません' });
       continue;
@@ -709,6 +713,8 @@ function onCargoChange() {
 // 手段ごとの経路の読み込み・取得が進んだとき（routes.js から）。帯を作り直し、最初の 1 回は地図を経路に合わせる
 App.onRt = (first) => {
   setupTimebar();
+  // 横棒の図の船の行は、経路の有無で「なし」か「問い合わせ」を変える。経路の読み込みが終わってから変わったときだけ、カードを作り直す
+  if (S.estimate && S.sel >= 0 && shipNoneNow() !== S.shipNone) renderCards(buildCards(S.sel, S.estimate));
   if (first && S.pendingFit && S.view === 'compare' && S.sel >= 0) { S.pendingFit = false; Rt.fit(); }
 };
 
