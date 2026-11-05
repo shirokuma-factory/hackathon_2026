@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backfull — 帰りの荷台を、中小の荷主の荷で埋める</title>
+<meta name="description" content="中小の運送会社と中小の荷主のためのツール。荷待ちの記録から協議の書面を作り、帰り便の偏りを地図で見て、荷主の荷とつなぐ。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23070b12'/%3E%3Cpath d='M6 21h14v-9H6zM20 15h4l3 3v3h-7z' fill='%235cc8ff'/%3E%3Ccircle cx='10' cy='23' r='2.4' fill='%23e8eef8'/%3E%3Ccircle cx='23' cy='23' r='2.4' fill='%23e8eef8'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #070b12; --panel: #0d141f; --line: rgba(255,255,255,.10);
+  --text: #e8eef8; --muted: #8f9db4; --accent: #5cc8ff; --ok: #55d6a6; --warn: #f0b64e;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: "Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif; line-height: 1.7; }
+a { color: var(--accent); }
+main { max-width: 1040px; margin: 0 auto; padding: 48px 24px 72px; }
+h1 { font-size: 40px; margin: 0; letter-spacing: .02em; }
+.sub { font-size: 20px; color: var(--text); margin: 4px 0 18px; }
+.lead { color: var(--muted); max-width: 760px; margin: 0 0 28px; }
+.try { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 0 0 40px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+.card h2 { font-size: 18px; margin: 0 0 6px; }
+.card p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+.who { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); margin-bottom: 8px; }
+.btn { display: inline-block; background: var(--accent); color: #04121c; font-weight: 700; padding: 9px 16px; border-radius: 10px; text-decoration: none; }
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.steps { margin: 8px 0 14px; padding-left: 1.2em; color: var(--text); font-size: 14px; }
+h3 { font-size: 20px; margin: 44px 0 12px; }
+figure { margin: 0 0 22px; }
+figure img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; }
+figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.shots { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .shots { grid-template-columns: 1fr; } h1 { font-size: 32px; } }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; white-space: nowrap; }
+.num { font-variant-numeric: tabular-nums; font-weight: 700; }
+.note { color: var(--muted); font-size: 13px; }
+footer { margin-top: 48px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Backfull</h1>
+  <p class="sub">帰りの荷台を、中小の荷主の荷で埋める。</p>
+  <p class="lead">
+    中小の運送会社は、荷主の都合で待たされた時間を記録していても、それを相手と話せる形にする手間がありません。
+    帰りの荷台は空のまま走り、荷台を探している小さな荷主には届いていません。
+    Backfull は、法令で残している記録と国の統計から「どこで損をしているか」を見えるようにし、相手と話す書面と、空いた帰りの荷台をつなぐところまでを 1 つにしました。
+  </p>
+
+  <div class="try">
+    <section class="card">
+      <span class="who">運送会社向け・インストール不要</span>
+      <h2>荷待ちの記録から、協議の書面を作る</h2>
+      <ol class="steps">
+        <li>開いて「例を入れる」を押す（自社の記録は Excel から貼り付けられます）</li>
+        <li>契約の相手ごとの参考額と、どこで・何時に待っているかが出る</li>
+        <li>国の標準的運賃の表に当てた、協議の書面の下書きができる</li>
+      </ol>
+      <a class="btn" href="waiting.html?example=1">いま試す</a>
+      <p class="note" style="margin-top:10px">計算はブラウザの中だけ。入れた記録はどこにも送りません。</p>
+    </section>
+    <section class="card">
+      <span class="who">荷主向け・インストール不要</span>
+      <h2>荷物の条件から、送り方を比べる</h2>
+      <ol class="steps">
+        <li>荷物の大きさ・重さ・区間を入れる</li>
+        <li>宅配・路線便・貸切・帰り便などが、使える / 使えないと理由つきで並ぶ</li>
+        <li>そのまま送れる見積依頼文ができる</li>
+      </ol>
+      <a class="btn" href="compare_lite.html">いま試す</a>
+      <p class="note" style="margin-top:10px">貸切の額は国の標準的運賃からの目安です。最後は各社の見積で確かめます。</p>
+    </section>
+  </div>
+
+  <h3>地図の画面（全部の機能）</h3>
+  <p>帰り便の偏り（物流センサス）を地図で見て、その向きの空き便を探し、荷主と運送会社をつなぐまでを 1 画面でたどれます。標準ライブラリだけのサーバーで動くので、GitHub Codespaces でそのまま開けます。</p>
+  <p>
+    <a class="btn ghost" href="https://codespaces.new/shirokuma-factory/hackathon_2026?quickstart=1">Codespaces で開く</a>
+    &nbsp;<a class="btn ghost" href="https://github.com/shirokuma-factory/hackathon_2026#地図の画面全部の機能">手元で動かす</a>
+  </p>
+
+  <div class="shots">
+    <figure><img src="img/market.jpg" alt="市場を見る: 都道府県間の帰り便の偏りを地図で見る画面" loading="lazy"><figcaption>市場を見る — 行きは満載、帰りは空になりやすい向きを、国の統計で地図に出す</figcaption></figure>
+    <figure><img src="img/find.jpg" alt="空きを探す: 荷に合う帰り便を照合する画面" loading="lazy"><figcaption>空きを探す・つなぐ — 荷に合う帰り便を照合し、締切つきで仮予約（便は架空）</figcaption></figure>
+    <figure><img src="img/waiting.jpg" alt="荷待ちを地図に: 待つ場所と時間帯" loading="lazy"><figcaption>荷待ち — どの場所で・何時に着くと長く待つか</figcaption></figure>
+    <figure><img src="img/compare.jpg" alt="送り方を比べる: 手段ごとの目安額の横棒" loading="lazy"><figcaption>送り方を比べる — 手段を誤ると何倍になるかを 1 本の図で</figcaption></figure>
+  </div>
+
+  <h3>なぜ今か</h3>
+  <table>
+    <tr><th>積載効率</th><td>営業用トラック <span class="num">38.97%</span>（2025 年度）。国の目標 <span class="num">44%</span>（2028 年度）まで約 5 ポイント足りない</td></tr>
+    <tr><th>輸送力</th><td>対策をしないと 2030 年度に <span class="num">34.1%</span> 足りなくなるおそれ</td></tr>
+    <tr><th>法令</th><td>2024 年 4 月からトラックの運転者の時間外労働に上限。荷待ちの記録の義務が広がり、2026 年度からは特定荷主に施設ごとの報告の義務</td></tr>
+  </table>
+  <p class="note">出典と照合の記録はリポジトリの <a href="https://github.com/shirokuma-factory/hackathon_2026/blob/claude/exciting-bell-uj2kvl/docs/plan/2026-11-05_課題を解くツールになっているか.md">課題を解くツールになっているか</a> と <a href="https://github.com/shirokuma-factory/hackathon_2026/blob/claude/exciting-bell-uj2kvl/docs/plan/2026-11-04_顧客の今のやり方の調査.md">顧客の今のやり方の調査</a> にあります。</p>
+
+  <h3>どこまでできているか</h3>
+  <table>
+    <tr><th>明日から自社のデータで使える</th><td>荷待ちの記録から協議の書面（運送会社）、荷物の条件から送り方の比較と見積依頼文（荷主）</td></tr>
+    <tr><th>仕組みを見せる段階</th><td>帰り便の照合と仮予約、自社の運行の空車の型。便・会社・サンプルはすべて架空です</td></tr>
+    <tr><th>しないこと</th><td>Backfull は荷を運ばず、運賃を決めず、代金を預からず、発注もしません</td></tr>
+  </table>
+
+  <footer>
+    非商用のハッカソンの提出物です。地図 © OpenStreetMap contributors。統計は国土交通省・総務省の公開データを加工して作成（出典はリポジトリ）。
+    開発は Claude Code が司令塔になり、実装・調査・採点をサブエージェントに分けて行いました（<a href="https://github.com/shirokuma-factory/hackathon_2026/blob/claude/exciting-bell-uj2kvl/docs/CLAUDE_USAGE.md">使い方の記録</a>）。
+    <br><a href="https://github.com/shirokuma-factory/hackathon_2026">GitHub のリポジトリ</a>
+  </footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,47 @@
+# 審査員がインストールなしで開けるように、サーバー不要の 2 枚のページと入口のページを GitHub Pages に出す。
+# 出すのは web/waiting.html、web/compare_lite.html（どちらも通信しない 1 枚のページ）、site/index.html、画面写真 4 枚だけ。
+# 地図の画面はサーバー（tools/serve_web.py）が要るので、ここには出さない（入口から Codespaces に案内する）。
+name: pages
+
+on:
+  push:
+    branches: [claude/exciting-bell-uj2kvl]
+    paths: [web/waiting.html, web/compare_lite.html, site/**, docs/assets/2026-11-06_site_*, .github/workflows/pages.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 公開するファイルを集める
+        run: |
+          mkdir -p _site/img
+          cp site/index.html _site/index.html
+          cp web/waiting.html web/compare_lite.html _site/
+          cp docs/assets/2026-11-06_site_market.jpg _site/img/market.jpg
+          cp docs/assets/2026-11-06_site_find.jpg _site/img/find.jpg
+          cp docs/assets/2026-11-06_site_waiting.jpg _site/img/waiting.jpg
+          cp docs/assets/2026-11-06_site_compare.jpg _site/img/compare.jpg
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
