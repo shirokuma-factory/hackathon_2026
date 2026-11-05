@@ -600,7 +600,7 @@ const Rt = (() => {
   function timeHtml(s) {
     if (s.mode === 'truck') {
       if (s.vfp) return 'フェリーを含む経路の可能性があり、運転時間は出しません';
-      if (s.fallback) return '運転時間は出せません（直線の弧）';
+      if (s.fallback) return s.truckMin ? `運転 <b class="num">${fmtMin(s.truckMin)}</b>（線は直線の弧）` : '運転時間は出せません（直線の弧）';
       return `運転 <b class="num">${fmtMin(s.truckMin)}</b>`;
     }
     return `トラックの区間 計 <b class="num">${fmtMin(s.truckMin)}</b> ／ ${LABEL[s.mode]}の区間は所要時間は時刻表で確認`;

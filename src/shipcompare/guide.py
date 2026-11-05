@@ -95,21 +95,17 @@ def request_contacts(public: bool = False, contacts: dict[str, list[dict[str, An
     """見積依頼の「見積を頼む先」（SPEC §31.2）。手段の名前も列も持たず、窓口のある会社を五十音順に並べる。
 
     試算額を出した手段と会社を結び付けないため、手段の状態では絞らない（いつも同じ一覧）。
-    公開版では、1 つの手段に窓口が 1 社しかなく並べると手段と結び付く窓口（宅配・カゴ台車）を出さず、
-    代わりに比べるページの欄を指す文（2 つめの値）を返す。"""
+    公開版では窓口を 1 社も並べず（空の一覧）、比べるページの欄を指す文（2 つめの値）だけを返す。"""
+    if public:
+        return [], CONTACT_POINTER  # 公開版は窓口を 1 社も並べない（SPEC §32 #4）
     contacts = contacts if contacts is not None else load_contacts(base)
     rows: list[dict[str, Any]] = []
-    hidden = False
     for entries in contacts.values():
-        with_window = [e for e in entries if e.get("url")]
-        if public and len(with_window) == 1:
-            hidden = True
-            continue
-        rows.extend(with_window)
+        rows.extend(e for e in entries if e.get("url"))
     rows.sort(key=lambda e: (e.get("reading") or e["name"], e["name"]))
     out = [{"name": e["name"], "url": e["url"], "condition": e["condition"], "checked_on": e["checked_on"], "has_window": True}
            for e in rows]
-    return out, (CONTACT_POINTER if hidden else None)
+    return out, None
 
 
 # ---------------------------------------------------------------- お届け日数

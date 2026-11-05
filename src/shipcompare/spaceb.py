@@ -673,7 +673,7 @@ REGISTER_VEHICLES: dict[str, dict[str, Any]] = {
             "clear_height_mm": 2300, "max_piece_kg": 500, "weight_slack_kg": 4500},
 }
 KINKI_PREFS = ("福井県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県")
-REGISTER_PRICE_BASIS = ("値段の式（SPEC §21.6）の既定値（基準積載率 70%、リードタイムの割引 0%）で、いまの荷を載せたときの参考額です。"
+REGISTER_PRICE_BASIS = ("国の個建運賃の式の既定値（基準積載率 70%、リードタイムの割引 0%）で、いまの荷を載せたときの参考額です。"
                         "値段は運送会社が決めます")
 
 

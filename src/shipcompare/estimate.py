@@ -273,6 +273,7 @@ def estimate_rosen(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
         "volume_m3": totals.volume_m3,
     }
     row.notes.append("ほかに加算があります（集配距離の加算、地区割増、冬期割増などは入っていません）")
+    row.notes.append("路線便の試算は、区間の表を持つ区間に限ります（比べるページには額がありません）")
     row.issues.append(Issue(ISSUE_NOT_MODELED, "集配距離の加算、地区割増、冬期割増は計算に入れていません"))
 
     bands = tariff["weight_bands_kg"]

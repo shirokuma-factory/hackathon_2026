@@ -353,7 +353,7 @@ function renderRows() {
 
 function inputs() { return { rows: S.rows, from: $('#from').value, to: $('#to').value, km: $('#km').value, recv: $('#recv').value, flex: $('#flex').value }; }
 
-const NO_ESTIMATE = '目安額は出せません（運賃表の全体を持っていないため）';
+const NO_ESTIMATE = '目安額は出せません（運賃表の全体を持っていないため）。路線便の試算は地図の画面だけにあり、区間の表を持つ区間に限ります';
 const NO_ESTIMATE_IDS = ['rosen', 'kei'];   // 路線便・軽貨物マッチング（公開の運賃表の全体を持っていない）
 
 // 見積を頼む先。試算額を出した送り方と会社を結び付けないため、送り方の見出しの下には置かず、窓口のある会社を五十音順に並べる（SPEC §31.2）。

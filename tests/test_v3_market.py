@@ -145,7 +145,8 @@ def test_spec16_credits_are_always_in_the_page():
     market_json = _web("market.json")
     assert "を加工して作成" in market_json["source"] and "e-Stat" in market_json["source"]
     # 上り・下りは道路の定義で、区間の行き帰りと一致しない旨が画面に出る
-    assert "区間の行き帰りとは一致しません" in js and "区間の行き帰りとは一致しません" in html
+    # 区間の詳細の折れ線は外した（SPEC §32 #2）。注意の文は地図の層の凡例に残る
+    assert "区間の行き帰りとは一致しません" in html
     # 鉄道コンテナの注記
     assert "3 日間の標本が小さく" in html
 

@@ -545,7 +545,7 @@ def build_mapping(hrows: list[list[str]], dig_values: dict[str, list[str]], wl: 
             "note": "列ごとの辞書の結果と値の形の一致率。claude_proposal は開発のセッションで Claude が列名と値の形の説明（claude_input）だけを見て出した提案を入れる欄。"
                     "null のときは『未作成』と表示し、確かさは辞書の一致だけで計算する。",
             "claude_proposal": {"role": "辞書の役割の ID（kind / start_time / end_time / distance_km / loaded_flag / place_name / driver_code / plate / vehicle_type / date）", "reason": "短い理由（任意）"},
-            "claude_input": "Claude に送る記録の形。列名、行数、空欄でない割合、値の形の説明の割合だけ。実際の値・氏名・荷主名・地点名は含めない（SPEC §22 G71）",
+            "claude_input": "Claude に送る記録の形。列名、行数、空欄でない割合、値の形の説明の割合だけ。実際の値・氏名・荷主名・地点名は含めない",
         },
         "claude_model": old_top.get("claude_model"), "claude_created_at": old_top.get("claude_created_at"),
         "dictionary": {"digitaco": own.DIGITACO_DICT, "haisha": own.HAISHA_DICT, "roles": own.ROLE_LABEL},
