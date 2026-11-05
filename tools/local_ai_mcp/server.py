@@ -81,13 +81,14 @@ class _VramSampler:
 
 
 def _resolve_workflow(name: str) -> Path:
-    path = Path(name)
-    if not path.is_absolute():
-        path = WORKFLOW_DIR / name
-    if path.suffix != ".json":
-        path = path.with_suffix(".json")
+    # workflows/comfyui/ の中の .json だけを読む（絶対パスや .. でリポジトリの外のファイルを読ませない）
+    path = (WORKFLOW_DIR / Path(name).name).with_suffix(".json")
+    try:
+        path.resolve().relative_to(WORKFLOW_DIR.resolve())
+    except ValueError:
+        raise FileNotFoundError(f"workflow must be inside {WORKFLOW_DIR.name}/: {name}") from None
     if not path.exists():
-        raise FileNotFoundError(f"workflow not found: {path}")
+        raise FileNotFoundError(f"workflow not found: {path.name}")
     return path
 
 
@@ -163,7 +164,7 @@ def comfy_run_workflow(
 ) -> dict:
     """API 形式のワークフローを ComfyUI に投入する。
 
-    workflow: workflows/comfyui/ のファイル名（拡張子なし可）か絶対パス。
+    workflow: workflows/comfyui/ のファイル名（拡張子なし可）。フォルダーの外のファイルは読まない。
     overrides: {"ノードID.inputs.項目名": 値}。例 {"3.inputs.seed": 42, "6.inputs.text": "a cat"}。
     wait: True なら完了まで待ち、処理時間・VRAM の最大値・出力ファイルを返す。
     """
