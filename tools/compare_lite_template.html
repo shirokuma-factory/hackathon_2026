@@ -42,6 +42,10 @@ table.res td.nm { font-weight: 700; white-space: nowrap; }
 ul.rs { margin: 0; padding-left: 16px; font-size: 12.5px; }
 ul.rs li { margin: 1px 0; }
 .amount { font-weight: 700; }
+.noamt { margin-top: 4px; font-weight: 700; font-size: 12.5px; color: var(--chk); }
+.ask { margin-top: 4px; font-size: 12.5px; }
+.ask a { color: var(--accent); }
+.ask .cond { color: var(--muted); font-size: 11.5px; }
 .home { margin-top: 4px; padding: 4px 8px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; font-size: 12.5px; }
 .sum { font-size: 12.5px; color: var(--muted); margin: 4px 0 8px; }
 textarea#quote { width: 100%; height: 190px; line-height: 1.55; }
@@ -98,6 +102,7 @@ body.selftest #selftest { display: block; }
    貸切の運賃は src/shipcompare/estimate.py の kashikiri_fares と同じ式です。同じ試験表（tests/data/compare_lite_vectors.json）を ?selftest=1 で通します。 */
 const TARIFFS = /*__TARIFFS__*/null;
 const VECTORS = /*__VECTORS__*/null;
+const CONTACTS = /*__CONTACTS__*/null;   // data/contacts.json の問い合わせ・申し込みページ（ビルドのときに埋め込む。ページは通信しない）
 
 const GUARD = '目安です。最後は各社の見積で確かめてください';
 const PREFS = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県', '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県',
@@ -125,6 +130,7 @@ const SOURCES = [
   '佐川 飛脚ラージサイズ便（3 辺合計 260cm・50kg）: 本ページの作成指示の値。公式ページとの照合は未了',
   '家財おまかせ便、軽貨物マッチング（ハコベル・PickGo）: 同 §F-2・§F-3（2026-11-05 に確認。法人・店舗への配達、赤帽の荷台寸法は未確認）',
   '2t・4t の貸切の目安額: 標準的運賃（2024 年 3 月 22 日告示）の距離制運賃。関東運輸局・近畿運輸局の表。近畿の表の原本との照合は未了',
+  `見積を頼む先: 各社の公式の問い合わせ・申し込みページ（data/contacts.json、${CONTACTS.checked_on} に確認）。記録が無い送り方は、記録が無いと書いて、窓口を作り出していない`,
   '帰り便: このリポジトリの地図の画面のデモ（架空の便。デモの便 T7 は最大 3,500kg・床 13.0m²）',
 ];
 
@@ -331,10 +337,36 @@ function renderRows() {
 
 function inputs() { return { rows: S.rows, from: $('#from').value, to: $('#to').value, km: $('#km').value, recv: $('#recv').value, flex: $('#flex').value }; }
 
+const NO_ESTIMATE = '目安額は出せません（運賃表の全体を持っていないため）';
+const NO_ESTIMATE_IDS = ['rosen', 'kei'];   // 路線便・軽貨物マッチング（公開の運賃表の全体を持っていない）
+const ASK_KEY = { takuhai: 'takuhai', jitbox: 'jitbox', rosen: 'rosen', kashikiri_2t: 'kashikiri', kashikiri_4t: 'kashikiri' };
+const ASK_NOTE = {
+  takuhai: 'ヤマト運輸の窓口は、記録している一覧にありません',
+  kei: 'ハコベル・PickGo の公式の申し込みページは、記録している一覧にありません。各社のサイトの会員登録から見積を取ります',
+};
+
+// 見積を頼む先。使える ○ と要確認 △ の行だけに出す。URL は data/contacts.json にあるものだけで、無いものは「記録が無い」と書く
+function askHtml(o) {
+  if (o.status === 'ng') return '';
+  let inner;
+  if (o.id === 'home') inner = '地図の画面（デモ）の「空きを探す・つなぐ」。デモの便は架空で、実在の運送会社への窓口はありません';
+  else {
+    const list = (ASK_KEY[o.id] && CONTACTS.contacts[ASK_KEY[o.id]]) || [];
+    const parts = list.map((c) => (c.url
+      ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a><div class="cond">${esc(c.condition)}</div>`
+      : `<span class="cond">${esc(c.condition)}</span>`));
+    if (ASK_NOTE[o.id]) parts.push(`<span class="cond">${esc(ASK_NOTE[o.id])}</span>`);
+    if (!parts.length) parts.push('<span class="cond">公式の窓口は、記録している一覧にありません。各社のサイトの問い合わせ先から頼みます</span>');
+    inner = parts.join('');
+  }
+  return `<div class="ask"><b>見積を頼む先</b>: ${inner}</div>`;
+}
+
 function optRow(o) {
   const amt = o.amount != null ? `<div class="amount">目安 およそ ${fmt(o.amount)} 円（税抜）</div>` : '';
   const home = o.home ? `<div class="home">${esc(o.reasons[0])}</div>` : `<ul class="rs">${o.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
-  return `<tr class="o-${o.status}" data-opt="${esc(o.id)}"><td class="nm">${esc(o.name)}</td><td><span class="badge ${o.status}">${LABEL[o.status]}</span></td><td>${amt}${home}</td></tr>`;
+  const noamt = NO_ESTIMATE_IDS.includes(o.id) && o.status !== 'ng' ? `<div class="noamt">${NO_ESTIMATE}</div>` : '';
+  return `<tr class="o-${o.status}" data-opt="${esc(o.id)}"><td class="nm">${esc(o.name)}</td><td><span class="badge ${o.status}">${LABEL[o.status]}</span></td><td>${amt}${noamt}${home}${askHtml(o)}</td></tr>`;
 }
 
 function render() {
