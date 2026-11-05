@@ -51,7 +51,11 @@ ul.rs li { margin: 1px 0; }
 .noamt { margin-top: 4px; font-weight: 700; font-size: 12.5px; color: var(--chk); }
 .ask { margin-top: 4px; font-size: 12.5px; }
 .ask a { color: var(--accent); }
-.ask .cond { color: var(--muted); font-size: 11.5px; }
+.ask .cond, .asks .cond { color: var(--muted); font-size: 11.5px; }
+.asks { margin-top: 14px; font-size: 12.5px; }
+.asks h3 { margin: 0 0 4px; font-size: 14px; }
+.ask-row { padding: 6px 0; border-top: 1px solid var(--row-line); }
+.ask-row a { color: var(--accent); }
 .home { margin-top: 4px; padding: 4px 8px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; font-size: 12.5px; }
 .sum { font-size: 12.5px; color: var(--muted); margin: 4px 0 8px; }
 textarea#quote { width: 100%; height: 190px; line-height: 1.55; }
@@ -67,6 +71,7 @@ body.selftest #selftest { display: block; }
   <h1>荷物を送る方法を、条件から比べる</h1>
   <p>荷主が自分で条件を入れて、宅配・家財・赤帽・軽貨物・路線便・貸切のどれが使えるかを見るページです。サーバーもインストールも要りません。ファイルを開くだけで動きます。</p>
 </header>
+<p class="small" id="maplink"></p>
 <div class="guard" id="guard">目安です。最後は各社の見積で確かめてください</div>
 <main>
   <div class="col-in">
@@ -123,21 +128,21 @@ const FLEX_DAYS = [0, 1, 2, 3, 4, 5, 7, 10, 14];
 
 // 規則の数字。出典は docs/plan/2026-11-04_顧客の今のやり方の調査.md の §C と §F
 const RULES = {
-  yamato: { sum3: 200, side: 170, kg: 30 },                  // §C ヤマト宅急便
-  sagawa: { sum3: 260, kg: 50 },                              // 佐川 飛脚ラージサイズ便（公式ページで確認）
+  takuhaiS: { sum3: 200, side: 170, kg: 30 },                // §C 大手の宅配（標準の上限）
+  takuhaiL: { sum3: 260, kg: 50 },                            // 大手の宅配の大型サイズ（公式ページで確認）
   kazai: { kg: 150, sum3: 450, longest: 250, height: 200 },   // §F-3 家財おまかせ便
   akabane: { kg: 350 },                                       // §C 赤帽
   kei: { kg: 350, m3: 2.8, box: [180, 130, 120], boxSeat: [250, 130, 120] }, // §F-2 ハコベル・PickGo（軽）
-  jitbox: { box: [170, 104, 104], m3: 1.8, kg: 500 },         // §C JITBOX チャーター便（西濃運輸・ヤマト運輸）
+  jitbox: { box: [170, 104, 104], m3: 1.8, kg: 500 },         // §C カゴ台車 1 本単位のボックス
   rosen: { kgPerM3: 280, quoteOverKg: 1000 },                 // 路線便の計算重量
   t2: { floorM2: 1.77 * 3.10, longest: 440, shortLen: 310 },  // §F-2 ハコベル 2t ショート 177×310cm、ロング 440cm
   t4home: { kg: 3500, floorM2: 13.0 },                        // 地図の画面のデモの便 T7（架空）
   homeFlexDays: 3,
 };
-const JITBOX_NOTE = '西濃運輸とヤマト運輸に同名のサービスがある';
+const BOX_NOTE = '同じ名前のサービスを複数の会社が出している（条件は会社ごとに違う）';
 const SOURCES = [
-  '宅配・赤帽・JITBOX・路線便: 調査 顧客の今のやり方（2026-11-04）§C（ヤマト宅急便、赤帽、西濃 JITBOX チャーター便・カンガルー特急便の公式の条件）',
-  '佐川 飛脚ラージサイズ宅配便（3 辺合計 260cm・50kg）: 佐川急便の公式ページで確認（docs/plan/2026-11-04_顧客の今のやり方の調査.md §L）',
+  '宅配・赤帽・カゴ台車・路線便: 調査 顧客の今のやり方（2026-11-04）§C（大手の宅配、赤帽、カゴ台車、積合せ便の公式の条件。会社名と各社の表は載せません）',
+  '大手の宅配の大型サイズ（3 辺合計 260cm・50kg）: 公式ページで確認（docs/plan/2026-11-04_顧客の今のやり方の調査.md §L）',
   '家財おまかせ便、軽貨物マッチング（ハコベル・PickGo）: 同 §F-2・§F-3（2026-11-05 に確認。法人・店舗への配達、赤帽の荷台寸法は未確認）',
   '2t・4t の貸切の目安額: 標準的運賃（2024 年 3 月 22 日告示）の距離制運賃。関東運輸局・近畿運輸局の表。値は官報の告示本文（令和 6 年国土交通省告示第 209 号）と照合済み（同 §L）',
   `見積を頼む先: 各社の公式の問い合わせ・申し込みページ（data/contacts.json、${CONTACTS.checked_on} に確認）。記録が無い送り方は、記録が無いと書いて、窓口を作り出していない`,
@@ -187,13 +192,13 @@ function evalTakuhai(pieces) {
   let fit = 0, all = 0;
   for (const p of pieces) {
     all += p.n;
-    const y = sum3(p) <= R.yamato.sum3 && longest(p) <= R.yamato.side && p.kg <= R.yamato.kg;
-    const s = sum3(p) <= R.sagawa.sum3 && p.kg <= R.sagawa.kg;
-    if (y || s) fit += p.n; else bad.push(`${pdesc(p)}（3 辺合計 ${sum3(p)}cm）はヤマト 200cm・30kg、佐川 260cm・50kg のどちらも超える`);
+    const y = sum3(p) <= R.takuhaiS.sum3 && longest(p) <= R.takuhaiS.side && p.kg <= R.takuhaiS.kg;
+    const s = sum3(p) <= R.takuhaiL.sum3 && p.kg <= R.takuhaiL.kg;
+    if (y || s) fit += p.n; else bad.push(`${pdesc(p)}（3 辺合計 ${sum3(p)}cm）は大手の宅配の上限（3 辺合計 260cm・50kg まで）を超える`);
   }
-  if (fit === all) return opt('takuhai', '宅配（ヤマト・佐川）', 'ok', ['全部の荷が、ヤマトの 3 辺合計 200cm・30kg か 佐川 飛脚ラージの 260cm・50kg に収まる', '個数分の運賃がかかる']);
-  if (fit === 0) return opt('takuhai', '宅配（ヤマト・佐川）', 'ng', bad);
-  return opt('takuhai', '宅配（ヤマト・佐川）', 'check', [`${fit} 点だけ宅配に載る（残り ${all - fit} 点は載らない）`, ...bad]);
+  if (fit === all) return opt('takuhai', '宅配便（大手の宅配）', 'ok', ['全部の荷が、大手の宅配の上限（3 辺合計 260cm・50kg まで）に収まる。小さいサイズ便は 200cm・30kg まで', '個数分の運賃がかかる']);
+  if (fit === 0) return opt('takuhai', '宅配便（大手の宅配）', 'ng', bad);
+  return opt('takuhai', '宅配便（大手の宅配）', 'check', [`${fit} 点だけ宅配に載る（残り ${all - fit} 点は載らない）`, ...bad]);
 }
 
 function evalKazai(pieces, recv) {
@@ -237,19 +242,19 @@ function evalKei(pieces, t) {
 
 function evalJitbox(pieces, t, recv) {
   const J = RULES.jitbox;
-  if (recv === 'person') return opt('jitbox', 'JITBOX チャーター便', 'ng', ['法人発・法人着だけ。個人宛ては承っていない', JITBOX_NOTE]);
+  if (recv === 'person') return opt('jitbox', 'カゴ台車 1 本単位', 'ng', ['法人発・法人着だけ。個人宛ては承っていない', BOX_NOTE]);
   const bad = [];
   if (t.kg > J.kg) bad.push(`合計 ${f1(t.kg)}kg は 1 ボックス 500kg までを超える`);
   if (t.m3 > J.m3) bad.push(`合計の容積 ${f1(t.m3)}m³ は 1 ボックス約 1.8m³ を超える`);
   for (const p of pieces) if (!fitsBox(p, J.box)) bad.push(`${pdesc(p)} は内寸 170×104×104cm に入らない`);
-  if (bad.length) return opt('jitbox', 'JITBOX チャーター便', 'ng', [...bad, JITBOX_NOTE]);
-  return opt('jitbox', 'JITBOX チャーター便', 'check', ['1 ボックス（内寸 170×104×104cm、約 1.8m³、500kg）に収まる', '発送する側も法人であること。料金はボックス 1 個ごとに都道府県単位で決まる', JITBOX_NOTE]);
+  if (bad.length) return opt('jitbox', 'カゴ台車 1 本単位', 'ng', [...bad, BOX_NOTE]);
+  return opt('jitbox', 'カゴ台車 1 本単位', 'check', ['1 ボックス（内寸 170×104×104cm、約 1.8m³、500kg）に収まる', '発送する側も法人であること。料金はボックス 1 個ごとに都道府県単位で決まる', BOX_NOTE]);
 }
 
 function evalRosen(t, recv) {
   const R = RULES.rosen, vw = t.m3 * R.kgPerM3, cw = Math.max(t.kg, vw);
   const reasons = [`実重量 ${f1(t.kg)}kg、容積重量 ${f1(vw)}kg（容積 ${f1(t.m3)}m³ × 280）。計算重量は大きいほうの ${f1(cw)}kg`];
-  if (recv === 'person') reasons.push('個人宅は配達担当店が日を打ち合わせて届ける（西濃・カンガルー特急便）。人手が足りないと作業員料金が別にかかることがある');
+  if (recv === 'person') reasons.push('個人宅は配達担当店が日を打ち合わせて届ける。人手が足りないと作業員料金が別にかかることがある');
   if (cw > R.quoteOverKg) { reasons.push('1,000kg を超えるので要見積'); return opt('rosen', '路線便（特別積合せ）', 'check', reasons, { cw }); }
   return opt('rosen', '路線便（特別積合せ）', 'ok', reasons, { cw });
 }
@@ -326,7 +331,7 @@ function runSelftest() {
   for (const [k, v] of Object.entries(want)) { n += 1; if (!by[k] || by[k].status !== v) fails.push(`S6 ${k}: ${by[k] && by[k].status} (期待 ${v})`); }
   n += 1; if (!by.kashikiri_4t || by.kashikiri_4t.amount !== 126060) fails.push('S6 4t 492km は 126,060 円');
   const person = evaluate({ ...s6, recv: 'person', flex: 1 }), byp = Object.fromEntries(person.options.map((o) => [o.id, o]));
-  n += 1; if (byp.jitbox.status !== 'ng' || byp.home.status !== 'ng') fails.push('個人宅は JITBOX が ng、日の幅 1 日は帰り便が ng');
+  n += 1; if (byp.jitbox.status !== 'ng' || byp.home.status !== 'ng') fails.push('個人宅はカゴ台車が ng、日の幅 1 日は帰り便が ng');
   const small = evaluate({ rows: [{ n: 1, l: 40, w: 30, h: 20, kg: 5 }], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 0 }), bys = Object.fromEntries(small.options.map((o) => [o.id, o]));
   n += 1; if (bys.takuhai.status !== 'ok' || bys.akabane.status !== 'check' || bys.kei.status !== 'ok') fails.push('小さな荷は宅配 ok、赤帽 check、軽貨物 ok');
   return fails.length ? `SELFTEST FAIL ${n - fails.length}/${n}\n${fails.join('\n')}` : `SELFTEST PASS ${n}/${n}`;
@@ -352,25 +357,28 @@ const NO_ESTIMATE = '目安額は出せません（運賃表の全体を持っ�
 const NO_ESTIMATE_IDS = ['rosen', 'kei'];   // 路線便・軽貨物マッチング（公開の運賃表の全体を持っていない）
 const ASK_KEY = { takuhai: 'takuhai', jitbox: 'jitbox', rosen: 'rosen', kashikiri_2t: 'kashikiri', kashikiri_4t: 'kashikiri' };
 const ASK_NOTE = {
-  takuhai: 'ヤマト運輸の窓口は、記録している一覧にありません',
   kei: 'ハコベル・PickGo の公式の申し込みページは、記録している一覧にありません。各社のサイトの会員登録から見積を取ります',
 };
 
-// 見積を頼む先。使える ○ と要確認 △ の行だけに出す。URL は data/contacts.json にあるものだけで、無いものは「記録が無い」と書く
+// 見積を頼む先。使える ○ と要確認 △ の送り方だけ。URL は data/contacts.json にあるものだけで、無いものは「記録が無い」と書く。
+// 窓口の会社名は送り方の行とは分け、結果の表の下の「見積を頼む先」の欄に並べる（SPEC §30.1）
+function askInner(o) {
+  if (o.id === 'home') return '地図の画面（デモ）の「空きを探す・つなぐ」。デモの便は架空で、実在の運送会社への窓口はありません';
+  const list = (ASK_KEY[o.id] && CONTACTS.contacts[ASK_KEY[o.id]]) || [];
+  const parts = list.map((c) => (c.url
+    ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a><div class="cond">${esc(c.condition)}</div>`
+    : `<span class="cond">${esc(c.condition)}</span>`));
+  if (ASK_NOTE[o.id]) parts.push(`<span class="cond">${esc(ASK_NOTE[o.id])}</span>`);
+  if (!parts.length) parts.push('<span class="cond">公式の窓口は、記録している一覧にありません。各社のサイトの問い合わせ先から頼みます</span>');
+  return parts.join('');
+}
 function askHtml(o) {
   if (o.status === 'ng') return '';
-  let inner;
-  if (o.id === 'home') inner = '地図の画面（デモ）の「空きを探す・つなぐ」。デモの便は架空で、実在の運送会社への窓口はありません';
-  else {
-    const list = (ASK_KEY[o.id] && CONTACTS.contacts[ASK_KEY[o.id]]) || [];
-    const parts = list.map((c) => (c.url
-      ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a><div class="cond">${esc(c.condition)}</div>`
-      : `<span class="cond">${esc(c.condition)}</span>`));
-    if (ASK_NOTE[o.id]) parts.push(`<span class="cond">${esc(ASK_NOTE[o.id])}</span>`);
-    if (!parts.length) parts.push('<span class="cond">公式の窓口は、記録している一覧にありません。各社のサイトの問い合わせ先から頼みます</span>');
-    inner = parts.join('');
-  }
-  return `<div class="ask"><b>見積を頼む先</b>: ${inner}</div>`;
+  return '<div class="ask"><b>見積を頼む先</b>: 下の「見積を頼む先」の欄</div>';
+}
+function asksSection(options) {
+  const rows = options.filter((o) => o.status !== 'ng').map((o) => `<div class="ask-row" data-ask="${esc(o.id)}"><b>${esc(o.name)}</b><div>${askInner(o)}</div></div>`).join('');
+  return rows ? `<div class="asks" id="asks"><h3>見積を頼む先</h3>${rows}</div>` : '';
 }
 
 function optRow(o) {
@@ -391,7 +399,7 @@ function render() {
   } else {
     const t = res.totals;
     $('#sum').textContent = `荷物の合計: ${t.count} 個、${f1(t.kg)}kg、${f1(t.m3)}m³、床面 ${f1(t.floor)}m²、最長辺 ${t.longest}cm`;
-    $('#res').innerHTML = `<div class="scroll-x"><table class="res"><thead><tr><th>送り方</th><th>判定</th><th>理由・目安額</th></tr></thead><tbody>${res.options.map(optRow).join('')}</tbody></table></div>`;
+    $('#res').innerHTML = `<div class="scroll-x"><table class="res"><thead><tr><th>送り方</th><th>判定</th><th>理由・目安額</th></tr></thead><tbody>${res.options.map(optRow).join('')}</tbody></table></div>${asksSection(res.options)}`;
     $('#quote').value = quoteText(inp, res);
   }
   $('#guard2').textContent = `${GUARD}。表の ○ は、公開されている条件に荷が当たるという意味で、受けてもらえる保証ではありません。`;
@@ -407,6 +415,8 @@ function init() {
   $('#from').innerHTML = '<option value="">選んでください</option>' + PREFS.map((p) => `<option>${p}</option>`).join('');
   $('#to').innerHTML = '<option value="">選んでください</option>' + PREFS.map((p) => `<option>${p}</option>`).join('');
   $('#flex').innerHTML = FLEX_DAYS.map((d) => `<option value="${d}">${d === 0 ? '幅なし（指定の日だけ）' : `${d} 日`}</option>`).join('');
+  // 地図の画面へのリンク。Artifact の版は 1 枚のページなので、リンクではなく文だけにする（SPEC §30.4）
+  $('#maplink').innerHTML = ARTIFACT ? '地図で送り方を比べる（地図の画面の「送り方を比べる」では、着地を選ぶと手段ごとの経路と額を見られます）' : '<a href="index.html">地図で送り方を比べる</a>';
   $('#sources').innerHTML = `<h2>出典</h2><ul>${SOURCES.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
   renderRows(); render();
   document.addEventListener('input', (e) => {

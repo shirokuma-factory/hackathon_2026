@@ -112,7 +112,7 @@ const Own = (() => {
   }
 
   function layers() {
-    if (!O.geo) return [];
+    if (!O.geo || O.tab === 'wait') return []; // 荷待ちのタブでは、サンプルの運行の線と点は出さない（荷待ちの点だけを見せる）
     const L = deck;
     return [
       new L.PathLayer({
@@ -141,7 +141,7 @@ const Own = (() => {
         O.markers.push({ el, mk: new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -12] }).setLngLat([p.lon, p.lat]).addTo(map) });
       }
     }
-    for (const m of O.markers) m.el.style.display = O.active ? '' : 'none';
+    for (const m of O.markers) m.el.style.display = O.active && O.tab !== 'wait' ? '' : 'none';
   }
 
   /* ------------------------------------------------------------ 左: タブ */
@@ -239,7 +239,7 @@ const Own = (() => {
   function renderRight() {
     const el = q('#own-right');
     if (!el || !O.loaded) return;
-    if (O.tab === 'wait') { const keep = (el.querySelector('.w-rbody') || {}).scrollTop || 0; el.innerHTML = waitRightHtml(); const b = el.querySelector('.w-rbody'); if (b) b.scrollTop = keep; return; }
+    if (O.tab === 'wait') { syncWaitMap(); const keep = (el.querySelector('.w-rbody') || {}).scrollTop || 0; el.innerHTML = waitRightHtml(); const b = el.querySelector('.w-rbody'); if (b) b.scrollTop = keep; return; }
     const d = O.data, k = d.kpis, n = d.national;
     const ar = k.actual_rate, lr = k.load_rate, le = k.load_efficiency, lar = k.large_actual_rate;
     const tiles = [
@@ -311,7 +311,6 @@ const Own = (() => {
   ];
   const W_DEFAULT_FAULT_NOTE = '荷主等の都合の欄が無いので『はい』として計算しました。違う行は『いいえ』に変えてください';
   const W_POST_WAIT_NOTE = '「荷役のあとの待ちを荷主等の都合として数える」を はい にした行は、出発 − 荷役終了 も待機の分に足しています。標準運送約款 第 34 条の「到着後、荷送人又は荷受人の責により待機した時間」に当たるかは、契約の相手と確かめてください。';
-  const W_EXAMPLE_DAYS = [1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16];
   const blankRow = () => Object.fromEntries(W_COLS.map((c) => [c.k, '']));
   const isBlank = (r) => W_COLS.every((c) => !String(r[c.k] || '').trim());
   const hm = (m) => (m ? `${Math.floor(m / 60)} 時間 ${m % 60} 分` : '0 分');
@@ -356,17 +355,8 @@ const Own = (() => {
 
   function waitInit() { if (!W.rows.length) W.rows = [blankRow(), blankRow(), blankRow()]; }
 
-  function exampleRows() {
-    // 11 行（地点07、中型、荷主等の都合）。8 行は到着 09:00・荷役開始 09:30・荷主側の荷役 22 分で待機 52 分（荷主側の荷役も待機に入る）。
-    // 3 番目と 8 番目は荷役なしで待機 75 分。最後の行は指定の到着時刻 08:30（到着 08:10）で、運転者が 10:15〜10:55 に手積み
-    // （待機は 08:30 から数え、2 時間の境は 10:30 になる）
-    return W_EXAMPLE_DAYS.map((d, i) => {
-      const base = { ...blankRow(), date: `${W.year}-10-${String(d).padStart(2, '0')}`, vehicle_class: '中型', partner: '架空 元請A物流', place: '江東区 地点07', shipper_fault: 'はい' };
-      if (i === 2 || i === 7) return { ...base, arrive: '09:00', start: '10:15', depart: '10:25' };
-      if (i === 10) return { ...base, arrive: '08:10', appointed: '08:30', start: '10:15', end: '10:55', depart: '11:05', handler: '運転者', method: '手積み', side_work: '検品・仕分け', side_min: '20' };
-      return { ...base, arrive: '09:00', start: '09:30', end: '09:52', depart: '10:00', handler: '荷主側' };
-    });
-  }
+  // 例の記録（架空）は waiting.html と同じもの（web/waiting_calc.js）。参考額 46,780 円など、地図の画面の数字が単独ページの例と一致する（SPEC §30.4）
+  const exampleRows = () => WaitingShared.exampleRows(W.year).map((r) => ({ ...blankRow(), ...r }));
 
   function waitRowHtml(r, i) {
     const cells = W_COLS.map((c) => {
@@ -432,19 +422,31 @@ const Own = (() => {
       <p class="w-small">${esc(W_BASIS_QUOTE)}</p>
       ${rows.some((r) => r.post_wait) ? `<p class="w-small">${esc(W_POST_WAIT_NOTE)}</p>` : ''}
       <div class="w-recw"><table class="w-rec"><thead><tr><th>使った車種の単価（税抜・円）</th><th>待機時間料<small>${t.unit_minutes} 分までごと</small></th><th>2 時間超</th>${methods.map((m) => `<th>${esc(m)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
+      ${WaitingMap.consultHtml(W.res, p.partner)}
       <h4>次の契約の書面（運送引受書）に入れる欄の案</h4>
       <ul class="w-list"><li>待機時間料: 荷主等の都合による待機について、到着（指定の到着時刻があるときは、その時刻）から ${t.free_minutes} 分を超えた時間に、${t.unit_minutes} 分までごとに上の単価（到着から 2 時間を超える部分は 2 時間超の単価）。</li>
         <li>積込料・取卸料: 運転者が荷役をしたとき、荷役の時間に ${t.unit_minutes} 分までごとに上の単価（手積み / フォークリフト等で別）。</li>
         <li>荷主等の都合でない待機（予期せぬ渋滞など）は対象にしません。</li></ul>
-      <p class="w-sentence">下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。</p>`;
+      <p class="w-sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。</p>`;
   }
 
   const processHtml = () => `<aside class="w-process no-print" aria-label="協議の進め方"><b>協議の進め方</b><ul>${W_PROCESS.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></aside>`;
 
+  // 結果が変わったときだけ、地図の点を作り直す。点を選んだときは右の欄だけを作り直す
+  function syncWaitMap() {
+    if (W.painted !== W.res) {
+      W.painted = W.res;
+      WaitingMap.paint(W.res);
+      if (O.active && O.tab === 'wait') fitPoints(false);
+    }
+    WaitingMap.show(O.active && O.tab === 'wait');
+  }
+
   function waitRightHtml() {
     const r = W.res;
     const protect = `<div class="w-protect"><b>守る線</b>${W_PROTECT.map((x) => `<p>${esc(x)}</p>`).join('')}</div>`;
-    const basis = `<div class="w-basis"><b>根拠</b><ul>${W_BASIS.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    const basis = `<div class="w-basis"><b>根拠</b><ul>${WaitingMap.basisItems(W_BASIS, r).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    const pageLink = `<p class="w-small wm-link no-print"><a href="waiting.html" target="_blank" rel="noopener" id="wm-open">荷待ちのページを開く（1 枚で印刷・保存できる版）</a>　別の画面で開きます。入れた記録は引き継がれません。</p>`;
     let mid;
     if (!r || !r.by_partner.length) {
       mid = '<p class="w-empty">まだ計算できる記録がありません。左の表に記録を入れるか、「例を入れる」を押してください。</p>';
@@ -456,12 +458,14 @@ const Own = (() => {
         <td class="num">${hm(x.handling_minutes)}</td><td class="num"><b>${n0(x.amount)}</b></td><td class="num">${x.over_1h_count}</td><td class="num">${x.over_2h_count}</td></tr>`).join('');
       mid = `<div class="w-sect"><div class="m-rh"><b>契約の相手ごと</b><span class="m-rsub">参考額は税抜・円</span></div>
         <table class="w-par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th>運転者の荷役の合計</th><th>参考額</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">2 時間以上の荷待ち・荷役</th></tr></thead><tbody>${tb}</tbody></table></div>
+        ${WaitingMap.hotspotsHtml(r)}
+        ${WaitingMap.mapSectionHtml(r)}
         <div class="w-sect"><div class="m-rh"><b>協議の書面の下書き</b><span class="m-rsub no-print">上の表の行を押すと相手を切り替えます</span></div>
           <div class="w-bar no-print"><button type="button" class="btn-primary sm" data-w="print">印刷して残す</button><button type="button" class="btn-sm" data-w="csv">計算結果を CSV で書き出す</button></div>
           <div class="w-draftwrap"><article id="wait-doc" class="w-doc">${draftHtml(p)}</article>${processHtml()}</div></div>`;
     }
     return `<header><div class="m-rh"><b>荷待ち・荷役の記録から協議の書面を作る</b><span class="m-rsub">${r ? esc(`標準的運賃 ${r.tariff.applies_from} 告示`) : ''}</span></div></header>
-      <div class="w-rbody">${protect}${mid}${basis}</div>`;
+      <div class="w-rbody">${pageLink}${protect}${mid}${basis}</div>`;
   }
 
   function collectRows() {
@@ -534,6 +538,8 @@ const Own = (() => {
     });
     for (const el of [root, right]) {
       el.addEventListener('click', (e) => {
+        const wm = e.target.closest('[data-wm="pick"]');
+        if (wm) { WaitingMap.select(wm.dataset.place); return; }
         const b = e.target.closest('[data-w]');
         if (!b) return;
         const a = b.dataset.w;
@@ -626,11 +632,16 @@ const Own = (() => {
   }
 
   function setTab(t) {
+    const was = O.tab;
     O.tab = t;
     syncMode();
     renderLeft();
     renderRight();
     writeHash();
+    syncMarkers();
+    if (!O.active) return;
+    if (t === 'wait') fitPoints(true);
+    else if (was === 'wait') { WaitingMap.show(false); fit(true); }
   }
 
   // 荷待ちのタブでは、左を広げて表を入れ、右に相手ごとの表と書面の下書きを出す（own.css の body.own-wait）
@@ -638,9 +649,28 @@ const Own = (() => {
 
   /* ------------------------------------------------------------ 見方の出入り */
 
+  // 地図に収める範囲の余白。画面の大きさで決める（狭い画面で余白が地図より大きくならないように）
+  function fitPad(wait) {
+    const w = window.innerWidth, h = window.innerHeight;
+    if (w <= 600) return { top: 60, bottom: Math.round(h * 0.5), left: 24, right: 24 };
+    const lw = (q('#own-view') && q('#own-view').offsetWidth) || 440, rw = (q('#own-right') && q('#own-right').offsetWidth) || 540;
+    let pad = wait ? { top: 80, bottom: 80, left: lw + 40, right: rw + 40 } : { top: 70, bottom: 150, left: 500, right: rw + 60 };
+    const over = (pad.left + pad.right) / (w * 0.8);
+    if (over > 1) pad = { ...pad, left: Math.round(pad.left / over), right: Math.round(pad.right / over) };
+    return pad;
+  }
+
   function fit(animate) {
-    const rw = (q('#own-right') && q('#own-right').offsetWidth) || 540;
-    map.fitBounds([[134.2, 34.1], [140.6, 36.2]], { padding: { top: 70, bottom: 150, left: 500, right: rw + 60 }, duration: animate ? 1500 : 0, essential: true });
+    map.fitBounds([[134.2, 34.1], [140.6, 36.2]], { padding: fitPad(false), duration: animate ? 1500 : 0, essential: true });
+  }
+
+  // 荷待ちの点が収まる範囲へ。点が無いときは動かさない。force が false のときは、点の顔ぶれが変わったときだけ動かす（入力のたびに地図が動かないように）
+  function fitPoints(force) {
+    const b = WaitingMap.bounds();
+    if (!b) return;
+    const changed = WaitingMap.fitKeyChanged(WaitingMap.key());
+    if (!changed && !force) return;
+    map.fitBounds(b, { padding: fitPad(true), maxZoom: 10, duration: 900, essential: true });
   }
 
   async function enter() {
@@ -648,15 +678,16 @@ const Own = (() => {
     syncMode();
     await load();
     renderLeft(); renderRight(); syncMarkers();
-    fit(true);
+    if (O.tab === 'wait') { WaitingMap.show(true); if (WaitingMap.bounds()) fitPoints(true); else fit(true); } else fit(true);
   }
-  function leave() { O.active = false; syncMode(); syncMarkers(); }
+  function leave() { O.active = false; syncMode(); syncMarkers(); WaitingMap.show(false); }
 
   async function init() {
     await load();
     if (!O.loaded) return;
     bindLeft();
     bindWait();
+    WaitingMap.onChange(() => { renderRight(); const d = q('#wm-detail'); if (d) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
     renderLeft(); renderRight();
   }
 

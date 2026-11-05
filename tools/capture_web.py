@@ -285,7 +285,7 @@ def select_s6(page, base: str) -> None:
     page.goto("about:blank")
     page.goto(base + "#o=13104&l=fare&d=27128")
     page.wait(lambda: page.js("!!window.__app"), 60, "アプリの起動")
-    page.wait(lambda: page.js("document.querySelector('#loading').classList.contains('done')"), 480, "読み込み画面の終了")  # 他の処理で混んでいると 240 秒を超える
+    page.wait(lambda: page.js("(function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()"), 480, "読み込み画面の終了")  # 他の処理で混んでいると 240 秒を超える
     time.sleep(8.0)
     click(page, "#cargo-toggle")
     set_select(page, "#sc-select", "S6")
@@ -489,7 +489,7 @@ def main() -> int:
             page.goto(base + hash_)
             page.wait(lambda: page.js("!!window.__app"), 180, "アプリの起動")  # 他の処理で CPU が混んでいると 60 秒を超える
             # 先読み（SPEC §19.5a）が終わって読み込み画面が消えるまで待つ（ソフトウェア描画では 9 秒を超えることがある）
-            page.wait(lambda: page.js("document.querySelector('#loading').classList.contains('done')"), 240, "読み込み画面の終了")
+            page.wait(lambda: page.js("(function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()"), 240, "読み込み画面の終了")
             time.sleep(wait)
             if pre:
                 page.js(pre)

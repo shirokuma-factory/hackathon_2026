@@ -535,6 +535,9 @@ const MODES = [
 const CHIP = { '公開条件に合う': 'ok', '要確認': 'check', '使えない': 'no', '計算できない': 'na' };
 // カードに添えるサムネイル（SPEC §19.6）。貸切は車種（2t・4t・10t）で選ぶ
 const CARD_MODEL = { takuhai: 'box_80', rosen: 'truck', jitbox: 'roll_cage', rail: 'freight_train', ferry: 'ferry' };
+// 公表運賃から出した額は百円の単位に丸め、「試算」と付けて出す（SPEC §30.1）
+const ESTIMATE_GROUPS = ['takuhai', 'rosen', 'jitbox'];
+const round100 = (v) => (v === null || v === undefined ? v : Math.round(v / 100) * 100);
 const SHORT_LABEL = { takuhai: '宅配', rosen: '路線便', jitbox: 'カゴ台車' };
 
 const cardModel = (key, r) => (key !== 'kashikiri' ? CARD_MODEL[key] : r.detail && r.detail.vehicle ? M3D.byVehicle(r.detail.vehicle) : null);
@@ -542,7 +545,7 @@ const cardModel = (key, r) => (key !== 'kashikiri' ? CARD_MODEL[key] : r.detail 
 // /api/estimate の行からカードを作る。金額・状態・理由・出典・日数はすべて API の値。
 function buildCards(i, est) {
   const cards = [];
-  const srcOf = (r) => (r.source && r.source.name ? [r.source.name, r.source.url || '#'] : null);
+  const srcOf = (r) => (r.source && r.source.name ? [r.source.name, r.source.url || ''] : null);
   for (const m of MODES) {
     if (m.key === 'rail' || m.key === 'ferry') {
       const hn = Hubs.nearest(S.origin, i);
@@ -570,8 +573,9 @@ function buildCards(i, est) {
       if (g && g.days) dayText = `運転だけで${g.days}日（積込み・荷待ちを除く）`;
       if (g && g.origin_note) tip += `。${g.origin_note}`;
     }
-    cards.push({ label: m.label, model: cardModel(m.key, r), sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, amount: r.amount,
-      low: r.low, high: r.high, days: dayText, tip, src: srcOf(r) });
+    const isEst = ESTIMATE_GROUPS.includes(m.key);
+    cards.push({ label: m.label, model: cardModel(m.key, r), sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status,
+      amount: isEst ? round100(r.amount) : r.amount, low: isEst ? round100(r.low) : r.low, high: isEst ? round100(r.high) : r.high, est: isEst, days: dayText, tip, src: srcOf(r) });
   }
   return cards;
 }
@@ -587,15 +591,15 @@ function hubHtml(h) {
 
 function renderCards(cards) {
   const max = Math.max(0, ...cards.map((c) => c.amount || 0));
-  $('#cards').innerHTML = '<p class="cards-note">公開条件に合っても、その会社がこの出荷を受けるかは見積で確かめます。金額は税抜です。</p>' + cards.map((c, n) => {
+  $('#cards').innerHTML = (typeof CompareChart !== 'undefined' ? CompareChart.html(cards) : '') + '<p class="cards-note">公開条件に合っても、その会社がこの出荷を受けるかは見積で確かめます。金額は税抜です。</p>' + cards.map((c, n) => {
     const amt = c.amount !== null && c.amount !== undefined
-      ? `<div class="amt"><b class="num" data-to="${c.amount}">${fmt(c.amount)}</b><span>円（税抜）</span>` +
+      ? `<div class="amt"><b class="num" data-to="${c.amount}">${fmt(c.amount)}</b><span>円（税抜${c.est ? '・試算' : ''}）</span>` +
         (c.low && c.high ? `<span class="range num">${fmt(c.low)}〜${fmt(c.high)}円の幅</span>` : '') + '</div>' +
         `<div class="bar"><i data-w="${Math.max(3, (c.amount / max) * 100).toFixed(1)}"></i></div>`
       : '';
     const meta = c.days ? `<div class="meta"><span>日数</span><span class="v" title="${escapeHtml(c.days)}">${escapeHtml(c.days)}</span></div>` : '';
     const note = c.note ? `<div class="note">${escapeHtml(c.note)}</div>` : '';
-    const src = c.src ? `<a class="src" href="${escapeHtml(c.src[1])}" target="_blank" rel="noopener" title="${escapeHtml(c.src[0])}">出典: ${escapeHtml(c.src[0])}</a>` : '';
+    const src = c.src && !c.src[1] ? `<span class="src" title="${escapeHtml(c.src[0])}">出典: ${escapeHtml(c.src[0])}</span>` : c.src ? `<a class="src" href="${escapeHtml(c.src[1])}" target="_blank" rel="noopener" title="${escapeHtml(c.src[0])}">出典: ${escapeHtml(c.src[0])}</a>` : '';
     const tip = c.tip ? `<span class="tip" title="${escapeHtml(c.tip)}">補足</span>` : '';
     const foot = src || tip ? `<div class="foot">${src}${tip}</div>` : '';
     const none = c.amount === null || c.amount === undefined ? `<span class="amt-none" title="${escapeHtml(c.none)}">${escapeHtml(c.none)}</span>` : '';
@@ -880,6 +884,13 @@ function setView(v) {
   setHubLegend();
 }
 App.setView = setView;
+// 送り方を比べるへ移り、発地（無ければ今のまま）と着地を選ぶ（市場を見る・空きを探すから、SPEC §30.3・§30.5）
+App.compareTo = async (originCode, destCode) => {
+  setView('compare');
+  if (originCode && originCode !== S.origin && S.meta.origins.some((o) => o.code === originCode)) await setOrigin(originCode);
+  const i = S.idx.codes.indexOf(destCode);
+  if (i >= 0) select(i, { fly: true });
+};
 
 function currentHubLine() {
   if (!S.hubSel || S.sel < 0 || !S.route) { S.hubLine = null; S.hubLineKey = ''; return null; }
@@ -959,6 +970,7 @@ async function main() {
     pixelRatio: PERF.pixelRatio(), // 高解像度の画面で画素数が増えすぎないようにする（画質の段で変わる）
   });
   map.touchZoomRotate.disableRotation();
+  Sheet.init(map); // 幅 600px 以下のパネルと、fitBounds の余白（SPEC §30.7）
   map.addControl(new maplibregl.AttributionControl({
     compact: false,
     customAttribution: ['国土数値情報（行政区域データ）（国土交通省）を加工して作成', '国土数値情報（鉄道データ）（国土交通省）を加工して作成', '道路・フェリー・空港: OSRM・OpenStreetMap（© OpenStreetMap contributors, ODbL）'],
@@ -1037,7 +1049,15 @@ async function main() {
   }
   refreshFareLayer();
   WARM.start(map, overlay);
-  WARM.onDone(() => { PERF.hold(2000); setTimeout(() => $('#loading').classList.add('done'), 150); });
+  WARM.onDone(() => {
+    PERF.hold(2000);
+    setTimeout(() => { // 読み込み画面は、消えたあと DOM から取り除く（画面の文字に残さない）
+      const l = $('#loading');
+      if (!l) return;
+      l.classList.add('done');
+      setTimeout(() => l.remove(), 450);
+    }, 150);
+  });
   requestAnimationFrame(frame);
   M3D.preload();
   { // ?perf=1 は計測、?check=1 は利用者向けの動作確認（どちらも付いていなければ何も読まない）

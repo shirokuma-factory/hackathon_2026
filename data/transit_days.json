@@ -3,7 +3,7 @@
   "checked_on": "2026-11-03",
   "modes": {
     "takuhai": {
-      "source_name": "佐川急便 お届けまでの日数（照会、代表の郵便番号 100-0005→530-0001 / 100-0005→980-0021 / 060-0001→100-0005）",
+      "source_name": "大手の宅配の公表の日数（代表の郵便番号で照会）",
       "source_url": "https://www2.sagawa-exp.co.jp/send/days/input/",
       "checked_on": "2026-11-03",
       "routes": {
@@ -20,13 +20,13 @@
           "note": "代表の郵便番号で照会した値。集荷時間や時期で変わります"
         },
         "other": {
-          "text": "佐川急便の照会画面で調べてください",
+          "text": "大手の宅配の照会画面で調べてください",
           "url": "https://www2.sagawa-exp.co.jp/send/days/input/"
         }
       }
     },
     "rosen": {
-      "source_name": "日通 fare7.pdf・こぐまアロー便の頁・名鉄NX運輸の頁に記載なし",
+      "source_name": "路線便の公表資料に記載なし",
       "source_url": "https://www.nipponexpress.com/jp/ja/service/domestic/truck/mixed-cargo/k-arrow/",
       "checked_on": "2026-11-03",
       "routes": {
@@ -45,7 +45,7 @@
       }
     },
     "jitbox": {
-      "source_name": "ヤマト JITBOX のサービス頁",
+      "source_name": "カゴ台車の公表資料",
       "source_url": "https://business.kuronekoyamato.co.jp/service/lineup/jitbox/index.html",
       "checked_on": "2026-11-03",
       "routes": {

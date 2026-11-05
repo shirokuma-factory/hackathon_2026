@@ -1,6 +1,6 @@
 """web/waiting.html を tools/waiting_page_template.html から作る（SPEC §23.7）。
 
-標準的運賃の表（data/tariffs/mlit_standard_fare_waiting.json）と試験表（tests/data/waiting_vectors.json）をページの中に埋め込む。
+標準的運賃の表（data/tariffs/mlit_standard_fare_waiting.json）と試験表（tests/data/waiting_vectors.json）、地図の画面と共有する計算（web/waiting_calc.js）をページの中に埋め込む。
 ページは通信をしないので、この 2 つはビルドのときにだけ読む。使い方: uv run python tools/build_waiting_page.py
 """
 
@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "tools" / "waiting_page_template.html"
 TARIFF = ROOT / "data" / "tariffs" / "mlit_standard_fare_waiting.json"
 VECTORS = ROOT / "tests" / "data" / "waiting_vectors.json"
+SHARED = ROOT / "web" / "waiting_calc.js"   # 地図の画面（web/own.js）と共有する計算と文言（SPEC §30.4）
 OUT_ARTIFACT = ROOT / "web" / "publish" / "waiting_artifact.html"
 TITLE = "荷待ち協議の書面"
 OUT = ROOT / "web" / "waiting.html"
@@ -31,7 +32,8 @@ def _filled() -> str:
     html = TEMPLATE.read_text(encoding="utf-8")
     tariff = json.loads(TARIFF.read_text(encoding="utf-8"))
     vectors = json.loads(VECTORS.read_text(encoding="utf-8"))
-    for key, val in (("/*__TARIFF__*/null", _js(tariff)), ("/*__VECTORS__*/null", _js(vectors))):
+    shared = SHARED.read_text(encoding="utf-8").strip("\n").replace("</", "<\\/")
+    for key, val in (("/*__WAITING_CALC__*/", shared), ("/*__TARIFF__*/null", _js(tariff)), ("/*__VECTORS__*/null", _js(vectors))):
         if html.count(key) != 1:
             raise SystemExit(f"テンプレートに {key} が 1 つありません")
         html = html.replace(key, val)

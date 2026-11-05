@@ -80,9 +80,9 @@ def test_spec13_7_sender_individual_makes_rosen_check():
     assert r.amount is not None and "rosen" in {c.mode for c in contacts_for_rows(rows)}
 
 
-def test_spec13_7_rosen_label_keeps_prefix_and_names_carrier():
+def test_spec30_1_rosen_label_names_no_carrier():
     r = row_of(estimate_all(make_shipment()), "rosen")
-    assert r.label.startswith("路線便（日本通運 積合せ）") and "運送は名鉄NX運輸 こぐまアロー便" in r.label
+    assert r.label == "路線便（積合せの公表運賃からの試算）"
 
 
 def test_spec13_7_corporate_scenarios_unchanged():
@@ -119,7 +119,7 @@ def test_spec13_8_takuhai_days(route, expected):
 
 def test_spec13_8_takuhai_other_links_to_inquiry():
     td = transit_days("takuhai", "other")
-    assert td.text == "佐川急便の照会画面で調べてください" and not td.published
+    assert td.text == "大手の宅配の照会画面で調べてください" and not td.published
     assert td.url == "https://www2.sagawa-exp.co.jp/send/days/input/"
 
 

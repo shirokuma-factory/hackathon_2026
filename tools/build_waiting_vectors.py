@@ -27,7 +27,7 @@ def row(**kw):
 
 
 def example_rows() -> list[dict]:
-    """web/own.js と web/waiting.html の「例を入れる」と同じ 11 行（8 行は 52 分、2 行は 75 分、1 行は指定の到着時刻つき）。"""
+    """以前の「例を入れる」だった 11 行（8 行は 52 分、2 行は 75 分、1 行は指定の到着時刻つき）。今の例は web/waiting_calc.js にあり、試験表にはこの 11 行をそのまま残す。"""
     days = [1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16]
     out = []
     for i, d in enumerate(days):

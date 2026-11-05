@@ -137,7 +137,7 @@ def test_spec15_3_estimate_rows_carry_source_and_published_days(srv):
     s = scenario("S1")["shipment"]
     _, r = post(port, "/api/estimate", {"shipment": shipment_to_dict(s), "origin_code": "13104", "dest_code": "27128"})
     tk = next(x for x in r["rows"] if x["group"] == "takuhai")
-    assert tk["source"]["url"].startswith("https://") and tk["source"]["checked_on"]
+    assert tk["source"]["url"] is None and tk["source"]["checked_on"] and "会社名と各社の表は載せません" in tk["source"]["name"]
     assert tk["transit"]["published"] is True and "1日" in tk["transit"]["text"]
     rosen = next(x for x in r["rows"] if x["group"] == "rosen")
     assert rosen["transit"]["published"] is False and "公表なし" in rosen["transit"]["text"]

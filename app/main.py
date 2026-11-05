@@ -41,8 +41,8 @@ ITEM_COLUMNS = ["個数", "縦(cm)", "横(cm)", "高さ(cm)", "1個の重さ(kg)
 PARTY_TYPES = [None, "法人", "個人事業主", "個人"]
 KIND_LABELS = {KIND_AMOUNT: "金額", KIND_INCLUDED: "含む", KIND_UNKNOWN: "不明"}
 MANUAL_LABELS = {
-    "takuhai_ex_tax": "宅配（佐川急便）の税抜額（円）。佐川急便の頁で調べた額を入れてください",
-    "rosen_base_fare": "路線便（日本通運）の基準運賃（円）。運賃表を見て入れてください",
+    "takuhai_ex_tax": "宅配便の税抜額（円）。公表運賃の表で調べた額を入れてください",
+    "rosen_base_fare": "路線便の基準運賃（円）。公表運賃の表を見て入れてください",
 }
 NEW_INPUT = ""
 STATUS_NOTE = "公開条件に合っても、その会社がこの出荷を受けるかは見積で確かめます。"

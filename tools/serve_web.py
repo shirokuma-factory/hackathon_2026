@@ -850,7 +850,7 @@ class Handler(SimpleHTTPRequestHandler):
         except ValueError:
             self.send_error(HTTPStatus.NOT_FOUND)
             return True
-        if sub.parts[:2] == ("data", "local") or not full.is_file():
+        if sub.parts[:2] in (("data", "local"), ("data", "tariffs")) or not full.is_file():  # 各社の運賃の表は静的ファイルで返さない（SPEC §30.1）
             self.send_error(HTTPStatus.NOT_FOUND)
             return True
         if not self.public:  # local を隠すだけ。中身は標準の処理で返す

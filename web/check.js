@@ -156,7 +156,7 @@
   }
 
   (async () => {
-    for (let i = 0; i < 600 && !(window.__app && window.__perf && document.querySelector('#loading.done')); i++) await sleep(200);
+    for (let i = 0; i < 600 && !(window.__app && window.__perf && (!document.querySelector('#loading') || document.querySelector('#loading.done'))); i++) await sleep(200);
     readyMs = performance.now();
     await sleep(500);
     showStart();
