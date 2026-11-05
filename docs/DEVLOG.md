@@ -217,3 +217,4 @@
 - 知らない見出しは名前で注記し、見出しがあるときは列の順に戻らない。荷役をした人の列が無いときは、荷役作業等の内容があれば運転者、無ければ「不明」で行を残す。荷主都合の値が読めない行は誤りにした。
 - 試験表に 8 例を足した（Python、ローカル版と Artifact 版の JS で同じ結果）。
 - 2026-11-05 14:21 `1d73fec` Separate return trips from the waiting-time logic (review r3)
+- 2026-11-05 07:39 `55e3e0a` Add gap analysis against the official judging criteria
