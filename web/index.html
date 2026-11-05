@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="loadview.css">
 <link rel="stylesheet" href="own.css">
+<link rel="stylesheet" href="compare.css">
 </head>
 <body class="view-market">
 <div id="map"></div>
@@ -23,7 +24,7 @@
   <button data-view="own" aria-pressed="false">自社の運行</button>
 </nav>
 
-<section id="panel" class="glass v-compare" aria-label="条件">
+<section id="panel" class="glass v-compare sh-panel" aria-label="条件">
   <div class="brand"><b>スポット出荷マップ</b><span>試作</span></div>
   <label class="field"><span class="lbl">出発地</span>
     <select id="origin" class="ctl"></select>
@@ -43,7 +44,7 @@
   <button id="work-resume" class="resume" hidden></button>
 </section>
 
-<nav id="layers" class="glass" aria-label="表示する値">
+<nav id="layers" class="glass sh-panel" aria-label="表示する値">
   <div class="cap v-compare">表示</div>
   <button class="lyr v-compare" data-layer="km" aria-pressed="true">道路距離</button>
   <button class="lyr v-compare" data-layer="days" aria-pressed="false">運転日数</button>
@@ -61,7 +62,7 @@
   <button id="home" title="全国を表示">全国</button>
 </nav>
 
-<section id="legend" class="glass v-compare" aria-label="凡例">
+<section id="legend" class="glass v-compare sh-panel" aria-label="凡例">
   <div class="lg-head"><span class="lg-title" id="lg-title"></span><span class="lg-unit" id="lg-unit"></span></div>
   <div class="lg-bar" id="lg-bar"></div>
   <div class="lg-ticks" id="lg-ticks"></div>
@@ -69,7 +70,7 @@
   <div class="lg-hubs" hidden></div>
 </section>
 
-<aside id="detail" class="glass v-compare" aria-label="着地の詳細" aria-hidden="true">
+<aside id="detail" class="glass v-compare sh-panel" aria-label="着地の詳細" aria-hidden="true">
   <header>
     <button id="close" aria-label="閉じる">&#10005;</button>
     <div class="rt"><div class="from">出発地 <b id="d-from"></b></div><div class="to" id="d-to"></div></div>
@@ -88,7 +89,7 @@
   <footer><button class="btn-primary" id="make-request">この着地で見積依頼文を作る</button></footer>
 </aside>
 
-<aside id="work" class="glass v-compare" aria-label="見積の作業" aria-hidden="true">
+<aside id="work" class="glass v-compare sh-panel" aria-label="見積の作業" aria-hidden="true">
   <header>
     <div class="w-head">
       <div class="w-title"><b>見積の作業</b><span id="w-route" class="num"></span></div>
@@ -109,7 +110,7 @@
   </footer>
 </aside>
 
-<section id="timebar" class="glass v-compare" aria-label="時間の帯">
+<section id="timebar" class="glass v-compare sh-panel" aria-label="時間の帯">
   <button id="play" aria-label="再生">
     <svg class="i-play" viewBox="0 0 20 20"><path d="M5 3.2v13.6a.8.8 0 0 0 1.2.7l11-6.8a.8.8 0 0 0 0-1.4l-11-6.8A.8.8 0 0 0 5 3.2z"/></svg>
     <svg class="i-pause" viewBox="0 0 20 20"><rect x="4.5" y="3" width="4" height="14" rx="1"/><rect x="11.5" y="3" width="4" height="14" rx="1"/></svg>
@@ -124,19 +125,29 @@
 </section>
 
 <div id="truck-tag" class="v-compare"></div>
-<section id="m-summary" class="glass v-market" aria-label="全国の数字">
+<section id="m-summary" class="glass v-market sh-panel" aria-label="全国の数字">
+  <div class="sum-gap" aria-label="どれだけ悪いかの物差し">
+    <div class="sum-row"><b class="sum-k">積載効率</b>
+      <p>営業用トラック <b class="num">38.97%</b>（2025 年度）。国の目標 <b class="num">44%</b>（2028 年度）まで約 5 ポイント足りない</p>
+      <small>出典: 自動車輸送統計年報 2025 年度 表 3-1（輸送トンキロ ÷ 能力トンキロ）、「基本的な方針」6 頁（令和 7 年 2 月 18 日告示）。目標の土台の範囲は国の資料で未確認です</small></div>
+    <div class="sum-row"><b class="sum-k">輸送能力</b>
+      <p>対策をしないと 2030 年度に <b class="num">34.1%</b> 足りなくなるおそれ</p>
+      <small>出典: 国土交通省「持続可能な物流の実現に向けた検討会 最終取りまとめ」2023 年 8 月、4 頁</small></div>
+  </div>
+  <div class="sum-tiles">
   <div class="sum-tile" title="営業用普通車・2025 年度（自動車輸送統計年報）"><div class="sum-num num"><span id="sum-load"></span><small>%</small></div>
-    <div class="sum-lbl"><span class="lb-full">積載効率</span><span class="lb-short">積載効率</span></div>
+    <div class="sum-lbl"><span class="lb-full">積載効率（営業用普通車の範囲）</span><span class="lb-short">積載効率（普通車）</span></div>
     <div class="sum-src">営業用普通車・2025 年度（自動車輸送統計年報）</div></div>
   <div class="sum-tile" title="営業用普通車・2025 年度（自動車輸送統計年報）。走った距離のうち荷を積んでいた割合"><div class="sum-num num"><span id="sum-rate"></span><small>%</small></div>
-    <div class="sum-lbl"><span class="lb-full">実車率（走った距離のうち荷を積んでいた割合）</span><span class="lb-short">実車率</span></div>
+    <div class="sum-lbl"><span class="lb-full">実車率（営業用普通車。走った距離のうち荷を積んでいた割合）</span><span class="lb-short">実車率</span></div>
     <div class="sum-src">営業用普通車・2025 年度（自動車輸送統計年報）</div></div>
   <div class="sum-tile" title="県をまたぐ荷で、逆向きに同じ量の荷が無い割合。営業用トラック・物流センサス 2021（e-Stat を加工）"><div class="sum-num num"><span id="sum-share"></span><small>%</small></div>
     <div class="sum-lbl"><span class="lb-full">県をまたぐ荷で、逆向きに同じ量の荷が無い割合</span><span class="lb-short">逆向きに荷が無い割合</span></div>
     <div class="sum-src">営業用トラック・物流センサス 2021（e-Stat を加工）</div></div>
+  </div>
 </section>
 
-<div id="m-left" class="v-market">
+<div id="m-left" class="v-market sh-panel">
   <section id="m-ctl" class="glass" aria-label="表示する区間">
     <div class="m-seg m-seg-scope" id="m-scope" role="group" aria-label="塗り分けの単位">
       <button data-scope="pref" aria-pressed="true">県</button>
@@ -162,6 +173,7 @@
       <input id="m-x" type="range" min="0" max="20" step="0.5" value="5"></label>
     <div class="calc-out"><span class="num" id="calc-from"></span><span class="calc-ar" aria-hidden="true">&rarr;</span><b class="num" id="calc-to"></b><span class="calc-d num" id="calc-d"></span></div>
     <div class="calc-lbl">営業用普通車の実車率（%）</div>
+    <p class="calc-who">X が動くのは、帰りが空く向きに荷を持つ荷主が帰り便を使い、運送会社が帰り便を登録したときです。このデモの便はすべて架空です。</p>
     <details class="calc-note"><summary>この計算の前提</summary>
       <p id="calc-formula"></p>
       <p>前提は 5 つあり、強いものです。トンキロに比例する。帰り便は今も走っている。ほかの便の走行は変わらない。全国の実車率で代用する。道路距離は直線の一定倍とみなす。</p></details>
@@ -194,7 +206,7 @@
   </section>
 </div>
 
-<aside id="m-right" class="glass v-market" aria-label="帰りが空きやすい区間">
+<aside id="m-right" class="glass v-market sh-panel" aria-label="帰りが空きやすい区間">
   <header>
     <div class="m-rh"><b id="m-rtitle">帰りが空きやすい区間</b><span class="m-rsub num" id="m-rsub"></span>
       <button id="m-rfold" class="m-rfold" aria-expanded="true" aria-controls="m-table-wrap" aria-label="一覧を畳む・開く"><svg class="caret" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5"/></svg></button></div>
@@ -209,8 +221,9 @@
 
 
 
-<div id="m-credits" class="v-market" aria-label="出典と利用条件"><details id="m-credits-d"><summary>出典・利用条件</summary><div id="m-credits-body"></div></details></div>
+<div id="m-credits" class="v-market sh-panel" aria-label="出典と利用条件"><details id="m-credits-d"><summary>出典・利用条件</summary><div id="m-credits-body"></div></details></div>
 
+<div id="find-sheet" class="sheet-wrap">
 <section id="find-view" class="glass v-find" aria-label="空きを探す・つなぐ">
   <div id="own-draft" class="own-draft" hidden><p class="od-text"></p><button type="button" class="btn-link od-close" aria-label="この説明を閉じる">閉じる</button></div>
   <div class="m-h">空きを探す・つなぐ<span class="m-tag">架空のデモ</span></div>
@@ -237,6 +250,7 @@
     <p class="f-hint" id="f-bh" hidden></p>
   </div>
   <div id="f-carrier" hidden>
+    <div id="f-dir" class="f-dir" hidden></div>
     <label class="field"><span class="lbl">運送会社の役</span><select id="f-carrier-sel" class="ctl sm"></select></label>
     <div class="m-h f-sub-h">便の空きと料金を変える<span class="m-tag">画面の中だけ</span></div>
     <label class="field"><span class="lbl">便</span><select id="f-trip-sel" class="ctl sm"></select></label>
@@ -269,7 +283,9 @@
     <span class="mlg-faint">細い線は帰りの空きやすさ（物流センサス 2021、e-Stat を加工）</span></div>
   <div class="f-lg f-lg-modes"><span class="rt-legend rt-legend-row"></span></div>
 </section>
+</div>
 
+<div id="own-sheet" class="sheet-wrap">
 <section id="own-view" class="glass v-own" aria-label="自社の運行">
   <div class="m-h">自社の運行<span class="m-tag">架空のサンプル</span></div>
   <p class="o-co">架空 播磨ライン運輸（兵庫県加古川市・車両 8 台）の 2026 年 10 月</p>
@@ -285,6 +301,7 @@
   <p class="f-n3">列の対応づけの Claude の提案は、開発のときに作った記録です</p>
   <p class="f-n3">ここの数字は検索と集計のための写しです。法令で残す元の記録は、別に保管してください。</p>
 </section>
+</div>
 
 <section id="f-contract" class="glass v-find" role="dialog" aria-label="書面の下書き" hidden>
   <div class="fc-head"><b>書面の下書き</b><span class="m-tag">架空のデモ</span></div>
@@ -298,6 +315,7 @@
   </div>
 </section>
 
+<nav id="sheet-tabs" class="glass" aria-label="パネルの切り替え" hidden></nav>
 <div id="hover-tag"></div>
 <div id="loadview" hidden></div>
 <div id="toast" role="status"></div>
@@ -313,9 +331,13 @@
 <script src="warmup.js"></script>
 <script src="cull.js"></script>
 <script src="muni.js"></script>
+<script src="compare_chart.js"></script>
+<script src="sheet.js"></script>
 <script src="routes.js"></script>
 <script src="market.js"></script>
 <script src="find.js"></script>
+<script src="waiting_calc.js"></script>
+<script src="waiting_map.js"></script>
 <script src="own.js"></script>
 <script src="app.js"></script>
 </body>

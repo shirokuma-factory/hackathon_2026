@@ -42,7 +42,7 @@ def test_s2():
     sc, r = amounts("S2")
     assert r["takuhai"].status == ST_UNUSABLE
     # 仕様 §9 は「330cm」と書くが 110+110+120=340cm。実際の合計を出す
-    assert any("340" in x and "260cm超" in x for x in r["takuhai"].reasons)
+    assert any("340" in x and "260cm" in x and "を超える" in x for x in r["takuhai"].reasons)  # 会社名なしの文（SPEC §30.1）
     assert r["takuhai"].amount is None
     assert r["rosen"].amount == 11970
     assert str(r["rosen"].detail["chargeable_kg"]) == "406.56"
@@ -97,4 +97,9 @@ def test_sorted_cheapest_first_unusable_last():
 def test_every_row_has_source():
     for sid in ("S1", "S2", "S3", "S4"):
         for r in estimate_all(load_scenario(sid)["shipment"]):
-            assert r.source and r.source.url and r.source.checked_on
+            assert r.source and r.source.checked_on
+            # 公表運賃の試算（宅配・路線便・カゴ台車）は会社名と各社の表を出さないので URL を持たない（SPEC §30.1）
+            if r.mode in ("takuhai", "rosen", "jitbox"):
+                assert not r.source.url and "会社名" in r.source.name
+            else:
+                assert r.source.url

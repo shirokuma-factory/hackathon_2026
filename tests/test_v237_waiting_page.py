@@ -83,10 +83,11 @@ def test_example_rows_in_own_js_and_the_page_match_the_vector_example():
     last = res["rows"][-1]
     assert (last["appointed"], last["wait_from"], last["handler"]) == ("08:30", "指定の到着時刻", "運転者")
     assert (last["handling_normal_units"], last["handling_over_units"]) == (1, 1)  # 2 時間の境（10:30）をまたぐ
-    for src in (OWN_JS,):   # waiting.html の開いた直後の例は SPEC §27.4 で替えた（tests/test_v27_hotspots.py）
-        for frag in ("[1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16]", "i === 2 || i === 7", "i === 10", "appointed: '08:30'", "arrive: '08:10'",
-                     "start: '10:15', end: '10:55'", "江東区 地点07", "架空 元請A物流"):
-            assert frag in src, frag
+    # 地図の画面の例は waiting.html と同じもの（web/waiting_calc.js、SPEC §30.4）。この 11 行の例は試験表の入力として残している
+    assert "WaitingShared.exampleRows" in OWN_JS
+    shared = (ROOT / "web" / "waiting_calc.js").read_text(encoding="utf-8")
+    for frag in ("江東区 地点07", "架空 元請A物流"):
+        assert frag in shared, frag
 
 
 # ---------------------------------------------------------------- ページ（文字列）

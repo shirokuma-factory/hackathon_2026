@@ -24,7 +24,8 @@ def test_takuhai_50kg_ok_and_50_1kg_unusable():
     r = row_of(rows([Item(1, 50, 50, 50, 50.1)]), "takuhai")
     assert r.status == ST_UNUSABLE
     assert ISSUE_TAKUHAI_OVER in r.codes()
-    assert any("50kg超" in x for x in r.reasons)
+    # 会社名を出さない文（SPEC §30.1）: 「1個の重さが50.1kgで、大手の宅配の上限（…50kg まで）を超える」
+    assert any("1個の重さが50.1kg" in x and "50kg まで" in x for x in r.reasons)
 
 
 def test_takuhai_260cm_ok_and_261cm_unusable():
@@ -32,7 +33,7 @@ def test_takuhai_260cm_ok_and_261cm_unusable():
     assert r.status == ST_OK and r.detail["sizes"][0]["size"] == 260
     r = row_of(rows([Item(1, 100, 100, 61, 20)]), "takuhai")
     assert r.status == ST_UNUSABLE
-    assert any("260cm超" in x for x in r.reasons)
+    assert any("3辺の合計が261cm" in x and "260cm" in x for x in r.reasons)  # 会社名なしの文（SPEC §30.1）
 
 
 def test_takuhai_one_bad_piece_makes_row_unusable():

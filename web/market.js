@@ -42,6 +42,8 @@ const Market = (() => {
     q('#m-credits-body').innerHTML = [
       `${esc(d.source)}。${esc(d.unit)}`,
       '営業用普通車の積載効率・実車率: 国土交通省「自動車輸送統計年報」2025 年度（e-Stat 統計表 ID 000040511074 ほか）。出典は e-Stat、政府標準利用規約（第 2.0 版）に従って加工しています',
+      '営業用トラックの積載効率 38.97%: 自動車輸送統計年報 2025 年度 表 3-1（輸送トンキロ ÷ 能力トンキロ）。国の目標 44%（2028 年度）: 「基本的な方針」6 頁（令和 7 年 2 月 18 日告示）。目標の土台の範囲は国の資料で未確認です',
+      '2030 年度に輸送能力が 34.1% 足りなくなるおそれ: 国土交通省「持続可能な物流の実現に向けた検討会 最終取りまとめ」2023 年 8 月、4 頁（対策をしない場合の見通し）',
       `${esc(M.j.attribution)}。台数は参考値です。積荷の有無は分かりません`,
       '動く線の形: 国土数値情報（鉄道データ）（国土交通省）を加工して作成。道路は OSRM、フェリー航路・貨物専用線・空港は OpenStreetMap（© OpenStreetMap contributors, ODbL 1.0）',
       '拠点（貨物駅・港・フェリー航路）: © OpenStreetMap contributors（ODbL 1.0）／地図: OpenFreeMap © OpenMapTiles Data from OpenStreetMap／行政区域: 国土数値情報（国土交通省）を加工',
@@ -105,7 +107,7 @@ const Market = (() => {
     q('#m-tbody').innerHTML = M.rows.map((r, i) => {
       const P = M.d.prefs;
       return `<tr data-k="${r.k}" tabindex="0" class="${r.k === M.sel ? 'on' : ''}"><td class="c-rk num">${i + 1}</td>` +
-        `<td class="c-pair">${esc(P[r.fi].replace(/[県府]$/, ''))}<span class="ar">&rarr;</span>${esc(P[r.ti].replace(/[県府]$/, ''))}</td>` +
+        `<td class="c-pair">${esc(P[r.fi])}<span class="ar">&rarr;</span>${esc(P[r.ti])}</td>` +
         `<td class="num">${n0(r.go)}</td><td class="num">${n0(r.back)}</td><td class="num">${r.ratio.toFixed(3)}</td>` +
         `<td class="num"><b>${n0(r.short)}</b></td><td class="num">${n0(r.km)}</td></tr>`;
     }).join('') || '<tr><td colspan="7" class="empty">条件に合う区間がありません。距離の下限を下げてください</td></tr>';
@@ -404,7 +406,13 @@ const Market = (() => {
     } else {
       h += `<p class="mp-nojt">この区間の大型車の観測点は取得していません（取得したのは兵庫–東京、東京–三重、神奈川–愛知の 3 区間だけです）。</p>`;
     }
-    h += `<button class="btn-primary mp-go" data-act="find">この区間の空き便を探す</button>`;
+    h += '<div class="mp-roles">' +
+      '<div class="mp-role"><span>荷主の役</span><button class="btn-primary mp-go" data-act="find">この向きの空き便を探す</button></div>' +
+      `<div class="mp-role"><span>運送会社の役</span><button class="btn-ghost mp-go" data-act="carrier">この向きの帰り便を登録する</button></div></div>`;
+    if (r.km >= CLO_KM) {
+      h += `<div class="mp-clo"><p>直線 ${n0(r.km)} km あります。トラックから鉄道・船に移せるかを、日数と目安額の差で見られます。</p>` +
+        '<button class="btn-ghost mp-go" data-act="clo">鉄道・船を含めて送り方を比べる</button></div>';
+    }
     box.innerHTML = h;
     box.hidden = false;
     const hd = box.querySelector('.mp-jh');
@@ -422,6 +430,32 @@ const Market = (() => {
     if (b.dataset.act === 'close') deselect(true);
     else if (b.dataset.act === 'pt') { M.jpId = Number(b.dataset.id); renderPair(); }
     else if (b.dataset.act === 'find') { App.setView('find'); }
+    else if (b.dataset.act === 'carrier') { Find.openCarrier(pairNames()); }
+    else if (b.dataset.act === 'clo') { cloCompare(); }
+  }
+
+  /* 直線 500km 以上の区間から、鉄道・船を含めて送り方を比べる（SPEC §30.5）。県庁所在地の市（東京は新宿区）を発地・着地にする */
+  const CLO_KM = 500;
+  const CAPITAL = {
+    '北海道': '01101', '青森県': '02201', '岩手県': '03201', '宮城県': '04101', '秋田県': '05201', '山形県': '06201', '福島県': '07201',
+    '茨城県': '08201', '栃木県': '09201', '群馬県': '10201', '埼玉県': '11107', '千葉県': '12101', '東京都': '13104', '神奈川県': '14104',
+    '新潟県': '15103', '富山県': '16201', '石川県': '17201', '福井県': '18201', '山梨県': '19201', '長野県': '20201', '岐阜県': '21201',
+    '静岡県': '22101', '愛知県': '23106', '三重県': '24201', '滋賀県': '25201', '京都府': '26104', '大阪府': '27128', '兵庫県': '28110',
+    '奈良県': '29201', '和歌山県': '30201', '鳥取県': '31201', '島根県': '32201', '岡山県': '33101', '広島県': '34101', '山口県': '35203',
+    '徳島県': '36201', '香川県': '37201', '愛媛県': '38201', '高知県': '39201', '福岡県': '40132', '佐賀県': '41201', '長崎県': '42201',
+    '熊本県': '43101', '大分県': '44201', '宮崎県': '45201', '鹿児島県': '46201', '沖縄県': '47201',
+  };
+  function cloCompare() {
+    const r = selected();
+    if (!r) return;
+    const fromP = M.d.prefs[r.fi], toP = M.d.prefs[r.ti];
+    const origins = S.meta.origins.map((o) => o.code);
+    let o = CAPITAL[fromP], d = CAPITAL[toP], note = '';
+    if (!origins.includes(o)) {
+      if (origins.includes(d)) { [o, d] = [d, o]; note = `発地に選べるのは関東の 7 都市だけなので、${toP}の県庁所在地を発地、${fromP}を着地にしました（道路距離は同じです）`; }
+      else { o = null; note = `道路距離を持つ発地は関東の 7 都市だけなので、発地はいまの選択のまま、着地を${toP}の県庁所在地にしました`; }
+    }
+    App.compareTo(o, d).then(() => { if (note) toast(note); });
   }
 
   // 折れ線（SVG）。上りと下りを 1 時間ごとに。欠測（null）では線を切る。値の変換は座標への写像だけ。

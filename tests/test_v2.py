@@ -104,7 +104,7 @@ def test_spec13_5_json_has_notice_scenario_estimates(tmp_path):
     est = raw["estimates"]
     assert est[0]["version"] == 1
     rosen = next(r for r in est[0]["rows"] if r["mode"] == "rosen")
-    assert rosen["amount_ex_tax"] and rosen["source_name"] and rosen["source_url"] and rosen["checked_on"]
+    assert rosen["amount_ex_tax"] and rosen["source_name"] and rosen["checked_on"] and rosen["source_url"] is None
     assert all(q["is_demo"] is True for q in raw["quotes"])
     assert load_case(path) == case
 

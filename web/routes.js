@@ -299,7 +299,7 @@ const Rt = (() => {
   async function refine(tok) {
     const cur = R.cur, toCode = S.idx.codes[cur.i];
     const jobs = ORDER.filter((m) => m === 'truck' || (cur.sets[m] && cur.sets[m].ok && cur.sets[m].legs.at(-1).mode === 'truck'));
-    let n = 0, failedTail = false;
+    let n = 0, failedTail = false, failedTruck = false;
     for (const m of jobs) {
       n++;
       cur.note = `着地までの道路の経路を取得しています（${n}/${jobs.length}）`;
@@ -314,10 +314,15 @@ const Rt = (() => {
       if (m === 'truck') {
         const fb = !j.ok;
         const ll = j.coordinates || [[curOdPoint()[0], curOdPoint()[1]], cur.ll];
-        const leg = mkLeg('truck', j.km ?? 0, fb ? null : j.minutes, `${cur.names.o}→${cur.names.d}`, ll, { fallback: fb });
+        // 上の欄（詳細パネルの距離）に道路距離があるときは同じ値を出す。無いときは「直線」と書いた直線距離を出す（SPEC §30.6）
+        const roadKm = curOd().km ? curOd().km[cur.i] : null;
+        const hasRoad = roadKm !== null && roadKm !== undefined;
+        const km = hasRoad ? roadKm : (fb ? Math.round(hav(ll[0], ll[ll.length - 1]) * 10) / 10 : j.km);
+        const straight = fb && !hasRoad;
+        const leg = mkLeg('truck', km, fb ? null : j.minutes, `${cur.names.o}→${cur.names.d}`, ll, { fallback: fb, straight });
         const ferry = !!(curOd().ferry && curOd().ferry[cur.i]);
-        cur.sets.truck = { mode: 'truck', ok: true, why: '', legs: [leg], hubs: [], stops: [cur.names.o, cur.names.d], km: leg.km, truckMin: leg.minutes || 0, vfp: ferry, fallback: fb };
-        if (fb) { cur.note = '経路を取得できませんでした（トラックの線は直線の弧です）'; cur.noteKind = 'err'; }
+        cur.sets.truck = { mode: 'truck', ok: true, why: '', legs: [leg], hubs: [], stops: [cur.names.o, cur.names.d], km: leg.km, truckMin: leg.minutes || 0, vfp: ferry, fallback: fb, straight };
+        if (fb) failedTruck = true;
       } else if (j.ok) {
         const s = cur.sets[m], last = s.legs.at(-1);
         s.legs[s.legs.length - 1] = mkLeg('truck', j.km, j.minutes, `${s.stops[s.stops.length - 2]}→${cur.names.d}`, j.coordinates);
@@ -328,9 +333,14 @@ const Rt = (() => {
       App.onRt(false);
     }
     if (tok !== R.tok) return;
-    if (!cur.sets.truck.fallback) {
-      cur.note = failedTail ? '経路を取得できなかった区間は、県庁所在地までの経路のままです' : '電車・船・飛行機の最後の区間は、貨物駅・港・空港から着地までの道路の経路です';
-      cur.noteKind = failedTail ? 'err' : 'info';
+    // すべての取得が終わったあと、1 つでも取れなかったものがあれば、その旨を最後に出す。「取得しています」は残さない
+    if (failedTruck || failedTail) {
+      cur.note = (failedTruck ? '経路を取得できませんでした（直線の弧で表示しています）' : '') +
+        (failedTail ? (failedTruck ? '。' : '') + '経路を取得できなかった区間は、県庁所在地までの経路のままです' : '');
+      cur.noteKind = 'err';
+    } else {
+      cur.note = '電車・船・飛行機の最後の区間は、貨物駅・港・空港から着地までの道路の経路です';
+      cur.noteKind = 'info';
     }
     render();
   }
@@ -547,7 +557,7 @@ const Rt = (() => {
   function legsHtml(s) {
     let h = esc(s.stops[0]);
     s.legs.forEach((l, k) => {
-      h += `<span class="ar">→</span><span class="lg lg-${l.mode}">${LABEL[l.mode]} ${km1(l.km)}km</span><span class="ar">→</span>${esc(s.stops[k + 1])}`;
+      h += `<span class="ar">→</span><span class="lg lg-${l.mode}">${LABEL[l.mode]} ${l.straight ? '直線 ' : ''}${km1(l.km)}km</span><span class="ar">→</span>${esc(s.stops[k + 1])}`;
     });
     return h;
   }
@@ -573,7 +583,7 @@ const Rt = (() => {
       }
       // 車の大きさはデータにないので、トラックは 10t ウイングのサムネイル（SPEC §19.6）
       return `<button type="button" class="rt-card${F === m ? ' on' : ''}${F && F !== m ? ' dim' : ''}" data-mode="${m}" aria-pressed="${F === m}" style="--c:${rgb(col(m))}">` +
-        `<span class="rt-body"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b><span class="rt-km num">${km1(s.km)} km</span></span>` +
+        `<span class="rt-body"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b><span class="rt-km num">${s.straight ? '直線 ' : ''}${km1(s.km)} km</span></span>` +
         `<span class="rt-time">${timeHtml(s)}</span><span class="rt-legs">${legsHtml(s)}</span></span>${M3D.thumb(M3D.MODE_MODEL[m], 80, 50, 'mth-card')}</button>`;
     }).join('');
     const note = cur.note ? `<p class="rt-note ${cur.noteKind}" role="status">${esc(cur.note)}</p>` : '';

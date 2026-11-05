@@ -48,10 +48,9 @@ def test_compare_sources_and_jitbox_name():
     assert "令和6年国土交通省告示第209号" in tariff["verified_by"]
     for k in ("cmp_local", "cmp_art"):
         h = _read(k)
-        assert "佐川急便の公式ページで確認" in h and "未了" not in h
+        assert "大手の宅配の大型サイズ（3 辺合計 260cm・50kg）: 公式ページで確認" in h and "未了" not in h
         assert "令和 6 年国土交通省告示第 209 号）と照合済み" in h
-        assert "JITBOX チャーター便（西濃）" not in h
-        assert "西濃運輸とヤマト運輸に同名のサービスがある" in h
+        assert "同じ名前のサービスを複数の会社が出している" in h
         assert "令和6年国土交通省告示第209号、官報号外第66号94ページ" in h  # 埋め込んだ近畿の表
 
 
@@ -124,8 +123,8 @@ def test_compare_example_autoloaded_and_note_goes_away(k):
         page.goto(_uri(k))
         page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")
         assert page.js("document.querySelector('#example-note').hidden") is False
-        assert page.js("document.querySelector('[data-opt=jitbox] .nm').textContent") == "JITBOX チャーター便"
-        assert "西濃運輸とヤマト運輸に同名のサービスがある" in page.js("document.querySelector('[data-opt=jitbox]').textContent")
+        assert page.js("document.querySelector('[data-opt=jitbox] .nm').textContent") == "カゴ台車 1 本単位"
+        assert "同じ名前のサービスを複数の会社が出している" in page.js("document.querySelector('[data-opt=jitbox]').textContent")
         page.js("var i = document.querySelector('.pin'); i.value = '3'; i.dispatchEvent(new Event('input', {bubbles: true}))")
         assert page.js("document.querySelector('#example-note').hidden") is True
         page.goto(_uri(k))

@@ -30,7 +30,25 @@ ISSUE_PICKUP_UNKNOWN = "pickup_unknown"
 # 利用者が手入力した額から出した行の出典（運送会社の表ではない）
 USER_INPUT_SOURCE = Source("利用者の入力", "", None, "")
 
-ROSEN_LABEL = "路線便（日本通運 積合せ）運送は名鉄NX運輸 こぐまアロー便"
+# 手段の名前（SPEC §30.1）。実在の会社名は出さない
+TAKUHAI_LABEL = "宅配便（大手の公表運賃からの試算）"
+ROSEN_LABEL = "路線便（積合せの公表運賃からの試算）"
+JITBOX_LABEL = "カゴ台車 1 本単位（公表運賃からの試算）"
+# 出典の行（SPEC §30.1）。各社の表の名前・ファイル名・頁は出さない
+ANON_SOURCE_NAME = "大手の公表運賃をもとにした試算。会社名と各社の表は載せません（各社の利用条件のため）"
+TAKUHAI_LIMIT_TEXT = "大手の宅配の上限（3辺合計 {cm}cm・{kg}kg まで）"
+
+
+def anon_source(tariff: dict[str, Any]) -> Source:
+    """宅配・路線便・カゴ台車の行の出典。会社名と各社の表への URL は載せない。"""
+    return Source(ANON_SOURCE_NAME, "", tariff.get("applies_from"), tariff["checked_on"])
+
+
+def round_100(value: int | None) -> int | None:
+    """表示用に百円の単位へ丸める（SPEC §30.1）。"""
+    if value is None:
+        return None
+    return int((Decimal(value) / 100).quantize(Decimal(1), rounding=ROUND_HALF_UP) * 100)
 
 TAX_RATE = Decimal("1.1")
 CM3_PER_M3 = Decimal(1_000_000)
@@ -141,7 +159,7 @@ def _route_km(shipment: Shipment) -> Decimal | None:
 
 def estimate_takuhai(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
                      manual: dict[str, int]) -> EstimateRow:
-    row = EstimateRow("takuhai", "宅配（佐川急便）", ST_OK, source=source_of(tariff))
+    row = EstimateRow("takuhai", TAKUHAI_LABEL, ST_OK, source=anon_source(tariff))
     if not totals.ok:
         return _nocalc(row, totals)
 
@@ -157,9 +175,11 @@ def estimate_takuhai(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
             max_kg = sizes[-1]["max_kg"]
             parts = []
             if total_cm > max_cm:
-                parts.append(f"3辺の合計が{max_cm}cm超（{total_cm.normalize():f}cm）")
+                parts.append(f"3辺の合計が{total_cm.normalize():f}cm")
             if kg > max_kg:
-                parts.append(f"1個の重さが{max_kg}kg超（{kg.normalize():f}kg）")
+                parts.append(f"1個の重さが{kg.normalize():f}kg")
+            if parts:
+                parts = ["、".join(parts) + "で、" + TAKUHAI_LIMIT_TEXT.format(cm=max_cm, kg=max_kg) + "を超える"]
             if not parts:
                 parts.append("サイズと重さの組み合わせが表にない")
             reasons.append(f"荷物{i}行目: " + "、".join(parts))
@@ -182,7 +202,7 @@ def estimate_takuhai(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
         if value is None:
             row.status = ST_NOCALC
             row.needs_input = "takuhai_ex_tax"
-            row.reasons = ["この区間の表は持っていません。佐川急便の頁で調べた額を入れてください"]
+            row.reasons = ["この区間の表は持っていません。公表運賃の表で調べた額を入れてください"]
             row.issues.append(Issue(ISSUE_NEEDS_INPUT, row.reasons[0]))
             return row
         row.amount = value
@@ -239,7 +259,7 @@ def _oversize_reasons(shipment: Shipment) -> list[str]:
 
 def estimate_rosen(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
                    manual: dict[str, int]) -> EstimateRow:
-    row = EstimateRow("rosen", ROSEN_LABEL, ST_OK, source=source_of(tariff))
+    row = EstimateRow("rosen", ROSEN_LABEL, ST_OK, source=anon_source(tariff))
     if shipment.receiver_type == "個人":
         row.status = ST_UNUSABLE
         row.reasons = ["使えない（法人向けの商品で、個人あての配送はしていません）"]
@@ -309,7 +329,7 @@ def estimate_rosen(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
 
 def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
                     manual: dict[str, int]) -> EstimateRow:
-    row = EstimateRow("jitbox", "カゴ台車1本単位（ヤマト JITBOX）", ST_OK, source=source_of(tariff))
+    row = EstimateRow("jitbox", JITBOX_LABEL, ST_OK, source=anon_source(tariff))
     row.notes.append("区間の代表（東京→大阪府、東京→宮城、道央→東京）の運賃を使っています")
 
     kinds = {shipment.sender_type, shipment.receiver_type}
@@ -325,7 +345,7 @@ def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
         row.status = ST_NOCALC
         row.needs_input = None
         row.reasons = ["この区間の運賃は持っていません"]
-        row.missing = ["この区間の JITBOX 運賃"]
+        row.missing = ["この区間のカゴ台車の運賃"]
         return row
 
     box = tariff["box"]
