@@ -81,12 +81,12 @@ def test_g86_storage_roundtrip_and_forget_in_headless_edge():
         page.wait(lambda: page.js("!!document.querySelector('#wait-doc table.rec')"), 30, "下書き")
         page.wait(lambda: page.js("!!localStorage.getItem('waiting_page_rows_v1')"), 10, "保存")
         saved = page.js("JSON.parse(localStorage.getItem('waiting_page_rows_v1')).rows.length")
-        assert saved == 11
+        assert saved == 18
         page.goto(WAITING.as_uri())  # 開き直すと前回の記録が戻る
         page.wait(lambda: page.js("!!document.querySelector('#wait-doc table.rec')"), 30, "復元")
-        assert page.js("document.querySelectorAll('#tbody tr').length") == 11
-        assert "31,020" in page.js("document.querySelector('#partners table.par tbody tr').textContent")
-        assert "前回の記録 11 行を読み込みました" in page.js("document.querySelector('#keep-msg').textContent")
+        assert page.js("document.querySelectorAll('#tbody tr').length") == 18
+        assert "27,500" in page.js("document.querySelector('#partners table.par tbody tr').textContent")
+        assert "前回の記録 18 行を読み込みました" in page.js("document.querySelector('#keep-msg').textContent")
         page.js("document.querySelector('#b-forget').click()")
         assert page.js("localStorage.getItem('waiting_page_rows_v1')") is None
         assert page.js("document.querySelector('#wait-doc table.rec')") is None

@@ -467,6 +467,35 @@ def _sum(rows: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
+def _half_up(num: int, den: int) -> int:
+    """num ÷ den を四捨五入（0.5 は切り上げ）した整数。JS 側と同じ結果にするため、浮動小数点を使わない。"""
+    return (2 * num + den) // (2 * den)
+
+
+def _pct(num: int, den: int) -> int:
+    return _half_up(100 * num, den) if den else 0
+
+
+NO_PLACE = "（場所の記入なし）"
+
+
+def hotspots(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """どこで・いつ待っているか（SPEC §27.1）。（契約の相手、場所、実際の到着の時間帯）ごとの集計。
+    荷待ちの合計の分が大きい順、同じなら相手・場所・時間帯の文字の順。合計 0 の組も返す（画面と書面で除く）。"""
+    groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for r in rows:
+        key = (r["partner"], r["place"] or NO_PLACE, f"{int(r['arrive'][:2])}時台")
+        groups.setdefault(key, []).append(r)
+    out = []
+    for (partner, place, band), rs in groups.items():
+        total = sum(r["wait_min"] for r in rs)
+        out.append({"partner": partner, "place": place, "band": band, "count": len(rs), "wait_minutes": total,
+                    "avg_minutes": _half_up(total, len(rs)), "max_minutes": max(r["wait_min"] for r in rs),
+                    "over_1h_count": sum(1 for r in rs if r["over_1h"]), "amount": sum(r["amount"] for r in rs)})
+    out.sort(key=lambda h: (-h["wait_minutes"], h["partner"], h["place"], h["band"]))
+    return out
+
+
 def aggregate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """契約の相手ごと・月ごとの合計。参考額の大きい相手から並べる。"""
     partners: dict[str, list[dict[str, Any]]] = {}
@@ -477,14 +506,14 @@ def aggregate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         months = []
         for m in sorted({r["month"] for r in rs}):
             months.append({"month": m, **_sum([r for r in rs if r["month"] == m])})
-        out.append({"partner": name, **_sum(rs), "date_from": min(r["date"] for r in rs),
+        out.append({"partner": name, **_sum(rs), "over_1h_share": _pct(sum(1 for r in rs if r["over_1h"]), len(rs)), "date_from": min(r["date"] for r in rs),
                     "date_to": max(r["date"] for r in rs), "months": months})
     out.sort(key=lambda p: (-p["amount"], p["partner"]))
     return out
 
 
 def calc(rows: list[Any], year: int | None = None, tariff: dict[str, Any] | None = None) -> dict[str, Any]:
-    """記録の行を計算する。返り値は {rows, by_partner, errors, tariff}。
+    """記録の行を計算する。返り値は {rows, by_partner, hotspots, errors, tariff}。
 
     errors は {row, message}（row は 1 始まりの行番号）。読めない行は計算から外す。"""
     if not isinstance(rows, list):
@@ -508,6 +537,7 @@ def calc(rows: list[Any], year: int | None = None, tariff: dict[str, Any] | None
     return {
         "rows": done,
         "by_partner": aggregate(done),
+        "hotspots": hotspots(done),
         "errors": errors,
         "tariff": {"source_url": t["source_url"], "applies_from": t["applies_from"], "checked_on": t["checked_on"],
                    "tax": t["tax"], "unit_minutes": t["unit_minutes"], "free_minutes": t["free_minutes"],

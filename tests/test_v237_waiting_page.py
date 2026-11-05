@@ -53,7 +53,7 @@ def test_g82_python_matches_the_vectors_file():
         else:
             rows = c["rows"]
         res = waiting.calc(rows, c["year"])
-        got = {"rows": res["rows"], "by_partner": res["by_partner"], "errors": res["errors"]}
+        got = {"rows": res["rows"], "by_partner": res["by_partner"], "hotspots": res["hotspots"], "errors": res["errors"]}
         if c.get("paste"):
             got["input_rows"] = rows
             got["defaulted"] = defaulted
@@ -83,8 +83,7 @@ def test_example_rows_in_own_js_and_the_page_match_the_vector_example():
     last = res["rows"][-1]
     assert (last["appointed"], last["wait_from"], last["handler"]) == ("08:30", "指定の到着時刻", "運転者")
     assert (last["handling_normal_units"], last["handling_over_units"]) == (1, 1)  # 2 時間の境（10:30）をまたぐ
-    page = PAGE.read_text(encoding="utf-8")
-    for src in (OWN_JS, page):
+    for src in (OWN_JS,):   # waiting.html の開いた直後の例は SPEC §27.4 で替えた（tests/test_v27_hotspots.py）
         for frag in ("[1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16]", "i === 2 || i === 7", "i === 10", "appointed: '08:30'", "arrive: '08:10'",
                      "start: '10:15', end: '10:55'", "江東区 地点07", "架空 元請A物流"):
             assert frag in src, frag
@@ -172,11 +171,11 @@ def test_page_ui_example_draft_and_csv_in_headless_edge():
           const sum = document.querySelector('#partners table.par tbody tr').textContent;
           const doc = document.querySelector('#wait-doc').textContent;
           const side = document.querySelector('#process').getBoundingClientRect(), d = document.querySelector('#wait-doc').getBoundingClientRect();
-          return {rows, sum, sentence: doc.includes('計 31,020 円（税抜）'), side: doc.includes('検品・仕分け'), from: doc.includes('指定 08:30 から'),
+          return {rows, sum, sentence: doc.includes('計 27,500 円（税抜）'), side: doc.includes('検品・仕分け'), from: doc.includes('指定 08:30 から'),
                   beside: side.left >= d.right - 1 && Math.abs(side.top - d.top) < 40, csv: typeof csvText === 'function' ? csvText() : ''};
         })()""")
-    assert info["rows"] == 11 and "31,020" in info["sum"] and info["sentence"] and info["side"] and info["from"]
+    assert info["rows"] == 18 and "27,500" in info["sum"] and info["sentence"] and info["side"] and info["from"]
     assert info["beside"], "協議の進め方は書面の下書きの横に出す"
     csv = info["csv"]
     assert csv.startswith("﻿日付,車番,") and "指定の到着時刻,附帯業務の内容,附帯業務の分,荷役のあとの待ちを荷主等の都合として数える,待機の数え始め" in csv.split("\r\n")[0]
-    assert len(csv.strip().split("\r\n")) == 12
+    assert len(csv.strip().split("\r\n")) == 19

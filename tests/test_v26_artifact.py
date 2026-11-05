@@ -181,21 +181,21 @@ def test_g106_copy_buttons_forget_two_step_and_csv_paste():
         page.js("Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: () => Promise.reject(new Error('denied'))}}); document.querySelector('#b-copydoc').click()")
         page.wait(lambda: page.js("document.querySelector('#copybox').hidden === false"), 10, "枠")
         text = page.js("document.querySelector('#copyta').value")
-        for need in ("荷待ち・荷役に関する協議のお願い（下書き）", "【記録の一覧】", "31,020 円", "【根拠】", "第 21 項", "架空 元請A物流 御中"):
+        for need in ("荷待ち・荷役に関する協議のお願い（下書き）", "【記録の一覧】", "27,500 円", "【根拠】", "第 21 項", "架空 元請A物流 御中"):
             assert need in text, need
-        assert text.count("\n2026-10-") == 11  # 記録の一覧は 11 行
+        assert text.count("\n2026-10-") == 12  # 記録の一覧は、その相手（架空 元請A物流）の 12 行
         assert page.js("document.activeElement.id") == "copyta"
         # 許されたら、コピーしたと出る
         page.js("window.__copied = null; Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: (t) => { window.__copied = t; return Promise.resolve(); }}}); document.querySelector('#b-copycsv').click()")
         page.wait(lambda: page.js("window.__copied !== null && document.querySelector('#copymsg').textContent.includes('コピーしました')"), 10, "コピー")
         csv = page.js("window.__copied")
-        assert csv.startswith("﻿日付,") and csv.count("\r\n") == 12
+        assert csv.startswith("﻿日付,") and csv.count("\r\n") == 19
         assert page.js("document.querySelector('#copybox').hidden") is True
         # CSV の貼り付けで読み戻せる
         page.js("document.querySelector('#b-clear').click()")
         page.js("document.querySelector('#csvpaste').value = window.__copied; document.querySelector('#b-csvpaste').click()")
         page.wait(lambda: page.js("!!document.querySelector('#wait-doc table.rec')"), 10, "貼り付けの読み戻し")
-        assert "31,020" in page.js("document.querySelector('#partners table.par tbody tr').textContent")
+        assert "27,500" in page.js("document.querySelector('#partners table.par tbody tr').textContent")
         # 保存した記録を消すは 2 回押す
         page.js("localStorage.setItem('waiting_page_rows_v1', JSON.stringify({year: 2026, rows: [{date: '2026-10-05'}]}))")
         page.js("document.querySelector('#b-forget').click()")
