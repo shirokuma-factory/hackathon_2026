@@ -45,6 +45,18 @@ _HEADER_ALIASES = {
     "取引先": "partner", "得意先": "partner", "荷主名": "partner", "納品先": "place", "届け先": "place", "配送先": "place",
     "到着時間": "arrive", "着": "arrive", "積込開始時間": "start", "荷役開始時間": "start", "積込終了時間": "end", "荷役終了時間": "end",
     "出発時間": "depart", "発": "depart", "指定時間": "appointed",
+    # 貨物自動車運送事業輸送安全規則 第 8 条第 1 項の記録項目の言葉と、よくある様式の言葉（SPEC §23.8）
+    "集荷地点等": "place", "集貨地点等": "place", "集荷地点": "place", "集貨地点": "place", "荷待ち地点": "place", "荷待地点": "place",
+    "到着日時": "arrive", "到着の日時": "arrive", "指定到着日時": "appointed", "指定の到着日時": "appointed",
+    "荷役作業の開始日時": "start", "荷役開始日時": "start", "荷役作業開始日時": "start",
+    "荷役作業の終了日時": "end", "荷役終了日時": "end", "荷役作業終了日時": "end",
+    "出発日時": "depart", "出発の日時": "depart", "荷役作業等の内容": "work_content", "荷役作業の内容": "work_content",
+    "車両登録番号": "vehicle_no", "自動車登録番号": "vehicle_no", "登録番号": "vehicle_no",
+    "荷主都合": "shipper_fault", "荷主都合か": "shipper_fault", "荷主都合の有無": "shipper_fault", "荷主起因": "shipper_fault",
+    # 読まない列（見出しとしては知っている。名前の無い列と同じく、黙って読み飛ばす）
+    "乗務員氏名": "_ignore", "運転者氏名": "_ignore", "乗務員名": "_ignore", "運転者名": "_ignore", "氏名": "_ignore",
+    "荷主の確認の有無": "_ignore", "荷主の確認": "_ignore", "確認の有無": "_ignore", "備考": "_ignore",
+    "附帯業務開始日時": "_ignore", "附帯業務終了日時": "_ignore", "附帯業務の開始日時": "_ignore", "附帯業務の終了日時": "_ignore",
     "荷役のあとの待ちを荷主等の都合として数える": "post_wait", "荷役のあとの待ちを数える": "post_wait", "荷役のあとの待ち": "post_wait", "荷役後の待ち": "post_wait",
 }
 
@@ -57,6 +69,14 @@ _TON_CLASS = {"2": "小型", "4": "中型", "10": "大型"}   # 「4t車」「4�
 _YES = {"はい", "yes", "y", "true", "1", "○", "〇", "◯", "有", "あり", "荷主都合", "荷主の都合", "荷主等の都合"}
 _NO = {"いいえ", "no", "n", "false", "0", "×", "✕", "✗", "x", "無", "なし", "渋滞", "都合外"}
 _ERA_BASE = {"令和": 2018, "r": 2018, "平成": 1988, "h": 1988, "昭和": 1925, "s": 1925}
+
+
+# 日時の欄（「2026/10/05 9:00」「10/5 9:00」「R8.10.5 9時00分」）の、時刻の前の日付の部分
+_DT_PREFIX = r"(?:[0-9令和平成昭和元RHSrhs/\-年月日.]+(?: ?\([月火水木金土日祝]+\))? )?"
+_DT_SPLIT = r"([0-9令和平成昭和元RHSrhs/\-年月日.]+(?: ?\([月火水木金土日祝]+\))?) ((?:[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?)|(?:[0-9]{1,2}時(?:[0-9]{1,2}分?)?))"
+_POS_NOTE = ("見出しの行が無いので、列の順（日付、車番、車種、契約の相手、場所、到着、荷役開始、荷役終了、出発、荷役をした人、荷役の方法、荷主等の都合）で読みました")
+UNKNOWN_HANDLER = "不明"
+UNKNOWN_HANDLER_NOTE = "荷役をした人が分からないので、荷役の時間は待機にも積込料にも入れていません"
 
 
 def _nz(s: Any) -> str:
@@ -85,11 +105,11 @@ def _normalize_class(raw: str) -> str | None:
 def parse_time(text: str) -> int | None:
     """時刻を分にする。9:00 / 9:00:00 / 09時00分 / 9時 / 0900 / 900（全角も可、日付つきも可）。読めなければ None。"""
     t = _nz(text)
-    m = re.fullmatch(r"(?:[0-9/\-年月日.]+ )?([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?", t)
+    m = re.fullmatch(_DT_PREFIX + r"([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?", t)
     if m:
         h, mi, sec = int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
     else:
-        m = re.fullmatch(r"([0-9]{1,2})時(?:([0-9]{1,2})分?)?", t)
+        m = re.fullmatch(_DT_PREFIX + r"([0-9]{1,2})時(?:([0-9]{1,2})分?)?", t)
         if m:
             h, mi, sec = int(m.group(1)), int(m.group(2) or 0), 0
         else:
@@ -141,33 +161,83 @@ def _header_key(cell: str) -> str:
     return re.sub(r"\s+", "", _nz(cell))
 
 
-def parse_paste_full(text: str) -> tuple[list[dict[str, str]], list[str]]:
-    """Excel から貼り付けたタブ区切りを行の辞書にする。1 行目が見出しなら読み飛ばす（見出しの順が違えば見出しに従う）。
-    どの行にも「荷主等の都合」の欄が無いときは、全部の行を はい にして、defaulted に "shipper_fault" を入れて返す（SPEC §25）。"""
+def _date_part(text: str) -> str:
+    """日時の欄（「2026/10/05 9:00」「10/5 9:00」）から日付の部分を取り出す。無ければ空。"""
+    m = re.fullmatch(_DT_SPLIT, _nz(text))
+    if not m or parse_time(m.group(2)) is None:
+        return ""
+    return m.group(1)
+
+
+def parse_paste_ex(text: str) -> tuple[list[dict[str, str]], list[str], list[str]]:
+    """Excel から貼り付けたタブ区切りを (行の辞書, defaulted, notes) にする（SPEC §25・§23.8）。
+    1 行目が見出しなら見出しの名前で読み（列の順は問わない）、読まなかった見出しは notes に名前を書く。
+    見出しの行が無いときだけ、列の順で読み、そのことを notes に書く。
+    見出しがあって「荷主等の都合」の欄が無い、または見出しが無くてどの行にも欄が無いときは、全部の行を はい にして defaulted に入れる。
+    見出しに欄があるのに読めない値の行は、はい にせず計算側が誤りにする。"""
     lines = [ln for ln in (text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n") if ln.strip()]
     if not lines:
-        return [], []
+        return [], [], []
+    notes: list[str] = []
     cols = list(COLUMNS)
+    header = False
     first = [_header_key(c) for c in lines[0].split("\t")]
     if first and (first[0] in ("日付", "date") or sum(1 for c in first if c in _HEADER_ALIASES) >= 3):
+        header = True
         mapped = [_HEADER_ALIASES.get(c) for c in first]
-        if sum(1 for c in mapped if c) >= 6:
-            cols = [c or f"_extra{i}" for i, c in enumerate(mapped)]
+        cols = [c if c and c != "_ignore" else "" for c in mapped]   # 読まない列・知らない列は "" にして、行に入れない（乗務員氏名などを残さない）
+        seen: set[str] = set()
+        for raw, c in zip(lines[0].split("\t"), mapped):
+            name = _nz(raw)
+            if c is None and name and name not in seen:
+                seen.add(name)
+                notes.append(f"見出し『{name}』は読みませんでした")
         lines = lines[1:]
+    else:
+        notes.append(_POS_NOTE)
     rows = []
     for ln in lines:
         cells = ln.split("\t")
-        rows.append({cols[i]: cells[i].strip() for i in range(min(len(cols), len(cells)))})
+        rows.append({cols[i]: cells[i].strip() for i in range(min(len(cols), len(cells))) if cols[i]})
+    # 日付の列が無い（または空の）行は、到着日時などの日時の欄の日付の部分を日付にする
+    for r in rows:
+        if not r.get("date"):
+            for k in ("arrive", "start", "end", "depart"):
+                d = _date_part(r.get(k, ""))
+                if d:
+                    r["date"] = d
+                    break
+    # 荷役をした人の列が無いとき: 荷役作業等の内容があれば運転者（法定の記録は運転者自身の荷役）、無ければ不明
+    if header and "handler" not in cols:
+        derived = False
+        for r in rows:
+            if r.get("end"):
+                if r.get("work_content"):
+                    r["handler"] = "運転者"
+                    if not r.get("method"):
+                        wc = _nz(r["work_content"])
+                        r["method"] = "フォークリフト等" if ("フォーク" in wc or "機械" in wc) else "手積み"
+                    derived = True
+                else:
+                    r["handler"] = UNKNOWN_HANDLER
+        if derived:
+            notes.append("荷役をした人の列が無いので、荷役作業等の内容がある行は運転者が荷役をしたとして読みました"
+                         "（荷役の方法が書かれていない行は、荷役作業等の内容にフォークリフトの語が無ければ手積み）。違う行は表で直してください")
     defaulted: list[str] = []
-    if rows and all("shipper_fault" not in r for r in rows):
+    if rows and (("shipper_fault" not in cols) if header else all("shipper_fault" not in r for r in rows)):
         for r in rows:
             r["shipper_fault"] = "はい"
         defaulted.append("shipper_fault")
+    return rows, defaulted, notes
+
+
+def parse_paste_full(text: str) -> tuple[list[dict[str, str]], list[str]]:
+    rows, defaulted, _notes = parse_paste_ex(text)
     return rows, defaulted
 
 
 def parse_paste(text: str) -> list[dict[str, str]]:
-    return parse_paste_full(text)[0]
+    return parse_paste_ex(text)[0]
 
 
 def _ceil_div(a: int, b: int) -> int:
@@ -229,6 +299,8 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         handler = "荷主側"
     elif handler in ("運転者", "ドライバー", "運転手"):
         handler = "運転者"
+    elif handler == UNKNOWN_HANDLER:
+        pass   # 荷役をした人の列が無い貼り付け。行は残し、荷役の時間は数えない（下で注記）
     elif handler:
         errs.append(f"荷役をした人「{handler}」を読めません（運転者 / 荷主側）")
         handler = ""
@@ -236,7 +308,7 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     if not handler and (has_handling or g["method"]):
         if not any("荷役をした人" in e for e in errs):
             errs.append("荷役をした人がありません（運転者 / 荷主側）")
-    if handler and not has_handling:
+    if handler and handler != UNKNOWN_HANDLER and not has_handling:
         errs.append("荷役をした人を入れたときは、荷役終了も入れてください")
 
     method = _nz(g["method"])
@@ -337,7 +409,8 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         ho_rate = tariff["handling"][method]["over_2h"][vclass]
     handling_fee = hn_units * hn_rate + ho_units * ho_rate
 
-    return {
+    row_notes = [UNKNOWN_HANDLER_NOTE] if handler == UNKNOWN_HANDLER and end is not None else []
+    out = {
         "row": n,
         "date": d.isoformat(),
         "month": d.strftime("%Y-%m"),
@@ -373,7 +446,10 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         "over_1h": w >= 60,
         "over_2h_total": (w + driver_handling_min) >= thr,
         "has_side_work": bool(g["side_work"]) or side_min > 0,
-    }, []
+    }
+    if row_notes:
+        out["notes"] = row_notes
+    return out, []
 
 
 def _sum(rows: list[dict[str, Any]]) -> dict[str, int]:

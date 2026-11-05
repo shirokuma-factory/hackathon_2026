@@ -380,8 +380,11 @@ const Own = (() => {
   function waitErrsHtml() {
     if (W.err) return `<p class="w-err">${esc(W.err)}</p>`;
     const r = W.res;
-    if (!r || !r.errors.length) return '';
-    return `<div class="w-errs"><b>読めなかった行 ${new Set(r.errors.map((e) => e.row)).size} 行（計算から外しています）</b>` +
+    if (!r) return '';
+    const rowNotes = r.rows.filter((x) => x.notes && x.notes.length).map((x) => x.notes.map((m) => `<div>表の ${(W.idxMap[x.row - 1] ?? x.row - 1) + 1} 行目: ${esc(m)}</div>`).join('')).join('');
+    const notesHtml = rowNotes ? `<div class="w-note">${rowNotes}</div>` : '';
+    if (!r.errors.length) return notesHtml;
+    return notesHtml + `<div class="w-errs"><b>読めなかった行 ${new Set(r.errors.map((e) => e.row)).size} 行（計算から外しています）</b>` +
       r.errors.map((e) => `<div>表の ${(W.idxMap[e.row - 1] ?? e.row - 1) + 1} 行目: ${esc(e.message)}</div>`).join('') + '</div>';
   }
 
@@ -401,7 +404,7 @@ const Own = (() => {
         <button type="button" class="btn-sm" data-w="fill-partner">契約の相手を下の行に埋める</button>
         <button type="button" class="btn-sm" data-w="fill-class">車種を下の行に埋める</button>
         <small id="w-bulk-msg">${esc(W.bulkMsg)}</small></div>
-      <p class="w-note" id="w-paste-note">${esc(W.pasteNote)}</p>
+      <p class="w-note" id="w-paste-note">${esc(W.pasteNote).replace(/\n/g, '<br>')}</p>
       <div id="w-errs-box">${waitErrsHtml()}</div>
       <details class="o-det" open><summary>Excel から貼り付ける</summary>
         <p class="w-small">Excel の表をコピーして貼り付けます（タブ区切り）。1 行目が見出しなら、列の順は問わず見出しの名前で読みます。見出しが無いときだけ、列の順は上の表と同じにしてください。日付は 10月5日・R8.10.5・2026/10/5、時刻は 9:00:00・9時00分・0900、車種は 4t車・4トン・中型車、荷主等の都合は ○ / × でも読みます。</p>
@@ -513,7 +516,7 @@ const Own = (() => {
       const inp = res.input_rows || [];
       W.rows = inp.length ? inp.map((r) => ({ ...blankRow(), ...r })) : [blankRow(), blankRow(), blankRow()];
       W.pasteMsg = `${inp.length} 行を表に入れました`;
-      W.pasteNote = (res.defaulted || []).includes('shipper_fault') ? W_DEFAULT_FAULT_NOTE : '';
+      W.pasteNote = ((res.defaulted || []).includes('shipper_fault') ? [W_DEFAULT_FAULT_NOTE] : []).concat(res.notes || []).join('\n');
     } catch (e) { W.pasteMsg = e.message; }
     renderLeft();
     waitCalc();

@@ -47,8 +47,9 @@ def test_g82_python_matches_the_vectors_file():
     assert len(data["cases"]) >= 40
     for c in data["cases"]:
         defaulted: list = []
+        notes: list = []
         if c.get("paste"):
-            rows, defaulted = waiting.parse_paste_full(c["text"])
+            rows, defaulted, notes = waiting.parse_paste_ex(c["text"])
         else:
             rows = c["rows"]
         res = waiting.calc(rows, c["year"])
@@ -56,6 +57,7 @@ def test_g82_python_matches_the_vectors_file():
         if c.get("paste"):
             got["input_rows"] = rows
             got["defaulted"] = defaulted
+            got["notes"] = notes
         assert json.loads(json.dumps(got, ensure_ascii=False)) == c["expect"], c["name"]
 
 

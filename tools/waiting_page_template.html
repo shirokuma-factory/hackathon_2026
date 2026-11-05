@@ -184,6 +184,18 @@ const HEADER_ALIASES = {
     '取引先': 'partner', '得意先': 'partner', '荷主名': 'partner', '納品先': 'place', '届け先': 'place', '配送先': 'place',
     '到着時間': 'arrive', '着': 'arrive', '積込開始時間': 'start', '荷役開始時間': 'start', '積込終了時間': 'end', '荷役終了時間': 'end',
     '出発時間': 'depart', '発': 'depart', '指定時間': 'appointed',
+    // 貨物自動車運送事業輸送安全規則 第 8 条第 1 項の記録項目の言葉と、よくある様式の言葉（SPEC §23.8）
+    '集荷地点等': 'place', '集貨地点等': 'place', '集荷地点': 'place', '集貨地点': 'place', '荷待ち地点': 'place', '荷待地点': 'place',
+    '到着日時': 'arrive', '到着の日時': 'arrive', '指定到着日時': 'appointed', '指定の到着日時': 'appointed',
+    '荷役作業の開始日時': 'start', '荷役開始日時': 'start', '荷役作業開始日時': 'start',
+    '荷役作業の終了日時': 'end', '荷役終了日時': 'end', '荷役作業終了日時': 'end',
+    '出発日時': 'depart', '出発の日時': 'depart', '荷役作業等の内容': 'work_content', '荷役作業の内容': 'work_content',
+    '車両登録番号': 'vehicle_no', '自動車登録番号': 'vehicle_no', '登録番号': 'vehicle_no',
+    '荷主都合': 'shipper_fault', '荷主都合か': 'shipper_fault', '荷主都合の有無': 'shipper_fault', '荷主起因': 'shipper_fault',
+    // 読まない列（見出しとしては知っている。黙って読み飛ばす）
+    '乗務員氏名': '_ignore', '運転者氏名': '_ignore', '乗務員名': '_ignore', '運転者名': '_ignore', '氏名': '_ignore',
+    '荷主の確認の有無': '_ignore', '荷主の確認': '_ignore', '確認の有無': '_ignore', '備考': '_ignore',
+    '附帯業務開始日時': '_ignore', '附帯業務終了日時': '_ignore', '附帯業務の開始日時': '_ignore', '附帯業務の終了日時': '_ignore',
     '荷役のあとの待ちを荷主等の都合として数える': 'post_wait', '荷役のあとの待ちを数える': 'post_wait', '荷役のあとの待ち': 'post_wait', '荷役後の待ち': 'post_wait',
 };
 const CLASS_ALIASES = {
@@ -196,6 +208,12 @@ const YES = new Set(['はい', 'yes', 'y', 'true', '1', '○', '〇', '◯', '�
 const NO = new Set(['いいえ', 'no', 'n', 'false', '0', '×', '✕', '✗', 'x', '無', 'なし', '渋滞', '都合外']);
 const ERA_BASE = { '令和': 2018, 'r': 2018, '平成': 1988, 'h': 1988, '昭和': 1925, 's': 1925 };
 const MAX_ROWS = 5000;
+// 日時の欄（「2026/10/05 9:00」「10/5 9:00」「R8.10.5 9時00分」）の、時刻の前の日付の部分
+const DT_PREFIX = '(?:[0-9令和平成昭和元RHSrhs/\\-年月日.]+(?: ?\\([月火水木金土日祝]+\\))? )?';
+const DT_SPLIT = new RegExp('^([0-9令和平成昭和元RHSrhs/\\-年月日.]+(?: ?\\([月火水木金土日祝]+\\))?) ((?:[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?)|(?:[0-9]{1,2}時(?:[0-9]{1,2}分?)?))$');
+const POS_NOTE = '見出しの行が無いので、列の順（日付、車番、車種、契約の相手、場所、到着、荷役開始、荷役終了、出発、荷役をした人、荷役の方法、荷主等の都合）で読みました';
+const UNKNOWN_HANDLER = '不明';
+const UNKNOWN_HANDLER_NOTE = '荷役をした人が分からないので、荷役の時間は待機にも積込料にも入れていません';
 
 const COLS = [
   { k: 'date', t: '日付', ph: '10/5', w: 76 }, { k: 'vehicle_no', t: '車番', w: 58 },
@@ -252,9 +270,9 @@ function normalizeClass(raw) {
 function parseTime(text) {
   const t = nz(text);
   let h, mi, sec;
-  let m = /^(?:[0-9/\-年月日.]+ )?([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?$/.exec(t);
+  let m = new RegExp(`^${DT_PREFIX}([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?$`).exec(t);
   if (m) { h = Number(m[1]); mi = Number(m[2]); sec = Number(m[3] || 0); }
-  else if ((m = /^([0-9]{1,2})時(?:([0-9]{1,2})分?)?$/.exec(t))) { h = Number(m[1]); mi = Number(m[2] || 0); sec = 0; }
+  else if ((m = new RegExp(`^${DT_PREFIX}([0-9]{1,2})時(?:([0-9]{1,2})分?)?$`).exec(t))) { h = Number(m[1]); mi = Number(m[2] || 0); sec = 0; }
   else if ((m = /^([0-9]{1,2})([0-9]{2})$/.exec(t))) { h = Number(m[1]); mi = Number(m[2]); sec = 0; }
   else return null;
   if (h > 23 || mi > 59 || sec > 59) return null;
@@ -298,30 +316,73 @@ function toBool(raw) {
 
 const headerKey = (c) => nz(c).replace(/\s+/g, '');
 
-// Excel から貼り付けたタブ区切りを行にする。どの行にも「荷主等の都合」の欄が無いときは全部の行を はい にして、defaulted に印を付ける
+// 日時の欄（「2026/10/05 9:00」「10/5 9:00」）から日付の部分を取り出す。無ければ空
+function datePart(text) {
+  const m = DT_SPLIT.exec(nz(text));
+  return !m || parseTime(m[2]) === null ? '' : m[1];
+}
+
+// Excel から貼り付けたタブ区切りを行にする（waiting.py の parse_paste_ex と同じ）。
+// 見出しがあれば見出しの名前で読み、読まなかった見出しは notes に名前を書く。見出しの行が無いときだけ列の順で読み、notes に書く。
+// 見出しがあって「荷主等の都合」の欄が無い、または見出しが無くてどの行にも欄が無いときは、全部の行を はい にして defaulted に印を付ける
 function parsePasteFull(text) {
   const lines = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((ln) => ln.trim());
-  if (!lines.length) return { rows: [], defaulted: [] };
+  if (!lines.length) return { rows: [], defaulted: [], notes: [] };
+  const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  const notes = [];
   let cols = COLUMNS.slice();
-  let body = lines;
-  const first = lines[0].split('\t').map(headerKey);
-  const known = first.filter((c) => Object.prototype.hasOwnProperty.call(HEADER_ALIASES, c)).length;
+  let body = lines, header = false;
+  const rawFirst = lines[0].split('\t');
+  const first = rawFirst.map(headerKey);
+  const known = first.filter((c) => has(HEADER_ALIASES, c)).length;
   if (first.length && (first[0] === '日付' || first[0] === 'date' || known >= 3)) {
-    const mapped = first.map((c) => (Object.prototype.hasOwnProperty.call(HEADER_ALIASES, c) ? HEADER_ALIASES[c] : null));
-    if (mapped.filter((c) => c).length >= 6) cols = mapped.map((c, i) => c || `_extra${i}`);
+    header = true;
+    const mapped = first.map((c) => (has(HEADER_ALIASES, c) ? HEADER_ALIASES[c] : null));
+    cols = mapped.map((c) => (c && c !== '_ignore' ? c : ''));   // 読まない列・知らない列は '' にして、行に入れない
+    const seen = new Set();
+    rawFirst.forEach((raw, i) => {
+      const name = nz(raw);
+      if (mapped[i] === null && name && !seen.has(name)) { seen.add(name); notes.push(`見出し『${name}』は読みませんでした`); }
+    });
     body = lines.slice(1);
-  }
+  } else notes.push(POS_NOTE);
   const rows = body.map((ln) => {
     const cells = ln.split('\t'), o = {};
-    for (let i = 0; i < Math.min(cols.length, cells.length); i++) o[cols[i]] = cells[i].trim();
+    for (let i = 0; i < Math.min(cols.length, cells.length); i++) if (cols[i]) o[cols[i]] = cells[i].trim();
     return o;
   });
+  // 日付の列が無い（または空の）行は、到着日時などの日時の欄の日付の部分を日付にする
+  for (const r of rows) {
+    if (!r.date) {
+      for (const k of ['arrive', 'start', 'end', 'depart']) {
+        const d = datePart(r[k] || '');
+        if (d) { r.date = d; break; }
+      }
+    }
+  }
+  // 荷役をした人の列が無いとき: 荷役作業等の内容があれば運転者（法定の記録は運転者自身の荷役）、無ければ不明
+  if (header && !cols.includes('handler')) {
+    let derived = false;
+    for (const r of rows) {
+      if (!r.end) continue;
+      if (r.work_content) {
+        r.handler = '運転者';
+        if (!r.method) {
+          const wc = nz(r.work_content);
+          r.method = wc.includes('フォーク') || wc.includes('機械') ? 'フォークリフト等' : '手積み';
+        }
+        derived = true;
+      } else r.handler = UNKNOWN_HANDLER;
+    }
+    if (derived) notes.push('荷役をした人の列が無いので、荷役作業等の内容がある行は運転者が荷役をしたとして読みました（荷役の方法が書かれていない行は、荷役作業等の内容にフォークリフトの語が無ければ手積み）。違う行は表で直してください');
+  }
   const defaulted = [];
-  if (rows.length && rows.every((r) => !Object.prototype.hasOwnProperty.call(r, 'shipper_fault'))) {
+  const noFault = header ? !cols.includes('shipper_fault') : rows.every((r) => !has(r, 'shipper_fault'));
+  if (rows.length && noFault) {
     rows.forEach((r) => { r.shipper_fault = 'はい'; });
     defaulted.push('shipper_fault');
   }
-  return { rows, defaulted };
+  return { rows, defaulted, notes };
 }
 const parsePaste = (text) => parsePasteFull(text).rows;
 
@@ -371,12 +432,13 @@ function calcRow(n, raw, year, tariff) {
   let handler = nz(g.handler);
   if (handler === '荷主' || handler === '荷主側') handler = '荷主側';
   else if (handler === '運転者' || handler === 'ドライバー' || handler === '運転手') handler = '運転者';
+  else if (handler === UNKNOWN_HANDLER) { /* 荷役をした人の列が無い貼り付け。行は残し、荷役の時間は数えない（下で注記） */ }
   else if (handler) { errs.push(`荷役をした人「${handler}」を読めません（運転者 / 荷主側）`); handler = ''; }
   const hasHandling = !!g.end;
   if (!handler && (hasHandling || g.method)) {
     if (!errs.some((e) => e.includes('荷役をした人'))) errs.push('荷役をした人がありません（運転者 / 荷主側）');
   }
-  if (handler && !hasHandling) errs.push('荷役をした人を入れたときは、荷役終了も入れてください');
+  if (handler && handler !== UNKNOWN_HANDLER && !hasHandling) errs.push('荷役をした人を入れたときは、荷役終了も入れてください');
 
   let method = nz(g.method);
   if (['フォークリフト', 'フォークリフト等', 'フォーク', '機械'].includes(method)) method = 'フォークリフト等';
@@ -465,6 +527,7 @@ function calcRow(n, raw, year, tariff) {
       amount: waitFee + handlingFee,
       over_1h: w >= 60, over_2h_total: (w + driverHandlingMin) >= thr,
       has_side_work: !!g.side_work || sideMin > 0,
+      ...(handler === UNKNOWN_HANDLER && end !== null ? { notes: [UNKNOWN_HANDLER_NOTE] } : {}),
     },
     errs: [],
   };
@@ -525,7 +588,7 @@ function runSelftest() {
     const got = calc(rows, c.year, TARIFF);
     const exp = c.expect;
     const out = { rows: got.rows, by_partner: got.by_partner, errors: got.errors };
-    if (c.paste) { out.input_rows = rows; out.defaulted = pf.defaulted; }
+    if (c.paste) { out.input_rows = rows; out.defaulted = pf.defaulted; out.notes = pf.notes; }
     if (!deepEqual(out, exp)) {
       const bad = Object.keys(exp).filter((k) => !deepEqual(out[k], exp[k]));
       fails.push(`${c.name}（${bad.join(', ')}）`);
@@ -625,9 +688,12 @@ function renderTable() {
 function errsHtml() {
   if (S.err) return `<div class="errs">${esc(S.err)}</div>`;
   const r = S.res;
-  if (!r || !r.errors.length) return '';
+  if (!r) return '';
+  const rowNotes = r.rows.filter((x) => x.notes && x.notes.length).map((x) => x.notes.map((m) => `<div>表の ${(S.idxMap[x.row - 1] ?? x.row - 1) + 1} 行目: ${esc(m)}</div>`).join('')).join('');
+  const notesHtml = rowNotes ? `<div class="note">${rowNotes}</div>` : '';
+  if (!r.errors.length) return notesHtml;
   return `<div class="errs"><b>読めなかった行 ${new Set(r.errors.map((e) => e.row)).size} 行（計算から外しています）</b>` +
-    r.errors.map((e) => `<div>表の ${(S.idxMap[e.row - 1] ?? e.row - 1) + 1} 行目: ${esc(e.message)}</div>`).join('') + '</div>';
+    r.errors.map((e) => `<div>表の ${(S.idxMap[e.row - 1] ?? e.row - 1) + 1} 行目: ${esc(e.message)}</div>`).join('') + '</div>' + notesHtml;
 }
 
 const partnerRows = (name) => (S.res ? S.res.rows.filter((r) => r.partner === name) : []);
@@ -831,7 +897,7 @@ function pasteIn() {
   const pf = parsePasteFull(text), inp = pf.rows;
   S.rows = inp.length ? inp.map((r) => ({ ...blankRow(), ...r })) : [blankRow(), blankRow(), blankRow()];
   $('#paste-msg').textContent = `${inp.length} 行を表に入れました`;
-  $('#paste-note').textContent = pf.defaulted.includes('shipper_fault') ? DEFAULT_FAULT_NOTE : '';
+  $('#paste-note').innerHTML = (pf.defaulted.includes('shipper_fault') ? [DEFAULT_FAULT_NOTE, ...pf.notes] : pf.notes).map((m) => `<span>${esc(m)}</span>`).join('<br>');
   renderTable();
   doCalc();
 }
@@ -898,7 +964,7 @@ function init() {
     const t = e.target;
     if (S.armed && t.id !== 'b-forget') disarmForget();
     if (t.id === 'b-example') { endExampleAuto(); S.rows = exampleRows(); renderTable(); doCalc(); }
-    else if (t.id === 'b-clear') { endExampleAuto(); $('#paste-note').textContent = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult(); }
+    else if (t.id === 'b-clear') { endExampleAuto(); $('#paste-note').innerHTML = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult(); }
     else if (t.id === 'b-add') { endExampleAuto(); S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
     else if (t.id === 'b-paste') pasteIn();
     else if (t.id === 'b-fault-yes') bulkFault('はい');
