@@ -9,6 +9,7 @@ const Find = (() => {
     dest: '28110', category: '', inContainer: false, fragile: false, isBox: true, holdMin: 30,
     sel: null, pair: null, onlyPair: false, carrier: 'C1', edits: {}, mine: new Set(), busy: false,
     ver: 0, active: false, geo: {}, markers: new Map(), matchTok: 0, lastCargo: '', timer: null, poll: 0,
+    fm: { rate: 70, disc: 0, minFee: '', region: null, key: '', data: null, err: '', built: false, tok: 0 }, scBack: {}, scLoaded: false, bhSid: null, ct: {}, ctOpen: null, ctData: null, confirmed: new Set(), // SPEC §21
   };
   const PERIOD = 14;
   const SPACE = {
@@ -18,7 +19,10 @@ const Find = (() => {
     shelf_container: ['容器ごとの棚', '容器ごとの棚に載せる形'],
   };
   const CATEGORIES = ['危険物', '生鮮食品', '貴金属', '液体', '動物'];
-  const HOLD_CHOICES = [10, 30, 60, 120];
+  const HOLD_CHOICES = [10, 30, 60, 120, 1440, 4320];
+  const holdLabel = (m) => (m >= 60 && m % 60 === 0 ? `${m / 60} 時間` : `${m} 分`);
+  const FUEL_CHOICES = ['なし', '運賃の 5%（燃料サーチャージ）', '高速道路料金は実費で別途'];
+  const md = (iso) => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
   const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const n0 = (v) => Math.round(v).toLocaleString('ja-JP');
   const kg = (v) => (Math.round(v * 100) / 100).toLocaleString('ja-JP');
@@ -48,12 +52,24 @@ const Find = (() => {
     for (const it of sh.items) { n += it.count; w += it.count * it.weight_kg; }
     return { sh, n, w: Math.round(w * 100) / 100, label: sh.cargo_name || (Work.scenarioId() ? `場面 ${Work.scenarioId()}` : '手入力') };
   };
-  const stamp = (c) => JSON.stringify([c.sh.items, F.dest, F.category, F.inContainer, F.fragile, F.isBox]);
+  // 場面 S6 などの追加項目（集荷の地点・届けばよい日の幅・荷主の名称）。場面データの backhaul（SPEC §21.1）
+  const bh = () => (Work.scenarioId() ? F.scBack[Work.scenarioId()] || null : null);
+  const stamp = (c) => JSON.stringify([c.sh.items, F.dest, F.category, F.inContainer, F.fragile, F.isBox, Work.scenarioId(), S.origin]);
   const body = () => {
-    const c = cargoOf();
+    const c = cargoOf(), b = bh();
     return { shipment: { items: c.sh.items }, dest_code: F.dest, category: F.category || null,
-      in_container: F.inContainer, fragile: F.fragile, is_box: F.isBox };
+      in_container: F.inContainer, fragile: F.fragile, is_box: F.isBox,
+      origin_code: b ? b.origin_code : S.origin, // 集荷の地点。場面に無ければ、地図で選んだ出発地（SPEC §21.2）
+      ...(b ? { window_from: b.window_from, window_to: b.window_to } : {}) };
   };
+  // 場面が変わったら、受け取り場所と箱の有無をその場面の値にそろえる
+  function syncScenario() {
+    const sid = Work.scenarioId() || '';
+    if (F.bhSid === sid) return;
+    F.bhSid = sid;
+    const b = bh();
+    if (b) { F.dest = b.dest_code; F.isBox = b.is_box; }
+  }
 
   /* ------------------------------------------------------------ サーバーとのやり取り */
 
@@ -62,6 +78,9 @@ const Find = (() => {
       const r = await Work.api('/api/b/trips');
       F.trips = r.trips; F.carriers = r.carriers; F.holds = r.holds; F.note = r.note; F.fiction = r.fiction_notice; F.booking = r.booking_notice;
       F.err = '';
+      if (!F.scLoaded) {
+        try { (await Work.api('/api/scenarios')).scenarios.forEach((x) => { F.scBack[x.id] = x.backhaul || null; }); F.scLoaded = true; } catch (e) { /* 場面の追加項目が無くても動く */ }
+      }
       F.loaded = true;
       if (!F.geo.T) buildGeo();
     } catch (e) { F.err = e.message; }
@@ -71,6 +90,7 @@ const Find = (() => {
   async function runMatch() {
     const c = cargoOf();
     if (!c || !F.loaded) return;
+    syncScenario();
     F.lastCargo = stamp(c);
     const tok = ++F.matchTok;
     try {
@@ -232,12 +252,12 @@ const Find = (() => {
     const hs = F.holds.filter((h) => h.trip_id === t.id && F.mine.has(h.hold_id));
     return hs.length ? hs[hs.length - 1] : null;
   };
-  const cdText = (h) => {
-    const ms = new Date(h.expires_at).getTime() - Date.now();
-    if (!(ms > 0)) return '0:00';
-    const s = Math.ceil(ms / 1000);
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  // 残り時間。1 時間以上は 時:分:秒
+  const cdFmt = (ms) => {
+    const s = Math.max(0, Math.ceil(ms / 1000)), z = (n) => String(n).padStart(2, '0');
+    return s >= 3600 ? `${Math.floor(s / 3600)}:${z(Math.floor((s % 3600) / 60))}:${z(s % 60)}` : `${Math.floor(s / 60)}:${z(s % 60)}`;
   };
+  const cdText = (h) => cdFmt(new Date(h.expires_at).getTime() - Date.now());
 
   function barHtml(t, cargoKg) {
     const reg = Math.max(1, regSlack(t)), rem = shownRemain(t);
@@ -245,8 +265,9 @@ const Find = (() => {
     let txt = `<span>重さの余り <b class="num">${kg(rem)}</b> / ${kg(regSlack(t))} kg</span>`;
     if (cargoKg !== null) txt += `<span class="num">この荷 ${kg(cargoKg)} kg</span>`;
     const shelf = t.remaining_shelf_kg !== null && t.remaining_shelf_kg !== undefined ? `<div class="f-shelf num">棚の耐荷重の残り ${kg(t.remaining_shelf_kg)} kg</div>` : '';
+    const floor = t.remaining_floor_m2 !== null && t.remaining_floor_m2 !== undefined ? `<div class="f-shelf num">床の空き ${kg(t.remaining_floor_m2)} / ${kg(t.floor_free_m2)} m²</div>` : '';
     return `<div class="f-bar"><div class="f-track"><i style="width:${fill.toFixed(1)}%"></i>${need !== null ? `<u style="left:${need.toFixed(1)}%"></u>` : ''}</div>` +
-      `<div class="f-bar-txt">${txt}</div>${shelf}</div>`;
+      `<div class="f-bar-txt">${txt}</div>${shelf}${floor}</div>`;
   }
 
   function detailHtml(t) {
@@ -257,7 +278,9 @@ const Find = (() => {
       row('1口の底面', `${n0(t.unit_footprint_mm[0])}×${n0(t.unit_footprint_mm[1])} mm`) + row('1個の重さの上限', `${kg(t.max_piece_kg)} kg`) +
       row('容器', t.container_required ? '容器入りだけ' : '指定なし') +
       row('降ろせる地点', esc(t.drop_points.map(muniName).join('、'))) +
-      row('受けない品目', esc(t.refused_categories.join('、')) || 'なし') + '</div>';
+      row('受けない品目', esc(t.refused_categories.join('、')) || 'なし') +
+      (t.pickup_code ? row('集荷できる範囲', `${esc(muniName(t.pickup_code))} から ${kg(t.pickup_radius_km)} km 以内`) : '') +
+      (t.accepts_unboxed ? row('箱でない荷', '受ける（木枠など）') : '') + '</div>';
   }
 
   function holdAreaHtml(t, r) {
@@ -265,31 +288,40 @@ const Find = (() => {
     if (h && h.state === 'held') {
       return `<div class="f-hold held"><div class="f-hold-row"><b>仮予約中</b><span class="num">${esc(h.hold_id)}・${kg(h.weight_kg)} kg</span>` +
         `<span class="f-cd num" data-exp="${esc(h.expires_at)}">残り ${cdText(h)}</span></div>` +
-        '<div class="f-hold-msg">運送会社の承諾を待っています。期限が切れると重さの余りは戻ります。</div>' +
+        `<div class="f-hold-msg">締切 <b class="num">${md(h.expires_at)}</b> までに運送会社が承諾しないと、重さと床の余りは戻ります。</div>` +
         '<button type="button" class="btn-link" data-act="to-carrier">運送会社の役の画面で承諾する</button></div>';
     }
     if (h && h.state === 'accepted') {
       return `<div class="f-hold accepted"><div class="f-hold-row"><b>承諾されました</b><span class="num">${esc(h.hold_id)}・${kg(h.weight_kg)} kg</span></div>` +
-        `<div class="f-hold-msg">この便の重さの余りから ${kg(h.weight_kg)} kg を確保しました（架空のデモです。支払いも連絡も発生しません）。</div></div>`;
+        `<div class="f-hold-msg">この便の重さの余りから ${kg(h.weight_kg)} kg を確保しました（架空のデモです。支払いも連絡も発生しません）。</div>` +
+        `<button type="button" class="btn-primary sm" data-act="contract" data-h="${esc(h.hold_id)}">書面の下書きを見る</button></div>`;
     }
-    const past = h ? `<div class="f-hold-msg faint">${h.state === 'declined' ? '前回の仮予約は運送会社が辞退しました。' : '前回の仮予約は期限が切れました。'}</div>` : '';
+    if (h && (h.state === 'expired' || h.state === 'declined')) {
+      const why = h.state === 'declined' ? '運送会社が辞退しました。' : '締切を過ぎました。';
+      return `<div class="f-hold lost"><div class="f-hold-row"><b>${h.state === 'declined' ? '辞退されました' : '承諾なし'}</b><span class="num">${esc(h.hold_id)}</span></div>` +
+        `<div class="f-hold-msg">${why}送り方を比べるの見積依頼文で、ほかの手段に頼めます。</div>` +
+        '<button type="button" class="btn-primary sm" data-act="to-compare">見積依頼文を開く</button>' +
+        (r && r.ok ? `<button type="button" class="btn-link" data-act="hold" ${F.busy ? 'disabled' : ''}>もう一度仮予約する</button>` : '') + '</div>';
+    }
     if (r && r.ok) {
-      return `<div class="f-hold">${past}<button type="button" class="btn-primary sm" data-act="hold" ${F.busy ? 'disabled' : ''}>仮予約する（${F.holdMin} 分）</button></div>`;
+      return `<div class="f-hold"><button type="button" class="btn-primary sm" data-act="hold" ${F.busy ? 'disabled' : ''}>仮予約する（締切 ${holdLabel(F.holdMin)}後）</button></div>`;
     }
-    return past ? `<div class="f-hold">${past}</div>` : '';
+    return '';
   }
 
   function shipperCard(t, c) {
     const r = F.results[t.id], ok = r && r.ok, scope = inScope(t), selCls = t.id === F.sel ? ' sel' : '';
-    const chip = !r ? '<span class="chip na">照合中</span>' : ok ? '<span class="chip ok">○ 載ります</span>' : '<span class="chip no">× 載りません</span>';
-    const reasons = r && !ok ? `<ul class="f-why">${r.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
+    const mh = holdOf(t), mine = mh && (mh.state === 'held' || mh.state === 'accepted');  // 自分の仮予約がある便は、残りが減った照合の結果を出さない
+    const chip = mine ? `<span class="chip ${mh.state === 'accepted' ? 'ok' : 'check'}">${mh.state === 'accepted' ? '承諾済み' : '仮予約中'}</span>`
+      : !r ? '<span class="chip na">照合中</span>' : ok ? '<span class="chip ok">○ 載ります</span>' : '<span class="chip no">× 載りません</span>';
+    const reasons = r && !ok && !mine ? `<ul class="f-why">${r.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
     return `<article class="f-card${ok ? ' ok' : ''}${r && !ok ? ' ng' : ''}${selCls}${scope ? '' : ' off'}" data-t="${t.id}" tabindex="0">` +
       `<div class="f-top"><span class="f-id">${t.id}</span><b class="f-veh">${esc(t.vehicle)}</b>${chip}</div>` +
       `<div class="f-sub">${esc(t.carrier_name)}${scope ? '' : ' ・ <em>別の区間の便</em>'}</div>` +
       `<div class="f-route">${esc(t.route_label)}</div>` +
       `<div class="f-when num">${esc(muniName(t.origin_code))} ${hhmm(t.depart_at)} 発 → ${esc(muniName(t.dest_code))} ${hhmm(t.arrive_at)} 着</div>` +
       barHtml(t, c ? c.w : null) +
-      `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>1口・税抜・架空</small></div>` +
+      `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>${esc(t.price_unit || '1口')}・税抜・架空</small></div>` +
       reasons + holdAreaHtml(t, r) + (t.id === F.sel ? detailHtml(t) : '') + '</article>';
   }
 
@@ -299,18 +331,19 @@ const Find = (() => {
     const done = hs.filter((h) => h.state !== 'held');
     const ed = F.edits[t.id];
     const holds = pending.map((h) => `<div class="f-hrow"><div><b>${esc(h.hold_id)}</b> <span class="num">${kg(h.weight_kg)} kg</span>` +
-      `<span class="f-cd num" data-exp="${esc(h.expires_at)}">残り ${cdText(h)}</span></div>` +
+      `<span class="f-cd num" data-exp="${esc(h.expires_at)}">残り ${cdText(h)}</span><small class="f-hdl">締切 ${md(h.expires_at)}</small></div>` +
       `<div class="f-hbtn"><button type="button" class="btn-primary sm" data-act="accept" data-h="${esc(h.hold_id)}">承諾</button>` +
       `<button type="button" class="btn-ghost sm" data-act="decline" data-h="${esc(h.hold_id)}">辞退</button></div></div>`).join('');
-    const past = done.map((h) => `<div class="f-hpast"><span class="num">${esc(h.hold_id)}・${kg(h.weight_kg)} kg</span><span class="chip ${h.state === 'accepted' ? 'ok' : 'na'}">${
-      { accepted: '承諾済み', declined: '辞退済み', expired: '期限切れ' }[h.state]}</span></div>`).join('');
+    const past = done.map((h) => `<div class="f-hpast"><span class="num">${esc(h.hold_id)}・${kg(h.weight_kg)} kg</span>${h.state === 'accepted'
+      ? `<button type="button" class="btn-link" data-act="contract" data-h="${esc(h.hold_id)}">書面の下書き</button>` : ''}<span class="chip ${h.state === 'accepted' ? 'ok' : 'na'}">${
+      { accepted: '承諾済み', declined: '辞退済み', expired: '締切を過ぎた' }[h.state]}</span></div>`).join('');
     return `<article class="f-card carrier${t.id === F.sel ? ' sel' : ''}${t.carrier_id === F.carrier ? '' : ' off'}" data-t="${t.id}" tabindex="0">` +
       `<div class="f-top"><span class="f-id">${t.id}</span><b class="f-veh">${esc(t.vehicle)}</b>` +
       (pending.length ? `<span class="chip check">承諾待ち ${pending.length}</span>` : '') + '</div>' +
       `<div class="f-route">${esc(t.route_label)}</div>` +
       `<div class="f-when num">${esc(muniName(t.origin_code))} ${hhmm(t.depart_at)} 発 → ${esc(muniName(t.dest_code))} ${hhmm(t.arrive_at)} 着</div>` +
       barHtml(t, null) +
-      `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>1口・税抜・架空</small>` +
+      `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>${esc(t.price_unit || '1口')}・税抜・架空</small>` +
       (ed ? '<em class="f-edited">画面の中だけで変更</em>' : '') + '</div>' +
       (holds ? `<div class="f-holds"><div class="f-hh">荷主からの仮予約</div>${holds}</div>` : '<div class="f-hold-msg faint">承諾待ちの仮予約はありません。</div>') +
       (past ? `<div class="f-hhist">${past}</div>` : '') + (t.id === F.sel ? detailHtml(t) : '') + '</article>';
@@ -373,6 +406,9 @@ const Find = (() => {
     q('#f-fragile').checked = F.fragile;
     q('#f-box').checked = F.isBox;
     q('#f-holdmin').value = String(F.holdMin);
+    const bhEl = q('#f-bh'), b = bh();
+    bhEl.hidden = !b;
+    if (b) bhEl.textContent = `この場面の追加の条件: 集荷は ${muniFull(b.origin_code)}、届けばよい日は ${md(`${b.window_from}T00:00`).split(' ')[0]}〜${md(`${b.window_to}T00:00`).split(' ')[0]}。${b.unboxed_note || ''}`;
     const cs = q('#f-carrier-sel');
     if (cs.options.length !== F.carriers.length) cs.innerHTML = F.carriers.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
     cs.value = F.carrier;
@@ -394,9 +430,84 @@ const Find = (() => {
     }
   }
 
+  /* ------------------------------------------------------------ 値段の式（SPEC §21.6。運送会社の役の画面だけ） */
+
+  // 計算はサーバー（/api/b/price_formula → src/shipcompare/spaceb.py）。ここは入力を送って、返った値を並べるだけ
+  const FORMULA_NOTE = '標準的運賃（2024 年 3 月 22 日告示）の個建運賃とリードタイムの割引の考え方に当てた参考額です。値段は運送会社が決めます';
+  const FORMULA_LINE = '個建運賃の参考額 = 距離制運賃 × max（重さの割合, 床の割合）÷ 基準積載率 ×（1 − リードタイムの割引）';
+  const pc1 = (v) => `${(Math.round(v * 1000) / 10).toLocaleString('ja-JP')}%`;
+
+  function renderFormula() {
+    const el = q('#f-formula');
+    if (!el) return;
+    if (F.role !== 'carrier') { el.innerHTML = ''; F.fm.built = false; F.fm.key = ''; return; }
+    if (!F.fm.built) {
+      el.innerHTML = '<div class="m-h f-sub-h">値段の式<span class="m-tag">運送会社の役だけ</span></div>' +
+        `<p class="fm-line">${FORMULA_LINE}</p>` +
+        '<div class="f-grid3"><label><span class="lbl">基準積載率（%）</span><input id="fm-rate" class="ctl sm num" type="number" min="10" max="100" step="5"></label>' +
+        `<label><span class="lbl">リードタイムの割引</span><select id="fm-disc" class="ctl sm">${[0, 10, 20, 30, 40, 50].map((v) => `<option value="${v}">${v}%</option>`).join('')}</select></label>` +
+        '<label><span class="lbl">地域の表</span><select id="fm-region" class="ctl sm"><option value="近畿">近畿運輸局</option><option value="関東">関東運輸局</option></select></label>' +
+        '<label><span class="lbl">最低保証料（円）</span><input id="fm-min" class="ctl sm num" type="number" min="0" step="1000" placeholder="空欄"></label></div>' +
+        '<p class="fm-note">最低保証料を下回るときは最低保証料。</p>' +
+        '<div id="fm-out" class="fm-out"></div>' +
+        `<p class="fm-note">${FORMULA_NOTE}。</p>`;
+      el.querySelector('#fm-rate').value = F.fm.rate;
+      el.querySelector('#fm-disc').value = String(F.fm.disc);
+      el.querySelector('#fm-min').value = F.fm.minFee;
+      if (!F.fm.bound) { el.addEventListener('input', fmInput); el.addEventListener('change', fmInput); F.fm.bound = true; }
+      F.fm.built = true;
+    }
+    const c = cargoOf(), tid = q('#f-trip-sel').value, car = F.carriers.find((x) => x.id === F.carrier) || {};
+    const region = F.fm.region || car.tariff_region || '関東';
+    q('#fm-region').value = region;
+    const out = q('#fm-out');
+    if (!c || !tid) { out.innerHTML = '<p class="fm-miss">荷物を確定すると、その荷での参考額を出します。</p>'; return; }
+    const rate = Number(F.fm.rate), mf = String(F.fm.minFee || '').trim();
+    if (mf !== '' && !(Number(mf) >= 0)) { out.innerHTML = '<p class="fm-miss">最低保証料は 0 円以上の数で入れてください。</p>'; return; }
+    if (!(rate >= 10 && rate <= 100)) { out.innerHTML = '<p class="fm-miss">基準積載率は 10〜100% で入れてください。</p>'; return; }
+    const key = JSON.stringify([tid, body(), rate, F.fm.disc, region, mf]);
+    if (key !== F.fm.key) {
+      F.fm.key = key;
+      const tok = ++F.fm.tok;
+      Work.api('/api/b/price_formula', { ...body(), trip_id: tid, base_load_rate: rate / 100, lead_discount: F.fm.disc / 100, region, ...(mf !== '' ? { min_fee_yen: Number(mf) } : {}) })
+        .then((r) => { if (tok === F.fm.tok) { F.fm.data = r.reference; F.fm.err = ''; drawFormula(); } })
+        .catch((e) => { if (tok === F.fm.tok) { F.fm.data = null; F.fm.err = e.message; drawFormula(); } });
+    }
+    drawFormula();
+  }
+
+  function drawFormula() {
+    const out = q('#fm-out'), d = F.fm.data;
+    if (!out) return;
+    if (F.fm.err) { out.innerHTML = `<p class="fm-miss">${esc(F.fm.err)}</p>`; return; }
+    if (!d) { out.innerHTML = '<p class="fm-miss">計算しています…</p>'; return; }
+    const by = d.ratio_by;
+    out.innerHTML = '<div class="fm-tbl">' +
+      `<div><span>距離制運賃（${esc(d.region)}運輸局 ${esc(d.tariff_class)}、荷を積む区間 ${esc(muniName(d.segment_origin_code))} → ${esc(muniName(d.segment_dest_code))} 道路 ${d.km.toLocaleString('ja-JP')} km）</span><b class="num">${n0(d.distance_fare_yen)} 円</b></div>` +
+      `<div class="${by === '重さ' ? 'big' : ''}"><span>重さの割合 = ${kg(d.cargo_kg)} kg ÷ ${kg(d.max_load_kg)} kg</span><b class="num">${pc1(d.weight_ratio)}</b></div>` +
+      `<div class="${by === '床' ? 'big' : ''}"><span>床の割合 = ${kg(d.cargo_floor_m2)} m² ÷ ${kg(d.floor_total_m2)} m²</span><b class="num">${pc1(d.floor_ratio)}</b></div>` +
+      `<div><span>基準積載率</span><b class="num">${pc1(d.base_load_rate)}</b></div>` +
+      `<div><span>リードタイムの割引</span><b class="num">${pc1(d.lead_discount)}</b></div>` +
+      (d.min_fee_yen != null ? `<div><span>式の額 / 最低保証料</span><b class="num">${n0(d.formula_yen)} 円 / ${n0(d.min_fee_yen)} 円</b></div>` : '') +
+      `<div class="sum"><span>個建運賃の参考額（税抜）${d.min_fee_applied ? '（最低保証料）' : ''}</span><b class="num">${n0(d.reference_yen)} 円</b></div>` +
+      (d.trip_price_yen != null ? `<div><span>この便に登録した料金（架空・税抜）</span><b class="num">${n0(d.trip_price_yen)} 円</b></div>` : '') +
+      '</div>' + (d.km_note ? `<p class="fm-km">${esc(d.km_note)}</p>` : '');
+  }
+
+  function fmInput(e) {
+    const t = e.target;
+    if (t.id === 'fm-rate') F.fm.rate = t.value;
+    else if (t.id === 'fm-disc') F.fm.disc = Number(t.value);
+    else if (t.id === 'fm-region') F.fm.region = t.value;
+    else if (t.id === 'fm-min') F.fm.minFee = t.value;
+    else return;
+    renderFormula();
+  }
+
   function render() {
     if (!F.loaded) { renderList(); return; }
     renderLeft();
+    renderFormula();
     renderPairBar();
     renderList();
     syncTags();
@@ -406,10 +517,11 @@ const Find = (() => {
 
   function tick() {
     if (!F.active) return;
+    if (F.role === 'carrier' && F.loaded) renderFormula();
     document.querySelectorAll('.f-cd').forEach((el) => {
       const ms = new Date(el.dataset.exp).getTime() - Date.now();
       const s = Math.max(0, Math.ceil(ms / 1000));
-      el.textContent = `残り ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      el.textContent = `残り ${cdFmt(ms)}`;
       el.classList.toggle('low', ms < 60000);
       if (ms <= 0 && !el.dataset.fired) { el.dataset.fired = '1'; refresh(); }
     });
@@ -468,6 +580,7 @@ const Find = (() => {
     F.role = r;
     F.ver++;
     render();
+    if (F.ctOpen) renderContract();
     if (r === 'carrier') fitTrips(F.trips.filter((t) => t.carrier_id === F.carrier).map((t) => t.id));
     writeHash();
   }
@@ -492,7 +605,7 @@ const Find = (() => {
   function bind() {
     q('#f-role').addEventListener('click', (e) => { const b = e.target.closest('button[data-role]'); if (b) setRole(b.dataset.role); });
     q('#f-cat').innerHTML = '<option value="">指定なし</option>' + CATEGORIES.map((c) => `<option value="${c}">${c}</option>`).join('');
-    q('#f-holdmin').innerHTML = HOLD_CHOICES.map((m) => `<option value="${m}">${m} 分</option>`).join('');
+    q('#f-holdmin').innerHTML = HOLD_CHOICES.map((m) => `<option value="${m}">${holdLabel(m)}</option>`).join('');
     q('#f-cat').addEventListener('change', (e) => { F.category = e.target.value; runMatch(); });
     q('#f-container').addEventListener('change', (e) => { F.inContainer = e.target.checked; runMatch(); });
     q('#f-fragile').addEventListener('change', (e) => { F.fragile = e.target.checked; runMatch(); });
@@ -534,7 +647,7 @@ const Find = (() => {
         const a = btn.dataset.act, id = card && card.dataset.t;
         if (a === 'hold') {
           act(async () => {
-            const r = await Work.api('/api/b/hold', { ...body(), trip_id: id, hold_minutes: F.holdMin });
+            const r = await Work.api('/api/b/hold', { ...body(), trip_id: id, hold_minutes: F.holdMin, ...(bh() && bh().shipper ? { shipper: bh().shipper } : {}) });
             F.mine.add(r.hold.hold_id);
             F.sel = id;
           });
@@ -544,6 +657,10 @@ const Find = (() => {
           const t = byId(id);
           if (t) F.carrier = t.carrier_id;
           setRole('carrier');
+        } else if (a === 'contract') { openContract(btn.dataset.h);
+        } else if (a === 'to-compare') {
+          App.setView('compare');
+          Work.openWork(1);
         } else if (a === 'clear-pair') { F.pair = null; F.onlyPair = false; F.ver++; render(); }
         return;
       }
@@ -555,6 +672,58 @@ const Find = (() => {
       if (card && e.target === card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); select(card.dataset.t, { fly: true }); }
     });
     bindDest();
+    bindContract();
+  }
+
+  /* ------------------------------------------------------------ 書面の下書き（SPEC §21.3） */
+
+  async function loadContract() {
+    const id = F.ctOpen;
+    if (!id) return;
+    const inp = F.ct[id] || {};
+    try {
+      F.ctData = (await Work.api('/api/b/contract', { hold_id: id, fuel_surcharge: inp.fuel || null, payment_method: inp.pay || null })).contract;
+      F.err = '';
+    } catch (e) { F.ctData = null; toast(e.message); F.ctOpen = null; }
+    renderContract();
+  }
+
+  function openContract(id) { F.ctOpen = id; loadContract(); }
+
+  function renderContract() {
+    const el = q('#f-contract'), d = F.ctData;
+    el.hidden = !(F.ctOpen && d);
+    if (el.hidden) return;
+    const carrierRole = F.role === 'carrier', inp = F.ct[F.ctOpen] || {};
+    const sel = (k, list, cur) => `<select class="ctl sm" data-ct="${k}"><option value="">選んでください</option>${list.map((x) => `<option value="${esc(x)}"${x === cur ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
+    const rows = d.items.map((it) => {
+      let v;
+      if (carrierRole && it.by === 'carrier') v = sel(it.key === 'surcharge' ? 'fuel' : 'pay', it.key === 'surcharge' ? FUEL_CHOICES : it.options, it.value);
+      else if (it.value) v = esc(it.value);
+      else v = it.by === 'carrier' ? '<em class="fc-miss">未記入（運送会社の役が選びます）</em>' : '<em class="fc-miss">未登録</em>';
+      return `<div class="fc-row${it.legal ? ' legal' : ''}"><span>${esc(it.label)}</span><b>${v}</b></div>`;
+    }).join('');
+    const miss = d.missing.length ? `<p class="fc-missing">${d.missing.map((m) => `未記入: ${esc(m)}`).join('<br>')}</p>` : '<p class="fc-ready">必要な項目はすべて埋まっています。</p>';
+    const done = F.confirmed.has(d.hold_id);
+    q('#fc-body').innerHTML = `<div class="fc-sub num">仮予約 ${esc(d.hold_id)}・便 ${esc(d.trip_id)}</div>${rows}${miss}` +
+      (done ? '<p class="fc-done">確定しました（架空のデモです。実際の契約は結ばれません）。</p>' : '');
+    const b = q('#fc-confirm');
+    b.disabled = !d.ready || done;
+    b.textContent = done ? '確定しました' : '確定する';
+  }
+
+  function bindContract() {
+    q('#fc-body').addEventListener('change', (e) => {
+      const k = e.target.dataset && e.target.dataset.ct;
+      if (!k) return;
+      (F.ct[F.ctOpen] = F.ct[F.ctOpen] || {})[k] = e.target.value;
+      loadContract();
+    });
+    q('#fc-close').addEventListener('click', () => { F.ctOpen = null; renderContract(); });
+    q('#fc-print').addEventListener('click', () => window.print());
+    q('#fc-confirm').addEventListener('click', () => {
+      if (F.ctData && F.ctData.ready) { F.confirmed.add(F.ctData.hold_id); renderContract(); }
+    });
   }
 
   /* ------------------------------------------------------------ 公開 */
@@ -584,7 +753,7 @@ const Find = (() => {
     render();
     fitTrips((rev.length ? rev : F.trips).map((t) => t.id));
   }
-  function leave() { F.active = false; F.markers.forEach((m) => { m.el.style.display = 'none'; }); }
+  function leave() { F.active = false; F.markers.forEach((m) => { m.el.style.display = 'none'; }); q('#f-contract').hidden = true; }
   function onCargo() { if (F.loaded) runMatch(); }
   function hashParams(p) { p.set('r', F.role); if (F.sel) p.set('t', F.sel); }
   function readHash(p) { if (p.get('r') === 'carrier') F.role = 'carrier'; if (p.get('t')) F.sel = p.get('t'); }

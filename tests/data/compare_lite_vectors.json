@@ -1,0 +1,6965 @@
+{
+ "cases": [
+  {
+   "expect": [
+    {
+     "amount": 52300,
+     "class": "2t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 60360,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 80110,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "200",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 52300,
+     "class": "2t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 60360,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 80110,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "200",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 52300,
+     "class": "2t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 60360,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 80110,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "200",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 60360,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 80110,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "200",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 60360,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 80110,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "200",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 60360,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 80110,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "200",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 80110,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "200",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 56130,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "200.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 56130,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "200.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 56130,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "200.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "200.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "200.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "200.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "200.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 56130,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "219.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 56130,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "219.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 56130,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "219.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "219.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "219.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "219.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "219.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 56130,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "220",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 56130,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "220",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 56130,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "220",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "220",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "220",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 64740,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "220",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 85960,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "220",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 59960,
+     "class": "2t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 69120,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 91810,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "220.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 59960,
+     "class": "2t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 69120,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 91810,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "220.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 59960,
+     "class": "2t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 69120,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 91810,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "220.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 69120,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 91810,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "220.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 69120,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 91810,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "220.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 69120,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 91810,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "220.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 91810,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "220.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 63790,
+     "class": "2t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 73500,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 97660,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "250",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 63790,
+     "class": "2t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 73500,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 97660,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "250",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 63790,
+     "class": "2t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 73500,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 97660,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "250",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 73500,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 97660,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "250",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 73500,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 97660,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "250",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 73500,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 97660,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "250",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 97660,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "250",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 71450,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "299.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 71450,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "299.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 71450,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "299.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "299.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "299.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "299.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "299.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 71450,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "300",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 71450,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "300",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 71450,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "300",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "300",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "300",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 82260,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "300",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109360,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "300",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 94430,
+     "class": "2t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 108540,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 144460,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "401",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 94430,
+     "class": "2t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 108540,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 144460,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "401",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 94430,
+     "class": "2t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 108540,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 144460,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "401",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 108540,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 144460,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "401",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 108540,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 144460,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "401",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 108540,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 144460,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "401",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 144460,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "401",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "491.8",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "491.8",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "491.8",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "491.8",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "491.8",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "491.8",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "491.8",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "492",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "492",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "492",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "492",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "492",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "492",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "492",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "499.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "499.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "499.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "499.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "499.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "499.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "499.9",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "500",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "500",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 109750,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "500",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "500",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "500",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 126060,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "500",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 167860,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "500",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 119330,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "1",
+   "km": "500.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 119330,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "400",
+   "km": "500.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 119330,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2000",
+   "km": "500.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2001",
+   "km": "500.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "3500",
+   "km": "500.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4000",
+   "km": "500.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4001",
+   "km": "500.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 119330,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "1",
+   "km": "525",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 119330,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "400",
+   "km": "525",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 119330,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2000",
+   "km": "525",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2001",
+   "km": "525",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "3500",
+   "km": "525",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4000",
+   "km": "525",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4001",
+   "km": "525",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 119330,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "1",
+   "km": "550",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 119330,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "400",
+   "km": "550",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 119330,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2000",
+   "km": "550",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2001",
+   "km": "550",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "3500",
+   "km": "550",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 137010,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4000",
+   "km": "550",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 182480,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4001",
+   "km": "550",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 128910,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "1",
+   "km": "550.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 128910,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "400",
+   "km": "550.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 128910,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2000",
+   "km": "550.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2001",
+   "km": "550.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "3500",
+   "km": "550.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4000",
+   "km": "550.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4001",
+   "km": "550.1",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 128910,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "1",
+   "km": "556",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 128910,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "400",
+   "km": "556",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 128910,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2000",
+   "km": "556",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2001",
+   "km": "556",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "3500",
+   "km": "556",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4000",
+   "km": "556",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4001",
+   "km": "556",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 128910,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "1",
+   "km": "600",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 128910,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "400",
+   "km": "600",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 128910,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2000",
+   "km": "600",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2001",
+   "km": "600",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "3500",
+   "km": "600",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 147960,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4000",
+   "km": "600",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 197100,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4001",
+   "km": "600",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 138490,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 158910,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 211720,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "1",
+   "km": "650",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 138490,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 158910,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 211720,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "400",
+   "km": "650",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 138490,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 158910,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 211720,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "2000",
+   "km": "650",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 158910,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 211720,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "2001",
+   "km": "650",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 158910,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 211720,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "3500",
+   "km": "650",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 158910,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 211720,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "4000",
+   "km": "650",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 211720,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "4001",
+   "km": "650",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 157650,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 180810,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 240960,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "1",
+   "km": "700.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 157650,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 180810,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 240960,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "400",
+   "km": "700.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 157650,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 180810,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 240960,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "2000",
+   "km": "700.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 180810,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 240960,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "2001",
+   "km": "700.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 180810,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 240960,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "3500",
+   "km": "700.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 180810,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 240960,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "4000",
+   "km": "700.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 240960,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "4001",
+   "km": "700.5",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 167230,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 191760,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 255580,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "1",
+   "km": "800",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 167230,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 191760,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 255580,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "400",
+   "km": "800",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 167230,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 191760,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 255580,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "2000",
+   "km": "800",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 191760,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 255580,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "2001",
+   "km": "800",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 191760,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 255580,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "3500",
+   "km": "800",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 191760,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 255580,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "4000",
+   "km": "800",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 255580,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "4001",
+   "km": "800",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 205550,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 235560,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 314060,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "1",
+   "km": "1000",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 205550,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 235560,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 314060,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "400",
+   "km": "1000",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 205550,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 235560,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 314060,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "2000",
+   "km": "1000",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 235560,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 314060,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "2001",
+   "km": "1000",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 235560,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 314060,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "3500",
+   "km": "1000",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 235560,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 314060,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "4000",
+   "km": "1000",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 314060,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "4001",
+   "km": "1000",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 253450,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 290310,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 387160,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "1",
+   "km": "1200.4",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 253450,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 290310,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 387160,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "400",
+   "km": "1200.4",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 253450,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 290310,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 387160,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "2000",
+   "km": "1200.4",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 290310,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 387160,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "2001",
+   "km": "1200.4",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 290310,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 387160,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "3500",
+   "km": "1200.4",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 290310,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 387160,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "4000",
+   "km": "1200.4",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 387160,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "4001",
+   "km": "1200.4",
+   "region": "関東"
+  },
+  {
+   "expect": [
+    {
+     "amount": 50270,
+     "class": "2t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 57350,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 77370,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "200",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 50270,
+     "class": "2t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 57350,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 77370,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "200",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 50270,
+     "class": "2t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 57350,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 77370,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "200",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 57350,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 77370,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "200",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 57350,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 77370,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "200",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 57350,
+     "class": "4t",
+     "steps": 0,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 77370,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "200",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 77370,
+     "class": "10t",
+     "steps": 0,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "200",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 53950,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "200.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 53950,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "200.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 53950,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "200.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "200.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "200.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "200.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "200.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 53950,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "219.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 53950,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "219.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 53950,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "219.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "219.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "219.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "219.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "219.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 53950,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "220",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 53950,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "220",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 53950,
+     "class": "2t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "220",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "220",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "220",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61530,
+     "class": "4t",
+     "steps": 1,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "220",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 83020,
+     "class": "10t",
+     "steps": 1,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "220",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 57630,
+     "class": "2t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 65710,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 88670,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "220.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 57630,
+     "class": "2t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 65710,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 88670,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "220.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 57630,
+     "class": "2t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 65710,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 88670,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "220.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 65710,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 88670,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "220.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 65710,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 88670,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "220.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 65710,
+     "class": "4t",
+     "steps": 2,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 88670,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "220.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 88670,
+     "class": "10t",
+     "steps": 2,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "220.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61310,
+     "class": "2t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 69890,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 94320,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "250",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61310,
+     "class": "2t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 69890,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 94320,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "250",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 61310,
+     "class": "2t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 69890,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 94320,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "250",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 69890,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 94320,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "250",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 69890,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 94320,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "250",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 69890,
+     "class": "4t",
+     "steps": 3,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 94320,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "250",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 94320,
+     "class": "10t",
+     "steps": 3,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "250",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 68670,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "299.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 68670,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "299.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 68670,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "299.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "299.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "299.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "299.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "299.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 68670,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "300",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 68670,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "300",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 68670,
+     "class": "2t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "300",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "300",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "300",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 78250,
+     "class": "4t",
+     "steps": 5,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "300",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105620,
+     "class": "10t",
+     "steps": 5,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "300",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 90750,
+     "class": "2t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 103330,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 139520,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "401",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 90750,
+     "class": "2t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 103330,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 139520,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "401",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 90750,
+     "class": "2t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 103330,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 139520,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "401",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 103330,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 139520,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "401",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 103330,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 139520,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "401",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 103330,
+     "class": "4t",
+     "steps": 11,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 139520,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "401",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 139520,
+     "class": "10t",
+     "steps": 11,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "401",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "491.8",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "491.8",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "491.8",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "491.8",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "491.8",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "491.8",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "491.8",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "492",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "492",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "492",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "492",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "492",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "492",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "492",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "499.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "499.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "499.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "499.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "499.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "499.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "499.9",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "1",
+   "km": "500",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "400",
+   "km": "500",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 105470,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2000",
+   "km": "500",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "2001",
+   "km": "500",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "3500",
+   "km": "500",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 120050,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 0
+    },
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4000",
+   "km": "500",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 162120,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 0
+    }
+   ],
+   "kg": "4001",
+   "km": "500",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 114680,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "1",
+   "km": "500.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 114680,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "400",
+   "km": "500.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 114680,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2000",
+   "km": "500.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2001",
+   "km": "500.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "3500",
+   "km": "500.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4000",
+   "km": "500.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4001",
+   "km": "500.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 114680,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "1",
+   "km": "525",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 114680,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "400",
+   "km": "525",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 114680,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2000",
+   "km": "525",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2001",
+   "km": "525",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "3500",
+   "km": "525",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4000",
+   "km": "525",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4001",
+   "km": "525",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 114680,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "1",
+   "km": "550",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 114680,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "400",
+   "km": "550",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 114680,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2000",
+   "km": "550",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "2001",
+   "km": "550",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "3500",
+   "km": "550",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 130500,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 1
+    },
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4000",
+   "km": "550",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 176250,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 1
+    }
+   ],
+   "kg": "4001",
+   "km": "550",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 123890,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "1",
+   "km": "550.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 123890,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "400",
+   "km": "550.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 123890,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2000",
+   "km": "550.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2001",
+   "km": "550.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "3500",
+   "km": "550.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4000",
+   "km": "550.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4001",
+   "km": "550.1",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 123890,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "1",
+   "km": "556",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 123890,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "400",
+   "km": "556",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 123890,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2000",
+   "km": "556",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2001",
+   "km": "556",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "3500",
+   "km": "556",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4000",
+   "km": "556",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4001",
+   "km": "556",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 123890,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "1",
+   "km": "600",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 123890,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "400",
+   "km": "600",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 123890,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2000",
+   "km": "600",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "2001",
+   "km": "600",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "3500",
+   "km": "600",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 140950,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 2
+    },
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4000",
+   "km": "600",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 190380,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 2
+    }
+   ],
+   "kg": "4001",
+   "km": "600",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 133100,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 151400,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 204510,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "1",
+   "km": "650",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 133100,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 151400,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 204510,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "400",
+   "km": "650",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 133100,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 151400,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 204510,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "2000",
+   "km": "650",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 151400,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 204510,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "2001",
+   "km": "650",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 151400,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 204510,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "3500",
+   "km": "650",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 151400,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 3
+    },
+    {
+     "amount": 204510,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "4000",
+   "km": "650",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 204510,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 3
+    }
+   ],
+   "kg": "4001",
+   "km": "650",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 151520,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 172300,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 232770,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "1",
+   "km": "700.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 151520,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 172300,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 232770,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "400",
+   "km": "700.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 151520,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 172300,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 232770,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "2000",
+   "km": "700.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 172300,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 232770,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "2001",
+   "km": "700.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 172300,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 232770,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "3500",
+   "km": "700.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 172300,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 5
+    },
+    {
+     "amount": 232770,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "4000",
+   "km": "700.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 232770,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 5
+    }
+   ],
+   "kg": "4001",
+   "km": "700.5",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 160730,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 182750,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 246900,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "1",
+   "km": "800",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 160730,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 182750,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 246900,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "400",
+   "km": "800",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 160730,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 182750,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 246900,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "2000",
+   "km": "800",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 182750,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 246900,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "2001",
+   "km": "800",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 182750,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 246900,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "3500",
+   "km": "800",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 182750,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 6
+    },
+    {
+     "amount": 246900,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "4000",
+   "km": "800",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 246900,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 6
+    }
+   ],
+   "kg": "4001",
+   "km": "800",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 197570,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 224550,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 303420,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "1",
+   "km": "1000",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 197570,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 224550,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 303420,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "400",
+   "km": "1000",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 197570,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 224550,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 303420,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "2000",
+   "km": "1000",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 224550,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 303420,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "2001",
+   "km": "1000",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 224550,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 303420,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "3500",
+   "km": "1000",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 224550,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 10
+    },
+    {
+     "amount": 303420,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "4000",
+   "km": "1000",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 303420,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 10
+    }
+   ],
+   "kg": "4001",
+   "km": "1000",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 243620,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 276800,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 374070,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "1",
+   "km": "1200.4",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 243620,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 276800,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 374070,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "400",
+   "km": "1200.4",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 243620,
+     "class": "2t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 276800,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 374070,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "2000",
+   "km": "1200.4",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 276800,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 374070,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "2001",
+   "km": "1200.4",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 276800,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 374070,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "3500",
+   "km": "1200.4",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 276800,
+     "class": "4t",
+     "steps": 15,
+     "steps_over_500": 15
+    },
+    {
+     "amount": 374070,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "4000",
+   "km": "1200.4",
+   "region": "近畿"
+  },
+  {
+   "expect": [
+    {
+     "amount": 374070,
+     "class": "10t",
+     "steps": 15,
+     "steps_over_500": 15
+    }
+   ],
+   "kg": "4001",
+   "km": "1200.4",
+   "region": "近畿"
+  }
+ ],
+ "note": "tools/build_compare_vectors.py が estimate.kashikiri_fares の出力から作る。手で直さない（SPEC §24 G88）"
+}

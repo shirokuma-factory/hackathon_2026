@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="loadview.css">
+<link rel="stylesheet" href="own.css">
 </head>
 <body class="view-market">
 <div id="map"></div>
@@ -19,6 +20,7 @@
   <button data-view="market" aria-pressed="true">市場を見る</button>
   <button data-view="find" aria-pressed="false">空きを探す・つなぐ</button>
   <button data-view="compare" aria-pressed="false">送り方を比べる</button>
+  <button data-view="own" aria-pressed="false">自社の運行</button>
 </nav>
 
 <section id="panel" class="glass v-compare" aria-label="条件">
@@ -210,6 +212,7 @@
 <div id="m-credits" class="v-market" aria-label="出典と利用条件"><details id="m-credits-d"><summary>出典・利用条件</summary><div id="m-credits-body"></div></details></div>
 
 <section id="find-view" class="glass v-find" aria-label="空きを探す・つなぐ">
+  <div id="own-draft" class="own-draft" hidden><p class="od-text"></p><button type="button" class="btn-link od-close" aria-label="この説明を閉じる">閉じる</button></div>
   <div class="m-h">空きを探す・つなぐ<span class="m-tag">架空のデモ</span></div>
   <div class="m-seg" id="f-role" role="group" aria-label="役">
     <button data-role="shipper" aria-pressed="true">荷主として探す</button>
@@ -224,13 +227,14 @@
       <ul id="f-sug" class="f-sug" role="listbox"></ul></div>
     <div class="f-grid">
       <label><span class="lbl">品目</span><select id="f-cat" class="ctl sm"></select></label>
-      <label><span class="lbl">仮予約の期限</span><select id="f-holdmin" class="ctl sm"></select></label>
+      <label><span class="lbl">仮予約の締切</span><select id="f-holdmin" class="ctl sm"></select></label>
     </div>
     <div class="f-checks">
       <label class="f-chk"><input type="checkbox" id="f-container"><span>容器に入れた荷</span></label>
       <label class="f-chk"><input type="checkbox" id="f-fragile"><span>壊れ物</span></label>
       <label class="f-chk"><input type="checkbox" id="f-box" checked><span>段ボールなどの直方体の箱</span></label>
     </div>
+    <p class="f-hint" id="f-bh" hidden></p>
   </div>
   <div id="f-carrier" hidden>
     <label class="field"><span class="lbl">運送会社の役</span><select id="f-carrier-sel" class="ctl sm"></select></label>
@@ -244,6 +248,7 @@
       <button type="button" class="btn-sm" id="f-dl" disabled>JSON をダウンロード</button></div>
     <p class="f-edit-note" id="f-edit-note"></p>
     <p class="f-hint">変えた値はこのページの中にだけあり、サーバーには書きません。荷主側の照合にも使われません。</p>
+    <div id="f-formula" class="f-formula" aria-label="運送会社の役だけの欄"></div>
   </div>
   <div class="f-foot"><button type="button" class="btn-link" id="f-reset">仮予約と空きを最初の状態に戻す</button></div>
 </section>
@@ -265,6 +270,34 @@
   <div class="f-lg f-lg-modes"><span class="rt-legend rt-legend-row"></span></div>
 </section>
 
+<section id="own-view" class="glass v-own" aria-label="自社の運行">
+  <div class="m-h">自社の運行<span class="m-tag">架空のサンプル</span></div>
+  <p class="o-co">架空 播磨ライン運輸（兵庫県加古川市・車両 8 台）の 2026 年 10 月</p>
+  <div class="m-seg" id="own-tabs" role="group" aria-label="表示する内容"></div>
+  <div id="own-body"></div>
+</section>
+
+<aside id="own-right" class="glass v-own" aria-label="数字と区間の表"></aside>
+
+<section id="own-notes" class="glass v-own" aria-label="注意">
+  <p class="f-n1">架空の会社のサンプルです</p>
+  <p class="f-n2">この版ではサンプルだけを扱います。自社のファイルの取り込みは次の版です</p>
+  <p class="f-n3">列の対応づけの Claude の提案は、開発のときに作った記録です</p>
+  <p class="f-n3">ここの数字は検索と集計のための写しです。法令で残す元の記録は、別に保管してください。</p>
+</section>
+
+<section id="f-contract" class="glass v-find" role="dialog" aria-label="書面の下書き" hidden>
+  <div class="fc-head"><b>書面の下書き</b><span class="m-tag">架空のデモ</span></div>
+  <p class="fc-notice">この書面は運送会社と荷主の間で交わすものです。Backfull は運送の当事者ではなく、運賃を受け取りません。</p>
+  <p class="fc-fiction">架空の運送会社・荷主・番号です。実在のものではありません。</p>
+  <div id="fc-body"></div>
+  <div class="fc-btns no-print">
+    <button type="button" class="btn-primary sm" id="fc-confirm" disabled>確定する</button>
+    <button type="button" class="btn-ghost sm" id="fc-print">印刷して残す</button>
+    <button type="button" class="btn-ghost sm" id="fc-close">閉じる</button>
+  </div>
+</section>
+
 <div id="hover-tag"></div>
 <div id="loadview" hidden></div>
 <div id="toast" role="status"></div>
@@ -283,6 +316,7 @@
 <script src="routes.js"></script>
 <script src="market.js"></script>
 <script src="find.js"></script>
+<script src="own.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

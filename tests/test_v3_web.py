@@ -219,7 +219,7 @@ def test_spec15_7_scenarios_and_demo_quotes(srv):
     status, r = get(port, "/api/scenarios")
     assert status == 200
     ids = [s["id"] for s in r["scenarios"]]
-    assert ids == [s["id"] for s in list_scenarios()] and ids == ["S1", "S2", "S3", "S4", "S5"]
+    assert ids == [s["id"] for s in list_scenarios()] and ids == ["S1", "S2", "S3", "S4", "S5", "S6"]
     s5 = next(s for s in r["scenarios"] if s["id"] == "S5")
     assert s5["has_demo_quotes"] and s5["label"] == "想定の荷主" and s5["shipment"]["items"][0]["count"] == 8
     assert not next(s for s in r["scenarios"] if s["id"] == "S1")["has_demo_quotes"]
