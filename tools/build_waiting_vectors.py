@@ -42,6 +42,31 @@ def example_rows() -> list[dict]:
     return out
 
 
+def page_example_rows() -> list[dict]:
+    """web/waiting.html（と Artifact の版）の開いた直後の例（SPEC §27.4）。テンプレートの EXAMPLE と同じ 18 行。"""
+    a, b, p7, p12, p3 = "架空 元請A物流", "架空 B食品", "江東区 地点07", "川崎市 地点12", "市川市 地点03"
+    spec = [
+        (1, a, p7, "中型", "08:10", "09:25"), (2, a, p7, "中型", "08:05", "09:20"), (5, a, p7, "中型", "08:20", "09:30"), (6, a, p7, "中型", "08:40", "09:40"),
+        (7, a, p7, "中型", "08:10", "10:15", "10:55", "11:05", "運転者", "手積み", "08:30", "検品・仕分け", "20"),
+        (15, a, p7, "中型", "09:00", "09:30", "09:52", "10:00", "荷主側"),
+        (8, a, p7, "中型", "10:05", "10:20"), (9, a, p7, "中型", "10:10", "10:25"), (13, a, p7, "中型", "10:15", "10:35"), (14, a, p7, "中型", "10:00", "10:10"),
+        (8, a, p12, "中型", "13:05", "13:45"), (16, a, p12, "中型", "13:20", "14:00"),
+        (2, b, p3, "大型", "08:15", "09:30"), (5, b, p3, "大型", "08:30", "09:40"), (9, b, p3, "大型", "08:10", "09:20"),
+        (13, b, p3, "大型", "10:10", "10:25"), (14, b, p3, "大型", "10:20", "10:35"),
+        (15, b, p12, "大型", "13:05", "13:20", "", "", "", "", "", "", "", "いいえ"),
+    ]
+    keys = ("handler", "method", "appointed", "side_work", "side_min")
+    out = []
+    for t in spec:
+        d, partner, place, vclass, arrive, start = t[:6]
+        end, depart = (t[6], t[7]) if len(t) > 7 else ("", "")
+        rest = list(t[8:13]) + [""] * (5 - len(t[8:13]))
+        fault = t[13] if len(t) > 13 else "はい"
+        out.append({"date": f"2026-10-{d:02d}", "vehicle_no": "", "vehicle_class": vclass, "partner": partner, "place": place, "arrive": arrive,
+                    "start": start, "end": end, "depart": depart, **dict(zip(keys, rest)), "shipper_fault": fault, "post_wait": ""})
+    return out
+
+
 HEADER = "\t".join(["日付", "車番", "車種", "契約の相手", "場所", "到着", "荷役開始", "荷役終了", "出発", "荷役をした人",
                     "荷役の方法", "荷主等の都合の待機か", "指定の到着時刻", "附帯業務の内容", "附帯業務の分"])
 LINE1 = "10/5\t品川100あ1\t小型（2t）\tA運輸\t川崎\t09:00\t11:15\t\t\t\t\tはい"
@@ -81,6 +106,17 @@ CASES: list[dict] = [
      "rows": [row(start="10:00", side_work="パレットの積み替え", side_min="25"), row(start="10:00", side_work="検品"),
               row(start="10:00", side_min="10")]},
     {"name": "example_rows_11_at_chiten07", "year": 2026, "rows": example_rows()},
+    {"name": "example_waiting_page_18_rows", "year": 2026, "rows": page_example_rows()},
+    # ---- SPEC §27 (G113): どこで・いつ待っているか
+    {"name": "hotspots_g113_basic", "year": 2026,
+     "rows": [row(partner="A", place="X", arrive="08:10", start="09:20"), row(partner="A", place="X", arrive="08:40", start="09:20"),
+              row(partner="A", place="Y", arrive="13:05", start="14:05", shipper_fault="いいえ")]},
+    {"name": "hotspots_empty_place_ordering_and_rounding", "year": 2026,
+     "rows": [row(partner="B", place="", arrive="10:00", start="10:50"), row(partner="B", place="  ", arrive="10:30", start="11:21"),
+              row(partner="B", place="Z", arrive="9:05", start="9:35"), row(partner="B", place="Z", arrive="09:50", start="10:50"),
+              row(partner="A", place="Z", arrive="09:10", start="10:10"), row(partner="A", place="Z", arrive="09:00", start="09:30"),
+              row(partner="A", place="Z", arrive="23:50", start="00:50"), row(partner="A", place="Y", arrive="09:00", start="10:00"),
+              row(partner="A", place="Y", arrive="09:10", start="09:30"), row(partner="A", place="Y", arrive="09:20", start="09:55")]},
     {"name": "multiple_partners_and_months", "year": 2026,
      "rows": [row(start="10:00"), row(date="2026-11-02", start="11:15"), row(partner="B商事", start="10:00"),
               row(partner="B商事", date="2026-09-30", vehicle_class="トレーラー", start="12:00")]},
@@ -217,7 +253,7 @@ def build() -> dict:
         else:
             rows = c["rows"]
         res = waiting.calc(rows, c["year"])
-        exp = {"rows": res["rows"], "by_partner": res["by_partner"], "errors": res["errors"]}
+        exp = {"rows": res["rows"], "by_partner": res["by_partner"], "hotspots": res["hotspots"], "errors": res["errors"]}
         if c.get("paste"):
             exp["input_rows"] = rows
             exp["defaulted"] = defaulted
