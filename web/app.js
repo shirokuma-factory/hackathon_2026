@@ -258,6 +258,16 @@ function prefRings() {
   return S.prefRings;
 }
 
+// 値が変わらない間は同じ配列（参照）を返す。毎フレーム新しい配列を層に渡すと、deck.gl が属性を毎回作り直す（SPEC §19.5）。deps: 内容を決める値の並び
+const SMEMO = new Map();
+function stableData(key, deps, make) {
+  const m = SMEMO.get(key);
+  if (m && m.d.length === deps.length && m.d.every((x, i) => x === deps[i])) return m.v;
+  const v = make();
+  SMEMO.set(key, { d: deps, v });
+  return v;
+}
+
 // 内容が変わらない間は同じ層のインスタンスを返す。ref: 内容を決める参照、sig: 値の署名
 const LMEMO = new Map();
 function memoLayer(id, ref, sig, make) {
@@ -314,25 +324,26 @@ function dynamicLayers(now) {
     out.push(new L.SolidPolygonLayer({
       id: 'sel-fill', data: sh.polys, getPolygon: (d) => d, getFillColor: SEL_FILL, opacity: (38 + 34 * pulse) / 255,
     }));
-    out.push(new L.PathLayer({
+    out.push(memoLayer('sel-edge', sh.edges, step, () => new L.PathLayer({
       id: 'sel-edge', data: sh.edges, getPath: (d) => d.p, widthUnits: 'pixels', getWidth: (d) => d.w, capRounded: true, jointRounded: true,
       getColor: (d) => (d.glow ? [92, 200, 255, 70 + 50 * pulse] : SEL_LINE), updateTriggers: { getColor: [step] },
-    }));
+    })));
   }
   const r = S.route;
   if (r && Rt.hasSets()) {
     out.push(...Rt.compareLayers(now, map.getZoom(), S.t));
     // 着地の印（ゆっくり広がる輪つき）
     const dest = [S.idx.lon[S.sel], S.idx.lat[S.sel]], dph = ((sec + 1.3) % 2.6) / 2.6;
+    const destD = stableData('dest-c', dest, () => [{ p: dest }]);
     out.push(new L.ScatterplotLayer({
-      id: 'dest-pulse', data: [{ p: dest }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 8 + dph * 24, stroked: true,
+      id: 'dest-pulse', data: destD, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 8 + dph * 24, stroked: true,
       filled: false, getLineColor: [226, 247, 255, Math.round(190 * (1 - dph))], lineWidthUnits: 'pixels', getLineWidth: 1.6,
       updateTriggers: { getLineColor: [Math.round(dph * 30)], getRadius: [Math.round(dph * 30)] },
     }));
-    out.push(new L.ScatterplotLayer({
-      id: 'dest', data: [{ p: dest }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 5.5, stroked: true, filled: true,
+    out.push(memoLayer('dest', destD, '', () => new L.ScatterplotLayer({
+      id: 'dest', data: destD, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 5.5, stroked: true, filled: true,
       getFillColor: [255, 255, 255, 255], getLineColor: [92, 200, 255, 255], lineWidthUnits: 'pixels', getLineWidth: 2.5,
-    }));
+    })));
   } else if (r) {
     const reveal = ease(clamp01((now - S.selectedAt) / 1100));
     const shown = reveal < 1 ? slicePath(r, reveal) : r.path;
@@ -342,22 +353,23 @@ function dynamicLayers(now) {
       updateTriggers: { getPath: [reveal < 1 ? reveal : 1, S.selectedAt] },
     }));
     const dest = r.path[r.path.length - 1];
-    out.push(new L.ScatterplotLayer({
-      id: 'dest', data: [{ p: dest }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 5.5, stroked: true, filled: true,
+    const destD = stableData('dest-r', dest, () => [{ p: dest }]);
+    out.push(memoLayer('dest', destD, '', () => new L.ScatterplotLayer({
+      id: 'dest', data: destD, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 5.5, stroked: true, filled: true,
       getFillColor: [255, 255, 255, 255], getLineColor: [92, 200, 255, 255], lineWidthUnits: 'pixels', getLineWidth: 2.5,
-    }));
+    })));
   }
   // 出発地（ゆっくり広がる輪）
-  const ph = (sec % 2.6) / 2.6;
+  const ph = (sec % 2.6) / 2.6, oD = stableData('origin', [o.lon, o.lat], () => [{ p: [o.lon, o.lat] }]);
   out.push(new L.ScatterplotLayer({
-    id: 'origin-pulse', data: [{ p: [o.lon, o.lat] }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 8 + ph * 26, stroked: true, filled: false,
+    id: 'origin-pulse', data: oD, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 8 + ph * 26, stroked: true, filled: false,
     getLineColor: [92, 200, 255, Math.round(200 * (1 - ph))], lineWidthUnits: 'pixels', getLineWidth: 1.6,
     updateTriggers: { getLineColor: [Math.round(ph * 30)], getRadius: [Math.round(ph * 30)] },
   }));
-  out.push(new L.ScatterplotLayer({
-    id: 'origin', data: [{ p: [o.lon, o.lat] }], getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 6, stroked: true, filled: true,
+  out.push(memoLayer('origin', oD, '', () => new L.ScatterplotLayer({
+    id: 'origin', data: oD, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 6, stroked: true, filled: true,
     getFillColor: [92, 200, 255, 255], getLineColor: [255, 255, 255, 255], lineWidthUnits: 'pixels', getLineWidth: 2,
-  }));
+  })));
   return out;
 }
 
@@ -944,7 +956,7 @@ async function main() {
     customAttribution: ['国土数値情報（行政区域データ）（国土交通省）を加工して作成', '国土数値情報（鉄道データ）（国土交通省）を加工して作成', '道路・フェリー・空港: OSRM・OpenStreetMap（© OpenStreetMap contributors, ODbL）'],
   }), 'bottom-right');
   overlay = new deck.MapboxOverlay({
-    interleaved: true, layers: [],
+    interleaved: new URLSearchParams(location.search).get('il') !== '0', layers: [], // ?il=0 は計測の比較用（地図の上に別に重ねる）
     getCursor: ({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab'),
     onHover: (info) => { if (S.view === 'market') Market.hover(info); else if (S.view === 'compare') hoverTag(info); },
     pickingRadius: 6,
