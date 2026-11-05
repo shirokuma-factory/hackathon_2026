@@ -14,3 +14,4 @@
 @media (min-width: 901px) {
   #find-view .f-reg .f-btns { position: sticky; bottom: -10px; z-index: 2; padding: 8px 0 10px; margin-bottom: -4px; background: rgba(11, 17, 28, .96); border-top: 1px solid var(--line); }
 }
+.rt-detour { color: var(--warn, #b45309); }

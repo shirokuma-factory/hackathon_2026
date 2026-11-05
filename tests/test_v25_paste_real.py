@@ -233,7 +233,7 @@ def test_g99_lite_page_has_texts_and_contact_links_from_contacts_json():
             assert c["url"] in html, c["url"]
     for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "localStorage"):
         assert bad not in html, bad
-    assert not re.search(r"<script[^>]+src\s*=", html, re.I) and not re.search(r"<link[^>]+href\s*=", html, re.I)
+    assert not re.search(r"<script[^>]+src\s*=", html, re.I) and not re.search(r"<link(?![^>]*href\s*=\s*.data:)[^>]+href\s*=", html, re.I)
     assert not re.search(r"<(img|iframe|form)\b", html, re.I)
     # 窓口の記録が無い手段に、URL を作り出していない（軽貨物のハコベル・PickGo など）
     assert "hacobell" not in html.lower() and "pickgo.jp" not in html.lower()

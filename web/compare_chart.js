@@ -32,6 +32,12 @@ const CompareChart = (() => {
     return `この荷で一番高い手段は、一番安い手段の約 ${n} 倍`;
   }
 
+  // 額の出る手段が 1 つだけのとき（倍率は出さない。SPEC §33 #3）。表を持たない手段は、宅配・路線便・カゴ台車のうち問い合わせになっているもの
+  function onlyText(one, others) {
+    const ask = ['宅配', '路線便', 'カゴ台車'].filter((n) => others.some((c) => c.label === n && c.status !== '使えない'));
+    return `額が出るのは${one.label}だけです。` + (ask.length ? `${ask.join('・')}はこの区間の表を持たないため問い合わせです` : '');
+  }
+
   function html(cards) {
     if (!cards.length) return '';
     const r = ratioOf(cards);
@@ -49,10 +55,11 @@ const CompareChart = (() => {
     };
     const none = (c) => {
       const unusable = c.status === '使えない';
+      const txt = unusable ? '使えない' : c.routeNone ? 'なし（つながる航路がありません）' : '問い合わせ'; // 船は経路のカードと同じ言い方（SPEC §33 #7）
       return `<div class="cc-row off"><span class="cc-name">${name(c)}</span>` +
-        `<span class="cc-track"><span class="cc-off">${unusable ? '使えない' : '問い合わせ'}</span></span>${days(c)}</div>`;
+        `<span class="cc-track"><span class="cc-off">${txt}</span></span>${days(c)}</div>`;
     };
-    const sum = r ? `<p class="cc-ratio">${esc(ratioText(r))}</p>` : '';
+    const sum = r ? `<p class="cc-ratio">${esc(ratioText(r))}</p>` : (rows.length === 1 ? `<p class="cc-only">${esc(onlyText(rows[0], others))}</p>` : '');
     return `<section class="cc" aria-label="手段ごとの目安額の比べ">` +
       `<h4 class="cc-title">手段ごとの目安額<small>税抜・宅配、路線便、カゴ台車は百円の単位の試算</small></h4>` +
       `${sum}<div class="cc-rows">${rows.map(line).join('')}${others.map(none).join('')}</div></section>`;

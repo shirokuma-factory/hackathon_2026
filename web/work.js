@@ -328,7 +328,8 @@ function renderRequest() {
   // 見積を頼む先。手段の列も名前も持たない（試算額を出した手段と会社を結び付けない。SPEC §31.2）
   const rows = r.contacts.map((c) => `<tr><td>${c.has_window
     ? `<a href="${wesc(c.url)}" target="_blank" rel="noopener">${wesc(c.name)}</a>` : `<span class="no-win">${wesc(c.name)}</span> <b class="need">窓口の確認が必要</b>`}</td><td>${wesc(c.condition)}</td><td class="nw num">${wesc(c.checked_on)}</td></tr>`).join('');
-  const pointer = r.contacts_note ? `<p class="hint">${wesc(r.contacts_note)}。</p>` : '';
+  // 案内の文の「比べるページ」は compare_lite.html へのリンクにする（SPEC §33 #9）
+  const pointer = r.contacts_note ? `<p class="hint">${wesc(r.contacts_note).replace('比べるページ', '<a href="compare_lite.html" target="_blank" rel="noopener">比べるページ</a>')}。</p>` : '';
   return `<section class="sec">
     <div class="sec-h"><h3>見積依頼文</h3><span class="chip ${r.status === '依頼準備完了' ? 'ok' : 'check'}">${wesc(r.status)}</span></div>
     ${miss}${opt}
@@ -337,7 +338,7 @@ function renderRequest() {
       <span class="hint">送信はしません。運送会社の窓口に貼り付けて使います。</span></div>
   </section>
   <section class="sec">
-    <div class="sec-h"><h3>見積を頼む先</h3><span class="hint">会社の五十音順（確認日つき）</span></div>
+    <div class="sec-h"><h3>見積を頼む先</h3>${rows ? '<span class="hint">会社の五十音順（確認日つき）</span>' : ''}</div>
     ${rows ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>窓口</th><th>条件</th><th>確認日</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}${pointer}
   </section>`;
 }

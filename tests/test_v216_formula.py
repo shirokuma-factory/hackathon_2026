@@ -86,7 +86,8 @@ def test_formula_api(srv):
     assert st == 200 and d["reference"]["region"] == "近畿" and d["reference"]["lead_discount"] == 0.0
     assert post(port, "/api/b/price_formula", {**s6_body(), "trip_id": "T7", "lead_discount": 0.25})[0] == 400
     assert post(port, "/api/b/price_formula", {**s6_body(), "trip_id": "T9"})[0] == 400
-    assert post(port, "/api/b/price_formula", {**s6_body(), "trip_id": "T1"})[0] == 400  # 最大積載量が未登録の便
+    # T1〜T6 にも最大積載量と床面積を足したので、式が出る（SPEC §33 #2）
+    assert post(port, "/api/b/price_formula", {**s6_body(), "trip_id": "T1"})[0] == 200
 
 
 def test_g81_shipper_role_html_has_no_formula_panel():

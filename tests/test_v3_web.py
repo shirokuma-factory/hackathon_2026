@@ -292,7 +292,7 @@ def test_spec15_9_protocol_errors(srv):
 def test_spec15_10_static_files_and_traversal(srv):
     mod, port = srv
     status, html = get(port, "/")
-    assert status == 200 and "スポット出荷マップ".encode() in html and b"work.js" in html
+    assert status == 200 and "Backfull".encode() in html and b"work.js" in html
     for name in ("app.js", "work.js", "style.css", "data/meta.json"):
         assert get(port, "/" + name)[0] == 200
     assert not (ROOT / "web" / "data" / "estimates.json").exists()  # 目安額は API で計算する

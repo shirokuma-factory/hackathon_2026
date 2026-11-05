@@ -39,7 +39,7 @@ def test_g139_clo_entry_rule_is_in_market_js():
     # 発地に選べる県の端があるときだけ入口を出す。それ以外は理由の文を常に出す（トーストだけにしない）
     assert REASON in mk
     assert "toast(note)" not in mk
-    assert "鉄道・船を含めて送り方を比べる（発地 ${esc(clo.oName)} → 着地 ${esc(clo.dName)}）" in mk
+    assert "鉄道・船を含めて送り方を比べる</span><span class=\"mp-go-sub\">発地 ${esc(clo.oName)} → 着地 ${esc(clo.dName)}" in mk
 
 
 def test_g141_5_traffic_heading_shows_the_data_period_not_this_week():
@@ -152,7 +152,7 @@ def test_g139_hyogo_tokyo_has_the_entry_and_the_compare_uses_the_two_prefectures
     with _browser(1920, 1080) as (page, open_):
         open_("#v=market&p=27-12")
         label = page.js("(function(){const b=document.querySelector('#m-pair [data-act=clo]');return b?b.textContent:null})()")
-        assert label == "鉄道・船を含めて送り方を比べる（発地 新宿区 → 着地 神戸市中央区）"
+        assert label == "鉄道・船を含めて送り方を比べる発地 新宿区 → 着地 神戸市中央区"
         # 区間の詳細に大型車の折れ線は出さない（§32 #2）。層の凡例にはデータの期間が入る（§31 #5）
         assert not page.js("document.querySelector('#m-pair .mp-j')")
         assert "10/27〜11/2 の 1 週間" in page.js("document.querySelector('#mlg-jartic-t').textContent")

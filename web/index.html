@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>スポット出荷マップ</title>
+<title>Backfull - 帰りの荷台を、中小の荷主の荷で埋める</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23184a6b%27/%3E%3Cpath d=%27M7 21h14v-9H7zM21 15h4l2 3v3h-6z%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2711%27 cy=%2723%27 r=%272.4%27 fill=%27%2355d6a6%27/%3E%3Ccircle cx=%2723%27 cy=%2723%27 r=%272.4%27 fill=%27%2355d6a6%27/%3E%3C/svg%3E">
 <meta name="description" content="出発地から全国の市区町村への道路距離・運転日数・貸切の目安額を地図で見て、着地ごとの手段を比べる試作です。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +27,8 @@
 </nav>
 
 <section id="panel" class="glass v-compare sh-panel" aria-label="条件">
-  <div class="brand"><b>スポット出荷マップ</b><span>試作</span></div>
+  <div class="brand"><b>Backfull</b><span>試作</span></div>
+  <p class="brand-sub">帰りの荷台を、中小の荷主の荷で埋める</p>
   <label class="field"><span class="lbl">出発地</span>
     <select id="origin" class="ctl"></select>
   </label>
@@ -129,7 +131,7 @@
 <section id="m-summary" class="glass v-market sh-panel" aria-label="全国の数字">
   <div class="sum-gap" aria-label="どれだけ悪いかの物差し">
     <div class="sum-row"><b class="sum-k">積載効率</b>
-      <p>営業用トラック <b class="num">38.97%</b>（2025 年度）。国の目標 <b class="num">44%</b>（2028 年度）まで約 5 ポイント足りない</p>
+      <p>営業用トラック（営業用の計）<b class="num">38.97%</b>（2025 年度）。国の目標 <b class="num">44%</b>（2028 年度）と比べるのはこの値で、約 5 ポイント足りない。下の数字の <b class="num"><span id="sum-load-ref">39.08</span>%</b> は営業用普通車だけの範囲で、別の値です</p>
       <small>出典: 自動車輸送統計年報 2025 年度 表 3-1（輸送トンキロ ÷ 能力トンキロ）、「基本的な方針」6 頁（令和 7 年 2 月 18 日告示）。目標の土台の範囲は国の資料で未確認です</small></div>
     <div class="sum-row"><b class="sum-k">輸送能力</b>
       <p>対策をしないと 2030 年度に <b class="num">34.1%</b> 足りなくなるおそれ</p>

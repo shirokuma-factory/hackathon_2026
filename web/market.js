@@ -36,6 +36,7 @@ const Market = (() => {
   function init() {
     const d = M.d;
     q('#sum-load').textContent = d.summary.load_factor_pct.toFixed(2);
+    q('#sum-load-ref').textContent = d.summary.load_factor_pct.toFixed(2); // 営業用普通車（国の目標と比べる 38.97% とは別の範囲）
     q('#sum-rate').textContent = d.summary.actual_rate_pct.toFixed(2);
     q('#sum-share').textContent = d.summary.shortfall_share_pct;
     q('#calc-formula').textContent = `実車率(後) = 実車率(今) × (1 + X × S)。S = Σ(不足量 × 直線距離) ÷ Σ(両向きの量 × 直線距離) = ${d.scale_s.toFixed(4)}（営業用トラックの全区間、物流センサス 2021 から計算）。`;
@@ -413,7 +414,7 @@ const Market = (() => {
     const clo = cloTarget(r);
     if (clo && r.km >= CLO_KM) {
       h += `<div class="mp-clo"><p>直線 ${n0(r.km)} km あります。鉄道・船の経路、貨物駅・港の位置、問い合わせ先を見られます。日数と額は問い合わせが必要です。</p>` +
-        `<button class="btn-ghost mp-go" data-act="clo">鉄道・船を含めて送り方を比べる（発地 ${esc(clo.oName)} → 着地 ${esc(clo.dName)}）</button></div>`;
+        `<button class="btn-ghost mp-go" data-act="clo"><span class="mp-go-main">鉄道・船を含めて送り方を比べる</span><span class="mp-go-sub">発地 ${esc(clo.oName)} → 着地 ${esc(clo.dName)}</span></button></div>`;
     } else if (!clo) {
       h += '<div class="mp-clo"><p class="mp-clo-why">発地に選べるのは関東の 7 か所だけなので、この区間は送り方の比べに移れません。</p></div>';
     } else {
