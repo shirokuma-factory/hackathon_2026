@@ -64,6 +64,9 @@ aside#process ul { margin: 0; padding-left: 16px; } aside#process li { margin-bo
 .empty { color: var(--muted); margin: 10px 2px; }
 #selftest { display: none; margin: 8px 24px; padding: 8px 12px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; white-space: pre-wrap; }
 body.selftest #selftest { display: block; }
+.note { margin: 6px 0; padding: 6px 10px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; font-size: 12.5px; }
+.note:empty { display: none; }
+.w-in::placeholder { color: #c9ced8; }
 .keep { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
 #wait-doc .printnote { display: none; }
 @page { size: A4 portrait; margin: 12mm; }
@@ -106,13 +109,22 @@ body.selftest #selftest { display: block; }
         <button type="button" id="b-forget">保存した記録を消す</button>
         <input type="file" id="csvfile" accept=".csv,text/csv" hidden aria-label="書き出した CSV を選ぶ">
       </div>
+      <div class="bar" id="bulk">
+        <label>相手<select id="bulk-partner" aria-label="まとめて変える相手"></select></label>
+        <button type="button" id="b-fault-yes">この相手の行をすべて荷主等の都合にする</button>
+        <button type="button" id="b-fault-no">この相手の行をすべて荷主等の都合でないにする</button>
+        <button type="button" id="b-fill-partner">契約の相手を下の行に埋める</button>
+        <button type="button" id="b-fill-class">車種を下の行に埋める</button>
+        <small id="bulk-msg"></small>
+      </div>
       <p class="keep" id="keep">記録はこのブラウザの中にだけ保存されます。別の PC には移りません<span id="keep-msg"></span></p>
       <div class="tw"><table class="in" aria-label="荷待ち・荷役の記録の表"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
       <div class="bar"><button type="button" id="b-add">行を足す</button><small>時刻は HH:MM（日付をまたぐ時刻は翌日として扱います）。荷役終了は荷役をしたときに入れます。</small></div>
+      <p class="note" id="paste-note"></p>
       <div id="errs"></div>
       <details open>
         <summary>Excel から貼り付ける</summary>
-        <p class="small">Excel の表をコピーして貼り付けます（タブ区切り。列の順は上の表と同じで、1 行目が見出しなら読み飛ばします）。</p>
+        <p class="small">Excel の表をコピーして貼り付けます（タブ区切り）。1 行目が見出しなら、列の順は問わず見出しの名前で読みます。見出しが無いときだけ、列の順は上の表と同じにしてください。日付は 10月5日・R8.10.5・2026/10/5、時刻は 9:00:00・9時00分・0900、車種は 4t車・4トン・中型車、荷主等の都合は ○ / × でも読みます。</p>
         <textarea id="paste" rows="3" placeholder="ここに貼り付け" aria-label="Excel から貼り付ける欄"></textarea>
         <div class="bar"><button type="button" id="b-paste">貼り付けた内容を表に入れる</button><span class="small" id="paste-msg"></span></div>
       </details>
@@ -135,7 +147,7 @@ body.selftest #selftest { display: block; }
 const TARIFF = /*__TARIFF__*/null;
 const VECTORS = /*__VECTORS__*/null;
 
-const COLUMNS = ['date', 'vehicle_no', 'vehicle_class', 'partner', 'place', 'arrive', 'start', 'end', 'depart', 'handler', 'method', 'shipper_fault', 'appointed', 'side_work', 'side_min'];
+const COLUMNS = ['date', 'vehicle_no', 'vehicle_class', 'partner', 'place', 'arrive', 'start', 'end', 'depart', 'handler', 'method', 'shipper_fault', 'appointed', 'side_work', 'side_min', 'post_wait'];
 const HEADER_ALIASES = {
   '日付': 'date', '車番': 'vehicle_no', '車種': 'vehicle_class', '契約の相手': 'partner', '場所': 'place', '到着': 'arrive', '荷役開始': 'start', '荷役終了': 'end',
   '出発': 'depart', '荷役をした人': 'handler', '荷役の方法': 'method', '荷主等の都合の待機か': 'shipper_fault', '荷主等の都合': 'shipper_fault',
@@ -144,15 +156,21 @@ const HEADER_ALIASES = {
     '荷主': 'partner', '元請': 'partner', '契約先': 'partner', '到着時刻': 'arrive', '着時刻': 'arrive',
     '積込開始': 'start', '積込開始時刻': 'start', '荷役開始時刻': 'start', '積込終了': 'end', '積込終了時刻': 'end', '荷役終了時刻': 'end',
     '出発時刻': 'depart', '発時刻': 'depart', '指定時刻': 'appointed', '指定到着': 'appointed',
+    '作業日': 'date', '配送日': 'date', '納品日': 'date', 'トン数': 'vehicle_class', '車型': 'vehicle_class',
+    '取引先': 'partner', '得意先': 'partner', '荷主名': 'partner', '納品先': 'place', '届け先': 'place', '配送先': 'place',
+    '到着時間': 'arrive', '着': 'arrive', '積込開始時間': 'start', '荷役開始時間': 'start', '積込終了時間': 'end', '荷役終了時間': 'end',
+    '出発時間': 'depart', '発': 'depart', '指定時間': 'appointed',
+    '荷役のあとの待ちを荷主等の都合として数える': 'post_wait', '荷役のあとの待ちを数える': 'post_wait', '荷役のあとの待ち': 'post_wait', '荷役後の待ち': 'post_wait',
 };
 const CLASS_ALIASES = {
-  '小型': '小型', '小型車': '小型', '2t': '小型', '2トン': '小型', '２t': '小型',
-  '中型': '中型', '中型車': '中型', '4t': '中型', '4トン': '中型', '４t': '中型',
-  '大型': '大型', '大型車': '大型', '10t': '大型', '10トン': '大型', '１０t': '大型',
-  'トレーラー': 'トレーラー', 'トレーラ': 'トレーラー', 'トレーラ車': 'トレーラー',
+  '小型': '小型', '小型車': '小型', '中型': '中型', '中型車': '中型', '大型': '大型', '大型車': '大型',
+  'トレーラー': 'トレーラー', 'トレーラ': 'トレーラー', 'トレーラ車': 'トレーラー', 'トレーラー車': 'トレーラー',
+  'セミトレーラ': 'トレーラー', 'セミトレーラー': 'トレーラー',
 };
-const YES = new Set(['はい', 'yes', 'y', 'true', '1', '○', '〇', '有', 'あり']);
-const NO = new Set(['いいえ', 'no', 'n', 'false', '0', '×', '✕', '無', 'なし']);
+const TON_CLASS = { '2': '小型', '4': '中型', '10': '大型' };   // 「4t車」「4トン」「4tウイング」の先頭の数字で見る
+const YES = new Set(['はい', 'yes', 'y', 'true', '1', '○', '〇', '◯', '有', 'あり', '荷主都合', '荷主の都合', '荷主等の都合']);
+const NO = new Set(['いいえ', 'no', 'n', 'false', '0', '×', '✕', '✗', 'x', '無', 'なし', '渋滞', '都合外']);
+const ERA_BASE = { '令和': 2018, 'r': 2018, '平成': 1988, 'h': 1988, '昭和': 1925, 's': 1925 };
 const MAX_ROWS = 5000;
 
 const COLS = [
@@ -166,6 +184,7 @@ const COLS = [
   { k: 'shipper_fault', t: '荷主等の都合の待機か', sel: ['', 'はい', 'いいえ'], w: 64 },
   { k: 'appointed', t: '指定の到着時刻', ph: '08:30', w: 54 },
   { k: 'side_work', t: '附帯業務の内容', w: 104 }, { k: 'side_min', t: '附帯業務の分', ph: '20', w: 50 },
+  { k: 'post_wait', t: '荷役のあとの待ちを荷主等の都合として数える', sel: ['', 'はい'], w: 120 },
 ];
 const PROTECT = [
   '参考額は告示の表に当てた計算です。請求するか、いくらにするかは運送会社が決めます。法的な判断は弁護士・運輸支局などに確かめてください',
@@ -175,7 +194,7 @@ const BASIS_QUOTE = '貸切運賃料金適用方（参考例）第 21 項（Q&A 
 const BASIS = [
   BASIS_QUOTE,
   '書面交付の法定事項に、荷役作業・附帯業務の内容と対価が入ります（改正法 Q&A 問2-2・2-3）。',
-  '標準運送約款 第 34 条: 荷送人又は荷受人の責による待機には、待機時間料を収受できます。',
+  '標準運送約款 第 34 条（標準貨物自動車運送約款）: 「到着後、荷送人又は荷受人の責により待機した時間」について待機時間料を収受できます。荷役のあとの待ち（書類待ちなど）がこれに当たるかは、契約の相手と確かめてください。既定では数えず、行ごとに「荷役のあとの待ちを荷主等の都合として数える」を はい にした行だけ、出発 − 荷役終了 を待機に足します（30 分の差し引きは 1 か所ごとに 1 回、2 時間の境は待機の始まりから）。',
   '取適法では、長時間の待機の費用を負担しないことが違反になり得ます（Q42・Q132。規模の基準に当たる場合）。',
   'トラック・物流Gメンの情報提供の窓口があります（荷主には元請けを含みます）。',
   '数え方は標準的運賃（2024 年 3 月 22 日告示）の別紙の表と、Q&A 集 Q29（到着時刻から数える。最初の 30 分を差し引く）です。積込料・取卸料の数え方は告示の文言からの読み取りで、Q&A の例で確かめたのは待機時間料だけです。',
@@ -187,25 +206,38 @@ const PROCESS = [
   'トラック・物流Gメンの窓口: https://truck-logistics-gmen.mlit.go.jp/s/',
   '指定の到着時刻より早く着いたときは、指定の時刻から待機を数えています（控えめな扱い）。附帯業務は記録して一覧に出しますが、告示で実費として収受とされているため、参考額は付けていません。',
 ];
+const DEFAULT_FAULT_NOTE = '荷主等の都合の欄が無いので『はい』として計算しました。違う行は『いいえ』に変えてください';
+const POST_WAIT_NOTE = '「荷役のあとの待ちを荷主等の都合として数える」を はい にした行は、出発 − 荷役終了 も待機の分に足しています。標準運送約款 第 34 条の「到着後、荷送人又は荷受人の責により待機した時間」に当たるかは、契約の相手と確かめてください。';
 const EXAMPLE_DAYS = [1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16];
 
 /* ---------------------------------------------------------------- 計算（waiting.py と同じ） */
 const norm = (s) => String(s == null ? '' : s).trim();
+// 全角・半角をそろえ（NFKC）、空白（全角空白を含む）を 1 つにして前後を切る
+const nz = (s) => String(s == null ? '' : s).normalize('NFKC').replace(/\s+/g, ' ').trim();
 
 function normalizeClass(raw) {
-  const key = raw.replace(/[\s（）()]/g, '').toLowerCase();
+  const key = nz(raw).replace(/[\s（）()]/g, '').toLowerCase();
   if (Object.prototype.hasOwnProperty.call(CLASS_ALIASES, key)) return CLASS_ALIASES[key];
-  for (const name of ['トレーラー', '小型', '中型', '大型']) if (key.startsWith(name.toLowerCase())) return name;
+  const m = /^(10|2|4)(?:t|ton|トン)/.exec(key);
+  if (m) return TON_CLASS[m[1]];
+  for (const name of ['トレーラー', 'トレーラ', '小型', '中型', '大型']) if (key.startsWith(name.toLowerCase())) return name.startsWith('トレーラ') ? 'トレーラー' : name;
   return null;
 }
 
+// 時刻を分にする。9:00 / 9:00:00 / 09時00分 / 9時 / 0900 / 900（全角も可、日付つきも可）。読めなければ null
 function parseTime(text) {
-  const m = /^(\d{1,2})[:：](\d{2})$/.exec(text.trim());
-  if (!m) return null;
-  const h = Number(m[1]), mi = Number(m[2]);
-  if (h > 23 || mi > 59) return null;
+  const t = nz(text);
+  let h, mi, sec;
+  let m = /^(?:[0-9/\-年月日.]+ )?([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?$/.exec(t);
+  if (m) { h = Number(m[1]); mi = Number(m[2]); sec = Number(m[3] || 0); }
+  else if ((m = /^([0-9]{1,2})時(?:([0-9]{1,2})分?)?$/.exec(t))) { h = Number(m[1]); mi = Number(m[2] || 0); sec = 0; }
+  else if ((m = /^([0-9]{1,2})([0-9]{2})$/.exec(t))) { h = Number(m[1]); mi = Number(m[2]); sec = 0; }
+  else return null;
+  if (h > 23 || mi > 59 || sec > 59) return null;
   return h * 60 + mi;
 }
+
+const fmtTime = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 function mkDate(y, mo, d) {
   if (y < 1 || y > 9999 || mo < 1 || mo > 12 || d < 1) return null;
@@ -216,40 +248,58 @@ function mkDate(y, mo, d) {
   return `${String(y).padStart(4, '0')}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
+// 日付を読む。2026-10-05 / 2026/10/5 / 2026年10月5日 / R8.10.5 / 令和8年10月5日（元年も可）と、年を渡したときの 10/5 / 10月5日。曜日の（月）や時刻が後ろに付いていてもよい
 function parseDate(text, year) {
-  const t = text.trim();
-  let m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(t);
+  let t = nz(text);
+  t = t.replace(/ [0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?$/, '');
+  t = t.replace(/ ?\([月火水木金土日祝]+\)$/, '');
+  let m = /^([0-9]{4})(?:[-/.]|年)([0-9]{1,2})(?:[-/.]|月)([0-9]{1,2})日?$/.exec(t);
   if (m) return mkDate(Number(m[1]), Number(m[2]), Number(m[3]));
-  m = /^(\d{1,2})\/(\d{1,2})$/.exec(t);
+  m = /^(令和|平成|昭和|r|h|s)(元|[0-9]{1,2})(?:[-/.]|年)([0-9]{1,2})(?:[-/.]|月)([0-9]{1,2})日?$/i.exec(t);
+  if (m) {
+    const n = m[2] === '元' ? 1 : Number(m[2]);
+    return mkDate(ERA_BASE[m[1].toLowerCase()] + n, Number(m[3]), Number(m[4]));
+  }
+  m = /^([0-9]{1,2})(?:\/|月)([0-9]{1,2})日?$/.exec(t);
   if (m && year != null) return mkDate(year, Number(m[1]), Number(m[2]));
   return null;
 }
 
 function toBool(raw) {
-  const k = raw.trim().toLowerCase();
+  const k = nz(raw).toLowerCase();
   if (YES.has(k)) return true;
   if (NO.has(k)) return false;
   return null;
 }
 
-function parsePaste(text) {
+const headerKey = (c) => nz(c).replace(/\s+/g, '');
+
+// Excel から貼り付けたタブ区切りを行にする。どの行にも「荷主等の都合」の欄が無いときは全部の行を はい にして、defaulted に印を付ける
+function parsePasteFull(text) {
   const lines = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((ln) => ln.trim());
-  if (!lines.length) return [];
+  if (!lines.length) return { rows: [], defaulted: [] };
   let cols = COLUMNS.slice();
   let body = lines;
-  const first = lines[0].split('\t').map((c) => c.trim());
+  const first = lines[0].split('\t').map(headerKey);
   const known = first.filter((c) => Object.prototype.hasOwnProperty.call(HEADER_ALIASES, c)).length;
   if (first.length && (first[0] === '日付' || first[0] === 'date' || known >= 3)) {
     const mapped = first.map((c) => (Object.prototype.hasOwnProperty.call(HEADER_ALIASES, c) ? HEADER_ALIASES[c] : null));
     if (mapped.filter((c) => c).length >= 6) cols = mapped.map((c, i) => c || `_extra${i}`);
     body = lines.slice(1);
   }
-  return body.map((ln) => {
+  const rows = body.map((ln) => {
     const cells = ln.split('\t'), o = {};
     for (let i = 0; i < Math.min(cols.length, cells.length); i++) o[cols[i]] = cells[i].trim();
     return o;
   });
+  const defaulted = [];
+  if (rows.length && rows.every((r) => !Object.prototype.hasOwnProperty.call(r, 'shipper_fault'))) {
+    rows.forEach((r) => { r.shipper_fault = 'はい'; });
+    defaulted.push('shipper_fault');
+  }
+  return { rows, defaulted };
 }
+const parsePaste = (text) => parsePasteFull(text).rows;
 
 const ceilDiv = (a, b) => (a > 0 ? Math.ceil(a / b) : 0);
 
@@ -263,8 +313,8 @@ function calcRow(n, raw, year, tariff) {
   else {
     d = parseDate(g.date, year);
     if (d === null) {
-      if (/^\d{1,2}\/\d{1,2}$/.test(g.date) && year == null) errs.push(`日付「${g.date}」の年が分かりません（年を選んでください）`);
-      else errs.push(`日付「${g.date}」を読めません（YYYY-MM-DD か M/D で入れてください）`);
+      if (year == null && parseDate(g.date, 2000) !== null) errs.push(`日付「${g.date}」の年が分かりません（年を選んでください）`);
+      else errs.push(`日付「${g.date}」を読めません（2026-10-05、2026/10/5、10/5、10月5日、R8.10.5、令和8年10月5日 のように入れてください）`);
     }
   }
 
@@ -274,12 +324,13 @@ function calcRow(n, raw, year, tariff) {
     vclass = normalizeClass(g.vehicle_class);
     if (vclass === null) errs.push(`車種「${g.vehicle_class}」を読めません（小型（2t）/ 中型（4t）/ 大型（10t）/ トレーラー）`);
   }
-  if (!g.partner) errs.push('契約の相手がありません');
+  const partner = nz(g.partner);   // 全角・半角の違いで相手が分かれないようにそろえる
+  if (!partner) errs.push('契約の相手がありません');
 
   const needTime = (key, label, required) => {
     if (!g[key]) { if (required) errs.push(`${label}がありません`); return null; }
     const v = parseTime(g[key]);
-    if (v === null) errs.push(`${label}「${g[key]}」を読めません（HH:MM で入れてください）`);
+    if (v === null) errs.push(`${label}「${g[key]}」を読めません（9:00、09時00分、0900 のように入れてください）`);
     return v;
   };
   const arrive = needTime('arrive', '到着', true);
@@ -289,11 +340,11 @@ function calcRow(n, raw, year, tariff) {
   const appointed = needTime('appointed', '指定の到着時刻', false);
   let sideMin = 0;
   if (g.side_min) {
-    if (/^\d{1,4}$/.test(g.side_min)) sideMin = Number(g.side_min);
+    if (/^[0-9]{1,4}$/.test(nz(g.side_min))) sideMin = Number(nz(g.side_min));
     else errs.push(`附帯業務の分「${g.side_min}」を読めません（分を整数で入れてください）`);
   }
 
-  let handler = g.handler;
+  let handler = nz(g.handler);
   if (handler === '荷主' || handler === '荷主側') handler = '荷主側';
   else if (handler === '運転者' || handler === 'ドライバー' || handler === '運転手') handler = '運転者';
   else if (handler) { errs.push(`荷役をした人「${handler}」を読めません（運転者 / 荷主側）`); handler = ''; }
@@ -303,13 +354,21 @@ function calcRow(n, raw, year, tariff) {
   }
   if (handler && !hasHandling) errs.push('荷役をした人を入れたときは、荷役終了も入れてください');
 
-  let method = g.method;
+  let method = nz(g.method);
   if (['フォークリフト', 'フォークリフト等', 'フォーク', '機械'].includes(method)) method = 'フォークリフト等';
   const hasMethod = (m) => Object.prototype.hasOwnProperty.call(tariff.handling, m);
   if (handler === '運転者') {
     if (!method) errs.push('運転者が荷役をしたときは、荷役の方法（手積み / フォークリフト等）が必要です');
     else if (!hasMethod(method)) { errs.push(`荷役の方法「${g.method}」を読めません（手積み / フォークリフト等）`); method = ''; }
   } else if (method && !hasMethod(method)) method = '';
+
+  let postOn = false;
+  if (g.post_wait) {
+    const pw = toBool(g.post_wait);
+    if (pw === null) errs.push(`荷役のあとの待ちを数えるか「${g.post_wait}」を読めません（はい / 空欄）`);
+    else postOn = pw;
+  }
+  if (postOn && (!g.end || !g.depart)) errs.push('荷役のあとの待ちを数えるときは、荷役終了と出発を入れてください');
 
   let fault = null;
   if (!g.shipper_fault) errs.push('荷主等の都合の待機か（はい / いいえ）がありません');
@@ -326,10 +385,12 @@ function calcRow(n, raw, year, tariff) {
     eRel = end - arrive;
     while (eRel < sRel) { eRel += 1440; crosses = true; }
   }
+  let postMin = 0;   // 荷役終了 → 出発（荷役のあとの待ち）
   if (depart !== null) {
     let depRel = depart - arrive;
     const floor = eRel !== null ? eRel : sRel;
     while (depRel < floor) { depRel += 1440; crosses = true; }
+    if (postOn && eRel !== null) postMin = depRel - eRel;
   }
   const handlingMin = eRel !== null ? eRel - sRel : 0;
 
@@ -348,6 +409,7 @@ function calcRow(n, raw, year, tariff) {
   let waitRaw;
   if (handler === '荷主側') waitRaw = Math.max(0, eRel - Math.max(sRel, base)) + Math.max(0, sRel - base);
   else waitRaw = Math.max(0, sRel - base);
+  waitRaw += postMin;   // 30 分の差し引きは 1 か所ごとに 1 回、2 時間の境は待機の始まりから（SPEC §25）
   const w = fault ? waitRaw : 0;
   const wnMin = Math.max(0, Math.min(w, thr) - free);
   const woMin = Math.max(0, w - thr);
@@ -368,12 +430,12 @@ function calcRow(n, raw, year, tariff) {
 
   return {
     res: {
-      row: n, date: d, month: d.slice(0, 7), vehicle_no: g.vehicle_no, vehicle_class: vclass, partner: g.partner, place: g.place,
-      arrive: g.arrive, start: g.start, end: g.end, depart: g.depart,
-      appointed: g.appointed, wait_from: base > 0 ? '指定の到着時刻' : '到着', wait_base_min: base,
+      row: n, date: d, month: d.slice(0, 7), vehicle_no: g.vehicle_no, vehicle_class: vclass, partner, place: g.place,
+      arrive: fmtTime(arrive), start: fmtTime(start), end: end !== null ? fmtTime(end) : '', depart: depart !== null ? fmtTime(depart) : '',
+      appointed: appointed !== null ? fmtTime(appointed) : '', wait_from: base > 0 ? '指定の到着時刻' : '到着', wait_base_min: base,
       side_work: g.side_work, side_min: sideMin,
       handler, method, shipper_fault: fault, crosses_midnight: crosses,
-      wait_raw_min: sRel, wait_min: w, handling_min: driverHandlingMin,
+      wait_raw_min: sRel, wait_min: w, post_wait: postOn, post_wait_min: fault ? postMin : 0, handling_min: driverHandlingMin,
       wait_normal_units: wnUnits, wait_normal_rate: wnRate, wait_over_units: woUnits, wait_over_rate: woRate, wait_fee: waitFee,
       handling_normal_units: hnUnits, handling_normal_rate: hnRate, handling_over_units: hoUnits, handling_over_rate: hoRate, handling_fee: handlingFee,
       amount: waitFee + handlingFee,
@@ -434,11 +496,12 @@ function deepEqual(a, b) {
 function runSelftest() {
   const fails = [];
   for (const c of VECTORS.cases) {
-    const rows = c.paste ? parsePaste(c.text) : c.rows;
+    const pf = c.paste ? parsePasteFull(c.text) : null;
+    const rows = c.paste ? pf.rows : c.rows;
     const got = calc(rows, c.year, TARIFF);
     const exp = c.expect;
     const out = { rows: got.rows, by_partner: got.by_partner, errors: got.errors };
-    if (c.paste) out.input_rows = rows;
+    if (c.paste) { out.input_rows = rows; out.defaulted = pf.defaulted; }
     if (!deepEqual(out, exp)) {
       const bad = Object.keys(exp).filter((k) => !deepEqual(out[k], exp[k]));
       fails.push(`${c.name}（${bad.join(', ')}）`);
@@ -449,6 +512,7 @@ function runSelftest() {
   const tricky = { date: '2026-10-05', vehicle_no: '', vehicle_class: '中型', partner: '元請, "A" 物流', place: '構内 北口\n第2バース', arrive: '09:00', start: '10:00', end: '', depart: '',
     handler: '', method: '', shipper_fault: 'はい', appointed: '', side_work: '検品, 仕分け', side_min: '15' };
   const trips = [['example_rows_11', VECTORS.cases.find((c) => c.name === 'example_rows_11_at_chiten07').rows],
+    ['post_wait', VECTORS.cases.find((c) => c.name === 'post_wait_on_adds_depart_minus_end').rows],
     ['realistic_header_paste', parsePaste(VECTORS.cases.find((c) => c.name === 'paste_realistic_excel_header_other_order').text)],
     ['quotes_commas_newlines', [tricky]]];
   for (const [name, rows] of trips) {
@@ -458,7 +522,7 @@ function runSelftest() {
     const b = calc(back, 2026, TARIFF);
     const same = deepEqual(a, b) && back.length === a.rows.length && a.rows.length > 0;
     const inputsSame = a.rows.every((r, i) => ['date', 'vehicle_no', 'vehicle_class', 'partner', 'place', 'arrive', 'start', 'end', 'depart', 'handler', 'method', 'appointed', 'side_work'].every((k) => back[i][k] === r[k]) &&
-      back[i].shipper_fault === (r.shipper_fault ? 'はい' : 'いいえ') && back[i].side_min === (r.side_min ? String(r.side_min) : ''));
+      back[i].shipper_fault === (r.shipper_fault ? 'はい' : 'いいえ') && back[i].side_min === (r.side_min ? String(r.side_min) : '') && back[i].post_wait === (r.post_wait ? 'はい' : ''));
     if (!same || !inputsSame) fails.push(`csv_roundtrip_${name}`);
   }
   return fails.length ? `SELFTEST FAIL ${n - fails.length}/${n}\n${fails.join('\n')}` : `SELFTEST PASS ${n}/${n}`;
@@ -489,16 +553,47 @@ function exampleRows() {
 function rowHtml(r, i) {
   const cells = COLS.map((c) => {
     const v = r[c.k] || '';
-    if (c.sel) return `<td><select class="w-in" data-i="${i}" data-k="${c.k}" aria-label="${esc(c.t)}">${c.sel.map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></td>`;
+    if (c.sel) return `<td><select class="w-in" data-i="${i}" data-k="${c.k}" aria-label="${esc(c.t)}">${(c.sel.includes(v) || !v ? c.sel : [...c.sel, v]).map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(o) || '—'}</option>`).join('')}</select></td>`;
     return `<td><input type="text" class="w-in" data-i="${i}" data-k="${c.k}" value="${esc(v)}" placeholder="${esc(c.ph || '')}" aria-label="${esc(c.t)}" autocomplete="off"></td>`;
   }).join('');
   return `<tr data-i="${i}"${S.bad.has(i) ? ' class="bad"' : ''}><td class="n">${i + 1}</td>${cells}<td><button type="button" class="del" data-del="${i}" aria-label="${i + 1} 行目を消す">×</button></td></tr>`;
+}
+
+function refreshBulk() {
+  const sel = $('#bulk-partner');
+  if (!sel) return;
+  const cur = sel.value;
+  const names = [...new Set(S.rows.filter((r) => !isBlank(r)).map((r) => nz(r.partner)).filter(Boolean))];
+  sel.innerHTML = '<option value="">すべての行</option>' + names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  sel.value = names.includes(cur) ? cur : '';
+}
+
+// 選んだ相手（「すべての行」なら全部）の行の「荷主等の都合の待機か」を まとめて はい / いいえ にする
+function bulkFault(val) {
+  const who = $('#bulk-partner').value;
+  let n = 0;
+  S.rows.forEach((r) => { if (!isBlank(r) && (!who || nz(r.partner) === who)) { r.shipper_fault = val; n += 1; } });
+  $('#bulk-msg').textContent = n ? `${n} 行を『${val}』にしました` : '対象の行がありません';
+  renderTable(); doCalc();
+}
+
+// 空欄の欄を、すぐ上の入っている値で埋める（Excel の結合セルを貼ると下の行が空になるため）
+function fillDown(key, label) {
+  let last = '', n = 0;
+  S.rows.forEach((r) => {
+    if (isBlank(r)) return;
+    if (String(r[key] || '').trim()) last = r[key];
+    else if (last) { r[key] = last; n += 1; }
+  });
+  $('#bulk-msg').textContent = n ? `${label}の空欄 ${n} か所を、上の行の値で埋めました` : `${label}の空欄はありません`;
+  renderTable(); doCalc();
 }
 
 function renderTable() {
   if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
   $('#thead').innerHTML = `<tr><th>#</th>${COLS.map((c) => `<th style="min-width:${c.w}px">${esc(c.t)}</th>`).join('')}<th></th></tr>`;
   $('#tbody').innerHTML = S.rows.map(rowHtml).join('');
+  refreshBulk();
 }
 
 function errsHtml() {
@@ -516,7 +611,7 @@ function draftHtml(p) {
   const classes = [...new Set(rows.map((r) => r.vehicle_class))];
   const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
   const rec = rows.map((r) => `<tr><td>${esc(r.date)}</td><td>${esc(r.vehicle_no)}</td><td>${esc(r.vehicle_class)}</td><td>${esc(r.place)}</td><td>${esc(r.arrive)}</td><td>${esc(r.start)}</td><td>${esc(r.end)}</td><td>${esc(r.handler)}</td>` +
-    `<td class="num">${r.wait_min}${r.handler === '荷主側' && r.wait_min > 0 && r.end ? '<small>荷主側の荷役を待機に含む</small>' : ''}${r.wait_base_min > 0 ? `<small>指定 ${esc(r.appointed)} から</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.amount)}</td></tr>`).join('');
+    `<td class="num">${r.wait_min}${r.handler === '荷主側' && r.wait_min > 0 && r.end ? '<small>荷主側の荷役を待機に含む</small>' : ''}${r.post_wait_min > 0 ? `<small>荷役のあとの待ち ${r.post_wait_min} 分を含む</small>` : ''}${r.wait_base_min > 0 ? `<small>指定 ${esc(r.appointed)} から</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.amount)}</td></tr>`).join('');
   const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((m) => `<td class="num">${n0(t.handling[m].normal[c])} / ${n0(t.handling[m].over_2h[c])}</td>`).join('')}</tr>`).join('');
   return `<h3>荷待ち・荷役に関する協議のお願い（下書き）</h3>
     <dl class="dl"><dt>相手</dt><dd>${esc(p.partner)} 御中</dd><dt>期間</dt><dd>${esc(p.date_from)} 〜 ${esc(p.date_to)}（${p.count} 回）</dd>
@@ -527,6 +622,7 @@ function draftHtml(p) {
     <p>参考額の合計 <b>${yen(p.amount)}</b>（税抜。待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}）。待機の合計 ${hm(p.wait_minutes)}、運転者の荷役の合計 ${hm(p.handling_minutes)}。</p>
     <p class="small">標準的運賃（${esc(t.applies_from)} 告示）の別紙の表に当てた額です。待機は到着時刻（指定の到着時刻があって実際の到着が早いときは指定の時刻）から数え、最初の ${t.free_minutes} 分を差し引き、${t.unit_minutes} 分までごとに通常の額、到着から ${t.threshold_minutes / 60} 時間を超える部分は ${t.unit_minutes} 分までごとに 2 時間超の額です（Q&A 集 Q29）。荷主側が荷役をした時間も待機に入れています。出典: ${esc(t.source_url)}</p>
     <p class="small">${esc(BASIS_QUOTE)}</p>
+    ${rows.some((r) => r.post_wait) ? `<p class="small">${esc(POST_WAIT_NOTE)}</p>` : ''}
     <div class="rec-w"><table class="rec"><thead><tr><th>使った車種の単価（税抜・円）</th><th>待機時間料<small>${t.unit_minutes} 分までごと</small></th><th>2 時間超</th>${methods.map((m) => `<th>${esc(m)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
     <h4>次の契約の書面（運送引受書）に入れる欄の案</h4>
     <ul class="list"><li>待機時間料: 荷主等の都合による待機について、到着（指定の到着時刻があるときは、その時刻）から ${t.free_minutes} 分を超えた時間に、${t.unit_minutes} 分までごとに上の単価（到着から 2 時間を超える部分は 2 時間超の単価）。</li>
@@ -574,23 +670,24 @@ function doCalc() {
   document.querySelectorAll('#tbody tr').forEach((tr) => tr.classList.toggle('bad', S.bad.has(Number(tr.dataset.i))));
   $('#errs').innerHTML = errsHtml();
   renderResult();
+  refreshBulk();
   if (!S.noStore) keepMsg(storeSave() ? (rows.length ? `保存しました（${rows.length} 行）` : '') : 'このブラウザでは保存が使えません（ページはそのまま使えます）');
 }
 
 const calcSoon = () => { clearTimeout(S.tm); S.tm = setTimeout(doCalc, 200); };
 
 function csvTextOf(resRows) {
-  const heads = ['日付', '車番', '車種', '契約の相手', '場所', '到着', '荷役開始', '荷役終了', '出発', '荷役をした人', '荷役の方法', '荷主等の都合の待機か', '指定の到着時刻', '附帯業務の内容', '附帯業務の分', '待機の数え始め',
+  const heads = ['日付', '車番', '車種', '契約の相手', '場所', '到着', '荷役開始', '荷役終了', '出発', '荷役をした人', '荷役の方法', '荷主等の都合の待機か', '指定の到着時刻', '附帯業務の内容', '附帯業務の分', '荷役のあとの待ちを荷主等の都合として数える', '待機の数え始め',
     '待機（分）', '運転者の荷役（分）', '待機時間料 通常（回）', '待機時間料 2時間超（回）', '待機時間料（円）', '積込料・取卸料 通常（回）', '積込料・取卸料 2時間超（回）', '積込料・取卸料（円）', '参考額（円・税抜）'];
   const cell = (v) => { const t = String(v == null ? '' : v); return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
   const lines = [heads, ...resRows.map((r) => [r.date, r.vehicle_no, r.vehicle_class, r.partner, r.place, r.arrive, r.start, r.end, r.depart, r.handler, r.method, r.shipper_fault ? 'はい' : 'いいえ',
-    r.appointed, r.side_work, r.side_min || '', r.wait_from, r.wait_min, r.handling_min, r.wait_normal_units, r.wait_over_units, r.wait_fee, r.handling_normal_units, r.handling_over_units, r.handling_fee, r.amount])];
+    r.appointed, r.side_work, r.side_min || '', r.post_wait ? 'はい' : '', r.wait_from, r.wait_min, r.handling_min, r.wait_normal_units, r.wait_over_units, r.wait_fee, r.handling_normal_units, r.handling_over_units, r.handling_fee, r.amount])];
   return '\uFEFF' + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 
 const csvText = () => csvTextOf(S.res.rows);
 
-// このページが書き出した CSV（引用符・改行つきの欄も可）を、入力の行に戻す。入力の 15 列だけを見て、残りの列（計算結果）は読み捨てる
+// このページが書き出した CSV（引用符・改行つきの欄も可）を、入力の行に戻す。入力の 16 列だけを見て、残りの列（計算結果）は読み捨てる
 function parseCsv(text) {
   const t = String(text || '').replace(/^\uFEFF/, '');
   const out = [];
@@ -611,7 +708,7 @@ function parseCsv(text) {
 function csvToRows(text) {
   const table = parseCsv(text);
   if (!table.length) return [];
-  const map = table[0].map((h) => (Object.prototype.hasOwnProperty.call(HEADER_ALIASES, h.trim()) ? HEADER_ALIASES[h.trim()] : null));
+  const map = table[0].map((h) => (Object.prototype.hasOwnProperty.call(HEADER_ALIASES, headerKey(h)) ? HEADER_ALIASES[headerKey(h)] : null));
   if (map.filter((c) => c).length < 6) throw new Error('このページが書き出した CSV の形ではありません（見出しの行が読めません）');
   return table.slice(1).map((cells) => {
     const o = Object.fromEntries(COLUMNS.map((k) => [k, '']));
@@ -654,9 +751,10 @@ function downloadCsv() {
 function pasteIn() {
   const text = $('#paste').value;
   if (!text.trim()) { $('#paste-msg').textContent = '貼り付ける欄が空です'; return; }
-  const inp = parsePaste(text);
+  const pf = parsePasteFull(text), inp = pf.rows;
   S.rows = inp.length ? inp.map((r) => ({ ...blankRow(), ...r })) : [blankRow(), blankRow(), blankRow()];
   $('#paste-msg').textContent = `${inp.length} 行を表に入れました`;
+  $('#paste-note').textContent = pf.defaulted.includes('shipper_fault') ? DEFAULT_FAULT_NOTE : '';
   renderTable();
   doCalc();
 }
@@ -695,9 +793,13 @@ function init() {
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (t.id === 'b-example') { S.rows = exampleRows(); renderTable(); doCalc(); }
-    else if (t.id === 'b-clear') { S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult(); }
+    else if (t.id === 'b-clear') { $('#paste-note').textContent = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult(); }
     else if (t.id === 'b-add') { S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
     else if (t.id === 'b-paste') pasteIn();
+    else if (t.id === 'b-fault-yes') bulkFault('はい');
+    else if (t.id === 'b-fault-no') bulkFault('いいえ');
+    else if (t.id === 'b-fill-partner') fillDown('partner', '契約の相手');
+    else if (t.id === 'b-fill-class') fillDown('vehicle_class', '車種');
     else if (t.id === 'b-csvin') $('#csvfile').click();
     else if (t.id === 'b-forget') {
       const ok = storeClear();

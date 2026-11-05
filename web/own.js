@@ -5,7 +5,7 @@
 
 const Own = (() => {
   // 荷待ちを入れる（SPEC §23）の状態。記録はこのページのメモリにだけあり、保存しない
-  const W = { year: 2026, rows: [], res: null, err: '', tok: 0, tm: null, partner: '', pasteMsg: '', idxMap: [], bad: new Set() };
+  const W = { year: 2026, rows: [], res: null, err: '', tok: 0, tm: null, partner: '', pasteMsg: '', pasteNote: '', bulkMsg: '', idxMap: [], bad: new Set() };
   const O = {
     data: null, loaded: false, active: false, tab: 'import', market: false, dec: {}, fixTxt: {}, open: new Set(), geo: null, markers: [], dropMsg: '',
   };
@@ -287,6 +287,7 @@ const Own = (() => {
     { k: 'shipper_fault', t: '荷主等の都合の待機か', sel: ['', 'はい', 'いいえ'], w: 66 },
     { k: 'appointed', t: '指定の到着時刻', ph: '08:30', w: 56 },
     { k: 'side_work', t: '附帯業務の内容', w: 110 }, { k: 'side_min', t: '附帯業務の分', ph: '20', w: 52 },
+    { k: 'post_wait', t: '荷役のあとの待ちを荷主等の都合として数える', sel: ['', 'はい'], w: 124 },
   ];
   const W_PROTECT = [
     '参考額は告示の表に当てた計算です。請求するか、いくらにするかは運送会社が決めます。法的な判断は弁護士・運輸支局などに確かめてください',
@@ -296,7 +297,7 @@ const Own = (() => {
   const W_BASIS = [
     W_BASIS_QUOTE,
     '書面交付の法定事項に、荷役作業・附帯業務の内容と対価が入ります（改正法 Q&A 問2-2・2-3）。',
-    '標準運送約款 第 34 条: 荷送人又は荷受人の責による待機には、待機時間料を収受できます。',
+    '標準運送約款 第 34 条（標準貨物自動車運送約款）: 「到着後、荷送人又は荷受人の責により待機した時間」について待機時間料を収受できます。荷役のあとの待ち（書類待ちなど）がこれに当たるかは、契約の相手と確かめてください。既定では数えず、行ごとに「荷役のあとの待ちを荷主等の都合として数える」を はい にした行だけ、出発 − 荷役終了 を待機に足します（30 分の差し引きは 1 か所ごとに 1 回、2 時間の境は待機の始まりから）。',
     '取適法では、長時間の待機の費用を負担しないことが違反になり得ます（Q42・Q132。規模の基準に当たる場合）。',
     'トラック・物流Gメンの情報提供の窓口があります（荷主には元請けを含みます）。',
     '数え方は標準的運賃（2024 年 3 月 22 日告示）の別紙の表と、Q&A 集 Q29（到着時刻から数える。最初の 30 分を差し引く）です。積込料・取卸料の数え方は告示の文言からの読み取りで、Q&A の例で確かめたのは待機時間料だけです。',
@@ -308,11 +309,50 @@ const Own = (() => {
     'トラック・物流Gメンの窓口: https://truck-logistics-gmen.mlit.go.jp/s/',
     '指定の到着時刻より早く着いたときは、指定の時刻から待機を数えています（控えめな扱い）。附帯業務は記録して一覧に出しますが、告示で実費として収受とされているため、参考額は付けていません。',
   ];
+  const W_DEFAULT_FAULT_NOTE = '荷主等の都合の欄が無いので『はい』として計算しました。違う行は『いいえ』に変えてください';
+  const W_POST_WAIT_NOTE = '「荷役のあとの待ちを荷主等の都合として数える」を はい にした行は、出発 − 荷役終了 も待機の分に足しています。標準運送約款 第 34 条の「到着後、荷送人又は荷受人の責により待機した時間」に当たるかは、契約の相手と確かめてください。';
   const W_EXAMPLE_DAYS = [1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16];
   const blankRow = () => Object.fromEntries(W_COLS.map((c) => [c.k, '']));
   const isBlank = (r) => W_COLS.every((c) => !String(r[c.k] || '').trim());
   const hm = (m) => (m ? `${Math.floor(m / 60)} 時間 ${m % 60} 分` : '0 分');
   const yen = (v) => `${n0(v)} 円`;
+
+  // 全角・半角の違いを同じ相手として数える（サーバーの計算と同じ正規化）
+  const nzp = (s) => String(s == null ? '' : s).normalize('NFKC').replace(/\s+/g, ' ').trim();
+
+  function bulkOptions() {
+    const names = [...new Set(W.rows.filter((r) => !isBlank(r)).map((r) => nzp(r.partner)).filter(Boolean))];
+    return '<option value="">すべての行</option>' + names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  }
+
+  function bulkRefresh() {
+    const sel = q('#w-bulk-partner');
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = bulkOptions();
+    sel.value = [...sel.options].some((o) => o.value === cur) ? cur : '';
+  }
+
+  // 選んだ相手（「すべての行」なら全部）の行の「荷主等の都合の待機か」を まとめて はい / いいえ にする
+  function bulkFault(val) {
+    const sel = q('#w-bulk-partner'), who = sel ? sel.value : '';
+    let n = 0;
+    W.rows.forEach((r) => { if (!isBlank(r) && (!who || nzp(r.partner) === who)) { r.shipper_fault = val; n += 1; } });
+    W.bulkMsg = n ? `${n} 行を『${val}』にしました` : '対象の行がありません';
+    renderLeft(); waitCalc();
+  }
+
+  // 空欄の欄を、すぐ上の入っている値で埋める（Excel の結合セルを貼ると下の行が空になるため）
+  function fillDown(key, label) {
+    let last = '', n = 0;
+    W.rows.forEach((r) => {
+      if (isBlank(r)) return;
+      if (String(r[key] || '').trim()) last = r[key];
+      else if (last) { r[key] = last; n += 1; }
+    });
+    W.bulkMsg = n ? `${label}の空欄 ${n} か所を、上の行の値で埋めました` : `${label}の空欄はありません`;
+    renderLeft(); waitCalc();
+  }
 
   function waitInit() { if (!W.rows.length) W.rows = [blankRow(), blankRow(), blankRow()]; }
 
@@ -331,7 +371,7 @@ const Own = (() => {
   function waitRowHtml(r, i) {
     const cells = W_COLS.map((c) => {
       const v = r[c.k] || '';
-      if (c.sel) return `<td><select class="w-in" data-i="${i}" data-k="${c.k}" aria-label="${esc(c.t)}">${c.sel.map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${o || '—'}</option>`).join('')}</select></td>`;
+      if (c.sel) return `<td><select class="w-in" data-i="${i}" data-k="${c.k}" aria-label="${esc(c.t)}">${(c.sel.includes(v) || !v ? c.sel : [...c.sel, v]).map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(o) || '—'}</option>`).join('')}</select></td>`;
       return `<td><input class="w-in" type="text" data-i="${i}" data-k="${c.k}" value="${esc(v)}" placeholder="${esc(c.ph || '')}" aria-label="${esc(c.t)}" autocomplete="off"></td>`;
     }).join('');
     return `<tr data-i="${i}"${W.bad.has(i) ? ' class="bad"' : ''}><td class="w-n">${i + 1}</td>${cells}<td><button type="button" class="w-del" data-w="del" data-i="${i}" aria-label="${i + 1} 行目を消す">×</button></td></tr>`;
@@ -354,9 +394,17 @@ const Own = (() => {
       <div class="w-tw"><table class="w-tbl" aria-label="荷待ち・荷役の記録の表"><thead><tr><th>#</th>${W_COLS.map((c) => `<th style="min-width:${c.w}px">${esc(c.t)}</th>`).join('')}<th></th></tr></thead>
         <tbody id="w-tbody">${W.rows.map(waitRowHtml).join('')}</tbody></table></div>
       <div class="w-bar"><button type="button" class="btn-sm" data-w="add">行を足す</button><small>時刻は HH:MM（日付をまたぐ時刻は翌日として扱います）。荷役終了は荷役をしたときに入れます。指定の到着時刻と附帯業務は、あるときだけ入れます。</small></div>
+      <div class="w-bar" id="w-bulk">
+        <label>相手<select id="w-bulk-partner" class="ctl sm" aria-label="まとめて変える相手">${bulkOptions()}</select></label>
+        <button type="button" class="btn-sm" data-w="fault-yes">この相手の行をすべて荷主等の都合にする</button>
+        <button type="button" class="btn-sm" data-w="fault-no">この相手の行をすべて荷主等の都合でないにする</button>
+        <button type="button" class="btn-sm" data-w="fill-partner">契約の相手を下の行に埋める</button>
+        <button type="button" class="btn-sm" data-w="fill-class">車種を下の行に埋める</button>
+        <small id="w-bulk-msg">${esc(W.bulkMsg)}</small></div>
+      <p class="w-note" id="w-paste-note">${esc(W.pasteNote)}</p>
       <div id="w-errs-box">${waitErrsHtml()}</div>
       <details class="o-det" open><summary>Excel から貼り付ける</summary>
-        <p class="w-small">Excel の表をコピーして貼り付けます（タブ区切り、列の順は上の表と同じです。1 行目が見出しなら読み飛ばします）。</p>
+        <p class="w-small">Excel の表をコピーして貼り付けます（タブ区切り）。1 行目が見出しなら、列の順は問わず見出しの名前で読みます。見出しが無いときだけ、列の順は上の表と同じにしてください。日付は 10月5日・R8.10.5・2026/10/5、時刻は 9:00:00・9時00分・0900、車種は 4t車・4トン・中型車、荷主等の都合は ○ / × でも読みます。</p>
         <textarea id="w-paste" class="w-paste" rows="3" placeholder="ここに貼り付け" aria-label="Excel から貼り付ける欄"></textarea>
         <div class="w-bar"><button type="button" class="btn-sm" data-w="paste">貼り付けた内容を表に入れる</button><span id="w-paste-msg" class="w-small">${esc(W.pasteMsg)}</span></div></details>`;
   }
@@ -368,7 +416,7 @@ const Own = (() => {
     const classes = [...new Set(rows.map((r) => r.vehicle_class))];
     const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
     const rec = rows.map((r) => `<tr><td>${esc(r.date)}</td><td>${esc(r.vehicle_no)}</td><td>${esc(r.vehicle_class)}</td><td>${esc(r.place)}</td><td>${esc(r.arrive)}</td><td>${esc(r.start)}</td><td>${esc(r.end)}</td><td>${esc(r.handler)}</td>
-      <td class="num">${r.wait_min}${r.handler === '荷主側' && r.wait_min > 0 && r.end ? '<small>荷主側の荷役を待機に含む</small>' : ''}${r.wait_base_min > 0 ? `<small>（指定 ${esc(r.appointed)} から）</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.amount)}</td></tr>`).join('');
+      <td class="num">${r.wait_min}${r.handler === '荷主側' && r.wait_min > 0 && r.end ? '<small>荷主側の荷役を待機に含む</small>' : ''}${r.post_wait_min > 0 ? `<small>荷役のあとの待ち ${r.post_wait_min} 分を含む</small>` : ''}${r.wait_base_min > 0 ? `<small>（指定 ${esc(r.appointed)} から）</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.amount)}</td></tr>`).join('');
     const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((m) => `<td class="num">${n0(t.handling[m].normal[c])} / ${n0(t.handling[m].over_2h[c])}</td>`).join('')}</tr>`).join('');
     return `<h3>荷待ち・荷役に関する協議のお願い（下書き）</h3>
       <dl class="w-dl"><dt>相手</dt><dd>${esc(p.partner)} 御中</dd><dt>期間</dt><dd>${esc(p.date_from)} 〜 ${esc(p.date_to)}（${p.count} 回）</dd>
@@ -379,6 +427,7 @@ const Own = (() => {
       <p>参考額の合計 <b class="num">${yen(p.amount)}</b>（税抜。待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}）。待機の合計 ${hm(p.wait_minutes)}、運転者の荷役の合計 ${hm(p.handling_minutes)}。</p>
       <p class="w-small">標準的運賃（${esc(t.applies_from)} 告示）の別紙の表に当てた額です。待機は到着時刻（指定の到着時刻があって実際の到着が早いときは指定の時刻）から数え、最初の ${t.free_minutes} 分を差し引き、${t.unit_minutes} 分までごとに通常の額、到着から ${t.threshold_minutes / 60} 時間を超える部分は ${t.unit_minutes} 分までごとに 2 時間超の額です（Q&A 集 Q29）。荷主側が荷役をした時間も待機に入れています。出典: ${esc(t.source_url)}</p>
       <p class="w-small">${esc(W_BASIS_QUOTE)}</p>
+      ${rows.some((r) => r.post_wait) ? `<p class="w-small">${esc(W_POST_WAIT_NOTE)}</p>` : ''}
       <div class="w-recw"><table class="w-rec"><thead><tr><th>使った車種の単価（税抜・円）</th><th>待機時間料<small>${t.unit_minutes} 分までごと</small></th><th>2 時間超</th>${methods.map((m) => `<th>${esc(m)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
       <h4>次の契約の書面（運送引受書）に入れる欄の案</h4>
       <ul class="w-list"><li>待機時間料: 荷主等の都合による待機について、到着（指定の到着時刻があるときは、その時刻）から ${t.free_minutes} 分を超えた時間に、${t.unit_minutes} 分までごとに上の単価（到着から 2 時間を超える部分は 2 時間超の単価）。</li>
@@ -435,16 +484,17 @@ const Own = (() => {
     document.querySelectorAll('#w-tbody tr').forEach((tr) => tr.classList.toggle('bad', W.bad.has(Number(tr.dataset.i))));
     const box = q('#w-errs-box');
     if (box) box.innerHTML = waitErrsHtml();
+    bulkRefresh();
     renderRight();
   }
 
   const waitSoon = () => { clearTimeout(W.tm); W.tm = setTimeout(waitCalc, 350); };
 
   function waitCsv() {
-    const heads = ['日付', '車番', '車種', '契約の相手', '場所', '到着', '荷役開始', '荷役終了', '出発', '荷役をした人', '荷役の方法', '荷主等の都合の待機か', '指定の到着時刻', '附帯業務の内容', '附帯業務の分', '待機の数え始め', '待機（分）', '運転者の荷役（分）',
+    const heads = ['日付', '車番', '車種', '契約の相手', '場所', '到着', '荷役開始', '荷役終了', '出発', '荷役をした人', '荷役の方法', '荷主等の都合の待機か', '指定の到着時刻', '附帯業務の内容', '附帯業務の分', '荷役のあとの待ちを荷主等の都合として数える', '待機の数え始め', '待機（分）', '運転者の荷役（分）',
       '待機時間料 通常（回）', '待機時間料 2時間超（回）', '待機時間料（円）', '積込料・取卸料 通常（回）', '積込料・取卸料 2時間超（回）', '積込料・取卸料（円）', '参考額（円・税抜）'];
     const cell = (v) => { const t = String(v ?? ''); return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
-    const lines = [heads, ...W.res.rows.map((r) => [r.date, r.vehicle_no, r.vehicle_class, r.partner, r.place, r.arrive, r.start, r.end, r.depart, r.handler, r.method, r.shipper_fault ? 'はい' : 'いいえ', r.appointed, r.side_work, r.side_min || '', r.wait_from,
+    const lines = [heads, ...W.res.rows.map((r) => [r.date, r.vehicle_no, r.vehicle_class, r.partner, r.place, r.arrive, r.start, r.end, r.depart, r.handler, r.method, r.shipper_fault ? 'はい' : 'いいえ', r.appointed, r.side_work, r.side_min || '', r.post_wait ? 'はい' : '', r.wait_from,
       r.wait_min, r.handling_min, r.wait_normal_units, r.wait_over_units, r.wait_fee, r.handling_normal_units, r.handling_over_units, r.handling_fee, r.amount])];
     const blob = new Blob(['﻿' + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
@@ -463,6 +513,7 @@ const Own = (() => {
       const inp = res.input_rows || [];
       W.rows = inp.length ? inp.map((r) => ({ ...blankRow(), ...r })) : [blankRow(), blankRow(), blankRow()];
       W.pasteMsg = `${inp.length} 行を表に入れました`;
+      W.pasteNote = (res.defaulted || []).includes('shipper_fault') ? W_DEFAULT_FAULT_NOTE : '';
     } catch (e) { W.pasteMsg = e.message; }
     renderLeft();
     waitCalc();
@@ -484,10 +535,14 @@ const Own = (() => {
         if (!b) return;
         const a = b.dataset.w;
         if (a === 'example') { W.rows = exampleRows(); renderLeft(); waitCalc(); }
-        else if (a === 'clear') { W.rows = [blankRow(), blankRow(), blankRow()]; W.res = null; W.err = ''; W.bad = new Set(); renderLeft(); renderRight(); }
+        else if (a === 'clear') { W.pasteNote = ''; W.rows = [blankRow(), blankRow(), blankRow()]; W.res = null; W.err = ''; W.bad = new Set(); renderLeft(); renderRight(); }
         else if (a === 'add') { W.rows.push(blankRow()); renderLeft(); const ins = document.querySelectorAll('#w-tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
         else if (a === 'del') { W.rows.splice(Number(b.dataset.i), 1); if (!W.rows.length) W.rows.push(blankRow()); renderLeft(); waitCalc(); }
         else if (a === 'paste') waitPaste();
+        else if (a === 'fault-yes') bulkFault('はい');
+        else if (a === 'fault-no') bulkFault('いいえ');
+        else if (a === 'fill-partner') fillDown('partner', '契約の相手');
+        else if (a === 'fill-class') fillDown('vehicle_class', '車種');
         else if (a === 'pick') { W.partner = b.dataset.p; renderRight(); }
         else if (a === 'print') window.print();
         else if (a === 'csv') { if (W.res && W.res.rows.length) waitCsv(); }

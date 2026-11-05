@@ -44,13 +44,18 @@ def test_vectors_cover_the_required_situations():
 
 def test_g82_python_matches_the_vectors_file():
     data = load_vectors()
-    assert len(data["cases"]) >= 25
+    assert len(data["cases"]) >= 40
     for c in data["cases"]:
-        rows = waiting.parse_paste(c["text"]) if c.get("paste") else c["rows"]
+        defaulted: list = []
+        if c.get("paste"):
+            rows, defaulted = waiting.parse_paste_full(c["text"])
+        else:
+            rows = c["rows"]
         res = waiting.calc(rows, c["year"])
         got = {"rows": res["rows"], "by_partner": res["by_partner"], "errors": res["errors"]}
         if c.get("paste"):
             got["input_rows"] = rows
+            got["defaulted"] = defaulted
         assert json.loads(json.dumps(got, ensure_ascii=False)) == c["expect"], c["name"]
 
 
@@ -147,7 +152,7 @@ def test_g82_js_selftest_passes_in_headless_edge():
         page.wait(lambda: page.js("document.querySelector('#selftest') && document.querySelector('#selftest').textContent.length > 0"), 30, "自己確認")
         text = page.js("document.querySelector('#selftest').textContent")
     n = len(load_vectors()["cases"])
-    assert text == f"SELFTEST PASS {n + 3}/{n + 3}", text
+    assert text == f"SELFTEST PASS {n + 4}/{n + 4}", text
 
 
 def test_page_ui_example_draft_and_csv_in_headless_edge():
@@ -171,5 +176,5 @@ def test_page_ui_example_draft_and_csv_in_headless_edge():
     assert info["rows"] == 11 and "31,020" in info["sum"] and info["sentence"] and info["side"] and info["from"]
     assert info["beside"], "協議の進め方は書面の下書きの横に出す"
     csv = info["csv"]
-    assert csv.startswith("﻿日付,車番,") and "指定の到着時刻,附帯業務の内容,附帯業務の分,待機の数え始め" in csv.split("\r\n")[0]
+    assert csv.startswith("﻿日付,車番,") and "指定の到着時刻,附帯業務の内容,附帯業務の分,荷役のあとの待ちを荷主等の都合として数える,待機の数え始め" in csv.split("\r\n")[0]
     assert len(csv.strip().split("\r\n")) == 12

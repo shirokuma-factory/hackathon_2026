@@ -106,6 +106,65 @@ CASES: list[dict] = [
              "B商事\t10/8\t\t神戸100あ1234\t中型\t09:00\t\t10:00\t\t10:10\t\t\tはい"},
     {"name": "paste_with_appointed_and_side_columns_at_the_end", "year": 2026, "paste": True,
      "text": "\t".join(["10/5", "", "中型", "A運輸", "", "08:10", "09:30", "", "", "", "", "はい", "08:30", "検品", "20"])},
+    # ---- SPEC §25: 実際の Excel の書き方（全角・半角、和暦、曜日、秒つき、車種の書き方、はい/いいえの書き方）
+    {"name": "real_dates_all_families", "year": 2026,
+     "rows": [row(date=d) for d in ("2026-10-05", "2026/10/05", "2026/10/5", "2026.10.5", "2026年10月5日", "10/5", "10月5日", "10月5日（月）", "10/5(月)",
+                                    "R8.10.5", "R8/10/5", "r8.10.05", "令和8年10月5日", "令和８年１０月５日", "H38.10.5", "2026/10/05 0:00:00", "２０２６／１０／５")]},
+    {"name": "real_dates_era_boundaries_and_errors", "year": 2026,
+     "rows": [row(date="令和元年5月1日"), row(date="R1.5.1"), row(date="平成31年4月30日"), row(date="昭和64年1月7日"), row(date="10月32日"), row(date="R8.2.30"),
+              row(date="来週"), row(date="10月5")]},
+    {"name": "real_dates_without_year_need_a_year", "year": None,
+     "rows": [row(date="10月5日"), row(date="令和8年10月5日"), row(date="2026/10/05")]},
+    {"name": "real_times_all_families", "year": 2026,
+     "rows": [row(arrive=a, start=b) for a, b in (("9:00:00", "10:00:00"), ("9:00", "10:00"), ("09時00分", "10時00分"), ("9時", "10時"), ("9時0分", "10時5分"),
+                                                  ("0900", "1000"), ("900", "1000"), ("９：００", "１０：００"), ("９時００分", "１０時００分"), ("０９００", "１０００"),
+                                                  ("2026/10/5 9:00:00", "2026/10/5 10:00:00"), (" 9:00 ", "　10:00　"))]},
+    {"name": "real_times_errors", "year": 2026,
+     "rows": [row(arrive="24:00"), row(arrive="9:60"), row(arrive="9:00:61"), row(arrive="25時"), row(arrive="9.30"), row(arrive="2400"), row(arrive="9:0"), row(arrive="午前")]},
+    {"name": "real_vehicle_classes", "year": 2026,
+     "rows": [row(vehicle_class=v) for v in ("4t車", "4トン", "4トン車", "４ｔ", "4T", "中型車", "中型", "中型（4t）", "大型車", "10t", "10トン車", "２ｔ", "2t", "2トン", "2t車",
+                                              "小型車", "トレーラ", "トレーラー", "トレーラ車", "セミトレーラ", "4tウイング", "10t平ボディ", "　4t車　")] +
+             [row(vehicle_class=v) for v in ("20t", "3t", "軽")]},
+    {"name": "real_yes_no_words", "year": 2026,
+     "rows": [row(shipper_fault=v) for v in ("○", "〇", "◯", "有", "はい", "荷主都合", "荷主の都合", "Y", "yes", "×", "無", "いいえ", "渋滞", "なし", "x", "ｘ", "　はい　", "たぶん")]},
+    {"name": "real_whitespace_and_fullwidth_in_other_columns", "year": 2026,
+     "rows": [row(handler="　運転者 ", method=" 手積み ", end="１０：３０", side_min="　２０ ", side_work="検品", start="１０：００", shipper_fault="　はい　", appointed="　０８：３０　",
+                  arrive="８：１０", partner="　A運輸　"),
+              row(handler="荷主 ", end="9:52", start="9:30", method="")]},
+    # ---- SPEC §25: 荷役のあとの待ち（荷役終了 → 出発）を荷主等の都合として数える。既定は数えない
+    {"name": "post_wait_off_by_default", "year": 2026,
+     "rows": [row(start="09:30", end="09:52", depart="12:52", handler="荷主側")]},
+    {"name": "post_wait_on_adds_depart_minus_end", "year": 2026,
+     "rows": [row(start="09:30", end="09:52", depart="12:52", handler="荷主側", post_wait="はい"),
+              row(start="09:30", end="09:52", depart="10:22", handler="荷主側", post_wait="はい"),
+              row(start="09:30", end="09:52", depart="10:22", handler="荷主側", post_wait="有"),
+              row(start="09:30", end="09:52", depart="10:22", handler="荷主側", post_wait="いいえ"),
+              row(start="09:30", end="09:52", depart="10:22", handler="荷主側", post_wait="")]},
+    {"name": "post_wait_with_driver_handling_and_appointed", "year": 2026,
+     "rows": [row(vehicle_class="中型", arrive="08:10", appointed="08:30", start="10:15", end="10:55", depart="12:00", handler="運転者", method="手積み", post_wait="はい"),
+              row(vehicle_class="中型", arrive="08:10", appointed="08:30", start="10:15", end="10:55", depart="12:00", handler="運転者", method="手積み")]},
+    {"name": "post_wait_only_counts_when_shippers_fault", "year": 2026,
+     "rows": [row(start="09:30", end="09:52", depart="12:52", handler="荷主側", post_wait="はい", shipper_fault="いいえ")]},
+    {"name": "post_wait_across_midnight", "year": 2026,
+     "rows": [row(arrive="22:00", start="22:30", end="23:30", depart="00:40", handler="荷主側", post_wait="はい")]},
+    {"name": "post_wait_needs_end_and_depart", "year": 2026,
+     "rows": [row(start="09:30", post_wait="はい"), row(start="09:30", end="09:52", handler="荷主側", post_wait="はい"),
+              row(start="09:30", end="09:52", depart="10:30", handler="荷主側", post_wait="たぶん")]},
+    # ---- SPEC §25: 実際の Excel の貼り付け。荷主等の都合の欄が無い見出しは はい として計算し、defaulted に印を付ける
+    {"name": "paste_realistic_japanese_block_zero_errors", "year": 2026, "paste": True,
+     "text": ("運行日\t車番\t車格\t荷主\t納品先\t着時刻\t積込開始時刻\t積込終了時刻\t出発時刻\t荷役をした人\t荷役の方法\n"
+              "10月5日（月）\t品川100あ1\t4t車\tA運輸\t川崎\t9:00:00\t9:40:00\t10:00:00\t10:20:00\t荷主\t\n"
+              "１０／６\t品川100あ1\t中型車\tA運輸\t川崎\t９：００\t１０：１５\t\t１０：２５\t\t\n"
+              "2026/10/07\t品川100あ2\t4トン\tA運輸\t横浜\t0900\t1015\t1055\t1105\t運転者\t手積み\n"
+              "R8.10.8\t品川100あ3\t2t\tＢ商事　\t船橋\t9時00分\t10時15分\t\t10時25分\t\t\n"
+              "令和8年10月9日\t品川100あ4\t大型車\tB商事\t船橋\t09:00\t11:00\t11:30\t11:40\t運転者\tフォークリフト\n"
+              "10月10日（土）\t品川100あ5\tトレーラ\tB商事\t千葉\t900\t1000\t\t1010\t\t\n")},
+    {"name": "paste_with_fault_column_is_not_defaulted", "year": 2026, "paste": True,
+     "text": ("運行日\t車格\t荷主\t着時刻\t積込開始時刻\t荷主等の都合\t荷役のあとの待ちを荷主等の都合として数える\t積込終了時刻\t出発時刻\t荷役をした人\n"
+              "10/5\t4t\tA運輸\t09:00\t09:30\t渋滞\t\t09:52\t10:00\t荷主側\n"
+              "10/6\t4t\tA運輸\t09:00\t09:30\t荷主都合\tはい\t09:52\t11:52\t荷主側\n")},
+    {"name": "paste_without_header_and_without_fault_column_is_defaulted", "year": 2026, "paste": True,
+     "text": "10/5\t\t中型\tA運輸\t\t09:00\t10:00\n10/6\t\t中型\tA運輸\t\t09:00\t09:20\n"},
 ]
 
 
@@ -113,11 +172,16 @@ def build() -> dict:
     cases = []
     for c in CASES:
         c = dict(c)
-        rows = waiting.parse_paste(c["text"]) if c.get("paste") else c["rows"]
+        defaulted: list[str] = []
+        if c.get("paste"):
+            rows, defaulted = waiting.parse_paste_full(c["text"])
+        else:
+            rows = c["rows"]
         res = waiting.calc(rows, c["year"])
         exp = {"rows": res["rows"], "by_partner": res["by_partner"], "errors": res["errors"]}
         if c.get("paste"):
             exp["input_rows"] = rows
+            exp["defaulted"] = defaulted
         c["expect"] = exp
         cases.append(c)
     return {"note": "tools/build_waiting_vectors.py が waiting.py の出力から作る。手で直さない（SPEC §23.7 G82）", "cases": cases}

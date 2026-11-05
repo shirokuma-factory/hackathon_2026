@@ -365,7 +365,7 @@ def test_g84_side_work_is_recorded_but_not_priced():
 
 
 def test_g84_errors_for_unreadable_appointed_time_and_side_minutes():
-    res = waiting.calc([row(appointed="9時"), row(side_min="abc")], 2026)
+    res = waiting.calc([row(appointed="朝"), row(side_min="abc")], 2026)
     msgs = {e["row"]: e["message"] for e in res["errors"]}
     assert "指定の到着時刻" in msgs[1] and "附帯業務の分" in msgs[2] and res["rows"] == []
 

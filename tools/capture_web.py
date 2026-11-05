@@ -11,6 +11,7 @@
     uv run python tools/capture_web.py --v216flow # 値段の式（SPEC §21.6）の荷主の役と運送会社の役の画面を撮る
     uv run python tools/capture_web.py --compare-lite  # web/compare_lite.html（SPEC §24）を S6 の荷で撮る（_v24_compare_lite.jpg）
     uv run python tools/capture_web.py --waiting  # web/waiting.html（SPEC §23.7）の単独ページを例の行つきで撮る（_v237_standalone.jpg）
+    uv run python tools/capture_web.py --paste-real  # web/waiting.html に実際の Excel の書き方を貼り付けた画面（SPEC §25、_v25_paste_real.jpg）
     uv run python tools/capture_web.py --bflow    # S6 と T7 で 照合・仮予約・運送会社の承諾（SPEC §16.2）を撮る
 """
 
@@ -148,6 +149,20 @@ def waiting_standalone(w: int, h: int) -> None:
         page.wait(lambda: page.js("!!document.querySelector('#wait-doc table.rec')"), 30, "下書き")
         time.sleep(0.8)
         save_shot(page, OUT_DIR / "2026-11-05_v237_standalone.jpg", w, h)
+
+
+def waiting_paste_real(w: int, h: int) -> None:
+    """実際の Excel の書き方（和暦・秒つき・4t車・全角、荷主等の都合の欄なし）を貼り付けた画面を撮る（SPEC §25）。"""
+    vec = json.loads((ROOT / "tests" / "data" / "waiting_vectors.json").read_text(encoding="utf-8"))
+    text = next(c["text"] for c in vec["cases"] if c["name"] == "paste_realistic_japanese_block_zero_errors")
+    with edge_page(w, h) as page:
+        page.goto((ROOT / "web" / "waiting.html").as_uri() + "?selftest=0")
+        page.wait(lambda: page.js("!!document.querySelector('#b-paste')"), 30, "ページ")
+        page.js("document.querySelector('#paste').value = " + json.dumps(text, ensure_ascii=False))
+        page.js("document.querySelector('#b-paste').click()")
+        page.wait(lambda: page.js("!!document.querySelector('#wait-doc table.rec')"), 30, "下書き")
+        time.sleep(0.8)
+        save_shot(page, OUT_DIR / "2026-11-05_v25_paste_real.jpg", w, h)
 
 
 def compare_lite_shot(w: int, h: int) -> None:
@@ -415,6 +430,7 @@ def main() -> int:
     ap.add_argument("--v216flow", action="store_true", help="値段の式（SPEC §21.6）の荷主の役と運送会社の役の画面を撮る")
     ap.add_argument("--waiting", action="store_true", help="web/waiting.html（SPEC §23.7）を例の行つきで撮る")
     ap.add_argument("--compare-lite", action="store_true", help="web/compare_lite.html（SPEC §24）を S6 の荷で撮る")
+    ap.add_argument("--paste-real", action="store_true", help="web/waiting.html に実際の Excel の書き方の貼り付けをした画面を撮る（SPEC §25）")
     ap.add_argument("--size", default="1920x1080")
     ap.add_argument("--out", help="単一の場面のときの出力先（省略すると docs/assets）")
     ap.add_argument("--click", help="経度,緯度。その地点を本物のマウスでクリックしてから撮る")
@@ -423,6 +439,10 @@ def main() -> int:
     if args.waiting:
         ww, hh = (int(x) for x in args.size.split("x"))
         waiting_standalone(ww, hh)
+        return 0
+    if args.paste_real:
+        ww, hh = (int(x) for x in args.size.split("x"))
+        waiting_paste_real(ww, hh)
         return 0
     if args.compare_lite:
         ww, hh = (int(x) for x in args.size.split("x"))
