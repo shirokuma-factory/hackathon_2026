@@ -1,0 +1,14 @@
+{
+  // GitHub Codespaces で地図の画面を開くための設定（README の「Codespaces で開く」）。
+  // サーバーは標準ライブラリだけで動くので、パッケージは入れない。
+  // 外から開くため公開版（--public: OSRM に問い合わせない、P31 を配らない、来訪者ごとの状態）で起動する。
+  // ポートは非公開のまま。開けるのは Codespace を作った本人だけ。
+  "name": "Backfull",
+  "image": "mcr.microsoft.com/devcontainers/python:3.13",
+  "hostRequirements": { "cpus": 2 },
+  "forwardPorts": [8600],
+  "portsAttributes": {
+    "8600": { "label": "Backfull 地図の画面", "onAutoForward": "openBrowser" }
+  },
+  "postAttachCommand": "python tools/serve_web.py --public --port 8600"
+}
