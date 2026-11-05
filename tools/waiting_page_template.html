@@ -64,12 +64,26 @@ aside#process ul { margin: 0; padding-left: 16px; } aside#process li { margin-bo
 .empty { color: var(--muted); margin: 10px 2px; }
 #selftest { display: none; margin: 8px 24px; padding: 8px 12px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; white-space: pre-wrap; }
 body.selftest #selftest { display: block; }
+.keep { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+#wait-doc .printnote { display: none; }
+@page { size: A4 portrait; margin: 12mm; }
 @media print {
-  body { background: #fff; }
-  body * { visibility: hidden; }
-  #wait-doc, #wait-doc * { visibility: visible; color: #000; }
-  #wait-doc { position: absolute; left: 0; top: 0; width: 100%; border: 0; padding: 0; font-size: 12pt; }
-  #wait-doc .sentence { border-left: 4px solid #000; background: none; }
+  /* 書面だけを A4 縦に流す。隠すものは display:none にして、余白の白紙ページが出ないようにする */
+  html, body { background: #fff; margin: 0; padding: 0; }
+  header.top, .protect, #selftest, .col-in, #partners, #draft-area > h2, #draft-area > .bar, aside#process { display: none !important; }
+  main, .col-out, section.card, #draft-area, .wrap { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; width: auto; }
+  #wait-doc { border: 0; padding: 0; width: auto; color: #000; font-size: 9.5pt; line-height: 1.5; }
+  #wait-doc h3 { font-size: 13pt; }
+  #wait-doc h4 { font-size: 10.5pt; margin: 8px 0 2px; break-after: avoid; }
+  #wait-doc .rec-w { overflow: visible; }
+  #wait-doc table.rec { table-layout: auto; width: 100%; font-size: 7.5pt; }
+  #wait-doc table.rec th, #wait-doc table.rec td { white-space: normal; overflow-wrap: anywhere; padding: 2px 3px; color: #000; }
+  #wait-doc table.rec td:nth-child(1), #wait-doc table.rec td:nth-child(5), #wait-doc table.rec td:nth-child(6), #wait-doc table.rec td:nth-child(7) { white-space: nowrap; }
+  #wait-doc table.rec th { text-align: left; }
+  #wait-doc table.rec tr { break-inside: avoid; }
+  #wait-doc small, #wait-doc .small { color: #000; }
+  #wait-doc .sentence { border-left: 4px solid #000; background: none; break-inside: avoid; }
+  #wait-doc .printnote { display: block; margin-top: 8px; font-size: 8.5pt; border-top: 1px solid #000; padding-top: 4px; }
 }
 </style>
 </head>
@@ -88,7 +102,11 @@ body.selftest #selftest { display: block; }
         <label>年（M/D で入れた日付に使います）<select id="year"></select></label>
         <button type="button" id="b-example">例を入れる</button>
         <button type="button" id="b-clear">表を空にする</button>
+        <button type="button" id="b-csvin">CSV を読み込む</button>
+        <button type="button" id="b-forget">保存した記録を消す</button>
+        <input type="file" id="csvfile" accept=".csv,text/csv" hidden aria-label="書き出した CSV を選ぶ">
       </div>
+      <p class="keep" id="keep">記録はこのブラウザの中にだけ保存されます。別の PC には移りません<span id="keep-msg"></span></p>
       <div class="tw"><table class="in" aria-label="荷待ち・荷役の記録の表"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
       <div class="bar"><button type="button" id="b-add">行を足す</button><small>時刻は HH:MM（日付をまたぐ時刻は翌日として扱います）。荷役終了は荷役をしたときに入れます。</small></div>
       <div id="errs"></div>
@@ -122,6 +140,10 @@ const HEADER_ALIASES = {
   '日付': 'date', '車番': 'vehicle_no', '車種': 'vehicle_class', '契約の相手': 'partner', '場所': 'place', '到着': 'arrive', '荷役開始': 'start', '荷役終了': 'end',
   '出発': 'depart', '荷役をした人': 'handler', '荷役の方法': 'method', '荷主等の都合の待機か': 'shipper_fault', '荷主等の都合': 'shipper_fault',
   '指定の到着時刻': 'appointed', '附帯業務の内容': 'side_work', '附帯業務の分': 'side_min',
+    '運行日': 'date', '年月日': 'date', '月日': 'date', '車両番号': 'vehicle_no', '車格': 'vehicle_class',
+    '荷主': 'partner', '元請': 'partner', '契約先': 'partner', '到着時刻': 'arrive', '着時刻': 'arrive',
+    '積込開始': 'start', '積込開始時刻': 'start', '荷役開始時刻': 'start', '積込終了': 'end', '積込終了時刻': 'end', '荷役終了時刻': 'end',
+    '出発時刻': 'depart', '発時刻': 'depart', '指定時刻': 'appointed', '指定到着': 'appointed',
 };
 const CLASS_ALIASES = {
   '小型': '小型', '小型車': '小型', '2t': '小型', '2トン': '小型', '２t': '小型',
@@ -149,7 +171,9 @@ const PROTECT = [
   '参考額は告示の表に当てた計算です。請求するか、いくらにするかは運送会社が決めます。法的な判断は弁護士・運輸支局などに確かめてください',
   '入れた記録はこの PC の中だけで計算し、外に送りません',
 ];
+const BASIS_QUOTE = '貸切運賃料金適用方（参考例）第 21 項（Q&A 集に収録）は、待機時間に「荷主による積込み・取卸しの時間を含む」とし、30 分を超える部分に待機時間料を収受するとしています。荷主側が荷役をした行は、その時間も待機に入れています。';
 const BASIS = [
+  BASIS_QUOTE,
   '書面交付の法定事項に、荷役作業・附帯業務の内容と対価が入ります（改正法 Q&A 問2-2・2-3）。',
   '標準運送約款 第 34 条: 荷送人又は荷受人の責による待機には、待機時間料を収受できます。',
   '取適法では、長時間の待機の費用を負担しないことが違反になり得ます（Q42・Q132。規模の基準に当たる場合）。',
@@ -420,7 +444,23 @@ function runSelftest() {
       fails.push(`${c.name}（${bad.join(', ')}）`);
     }
   }
-  const n = VECTORS.cases.length;
+  let n = VECTORS.cases.length;
+  // 書き出した CSV を読み戻すと、同じ行・同じ計算結果になる（引用符・コンマ・改行つきの欄も）
+  const tricky = { date: '2026-10-05', vehicle_no: '', vehicle_class: '中型', partner: '元請, "A" 物流', place: '構内 北口\n第2バース', arrive: '09:00', start: '10:00', end: '', depart: '',
+    handler: '', method: '', shipper_fault: 'はい', appointed: '', side_work: '検品, 仕分け', side_min: '15' };
+  const trips = [['example_rows_11', VECTORS.cases.find((c) => c.name === 'example_rows_11_at_chiten07').rows],
+    ['realistic_header_paste', parsePaste(VECTORS.cases.find((c) => c.name === 'paste_realistic_excel_header_other_order').text)],
+    ['quotes_commas_newlines', [tricky]]];
+  for (const [name, rows] of trips) {
+    n += 1;
+    const a = calc(rows, 2026, TARIFF);
+    const back = csvToRows(csvTextOf(a.rows));
+    const b = calc(back, 2026, TARIFF);
+    const same = deepEqual(a, b) && back.length === a.rows.length && a.rows.length > 0;
+    const inputsSame = a.rows.every((r, i) => ['date', 'vehicle_no', 'vehicle_class', 'partner', 'place', 'arrive', 'start', 'end', 'depart', 'handler', 'method', 'appointed', 'side_work'].every((k) => back[i][k] === r[k]) &&
+      back[i].shipper_fault === (r.shipper_fault ? 'はい' : 'いいえ') && back[i].side_min === (r.side_min ? String(r.side_min) : ''));
+    if (!same || !inputsSame) fails.push(`csv_roundtrip_${name}`);
+  }
   return fails.length ? `SELFTEST FAIL ${n - fails.length}/${n}\n${fails.join('\n')}` : `SELFTEST PASS ${n}/${n}`;
 }
 
@@ -476,7 +516,7 @@ function draftHtml(p) {
   const classes = [...new Set(rows.map((r) => r.vehicle_class))];
   const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
   const rec = rows.map((r) => `<tr><td>${esc(r.date)}</td><td>${esc(r.vehicle_no)}</td><td>${esc(r.vehicle_class)}</td><td>${esc(r.place)}</td><td>${esc(r.arrive)}</td><td>${esc(r.start)}</td><td>${esc(r.end)}</td><td>${esc(r.handler)}</td>` +
-    `<td class="num">${r.wait_min}${r.wait_base_min > 0 ? `<small>指定 ${esc(r.appointed)} から</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.amount)}</td></tr>`).join('');
+    `<td class="num">${r.wait_min}${r.handler === '荷主側' && r.wait_min > 0 && r.end ? '<small>荷主側の荷役を待機に含む</small>' : ''}${r.wait_base_min > 0 ? `<small>指定 ${esc(r.appointed)} から</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.amount)}</td></tr>`).join('');
   const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((m) => `<td class="num">${n0(t.handling[m].normal[c])} / ${n0(t.handling[m].over_2h[c])}</td>`).join('')}</tr>`).join('');
   return `<h3>荷待ち・荷役に関する協議のお願い（下書き）</h3>
     <dl class="dl"><dt>相手</dt><dd>${esc(p.partner)} 御中</dd><dt>期間</dt><dd>${esc(p.date_from)} 〜 ${esc(p.date_to)}（${p.count} 回）</dd>
@@ -486,13 +526,15 @@ function draftHtml(p) {
     <h4>参考額と計算の根拠</h4>
     <p>参考額の合計 <b>${yen(p.amount)}</b>（税抜。待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}）。待機の合計 ${hm(p.wait_minutes)}、運転者の荷役の合計 ${hm(p.handling_minutes)}。</p>
     <p class="small">標準的運賃（${esc(t.applies_from)} 告示）の別紙の表に当てた額です。待機は到着時刻（指定の到着時刻があって実際の到着が早いときは指定の時刻）から数え、最初の ${t.free_minutes} 分を差し引き、${t.unit_minutes} 分までごとに通常の額、到着から ${t.threshold_minutes / 60} 時間を超える部分は ${t.unit_minutes} 分までごとに 2 時間超の額です（Q&A 集 Q29）。荷主側が荷役をした時間も待機に入れています。出典: ${esc(t.source_url)}</p>
+    <p class="small">${esc(BASIS_QUOTE)}</p>
     <div class="rec-w"><table class="rec"><thead><tr><th>使った車種の単価（税抜・円）</th><th>待機時間料<small>${t.unit_minutes} 分までごと</small></th><th>2 時間超</th>${methods.map((m) => `<th>${esc(m)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
     <h4>次の契約の書面（運送引受書）に入れる欄の案</h4>
-    <ul class="list"><li>待機時間料: 荷主等の都合による待機について、到着から ${t.free_minutes} 分を超えた時間に、${t.unit_minutes} 分までごとに上の単価（到着から 2 時間を超える部分は 2 時間超の単価）。</li>
+    <ul class="list"><li>待機時間料: 荷主等の都合による待機について、到着（指定の到着時刻があるときは、その時刻）から ${t.free_minutes} 分を超えた時間に、${t.unit_minutes} 分までごとに上の単価（到着から 2 時間を超える部分は 2 時間超の単価）。</li>
       <li>積込料・取卸料: 運転者が荷役をしたとき、荷役の時間に ${t.unit_minutes} 分までごとに上の単価（手積み / フォークリフト等で別）。</li>
       <li>附帯業務: 内容と、実費として収受する額の扱い。</li>
       <li>荷主等の都合でない待機（予期せぬ渋滞など）は対象にしません。</li></ul>
-    <p class="sentence">下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。</p>`;
+    <p class="sentence">下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。</p>
+    <p class="printnote">${esc(PROTECT[0])}</p>`;
 }
 
 const processHtml = () => `<aside id="process" aria-label="協議の進め方"><b>協議の進め方</b><ul>${PROCESS.map((x) => `<li>${x.includes('https://') ? esc(x.split('https://')[0]) + `<a href="https://${esc(x.split('https://')[1])}" target="_blank" rel="noopener">https://${esc(x.split('https://')[1])}</a>` : esc(x)}</li>`).join('')}</ul></aside>`;
@@ -532,18 +574,73 @@ function doCalc() {
   document.querySelectorAll('#tbody tr').forEach((tr) => tr.classList.toggle('bad', S.bad.has(Number(tr.dataset.i))));
   $('#errs').innerHTML = errsHtml();
   renderResult();
+  if (!S.noStore) keepMsg(storeSave() ? (rows.length ? `保存しました（${rows.length} 行）` : '') : 'このブラウザでは保存が使えません（ページはそのまま使えます）');
 }
 
 const calcSoon = () => { clearTimeout(S.tm); S.tm = setTimeout(doCalc, 200); };
 
-function csvText() {
+function csvTextOf(resRows) {
   const heads = ['日付', '車番', '車種', '契約の相手', '場所', '到着', '荷役開始', '荷役終了', '出発', '荷役をした人', '荷役の方法', '荷主等の都合の待機か', '指定の到着時刻', '附帯業務の内容', '附帯業務の分', '待機の数え始め',
     '待機（分）', '運転者の荷役（分）', '待機時間料 通常（回）', '待機時間料 2時間超（回）', '待機時間料（円）', '積込料・取卸料 通常（回）', '積込料・取卸料 2時間超（回）', '積込料・取卸料（円）', '参考額（円・税抜）'];
   const cell = (v) => { const t = String(v == null ? '' : v); return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
-  const lines = [heads, ...S.res.rows.map((r) => [r.date, r.vehicle_no, r.vehicle_class, r.partner, r.place, r.arrive, r.start, r.end, r.depart, r.handler, r.method, r.shipper_fault ? 'はい' : 'いいえ',
+  const lines = [heads, ...resRows.map((r) => [r.date, r.vehicle_no, r.vehicle_class, r.partner, r.place, r.arrive, r.start, r.end, r.depart, r.handler, r.method, r.shipper_fault ? 'はい' : 'いいえ',
     r.appointed, r.side_work, r.side_min || '', r.wait_from, r.wait_min, r.handling_min, r.wait_normal_units, r.wait_over_units, r.wait_fee, r.handling_normal_units, r.handling_over_units, r.handling_fee, r.amount])];
   return '\uFEFF' + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n';
 }
+
+const csvText = () => csvTextOf(S.res.rows);
+
+// このページが書き出した CSV（引用符・改行つきの欄も可）を、入力の行に戻す。入力の 15 列だけを見て、残りの列（計算結果）は読み捨てる
+function parseCsv(text) {
+  const t = String(text || '').replace(/^\uFEFF/, '');
+  const out = [];
+  let row = [], cur = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) {
+      if (c === '"') { if (t[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(cur); cur = ''; out.push(row); row = []; }
+    else cur += c;
+  }
+  if (cur !== '' || row.length) { row.push(cur); out.push(row); }
+  return out.filter((r) => r.some((x) => x.trim() !== ''));
+}
+
+function csvToRows(text) {
+  const table = parseCsv(text);
+  if (!table.length) return [];
+  const map = table[0].map((h) => (Object.prototype.hasOwnProperty.call(HEADER_ALIASES, h.trim()) ? HEADER_ALIASES[h.trim()] : null));
+  if (map.filter((c) => c).length < 6) throw new Error('このページが書き出した CSV の形ではありません（見出しの行が読めません）');
+  return table.slice(1).map((cells) => {
+    const o = Object.fromEntries(COLUMNS.map((k) => [k, '']));
+    map.forEach((k, i) => { if (k && i < cells.length) o[k] = cells[i].trim(); });
+    return o;
+  });
+}
+
+/* ---------------------------------------------------------------- このブラウザへの保存（localStorage。使えなくてもページは動く） */
+const STORE_KEY = 'waiting_page_rows_v1';
+function storeSave() {
+  try {
+    const rows = S.rows.filter((r) => !isBlank(r));
+    if (!rows.length) localStorage.removeItem(STORE_KEY);
+    else localStorage.setItem(STORE_KEY, JSON.stringify({ year: S.year, rows }));
+    return true;
+  } catch (e) { return false; }
+}
+function storeLoad() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || !Array.isArray(d.rows)) return null;
+    return { year: Number(d.year) || null, rows: d.rows.filter((r) => r && typeof r === 'object').map((r) => ({ ...blankRow(), ...r })) };
+  } catch (e) { return null; }
+}
+function storeClear() { try { localStorage.removeItem(STORE_KEY); return true; } catch (e) { return false; } }
+function keepMsg(t) { const el = $('#keep-msg'); if (el) el.textContent = t ? `　${t}` : ''; }
 
 function downloadCsv() {
   const a = document.createElement('a');
@@ -564,6 +661,22 @@ function pasteIn() {
   doCalc();
 }
 
+function csvIn(file) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      const inp = csvToRows(String(fr.result));
+      const keep = S.rows.filter((r) => !isBlank(r));
+      S.rows = keep.concat(inp);
+      if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
+      $('#paste-msg').textContent = `CSV の ${inp.length} 行を表の後ろに足しました`;
+      renderTable(); doCalc();
+    } catch (e) { $('#errs').innerHTML = `<div class="errs">${esc(e.message)}</div>`; }
+  };
+  fr.onerror = () => { $('#errs').innerHTML = '<div class="errs">ファイルを読めませんでした</div>'; };
+  fr.readAsText(file, 'utf-8');
+}
+
 function init() {
   $('#protect').innerHTML = PROTECT.map((x) => `<p>${esc(x)}</p>`).join('');
   $('#basis').innerHTML = `<h2>根拠</h2><ul>${BASIS.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
@@ -577,6 +690,7 @@ function init() {
   document.addEventListener('change', (e) => {
     const t = e.target;
     if (t.id === 'year') { S.year = Number(t.value); doCalc(); }
+    else if (t.id === 'csvfile') { if (t.files && t.files[0]) csvIn(t.files[0]); t.value = ''; }
   });
   document.addEventListener('click', (e) => {
     const t = e.target;
@@ -584,12 +698,24 @@ function init() {
     else if (t.id === 'b-clear') { S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult(); }
     else if (t.id === 'b-add') { S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
     else if (t.id === 'b-paste') pasteIn();
+    else if (t.id === 'b-csvin') $('#csvfile').click();
+    else if (t.id === 'b-forget') {
+      const ok = storeClear();
+      S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderResult();
+      keepMsg(ok ? '保存した記録を消しました' : 'このブラウザでは保存が使えません');
+    }
     else if (t.id === 'b-print') window.print();
     else if (t.id === 'b-csv') { if (S.res && S.res.rows.length) downloadCsv(); }
     else if (t.dataset && t.dataset.del !== undefined) { S.rows.splice(Number(t.dataset.del), 1); renderTable(); doCalc(); }
     else { const tr = t.closest && t.closest('tr[data-pick]'); if (tr) { S.partner = tr.dataset.pick; renderResult(); } }
   });
   const qs = new URLSearchParams(location.search);
+  S.noStore = qs.get('selftest') === '1';
+  const saved = S.noStore ? null : storeLoad();
+  if (saved && saved.rows.some((r) => !isBlank(r))) {
+    if (saved.year) { S.year = saved.year; $('#year').value = String(S.year); }
+    S.rows = saved.rows; renderTable(); doCalc(); keepMsg(`前回の記録 ${saved.rows.length} 行を読み込みました`);
+  }
   if (qs.get('selftest') === '1') {
     document.body.classList.add('selftest');
     let text;

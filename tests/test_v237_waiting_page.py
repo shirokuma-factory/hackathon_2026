@@ -147,7 +147,7 @@ def test_g82_js_selftest_passes_in_headless_edge():
         page.wait(lambda: page.js("document.querySelector('#selftest') && document.querySelector('#selftest').textContent.length > 0"), 30, "自己確認")
         text = page.js("document.querySelector('#selftest').textContent")
     n = len(load_vectors()["cases"])
-    assert text == f"SELFTEST PASS {n}/{n}", text
+    assert text == f"SELFTEST PASS {n + 3}/{n + 3}", text
 
 
 def test_page_ui_example_draft_and_csv_in_headless_edge():

@@ -32,6 +32,10 @@ _HEADER_ALIASES = {
     "到着": "arrive", "荷役開始": "start", "荷役終了": "end", "出発": "depart", "荷役をした人": "handler",
     "荷役の方法": "method", "荷主等の都合の待機か": "shipper_fault", "荷主等の都合": "shipper_fault",
     "指定の到着時刻": "appointed", "附帯業務の内容": "side_work", "附帯業務の分": "side_min",
+    "運行日": "date", "年月日": "date", "月日": "date", "車両番号": "vehicle_no", "車格": "vehicle_class",
+    "荷主": "partner", "元請": "partner", "契約先": "partner", "到着時刻": "arrive", "着時刻": "arrive",
+    "積込開始": "start", "積込開始時刻": "start", "荷役開始時刻": "start", "積込終了": "end", "積込終了時刻": "end", "荷役終了時刻": "end",
+    "出発時刻": "depart", "発時刻": "depart", "指定時刻": "appointed", "指定到着": "appointed",
 }
 
 _CLASS_ALIASES = {

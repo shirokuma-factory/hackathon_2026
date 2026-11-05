@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>送り方を比べる（荷主向け・ページ 1 枚）</title>
+<!-- このファイルは tools/build_compare_page.py が tools/compare_lite_template.html から作ります。直すときはテンプレートを直してください。 -->
+<style>
+:root { --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #5b6475; --faint: #8a93a3; --line: #d9dde5; --accent: #1b5fbf; --ok: #1a7a3c; --ok-bg: #e8f5ec; --chk: #8a5a00; --chk-bg: #fff4d6; --ng: #b3261e; --ng-bg: #fdecea; --hi: #eef4fd; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.6 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; }
+header.top { padding: 14px 24px 6px; }
+header.top h1 { margin: 0 0 4px; font-size: 20px; }
+header.top p { margin: 0; color: var(--muted); font-size: 13px; }
+.guard { margin: 6px 24px 10px; padding: 8px 14px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; font-size: 13px; }
+main { display: grid; grid-template-columns: minmax(0, 620px) minmax(0, 1fr); gap: 16px; padding: 0 24px 24px; align-items: start; }
+@media (max-width: 1250px) { main { grid-template-columns: minmax(0, 1fr); } }
+section.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+section.card h2 { margin: 0 0 6px; font-size: 15px; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; font-size: 13px; }
+.small { color: var(--muted); font-size: 12px; }
+button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--text); cursor: pointer; }
+button:hover { background: var(--hi); }
+select, input[type=text], input[type=number], textarea { font: inherit; font-size: 13px; color: var(--text); background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; }
+table.in { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+table.in th { text-align: left; font-weight: 500; font-size: 11.5px; color: var(--muted); padding: 3px 4px; border-bottom: 1px solid var(--line); }
+table.in td { padding: 2px; }
+table.in input { width: 100%; height: 26px; padding: 0 4px; }
+.del { border: 0; background: transparent; color: var(--faint); padding: 0 6px; }
+label.f { display: block; font-size: 12px; color: var(--muted); }
+label.f select, label.f input { display: block; margin-top: 2px; color: var(--text); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 8px 0; }
+.errs { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--ng); border-radius: 8px; background: var(--ng-bg); color: var(--ng); font-size: 12.5px; }
+table.res { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.res th { text-align: left; font-weight: 500; font-size: 12px; color: var(--muted); padding: 4px 8px; border-bottom: 1px solid var(--line); }
+table.res td { padding: 6px 8px; border-bottom: 1px solid #eceff4; vertical-align: top; }
+table.res td.nm { font-weight: 700; white-space: nowrap; }
+.badge { display: inline-block; min-width: 4.8em; text-align: center; padding: 1px 8px; border-radius: 10px; font-weight: 700; font-size: 12.5px; white-space: nowrap; }
+.badge.ok { background: var(--ok-bg); color: var(--ok); }
+.badge.check { background: var(--chk-bg); color: var(--chk); }
+.badge.ng { background: var(--ng-bg); color: var(--ng); }
+ul.rs { margin: 0; padding-left: 16px; font-size: 12.5px; }
+ul.rs li { margin: 1px 0; }
+.amount { font-weight: 700; }
+.home { margin-top: 4px; padding: 4px 8px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; font-size: 12.5px; }
+.sum { font-size: 12.5px; color: var(--muted); margin: 4px 0 8px; }
+textarea#quote { width: 100%; height: 190px; line-height: 1.55; }
+.sources ul { margin: 4px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
+.empty { color: var(--muted); margin: 10px 2px; }
+#selftest { display: none; margin: 8px 24px; padding: 8px 12px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; white-space: pre-wrap; }
+body.selftest #selftest { display: block; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>荷物を送る方法を、条件から比べる</h1>
+  <p>荷主が自分で条件を入れて、宅配・家財・赤帽・軽貨物・路線便・貸切のどれが使えるかを見るページです。サーバーもインストールも要りません。ファイルを開くだけで動きます。</p>
+</header>
+<div class="guard" id="guard">目安です。最後は各社の見積で確かめてください</div>
+<main>
+  <div class="col-in">
+    <section class="card" id="input">
+      <h2>荷物</h2>
+      <table class="in" aria-label="荷物の表"><thead><tr><th>個数</th><th>縦 cm</th><th>横 cm</th><th>高さ cm</th><th>1 個の重さ kg</th><th></th></tr></thead><tbody id="pbody"></tbody></table>
+      <div class="bar"><button type="button" id="b-add">行を足す</button><button type="button" id="b-example">例を入れる</button><button type="button" id="b-clear">表を空にする</button></div>
+      <div class="grid2">
+        <label class="f">集荷する都道府県<select id="from"></select></label>
+        <label class="f">届け先の都道府県<select id="to"></select></label>
+        <label class="f">道路の距離 km（集荷 → 届け先）<input type="number" id="km" min="0" step="1" placeholder="例 492"></label>
+        <label class="f">届け先<select id="recv"><option value="business">法人・店舗・事業所</option><option value="person">個人宅</option></select></label>
+        <label class="f">日の幅（届けばよい日数）<select id="flex"></select></label>
+      </div>
+      <p class="small">距離は、地図アプリなどで集荷先から届け先までの道路距離を調べて入れてください。このページは通信をしないので、距離は自動では出ません。</p>
+      <div id="errs"></div>
+    </section>
+    <section class="card" id="quote-card">
+      <h2>見積依頼文（下書き）</h2>
+      <p class="small">入れた条件から作った文です。値段は書いていません。コピーして、各社の見積の申し込みに貼り付けてください。</p>
+      <textarea id="quote" readonly aria-label="見積依頼文"></textarea>
+      <div class="bar"><button type="button" id="b-copy">文をコピーする</button><span class="small" id="copy-msg"></span></div>
+    </section>
+  </div>
+  <div class="col-out">
+    <section class="card" id="result">
+      <h2>送り方ごとの判定</h2>
+      <div id="sum" class="sum"></div>
+      <div id="res"></div>
+      <p class="small" id="guard2"></p>
+    </section>
+    <section class="card sources" id="sources"></section>
+  </div>
+</main>
+<div id="selftest" role="status"></div>
+
+<script>
+"use strict";
+/* 通信はしません（外部へ送る API も、外部の script も使いません）。入れた条件はこのページの中だけで判定します。
+   貸切の運賃は src/shipcompare/estimate.py の kashikiri_fares と同じ式です。同じ試験表（tests/data/compare_lite_vectors.json）を ?selftest=1 で通します。 */
+const TARIFFS = /*__TARIFFS__*/null;
+const VECTORS = /*__VECTORS__*/null;
+
+const GUARD = '目安です。最後は各社の見積で確かめてください';
+const PREFS = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県', '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県',
+  '岐阜県', '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県',
+  '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'];
+const KANTO = ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '山梨県'];
+const KINKI = ['福井県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'];
+const FLEX_DAYS = [0, 1, 2, 3, 4, 5, 7, 10, 14];
+
+// 規則の数字。出典は docs/plan/2026-11-04_顧客の今のやり方の調査.md の §C と §F
+const RULES = {
+  yamato: { sum3: 200, side: 170, kg: 30 },                  // §C ヤマト宅急便
+  sagawa: { sum3: 260, kg: 50 },                              // 佐川 飛脚ラージサイズ便（指示書の値）
+  kazai: { kg: 150, sum3: 450, longest: 250, height: 200 },   // §F-3 家財おまかせ便
+  akabane: { kg: 350 },                                       // §C 赤帽
+  kei: { kg: 350, m3: 2.8, box: [180, 130, 120], boxSeat: [250, 130, 120] }, // §F-2 ハコベル・PickGo（軽）
+  jitbox: { box: [170, 104, 104], m3: 1.8, kg: 500 },         // §C 西濃 JITBOX チャーター便
+  rosen: { kgPerM3: 280, quoteOverKg: 1000 },                 // 路線便の計算重量
+  t2: { floorM2: 1.77 * 3.10, longest: 440, shortLen: 310 },  // §F-2 ハコベル 2t ショート 177×310cm、ロング 440cm
+  t4home: { kg: 3500, floorM2: 13.0 },                        // 地図の画面のデモの便 T7（架空）
+  homeFlexDays: 3,
+};
+const SOURCES = [
+  '宅配・赤帽・JITBOX・路線便: 調査 顧客の今のやり方（2026-11-04）§C（ヤマト宅急便、赤帽、西濃 JITBOX チャーター便・カンガルー特急便の公式の条件）',
+  '佐川 飛脚ラージサイズ便（3 辺合計 260cm・50kg）: 本ページの作成指示の値。公式ページとの照合は未了',
+  '家財おまかせ便、軽貨物マッチング（ハコベル・PickGo）: 同 §F-2・§F-3（2026-11-05 に確認。法人・店舗への配達、赤帽の荷台寸法は未確認）',
+  '2t・4t の貸切の目安額: 標準的運賃（2024 年 3 月 22 日告示）の距離制運賃。関東運輸局・近畿運輸局の表。近畿の表の原本との照合は未了',
+  '帰り便: このリポジトリの地図の画面のデモ（架空の便。デモの便 T7 は最大 3,500kg・床 13.0m²）',
+];
+
+/* ---------------------------------------------------------------- 貸切の運賃（kashikiri_fares と同じ） */
+const ceilInt = (x) => Math.ceil(Math.round(x * 1e9) / 1e9);
+function kashikiriFares(km, kg, t) {
+  let steps, over = 0;
+  if (t.over_500_km == null || t.over_500_step_km == null || km <= t.over_500_km) steps = ceilInt((km - t.base_km) / t.step_km);
+  else { steps = ceilInt((t.over_500_km - t.base_km) / t.step_km); over = ceilInt((km - t.over_500_km) / t.over_500_step_km); }
+  return t.vehicles.filter((v) => kg <= v.max_kg).map((v) => ({ class: v.class, amount: v.base_fare + steps * v.add_per_step + over * (v.add_per_step_over_500 || 0), steps, steps_over_500: over }));
+}
+
+/* ---------------------------------------------------------------- 判定 */
+const sortDesc = (a) => a.slice().sort((x, y) => y - x);
+const fitsBox = (p, box) => { const a = sortDesc([p.l, p.w, p.h]), b = sortDesc(box); return a.every((x, i) => x <= b[i]); };
+const sum3 = (p) => p.l + p.w + p.h;
+const longest = (p) => Math.max(p.l, p.w, p.h);
+const fmt = (v) => Math.round(v).toLocaleString('ja-JP');
+const f1 = (v) => (Math.round(v * 10) / 10).toLocaleString('ja-JP');
+const pdesc = (p) => `${p.l}×${p.w}×${p.h}cm ${p.kg}kg`;
+
+function parsePieces(rows) {
+  const pieces = [], errs = [];
+  rows.forEach((r, i) => {
+    const vals = [r.n, r.l, r.w, r.h, r.kg].map((x) => String(x == null ? '' : x).trim());
+    if (vals.every((x) => !x)) return;
+    const [n, l, w, h, kg] = vals.map(Number);
+    if (!(Number.isInteger(n) && n >= 1) || !(l > 0) || !(w > 0) || !(h > 0) || !(kg > 0)) { errs.push(`${i + 1} 行目: 個数は 1 以上の整数、寸法と重さは 0 より大きい数で入れてください`); return; }
+    pieces.push({ n, l, w, h, kg });
+  });
+  return { pieces, errs };
+}
+
+function totals(pieces) {
+  const t = { count: 0, kg: 0, m3: 0, floor: 0, longest: 0 };
+  for (const p of pieces) { t.count += p.n; t.kg += p.n * p.kg; t.m3 += p.n * p.l * p.w * p.h / 1e6; t.floor += p.n * p.l * p.w / 1e4; t.longest = Math.max(t.longest, longest(p)); }
+  return t;
+}
+
+const opt = (id, name, status, reasons, extra) => ({ id, name, status, reasons, ...(extra || {}) });
+
+function evalTakuhai(pieces) {
+  const R = RULES, bad = [];
+  let fit = 0, all = 0;
+  for (const p of pieces) {
+    all += p.n;
+    const y = sum3(p) <= R.yamato.sum3 && longest(p) <= R.yamato.side && p.kg <= R.yamato.kg;
+    const s = sum3(p) <= R.sagawa.sum3 && p.kg <= R.sagawa.kg;
+    if (y || s) fit += p.n; else bad.push(`${pdesc(p)}（3 辺合計 ${sum3(p)}cm）はヤマト 200cm・30kg、佐川 260cm・50kg のどちらも超える`);
+  }
+  if (fit === all) return opt('takuhai', '宅配（ヤマト・佐川）', 'ok', ['全部の荷が、ヤマトの 3 辺合計 200cm・30kg か 佐川 飛脚ラージの 260cm・50kg に収まる', '個数分の運賃がかかる']);
+  if (fit === 0) return opt('takuhai', '宅配（ヤマト・佐川）', 'ng', bad);
+  return opt('takuhai', '宅配（ヤマト・佐川）', 'check', [`${fit} 点だけ宅配に載る（残り ${all - fit} 点は載らない）`, ...bad]);
+}
+
+function evalKazai(pieces, recv) {
+  const K = RULES.kazai, bad = [];
+  let fit = 0, all = 0;
+  for (const p of pieces) {
+    all += p.n;
+    const why = [];
+    if (p.kg > K.kg) why.push(`${p.kg}kg は 1 点 ${K.kg}kg まで`);
+    if (sum3(p) > K.sum3) why.push(`3 辺合計 ${sum3(p)}cm は ${K.sum3}cm まで`);
+    if (longest(p) > K.longest) why.push(`最長辺 ${longest(p)}cm は ${K.longest}cm まで`);
+    if (p.h > K.height) why.push(`高さ ${p.h}cm は ${K.height}cm まで`);
+    if (why.length) bad.push(`${pdesc(p)}: ${why.join('、')}`); else fit += p.n;
+  }
+  const bizNote = '法人・店舗への配達ができるかは未確認（公式ページに書かれていない）';
+  if (fit === 0) return opt('kazai', '家財おまかせ便', 'ng', bad);
+  const reasons = [`1 点ずつの条件（150kg・3 辺 450cm・最長辺 250cm・高さ 200cm まで）を${fit === all ? '全部の荷が満たす' : `${fit} 点が満たす`}`];
+  if (fit !== all) reasons.push(...bad);
+  if (recv === 'business') { reasons.push(bizNote); return opt('kazai', '家財おまかせ便', 'check', reasons); }
+  return opt('kazai', '家財おまかせ便', fit === all ? 'ok' : 'check', reasons);
+}
+
+function evalAkabane(t) {
+  if (t.kg > RULES.akabane.kg) return opt('akabane', '赤帽', 'ng', [`合計 ${f1(t.kg)}kg は軽トラック 1 台の最大積載 350kg を超える（台数を分けるなら要相談）`]);
+  return opt('akabane', '赤帽', 'check', [`合計 ${f1(t.kg)}kg は 350kg 以内`, '荷台の寸法は公式に確認できていない。長い荷・かさばる荷は事前に確かめる']);
+}
+
+function evalKei(pieces, t) {
+  const K = RULES.kei, bad = [];
+  let seat = false, hard = false;
+  if (t.kg > K.kg) { hard = true; bad.push(`合計 ${f1(t.kg)}kg は 350kg を超える`); }
+  if (t.m3 > K.m3) { hard = true; bad.push(`合計の容積 ${f1(t.m3)}m³ は荷台の約 2.8m³ を超える`); }
+  for (const p of pieces) {
+    if (fitsBox(p, K.box)) continue;
+    if (fitsBox(p, K.boxSeat)) { seat = true; bad.push(`${pdesc(p)} は荷台 130×120×180cm に入らない（助手席を倒すと奥行 250cm）`); } else { hard = true; bad.push(`${pdesc(p)} は荷台 130×120×180cm に入らない`); }
+  }
+  if (hard) return opt('kei', '軽貨物マッチング（ハコベル・PickGo）', 'ng', bad);
+  if (seat) return opt('kei', '軽貨物マッチング（ハコベル・PickGo）', 'check', bad);
+  return opt('kei', '軽貨物マッチング（ハコベル・PickGo）', 'ok', [`350kg・約 2.8m³・荷台 130×120×180cm に収まる（合計 ${f1(t.kg)}kg、${f1(t.m3)}m³）`, '料金は会員登録して見積もる（公開の料金表なし）']);
+}
+
+function evalJitbox(pieces, t, recv) {
+  const J = RULES.jitbox;
+  if (recv === 'person') return opt('jitbox', 'JITBOX チャーター便（西濃）', 'ng', ['法人発・法人着だけ。個人宛ては承っていない']);
+  const bad = [];
+  if (t.kg > J.kg) bad.push(`合計 ${f1(t.kg)}kg は 1 ボックス 500kg までを超える`);
+  if (t.m3 > J.m3) bad.push(`合計の容積 ${f1(t.m3)}m³ は 1 ボックス約 1.8m³ を超える`);
+  for (const p of pieces) if (!fitsBox(p, J.box)) bad.push(`${pdesc(p)} は内寸 170×104×104cm に入らない`);
+  if (bad.length) return opt('jitbox', 'JITBOX チャーター便（西濃）', 'ng', bad);
+  return opt('jitbox', 'JITBOX チャーター便（西濃）', 'check', ['1 ボックス（内寸 170×104×104cm、約 1.8m³、500kg）に収まる', '発送する側も法人であること。料金はボックス 1 個ごとに都道府県単位で決まる']);
+}
+
+function evalRosen(t, recv) {
+  const R = RULES.rosen, vw = t.m3 * R.kgPerM3, cw = Math.max(t.kg, vw);
+  const reasons = [`実重量 ${f1(t.kg)}kg、容積重量 ${f1(vw)}kg（容積 ${f1(t.m3)}m³ × 280）。計算重量は大きいほうの ${f1(cw)}kg`];
+  if (recv === 'person') reasons.push('個人宅は配達担当店が日を打ち合わせて届ける（西濃・カンガルー特急便）。人手が足りないと作業員料金が別にかかることがある');
+  if (cw > R.quoteOverKg) { reasons.push('1,000kg を超えるので要見積'); return opt('rosen', '路線便（特別積合せ）', 'check', reasons, { cw }); }
+  return opt('rosen', '路線便（特別積合せ）', 'ok', reasons, { cw });
+}
+
+function regionOf(pref) { return KANTO.includes(pref) ? '関東' : KINKI.includes(pref) ? '近畿' : null; }
+
+function evalKashikiri(cls, pieces, t, from, km) {
+  const name = `${cls} 貸切（標準的運賃の目安）`, id = `kashikiri_${cls}`;
+  const vmax = cls === '2t' ? 2000 : 4000;
+  if (t.kg > vmax) return opt(id, name, 'ng', [`合計 ${f1(t.kg)}kg は ${cls} の最大積載 ${fmt(vmax)}kg（表の区分）を超える`]);
+  const bad = [];
+  let status = 'ok';
+  if (cls === '2t') {
+    if (t.longest > RULES.t2.longest) return opt(id, name, 'ng', [`最長辺 ${t.longest}cm は 2t ロングの荷台長 440cm を超える`]);
+    if (t.longest > RULES.t2.shortLen) { status = 'check'; bad.push(`最長辺 ${t.longest}cm は 2t ショートの荷台長 310cm を超える（ロングなら 440cm）`); }
+    if (t.floor > RULES.t2.floorM2) { status = 'check'; bad.push(`床面の合計 ${f1(t.floor)}m² は 2t ショートの床（約 5.5m²）を超える。積み重ねられるかは要確認`); }
+  }
+  const region = regionOf(from);
+  if (!(km > 0)) return opt(id, name, 'check', ['道路の距離 km を入れると、目安の額が出ます']);
+  if (!region) return opt(id, name, 'check', ['集荷が関東・近畿の外のため、この表（関東運輸局・近畿運輸局）では出せない。見積で確かめる']);
+  if (km < TARIFFS[region].base_km) return opt(id, name, 'check', [`距離 ${f1(km)}km は 200km 未満。このページは 200km 以上の表だけを持つ。見積で確かめる`]);
+  const fare = kashikiriFares(km, t.kg, TARIFFS[region]).find((x) => x.class === cls);
+  if (!fare) return opt(id, name, 'check', ['この重さに当たる車格が表にない']);
+  const reasons = [`${region}運輸局の表で ${f1(km)}km（200km まで基本額、以後 ${fare.steps} 区分${fare.steps_over_500 ? `＋500km 超 ${fare.steps_over_500} 区分` : ''}）`, ...bad, '国の目安で、実際の運賃は会社ごとに違う（税抜、高速代・待機料などは別）'];
+  return opt(id, name, status, reasons, { amount: fare.amount });
+}
+
+function evalHome(t, flex) {
+  const H = RULES.t4home, name = '帰り便（空いた帰りのトラックに載せる）';
+  const bad = [];
+  if (flex < RULES.homeFlexDays) bad.push(`日の幅が ${flex} 日。帰り便は 3 日以上の幅があるときに合いやすい`);
+  if (t.kg > H.kg || t.floor > H.floorM2) bad.push(`荷が 4t の荷台の目安（${fmt(H.kg)}kg・床 ${H.floorM2.toFixed(1)}m²）に収まらない（合計 ${f1(t.kg)}kg、床 ${f1(t.floor)}m²）`);
+  if (bad.length) return opt('home', name, 'ng', bad);
+  return opt('home', name, 'check', ['日の幅があり、帰り便に合う荷です。地図の画面の『空きを探す・つなぐ』で探せます（デモ）'], { home: true });
+}
+
+function evaluate(inp) {
+  const { pieces, errs } = parsePieces(inp.rows);
+  if (errs.length || !pieces.length) return { errs: errs.length ? errs : ['荷物を 1 行以上入れてください'], options: [], totals: null, pieces };
+  const t = totals(pieces), km = inp.km === '' || inp.km == null ? NaN : Number(inp.km);
+  const options = [evalTakuhai(pieces), evalKazai(pieces, inp.recv), evalAkabane(t), evalKei(pieces, t), evalJitbox(pieces, t, inp.recv), evalRosen(t, inp.recv),
+    evalKashikiri('2t', pieces, t, inp.from, km), evalKashikiri('4t', pieces, t, inp.from, km), evalHome(t, Number(inp.flex) || 0)];
+  return { errs: [], options, totals: t, pieces };
+}
+
+function quoteText(inp, res) {
+  const t = res.totals;
+  const lines = ['お世話になっております。下記の荷物の運送について、見積をお願いします。', '', '【荷物】'];
+  res.pieces.forEach((p) => lines.push(`・${p.l}×${p.w}×${p.h}cm、${p.kg}kg を ${p.n} 個`));
+  lines.push(`　合計 ${t.count} 個、約 ${f1(t.kg)}kg、約 ${f1(t.m3)}m³`);
+  lines.push('', '【区間】');
+  lines.push(`・集荷: ${inp.from || '（都道府県を書き入れてください）'}`);
+  lines.push(`・届け先: ${inp.to || '（都道府県を書き入れてください）'}（${inp.recv === 'person' ? '個人宅' : '法人・店舗・事業所'}）`);
+  if (Number(inp.km) > 0) lines.push(`・道路の距離: およそ ${f1(Number(inp.km))}km`);
+  lines.push('', '【日程】');
+  lines.push(Number(inp.flex) > 0 ? `・日の幅があります（${inp.flex} 日の間で届けばよい）。希望の日（　月　日）` : '・日の幅はありません。希望の日（　月　日）');
+  lines.push('', '【お願い】', '・上の条件で受けられるかどうかと、料金の見積をお知らせください。', '・荷降ろし・車上渡しなどの作業の有無、必要な作業員の数もあわせて教えてください。', '・集荷先・届け先の住所、時間帯は、あらためてお伝えします。');
+  return lines.join('\n');
+}
+
+/* ---------------------------------------------------------------- 自己確認（?selftest=1） */
+function runSelftest() {
+  const fails = [];
+  let n = 0;
+  for (const c of VECTORS.cases) {
+    n += 1;
+    const got = kashikiriFares(Number(c.km), Number(c.kg), TARIFFS[c.region]).map((f) => ({ class: f.class, amount: f.amount, steps: f.steps, steps_over_500: f.steps_over_500 }));
+    if (got.length !== c.expect.length || got.some((g, i) => g.class !== c.expect[i].class || g.amount !== c.expect[i].amount || g.steps !== c.expect[i].steps || g.steps_over_500 !== c.expect[i].steps_over_500)) fails.push(`${c.region} ${c.km}km ${c.kg}kg`);
+  }
+  // S6 の荷（2 × 240×60×200cm 140kg、2 × 100×60×80cm 60kg）で規則どおりの判定になる
+  const s6 = { rows: [{ n: 2, l: 240, w: 60, h: 200, kg: 140 }, { n: 2, l: 100, w: 60, h: 80, kg: 60 }], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 4 };
+  const res = evaluate(s6), by = Object.fromEntries(res.options.map((o) => [o.id, o]));
+  const want = { takuhai: 'ng', kazai: 'check', akabane: 'ng', kei: 'ng', jitbox: 'ng', rosen: 'check', kashikiri_2t: 'ok', kashikiri_4t: 'ok', home: 'check' };
+  for (const [k, v] of Object.entries(want)) { n += 1; if (!by[k] || by[k].status !== v) fails.push(`S6 ${k}: ${by[k] && by[k].status} (期待 ${v})`); }
+  n += 1; if (!by.kashikiri_4t || by.kashikiri_4t.amount !== 126060) fails.push('S6 4t 492km は 126,060 円');
+  const person = evaluate({ ...s6, recv: 'person', flex: 1 }), byp = Object.fromEntries(person.options.map((o) => [o.id, o]));
+  n += 1; if (byp.jitbox.status !== 'ng' || byp.home.status !== 'ng') fails.push('個人宅は JITBOX が ng、日の幅 1 日は帰り便が ng');
+  const small = evaluate({ rows: [{ n: 1, l: 40, w: 30, h: 20, kg: 5 }], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 0 }), bys = Object.fromEntries(small.options.map((o) => [o.id, o]));
+  n += 1; if (bys.takuhai.status !== 'ok' || bys.akabane.status !== 'check' || bys.kei.status !== 'ok') fails.push('小さな荷は宅配 ok、赤帽 check、軽貨物 ok');
+  return fails.length ? `SELFTEST FAIL ${n - fails.length}/${n}\n${fails.join('\n')}` : `SELFTEST PASS ${n}/${n}`;
+}
+
+/* ---------------------------------------------------------------- 画面 */
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const S = { rows: [], res: null };
+const blank = () => ({ n: '', l: '', w: '', h: '', kg: '' });
+const LABEL = { ok: '使える ○', check: '要確認 △', ng: '使えない ×' };
+const COLS = [['n', '個数'], ['l', '縦 cm'], ['w', '横 cm'], ['h', '高さ cm'], ['kg', '1 個の重さ kg']];
+
+function renderRows() {
+  if (!S.rows.length) S.rows = [blank(), blank()];
+  $('#pbody').innerHTML = S.rows.map((r, i) => `<tr>${COLS.map(([k, t]) => `<td><input type="number" min="0" step="any" class="pin" data-i="${i}" data-k="${k}" value="${esc(r[k])}" aria-label="${t}"></td>`).join('')}<td><button type="button" class="del" data-del="${i}" aria-label="${i + 1} 行目を消す">×</button></td></tr>`).join('');
+}
+
+function inputs() { return { rows: S.rows, from: $('#from').value, to: $('#to').value, km: $('#km').value, recv: $('#recv').value, flex: $('#flex').value }; }
+
+function optRow(o) {
+  const amt = o.amount != null ? `<div class="amount">目安 およそ ${fmt(o.amount)} 円（税抜）</div>` : '';
+  const home = o.home ? `<div class="home">${esc(o.reasons[0])}</div>` : `<ul class="rs">${o.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  return `<tr class="o-${o.status}" data-opt="${esc(o.id)}"><td class="nm">${esc(o.name)}</td><td><span class="badge ${o.status}">${LABEL[o.status]}</span></td><td>${amt}${home}</td></tr>`;
+}
+
+function render() {
+  const inp = inputs(), res = evaluate(inp);
+  S.res = res;
+  $('#errs').innerHTML = res.errs.length && res.errs[0] !== '荷物を 1 行以上入れてください' ? `<div class="errs">${res.errs.map(esc).join('<br>')}</div>` : '';
+  if (!res.totals) {
+    $('#sum').textContent = '';
+    $('#res').innerHTML = '<p class="empty">荷物を入れると、ここに送り方ごとの判定が出ます。「例を入れる」で試せます。</p>';
+    $('#quote').value = '';
+  } else {
+    const t = res.totals;
+    $('#sum').textContent = `荷物の合計: ${t.count} 個、${f1(t.kg)}kg、${f1(t.m3)}m³、床面 ${f1(t.floor)}m²、最長辺 ${t.longest}cm`;
+    $('#res').innerHTML = `<table class="res"><thead><tr><th>送り方</th><th>判定</th><th>理由・目安額</th></tr></thead><tbody>${res.options.map(optRow).join('')}</tbody></table>`;
+    $('#quote').value = quoteText(inp, res);
+  }
+  $('#guard2').textContent = `${GUARD}。表の ○ は、公開されている条件に荷が当たるという意味で、受けてもらえる保証ではありません。`;
+}
+
+function example() {
+  S.rows = [{ n: 2, l: 240, w: 60, h: 200, kg: 140 }, { n: 2, l: 100, w: 60, h: 80, kg: 60 }];
+  $('#from').value = '東京都'; $('#to').value = '大阪府'; $('#km').value = '492'; $('#recv').value = 'business'; $('#flex').value = '4';
+  renderRows(); render();
+}
+
+function init() {
+  $('#from').innerHTML = '<option value="">選んでください</option>' + PREFS.map((p) => `<option>${p}</option>`).join('');
+  $('#to').innerHTML = '<option value="">選んでください</option>' + PREFS.map((p) => `<option>${p}</option>`).join('');
+  $('#flex').innerHTML = FLEX_DAYS.map((d) => `<option value="${d}">${d === 0 ? '幅なし（指定の日だけ）' : `${d} 日`}</option>`).join('');
+  $('#sources').innerHTML = `<h2>出典</h2><ul>${SOURCES.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  renderRows(); render();
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.classList && t.classList.contains('pin')) S.rows[Number(t.dataset.i)][t.dataset.k] = t.value;
+    if ((t.classList && t.classList.contains('pin')) || t.id === 'km') render();
+  });
+  document.addEventListener('change', (e) => { if (['from', 'to', 'recv', 'flex', 'km'].includes(e.target.id)) render(); });
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.id === 'b-example') example();
+    else if (t.id === 'b-clear') { S.rows = [blank(), blank()]; renderRows(); render(); }
+    else if (t.id === 'b-add') { S.rows.push(blank()); renderRows(); }
+    else if (t.id === 'b-copy') {
+      const q = $('#quote'); q.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+      $('#copy-msg').textContent = ok ? 'コピーしました' : '枠の中の文を選んで、コピーしてください';
+    } else if (t.dataset && t.dataset.del !== undefined) { S.rows.splice(Number(t.dataset.del), 1); renderRows(); render(); }
+  });
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('selftest') === '1') {
+    document.body.classList.add('selftest');
+    let text;
+    try { text = runSelftest(); } catch (e) { text = `SELFTEST FAIL ${e.message}`; }
+    $('#selftest').textContent = text;
+    document.title = text.split('\n')[0];
+  }
+  if (qs.get('example') === '1') example();
+}
+
+init();
+</script>
+</body>
+</html>
