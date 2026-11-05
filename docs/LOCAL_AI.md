@@ -56,7 +56,8 @@ API 形式の JSON は `workflows/comfyui/` に置きます。デモ動画の制
 
 | ファイル | 内容 | 主なノード |
 |---|---|---|
-| | | |
+| `backfull_t2i_zimage.json` | デモ動画の冒頭の静止画（1344×768、28 steps、cfg 4） | UNETLoader（z_image_bf16、fp8）、CLIPLoader（qwen_3_4b）、ModelSamplingAuraFlow、KSampler |
+| `backfull_i2v_wan22.json` | 静止画から 4 秒の動き（832×480、65 コマ、Lightning 4 steps） | UnetLoaderGGUF（Wan2.2 I2V A14B Q5_K_M）、LoraLoaderModelOnly（lightx2v）、WanImageToVideo、KSamplerAdvanced 2 段 |
 
 ## 実測値
 
@@ -89,7 +90,8 @@ API 形式の JSON は `workflows/comfyui/` に置きます。デモ動画の制
 
 | 処理 | 条件（解像度・コマ数・steps） | 1回目 | 2回目以降 | VRAM 最大 |
 |---|---|---|---|---|
-| | | | | |
+| Z-Image（base、fp8）で冒頭の静止画 6 枚（2026-11-06） | 1344×768、28 steps | 66.6 秒 | 50.5〜85.2 秒 | 15.6GB（全体の使用量。録画の Edge と同時） |
+| Wan2.2 I2V（2026-11-06） | 832×480、65 コマ | 30 分を超えても終わらず中止 | — | VRAM の空きが約 3.5GB（ComfyUI 以外のアプリが 12.5GB を使用）で、モデルの一部を外に逃がして動いていた。冒頭の動きは静止画への寄り（ffmpeg の zoompan）に替えた |
 
 参考（2026-09 にこの PC で測った値）:
 

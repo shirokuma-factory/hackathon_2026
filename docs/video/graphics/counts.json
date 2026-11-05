@@ -1,0 +1,27 @@
+{
+  "_note": "回数は版を固定した日に数え直して value と display を更新する。display が画面に出る文字。verified_on は数えた日。",
+  "scoring_rounds": {
+    "value": 31, "display": "31", "verified_on": "2026-11-06",
+    "source": "docs/reviews/ の採点ファイル 21 本（筋書き第1部 r1-r4、第2部 r1-r4、課題解決の検証 r1-r5、論理の筋 r1-r4、思想と公開版 r1-r4）+ docs/video/reviews/ の r1-r10 の 10 本。ファイル数を ls で数えた。1 ファイル = 前の点を知らない新しい Opus 1 回"
+  },
+  "fixed_findings": {
+    "value": 27, "display": "27", "verified_on": "2026-11-06",
+    "source": "git log のコミット件名 a6b0f63 'Fix the 17 findings of vision review r2' と 7a328ac 'Fix the 10 findings of vision review r3' の合計。ほかの採点（筋書き・論理の筋など）で直した件数は含まない（過少）"
+  },
+  "coder_runs": {
+    "value": 34, "display": "34", "verified_on": "2026-11-06",
+    "source": "docs/CLAUDE_USAGE.md サブエージェントの表: 「Local PC + Cloud」で 34 回。「アプリの課題と想定確認」の十数回は正確な数が無いので含めない（実際はこれ以上）"
+  },
+  "reviewer_runs": {
+    "value": 2, "display": "2", "verified_on": "2026-11-06",
+    "source": "docs/CLAUDE_USAGE.md: reviewer は版 2 の独立レビューで起動 2 回（同じエージェントへの再レビュー依頼 4 回は含めない）"
+  },
+  "scorer_runs": {
+    "value": 31, "display": "31", "verified_on": "2026-11-06",
+    "source": "scoring_rounds と同じ数え方。なお docs/CLAUDE_USAGE.md は app の採点を「18 回以上」と書いており、31 はそれに動画の脚本の採点 10 回を足した値に近い（docs/reviews の 21 本は CLAUDE_USAGE の 18 より多い）"
+  },
+  "researcher_runs": {
+    "value": 11, "display": "11", "verified_on": "2026-11-06",
+    "source": "docs/CLAUDE_USAGE.md: researcher 11 回（G1a_1 の本文に固定で書いてある）"
+  }
+}

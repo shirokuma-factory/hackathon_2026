@@ -1,0 +1,12 @@
+:root{--bg:#0b1016;--panel:#121a23;--line:#2a3745;--text:#e9eef4;--muted:#9fb0c1;--ok:#5fd08f;--warn:#f0c04a;--ng:#ef7a7a;--hl:#6cb6ff}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;background:var(--bg);color:var(--text);overflow:hidden}
+body{font-family:"Noto Sans JP","Yu Gothic","Meiryo",sans-serif;font-size:36px;line-height:1.5;padding:64px 96px}
+h1{font-size:54px;font-weight:700;line-height:1.35;margin-bottom:40px}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:18px 24px;border-bottom:2px solid var(--line);vertical-align:middle}
+th{color:var(--muted);font-weight:500;font-size:32px}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--warn);font-weight:700}.ng{color:var(--ng);font-weight:700}
+.muted{color:var(--muted)}
+.note{font-size:32px;color:var(--muted)}
+.mark{width:96px;text-align:center;font-size:44px}

@@ -1,28 +1,424 @@
 [
-  {
-    "id": "smoke",
-    "url_path": "/index.html#v=market",
-    "size": "1920x1080",
-    "network_log": true,
-    "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
-    "steps": [
-      {
-        "wait": 10
-      }
+ {
+  "id": "smoke",
+  "url_path": "/index.html#v=market",
+  "size": "1920x1080",
+  "network_log": true,
+  "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+  "steps": [
+   {
+    "wait": 10
+   }
+  ]
+ },
+ {
+  "id": "cursor_smoke",
+  "url_path": "/index.html#v=market",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+  "steps": [
+   {
+    "wait": 1
+   },
+   {
+    "move": "#m-tbody tr:first-child"
+   },
+   {
+    "highlight": [
+     "#m-tbody tr:first-child",
+     1.5
     ]
-  },
-  {
-    "id": "cursor_smoke",
-    "url_path": "/index.html#v=market",
-    "size": "1920x1080",
-    "cursor": true,
-    "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
-    "steps": [
-      {"wait": 1},
-      {"move": "#m-tbody tr:first-child"},
-      {"highlight": ["#m-tbody tr:first-child", 1.5]},
-      {"click": "button[data-view=compare]"},
-      {"wait": 3}
+   },
+   {
+    "click": "button[data-view=compare]"
+   },
+   {
+    "wait": 3
+   }
+  ]
+ },
+ {
+  "id": "R1",
+  "url_path": "/index.html#v=market",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+  "steps": [
+   {
+    "wait": 1
+   },
+   {
+    "eval": "(function(){const r=[...document.querySelectorAll('#m-tbody tr')].find(t=>{const c=t.querySelector('.c-pair');return c&&c.textContent.replace(/\\s/g,'')==='兵庫県→東京都'}); if(r) r.id='rec-row';})()"
+   },
+   {
+    "click": "#rec-row"
+   },
+   {
+    "wait": 4.4
+   }
+  ]
+ },
+ {
+  "id": "R2",
+  "url_path": "/index.html#v=market",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+  "steps": [
+   {
+    "wait": 0.5
+   },
+   {
+    "eval": "(function(){const p=document.querySelector('.sum-gap .sum-row:first-child p'); p.innerHTML=p.innerHTML.replace('約 5 ポイント足りない','<span id=\"rec-gap\">約 5 ポイント足りない</span>');})()"
+   },
+   {
+    "highlight": [
+     ".sum-gap .sum-row:first-child",
+     4
     ]
-  }
+   },
+   {
+    "highlight": [
+     "#rec-gap",
+     2
+    ]
+   },
+   {
+    "eval": "(function(){const r=[...document.querySelectorAll('#m-tbody tr')].find(t=>{const c=t.querySelector('.c-pair');return c&&c.textContent.replace(/\\s/g,'')==='兵庫県→東京都'}); if(r) r.id='rec-row';})()"
+   },
+   {
+    "click": "#rec-row"
+   },
+   {
+    "wait": 4.5
+   }
+  ]
+ },
+ {
+  "id": "R3",
+  "url_path": "/index.html#v=own",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+  "steps": [
+   {
+    "wait_for": ".o-tab"
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "highlight": [
+     ".o-tab tbody tr:last-child",
+     2.5
+    ]
+   },
+   {
+    "highlight": [
+     ".o-tab tr.hot",
+     2.5
+    ]
+   },
+   {
+    "click": "#own-tabs button[data-tab=insight]"
+   },
+   {
+    "click": ".o-ins [data-a=draft_backhaul]"
+   },
+   {
+    "wait_for": "#own-draft:not([hidden])"
+   },
+   {
+    "highlight": [
+     "#own-draft",
+     2.5
+    ]
+   }
+  ]
+ },
+ {
+  "id": "R4",
+  "url_path": "/index.html#v=own",
+  "size": "1920x1080",
+  "cursor": true,
+  "network_log": true,
+  "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+  "steps": [
+   {
+    "wait_for": "#own-tabs"
+   },
+   {
+    "wait": 1
+   },
+   {
+    "click": "#own-tabs button[data-tab=wait]"
+   },
+   {
+    "wait_for": "[data-w=clear]"
+   },
+   {
+    "click": "[data-w=clear]"
+   },
+   {
+    "wait": 1
+   },
+   {
+    "paste": [
+     "#w-paste",
+     "日付\t車番\t車種\t契約の相手\t場所\t到着\t荷役開始\t荷役終了\t出発\t荷役をした人\t荷役の方法\t荷主等の都合の待機か\t指定の到着時刻\t附帯業務の内容\t附帯業務の分\n2026/10/1\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:25\t\t\t\t\tはい\t08:00\t\t\n2026/10/2\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:20\t\t\t\t\tはい\t08:00\t\t\n2026/10/5\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:30\t\t\t\t\tはい\t08:00\t\t\n2026/10/6\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:40\t\t\t\t\tはい\t08:00\t\t\n2026/10/7\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t10:15\t10:55\t11:05\t運転者\t手積み\tはい\t08:00\t検品・仕分け\t20\n2026/10/15\t\t中型\t架空 元請A物流\t江東区 地点07\t09:00\t09:30\t09:52\t10:00\t荷主側\t\tはい\t\t\t\n2026/10/8\t\t中型\t架空 元請A物流\t江東区 地点07\t10:05\t10:20\t\t\t\t\tはい\t\t\t\n2026/10/9\t\t中型\t架空 元請A物流\t江東区 地点07\t10:10\t10:25\t\t\t\t\tはい\t\t\t\n2026/10/13\t\t中型\t架空 元請A物流\t江東区 地点07\t10:15\t10:35\t\t\t\t\tはい\t\t\t\n2026/10/14\t\t中型\t架空 元請A物流\t江東区 地点07\t10:00\t10:10\t\t\t\t\tはい\t\t\t\n2026/10/8\t\t中型\t架空 元請A物流\t川崎市 地点12\t13:05\t13:45\t\t\t\t\tはい\t\t\t\n2026/10/16\t\t中型\t架空 元請A物流\t川崎市 地点12\t13:20\t14:00\t\t\t\t\tはい\t\t\t\n2026/10/2\t\t大型\t架空 B食品\t市川市 地点03\t08:00\t09:30\t\t\t\t\tはい\t08:00\t\t\n2026/10/5\t\t大型\t架空 B食品\t市川市 地点03\t08:00\t09:40\t\t\t\t\tはい\t08:00\t\t\n2026/10/9\t\t大型\t架空 B食品\t市川市 地点03\t08:00\t09:20\t\t\t\t\tはい\t08:00\t\t\n2026/10/13\t\t大型\t架空 B食品\t市川市 地点03\t10:10\t10:25\t\t\t\t\tはい\t\t\t\n2026/10/14\t\t大型\t架空 B食品\t市川市 地点03\t10:20\t10:35\t\t\t\t\tはい\t\t\t\n2026/10/15\t\t大型\t架空 B食品\t川崎市 地点12\t13:05\t13:20\t\t\t\t\tいいえ\t\t\t"
+    ]
+   },
+   {
+    "wait": 1
+   },
+   {
+    "click": "[data-w=paste]"
+   },
+   {
+    "wait": 2
+   },
+   {
+    "highlight": [
+     ".w-par",
+     3
+    ]
+   },
+   {
+    "wait": 2
+   },
+   {
+    "wait": 3
+   },
+   {
+    "eval": "(function(){const e=[...document.querySelectorAll('#own-right h4')].find(h=>h.textContent.includes('荷待ちを減らすためのご相談')); if(e){e.id='rec-consult'; e.scrollIntoView({block:'start'});}})()"
+   },
+   {
+    "wait": 1
+   },
+   {
+    "highlight": [
+     "#rec-consult",
+     3
+    ]
+   },
+   {
+    "wait": 1
+   }
+  ]
+ },
+ {
+  "id": "R4b",
+  "url_path": "/waiting.html?selftest=1",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "!!document.querySelector('#selftest') && document.querySelector('#selftest').textContent.length>0",
+  "steps": [
+   {
+    "wait_for": "#selftest"
+   },
+   {
+    "wait": 1
+   },
+   {
+    "highlight": [
+     "#selftest",
+     2
+    ]
+   },
+   {
+    "wait": 0.5
+   }
+  ]
+ },
+ {
+  "id": "R5a",
+  "url_path": "/index.html#v=compare&o=13104&l=fare&d=27128",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){ if(!window.__app) return false; const l=document.querySelector('#loading'); if(l && !l.classList.contains('done')) return false; const s=window.__rs=window.__rs||{n:0,t:0}; const now=Date.now(); if(now-s.t<1500) return false; const open=()=>document.querySelector('#cargo-toggle').getAttribute('aria-expanded')==='true'; if(s.n===0){ s.t=now; s.n=1; return false; } if(s.n===1){ if(!open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=2; return false; } if(s.n===2){ const e=document.querySelector('#sc-select'); e.value='S6'; e.dispatchEvent(new Event('change',{bubbles:true})); s.t=now; s.n=3; return false; } if(s.n===3){ document.querySelector('#ed-confirm').click(); s.t=now; s.n=4; return false; } if(s.n===4){ if(Work.scenarioId()!=='S6'){ s.n=2; s.t=now; return false; } if(open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=5; return false; } return now-s.t>=4000 && !!document.querySelector('.cc-row'); })()",
+  "steps": [
+   {
+    "wait": 1.5
+   },
+   {
+    "eval": "(function(){const r=[...document.querySelectorAll('.cc-row')].find(x=>x.textContent.includes('貸切')); if(r){r.id='rec-kashi';} document.querySelector('.cc').scrollIntoView({block:'center'});})()"
+   },
+   {
+    "move": "#rec-kashi"
+   },
+   {
+    "highlight": [
+     "#rec-kashi",
+     4
+    ]
+   },
+   {
+    "wait": 1
+   }
+  ]
+ },
+ {
+  "id": "R5b",
+  "url_path": "/compare_lite.html?example=1",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "!!document.querySelector('table.res')",
+  "steps": [
+   {
+    "wait_for": "table.res"
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "highlight": [
+     "tr[data-opt=kazai]",
+     2.5
+    ]
+   },
+   {
+    "highlight": [
+     "tr[data-opt=akabane]",
+     2.5
+    ]
+   }
+  ]
+ },
+ {
+  "id": "R5c",
+  "url_path": "/index.html#v=compare&o=13104&l=fare&d=27128",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){ if(!window.__app) return false; const l=document.querySelector('#loading'); if(l && !l.classList.contains('done')) return false; const s=window.__rs=window.__rs||{n:0,t:0}; const now=Date.now(); if(now-s.t<1500) return false; const open=()=>document.querySelector('#cargo-toggle').getAttribute('aria-expanded')==='true'; if(s.n===0){ s.t=now; s.n=1; return false; } if(s.n===1){ if(!open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=2; return false; } if(s.n===2){ const e=document.querySelector('#sc-select'); e.value='S6'; e.dispatchEvent(new Event('change',{bubbles:true})); s.t=now; s.n=3; return false; } if(s.n===3){ document.querySelector('#ed-confirm').click(); s.t=now; s.n=4; return false; } if(s.n===4){ if(Work.scenarioId()!=='S6'){ s.n=2; s.t=now; return false; } if(open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=5; return false; } return now-s.t>=4000 && !!document.querySelector('.cc-row'); })()",
+  "steps": [
+   {
+    "wait": 0.5
+   },
+   {
+    "click": "button[data-view=market]"
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "eval": "(function(){const r=[...document.querySelectorAll('#m-tbody tr')].find(t=>{const c=t.querySelector('.c-pair');return c&&c.textContent.replace(/\\s/g,'')==='兵庫県→東京都'}); if(r) r.id='rec-row';})()"
+   },
+   {
+    "click": "#rec-row"
+   },
+   {
+    "wait": 0.8
+   },
+   {
+    "click": "#m-pair [data-act=find]"
+   },
+   {
+    "wait_for": "#f-list .f-card.ok"
+   },
+   {
+    "wait": 1
+   },
+   {
+    "highlight": [
+     "#f-pairbar span",
+     2.5
+    ]
+   },
+   {
+    "eval": "Find.select('T7',{fly:true})"
+   },
+   {
+    "highlight": [
+     "#f-list .f-card[data-t=T7]",
+     2.5
+    ]
+   },
+   {
+    "click": "#f-list .f-card[data-t=T7] [data-act=hold]"
+   },
+   {
+    "wait_for": "#f-list .f-hold.held"
+   },
+   {
+    "wait": 0.8
+   },
+   {
+    "click": "#f-role button[data-role=carrier]"
+   },
+   {
+    "eval": "(function(){const e=document.querySelector('#f-carrier-sel'); e.value='C4'; e.dispatchEvent(new Event('change',{bubbles:true}));})()"
+   },
+   {
+    "wait_for": "#f-list [data-act=accept]"
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "click": "#f-list [data-act=accept]"
+   },
+   {
+    "wait": 0.8
+   },
+   {
+    "click": "#f-role button[data-role=shipper]"
+   },
+   {
+    "wait_for": "#f-list .f-hold.accepted"
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "highlight": [
+     ".f-n3",
+     2.5
+    ]
+   },
+   {
+    "click": "#f-list [data-act=contract]"
+   },
+   {
+    "wait_for": "#f-contract:not([hidden]) .fc-notice"
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "highlight": [
+     ".fc-notice",
+     2.5
+    ]
+   }
+  ]
+ },
+ {
+  "id": "R7",
+  "url_path": "/index.html#v=own",
+  "size": "1920x1080",
+  "cursor": true,
+  "network_log": true,
+  "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+  "steps": [
+   {
+    "wait_for": "#own-tabs"
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "click": "#own-tabs button[data-tab=wait]"
+   },
+   {
+    "wait_for": "[data-w=example]"
+   },
+   {
+    "click": "[data-w=example]"
+   },
+   {
+    "wait": 3
+   }
+  ]
+ }
 ]
