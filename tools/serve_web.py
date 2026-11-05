@@ -2,6 +2,7 @@
 
 web/ の静的ファイルと JSON の API を出す。計算はすべて src/shipcompare の関数を呼び、
 JS では運賃や順位を計算しない。127.0.0.1 だけで待ち受け、サーバーにファイルは書かない。
+--public（公開版。Cloud Run 用）の違いは SPEC §15.1「公開版」と docs/DEPLOY.md。
 
 使い方:
     uv run python tools/serve_web.py            # http://127.0.0.1:8600/
@@ -36,16 +37,23 @@ API（POST は Content-Type: application/json の JSON。入力の誤りは 400 
 from __future__ import annotations
 
 import argparse
+import collections
+import gzip
+import hashlib
 import json
+import mimetypes
+import os
 import re
 import sys
+import threading
+import time
 from datetime import date, datetime
 from decimal import Decimal
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
@@ -67,6 +75,46 @@ WEB_DIR = ROOT / "web"
 DEFAULT_PORT = 8600
 MAX_BODY = 2_000_000
 ALLOWED_HOSTS = ("127.0.0.1", "localhost")
+
+# ---- 公開版（Cloud Run。SPEC §15.1「公開版」）。--public か環境変数 SHIPCOMPARE_PUBLIC=1 で有効
+PUBLIC_DEFAULT_PORT = 8080  # Cloud Run は環境変数 PORT で渡す。無ければこの値
+SESSION_HEADER = "X-Demo-Session"
+SESSION_ID_RE = re.compile(r"[A-Za-z0-9_-]{8,64}")
+ANON_SESSION = "anon"
+SESSION_MAX = 300  # 来訪者ごとの状態を持つ最大数（古い順に捨てる）
+SESSION_TTL_SEC = 2 * 3600  # 使われないまま経つとこの時間で捨てる
+GZIP_EXTS = {".js", ".css", ".json", ".geojson", ".html", ".svg", ".glb"}
+LONG_CACHE_DIRS = ("data", "models", "img")  # web/ の下で 1 時間キャッシュさせる場所
+LONG_CACHE = "public, max-age=3600"
+MAX_STATIC_CACHE = 32_000_000  # 圧縮済みデータをメモリに持つ上限（バイト）
+
+
+def env_public() -> bool:
+    return os.environ.get("SHIPCOMPARE_PUBLIC", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def hide_local() -> bool:
+    """web/data/local/（P31。再配布不可）を配らない。公開版では常に配らない。"""
+    return os.environ.get("SHIPCOMPARE_HIDE_LOCAL", "").strip() == "1"
+
+
+def resolve_port(public: bool, cli_port: int | None, env: dict[str, str] | None = None) -> int:
+    """待ち受けるポート。--port > 公開版なら環境変数 PORT（無ければ 8080） > 8600。"""
+    if cli_port is not None:
+        return cli_port
+    if public:
+        raw = (env if env is not None else os.environ).get("PORT", "")
+        return int(raw) if raw.isdigit() else PUBLIC_DEFAULT_PORT
+    return DEFAULT_PORT
+
+
+class _Ctx(threading.local):
+    """リクエストごとの状態（ハンドラが入れる）。API の関数はここから公開版かどうかと来訪者 ID を読む。"""
+    public = False
+    sid = ANON_SESSION
+
+
+_CTX = _Ctx()
 
 
 class BadRequest(Exception):
@@ -461,7 +509,46 @@ def _case_of(body: dict[str, Any]):
 
 # ---------------------------------------------------------------- B 空きを探す・つなぐ
 
-BOARD_B = spaceb.Board()  # サーバーの memory。再起動で初期の架空データに戻る
+BOARD_B = spaceb.Board()  # サーバーの memory。再起動で初期の架空データに戻る（手元の版は全員で 1 つ）
+
+
+class BoardStore:
+    """公開版の来訪者ごとの盤。LRU で SESSION_MAX 件まで、使われない盤は SESSION_TTL_SEC で捨てる。"""
+
+    def __init__(self, max_items: int = SESSION_MAX, ttl: float = SESSION_TTL_SEC, clock=time.monotonic):
+        self._d: collections.OrderedDict[str, tuple[spaceb.Board, float]] = collections.OrderedDict()
+        self._max, self._ttl, self._clock = max_items, ttl, clock
+        self._lock = threading.Lock()
+
+    def get(self, sid: str) -> spaceb.Board:
+        now = self._clock()
+        with self._lock:
+            for k in [k for k, (_, t) in self._d.items() if now - t > self._ttl]:
+                del self._d[k]
+            if sid in self._d:
+                board = self._d[sid][0]
+            else:
+                board = spaceb.Board()
+            self._d[sid] = (board, now)
+            self._d.move_to_end(sid)
+            while len(self._d) > self._max:
+                self._d.popitem(last=False)
+            return board
+
+    def __len__(self) -> int:
+        return len(self._d)
+
+
+BOARDS = BoardStore()
+
+
+def _board() -> spaceb.Board:
+    return BOARDS.get(_CTX.sid) if _CTX.public else BOARD_B
+
+
+def session_id_of(value: str | None) -> str:
+    """X-Demo-Session の値。形が違う・無いときは全員共通の "anon"。"""
+    return value if value and SESSION_ID_RE.fullmatch(value) else ANON_SESSION
 
 
 def _b_shipment(body: dict[str, Any]) -> spaceb.BShipment:
@@ -511,7 +598,7 @@ def api_route(query: dict[str, list[str]]) -> dict[str, Any]:
         origin = (points[from_code]["lon"], points[from_code]["lat"])
     if abs(origin[0] - dest[0]) < 1e-6 and abs(origin[1] - dest[1]) < 1e-6:
         raise BadRequest("出発地と着地が同じ場所です")
-    r = route_lib.route_on_demand(origin, dest, base=ROUTE_BASE)
+    r = route_lib.route_on_demand(origin, dest, base=ROUTE_BASE, cache_only=_CTX.public)  # 公開版は OSRM に問い合わせず、書き込みもしない
     if r is None:
         fb = route_lib.fallback_arc(origin, dest)
         return {"ok": False, "fallback": True, "message": ROUTE_FAIL_MESSAGE, "km": fb["km"], "minutes": None,
@@ -522,20 +609,20 @@ def api_route(query: dict[str, list[str]]) -> dict[str, Any]:
 
 def api_b_trips(query: dict[str, list[str]]) -> dict[str, Any]:
     demo = spaceb.load_demo()
-    return {"note": demo["note"], "carriers": demo["carriers"], "trips": BOARD_B.trips(),
-            "holds": BOARD_B.holds(), **_b_notices()}
+    return {"note": demo["note"], "carriers": demo["carriers"], "trips": _board().trips(),
+            "holds": _board().holds(), **_b_notices()}
 
 
 def api_b_match(body: Any) -> dict[str, Any]:
     body = _need_dict(body)
-    return {"results": BOARD_B.match_all(_b_shipment(body)), **_b_notices()}
+    return {"results": _board().match_all(_b_shipment(body)), **_b_notices()}
 
 
 def api_b_hold(body: Any) -> dict[str, Any]:
     body = _need_dict(body)
     s = _b_shipment(body)
     try:
-        hold = BOARD_B.hold(body.get("trip_id"), s, body.get("hold_minutes", spaceb.DEFAULT_HOLD_MINUTES))
+        hold = _board().hold(body.get("trip_id"), s, body.get("hold_minutes", spaceb.DEFAULT_HOLD_MINUTES))
     except spaceb.BoardError as e:
         raise BadRequest(str(e)) from e
     return {"hold": hold, **_b_notices()}
@@ -544,7 +631,7 @@ def api_b_hold(body: Any) -> dict[str, Any]:
 def api_b_decide(body: Any) -> dict[str, Any]:
     body = _need_dict(body)
     try:
-        hold = BOARD_B.decide(body.get("hold_id"), body.get("decision"))
+        hold = _board().decide(body.get("hold_id"), body.get("decision"))
     except spaceb.BoardError as e:
         raise BadRequest(str(e)) from e
     return {"hold": hold, **_b_notices()}
@@ -552,7 +639,7 @@ def api_b_decide(body: Any) -> dict[str, Any]:
 
 def api_b_reset(body: Any) -> dict[str, Any]:
     _need_dict(body)
-    BOARD_B.reset()
+    _board().reset()
     return {"ok": True}
 
 
@@ -588,9 +675,33 @@ POST_ROUTES = {
 
 # ---------------------------------------------------------------- HTTP
 
+_STATIC_CACHE: dict[tuple[str, int, int], bytes] = {}
+_STATIC_CACHE_BYTES = 0
+_STATIC_LOCK = threading.Lock()
+
+
+def _static_bytes(path: Path, st, ext: str, accept_gzip: bool) -> tuple[bytes, bool]:
+    """(本文, gzip したか)。gzip した本文は (パス, 更新時刻, 大きさ) をキーにメモリへ置いて使い回す。"""
+    global _STATIC_CACHE_BYTES
+    if not accept_gzip or ext not in GZIP_EXTS:
+        return path.read_bytes(), False
+    key = (str(path), st.st_mtime_ns, st.st_size)
+    with _STATIC_LOCK:
+        hit = _STATIC_CACHE.get(key)
+    if hit is not None:
+        return hit, True
+    data = gzip.compress(path.read_bytes(), compresslevel=6, mtime=0)
+    with _STATIC_LOCK:
+        if _STATIC_CACHE_BYTES + len(data) <= MAX_STATIC_CACHE:
+            _STATIC_CACHE[key] = data
+            _STATIC_CACHE_BYTES += len(data)
+    return data, True
+
+
 class Handler(SimpleHTTPRequestHandler):
     extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".js": "text/javascript", ".json": "application/json",
-                      ".geojson": "application/geo+json", ".css": "text/css", ".html": "text/html"}
+                      ".geojson": "application/geo+json", ".css": "text/css", ".html": "text/html",
+                      ".glb": "model/gltf-binary", ".svg": "image/svg+xml"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(WEB_DIR), **kwargs)
@@ -599,9 +710,21 @@ class Handler(SimpleHTTPRequestHandler):
         if getattr(self.server, "verbose", False):
             super().log_message(fmt, *args)
 
+    _cc: str | None = None  # 静的ファイルの Cache-Control（公開版）。無ければ no-store
+
+    @property
+    def public(self) -> bool:
+        return bool(getattr(self.server, "public", False))
+
     def end_headers(self) -> None:
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", self._cc or "no-store")
+        self._cc = None
         super().end_headers()
+
+    def _enter(self) -> None:
+        """リクエストの頭で、公開版かどうかと来訪者 ID を API の関数に渡す。"""
+        _CTX.public = self.public
+        _CTX.sid = session_id_of(self.headers.get(SESSION_HEADER))
 
     # --- 共通
     def _send_json(self, status: int, obj: Any) -> None:
@@ -613,10 +736,13 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(data)
 
     def _host_ok(self) -> bool:
+        if self.public:  # 公開版は任意のホスト名で来る（Cloud Run の URL）
+            return True
         host = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]")
         return host in ALLOWED_HOSTS
 
     def _guard(self) -> bool:
+        self._enter()
         if not self._host_ok():
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "このサーバーは 127.0.0.1 または localhost からだけ使えます"})
             return False
@@ -637,13 +763,62 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             self._run(lambda: fn(parse_qs(parts.query)))
             return
+        if self._static(parts.path, head=False):
+            return
         super().do_GET()
 
     def do_HEAD(self) -> None:  # noqa: N802
         if self.path.startswith("/api/"):
             self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
             return
+        self._enter()
+        if self._static(urlsplit(self.path).path, head=True):
+            return
         super().do_HEAD()
+
+    # --- 静的ファイル（公開版は gzip とキャッシュの指定つきで返す。手元の版は標準の動き）
+    def _static(self, url_path: str, head: bool) -> bool:
+        """処理したら True。標準の処理に任せるときは False。公開版と SHIPCOMPARE_HIDE_LOCAL=1 は web/data/local/ を 404 にする。"""
+        if not (self.public or hide_local()):
+            return False
+        rel = unquote(url_path).lstrip("/")
+        if rel == "" or rel.endswith("/"):
+            rel += "index.html"
+        full = (WEB_DIR / rel).resolve()
+        try:
+            sub = full.relative_to(WEB_DIR.resolve())
+        except ValueError:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return True
+        if sub.parts[:2] == ("data", "local") or not full.is_file():
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return True
+        if not self.public:  # local を隠すだけ。中身は標準の処理で返す
+            return False
+        st = full.stat()
+        ext = full.suffix.lower()
+        ctype = self.extensions_map.get(ext) or mimetypes.guess_type(str(full))[0] or "application/octet-stream"
+        if ctype.startswith("text/") or ctype in ("application/json", "application/geo+json"):
+            ctype += "; charset=utf-8"
+        body, gz = _static_bytes(full, st, ext, "gzip" in (self.headers.get("Accept-Encoding") or "").lower())
+        etag = '"' + hashlib.md5(f"{st.st_mtime_ns}-{st.st_size}-{int(gz)}".encode()).hexdigest()[:16] + '"'
+        self._cc = LONG_CACHE if sub.parts[0] in LONG_CACHE_DIRS else "no-cache"
+        if self.headers.get("If-None-Match") == etag:
+            self.send_response(HTTPStatus.NOT_MODIFIED)
+            self.send_header("ETag", etag)
+            self.end_headers()
+            return True
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("ETag", etag)
+        self.send_header("Vary", "Accept-Encoding")
+        if gz:
+            self.send_header("Content-Encoding", "gzip")
+        self.end_headers()
+        if not head:
+            self.wfile.write(body)
+        return True
 
     # --- POST
     def do_POST(self) -> None:  # noqa: N802
@@ -699,11 +874,13 @@ class Handler(SimpleHTTPRequestHandler):
         self._send_json(HTTPStatus.OK, result)
 
 
-def make_server(port: int = DEFAULT_PORT, verbose: bool = False) -> ThreadingHTTPServer:
-    """127.0.0.1 だけで待ち受けるサーバーを作る（port=0 なら空いているポート）。"""
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+def make_server(port: int = DEFAULT_PORT, verbose: bool = False, public: bool = False,
+                host: str | None = None) -> ThreadingHTTPServer:
+    """サーバーを作る（port=0 なら空いているポート）。手元の版は 127.0.0.1 だけ、公開版は 0.0.0.0 で待ち受ける。"""
+    httpd = ThreadingHTTPServer((host or ("0.0.0.0" if public else "127.0.0.1"), port), Handler)
     httpd.daemon_threads = True
     httpd.verbose = verbose  # type: ignore[attr-defined]
+    httpd.public = public  # type: ignore[attr-defined]
     return httpd
 
 
@@ -711,11 +888,16 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description="地図の画面の配信サーバー")
-    ap.add_argument("--port", type=int, default=DEFAULT_PORT)
+    ap.add_argument("--port", type=int, default=None,
+                    help=f"既定 {DEFAULT_PORT}（公開版は環境変数 PORT、無ければ {PUBLIC_DEFAULT_PORT}）")
     ap.add_argument("--verbose", action="store_true", help="アクセスログを出す")
+    ap.add_argument("--public", action="store_true",
+                    help="公開版（0.0.0.0、OSRM に問い合わせない、来訪者ごとの状態、gzip）。SHIPCOMPARE_PUBLIC=1 でも有効")
     args = ap.parse_args()
-    httpd = make_server(args.port, args.verbose)
-    print(f"http://127.0.0.1:{httpd.server_address[1]}/  （終了は Ctrl+C）", flush=True)
+    public = args.public or env_public()
+    httpd = make_server(resolve_port(public, args.port), args.verbose, public)
+    where = "0.0.0.0（公開版）" if public else "127.0.0.1"
+    print(f"http://{where}:{httpd.server_address[1]}/  （終了は Ctrl+C）", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

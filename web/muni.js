@@ -497,7 +497,7 @@ const Muni = (() => {
       `<div class="fac-chips">${P31_ORDER.map((k) => chip(k, GLYPH[k][0], noP31 || U.p31 === undefined ? null : (n31[k] || 0), noP31)).join('')}` +
       `${chip('air', '空港', U.c28 ? U.c28.items.length : null, false)}` +
       `<button class="fac-chip fac-osm" data-fac="osm" aria-pressed="${!!U.types.osm}"><i class="fac-dot"></i><span>倉庫・物流施設（OSM）</span><em class="num">${n0(osmN)}</em></button></div>` +
-      (noP31 ? `<p class="fac-msg">P31 を取得すると表示します</p>` : '') +
+      (noP31 ? `<p class="fac-msg">物流拠点（国土数値情報 P31）は再配布できないため、この版では表示しません</p>` : '') +
       `<details class="mlg-more"><summary>表示の条件</summary><p>倉庫・物流施設は、拡大 11 以上で 1 件ずつ、それより広いと市区町村ごとの件数を丸で出します。トラックターミナル・コンテナターミナル・鉄道貨物駅・航空貨物ターミナル・卸売市場・保税地域は 2013 年のデータで、いまとは違う場合があります。</p></details>`;
   }
   function onFacClick(e) {
