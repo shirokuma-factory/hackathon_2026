@@ -259,7 +259,7 @@ def test_g63_contract_has_six_legal_items_and_ready_flag():
     assert d["ready"] is False
     assert d["missing"] == ["燃料サーチャージなどの料金", "支払方法"]
     by = {i["key"]: i["value"] for i in d["items"]}
-    assert "45,000円（税抜）" in by["transport"] and "江東区" in by["transport"] and "陳列棚" not in by["transport"]
+    assert "49,900円（税抜）" in by["transport"] and "江東区" in by["transport"] and "陳列棚" not in by["transport"]
     assert "架空 播磨ライン運輸" in by["parties"] and "東雲木工（架空）" in by["parties"]
     assert "2 人" in by["handling"] and by["cancel"] and by["terms"] and by["insurance"] and "架空" in by["license"]
     assert by["corp_no"] == "1234567890123"

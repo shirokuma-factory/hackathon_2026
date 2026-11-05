@@ -31,6 +31,7 @@ API（POST は Content-Type: application/json の JSON。入力の誤りは 400 
     POST /api/b/hold    {trip_id, shipment, dest_code, ..., hold_minutes? | hold_until?, shipper?}   期限付きの仮予約（余りを減らす。締切は 72 時間まで）
     POST /api/b/decide  {hold_id, decision: accept|decline}                  運送会社の役の承諾か辞退
     POST /api/b/contract {hold_id, fuel_surcharge?, payment_method?}          承諾済みの仮予約から書面の下書き（SPEC §21.3。承諾前は 400）
+    POST /api/b/price_formula {trip_id, shipment, base_load_rate?, lead_discount?, region?}   個建運賃の参考額（SPEC §21.6。運送会社の役の画面で使う）
     POST /api/b/reset   {}                                                    初期の架空データに戻す
 """
 
@@ -582,6 +583,22 @@ def api_b_decide(body: Any) -> dict[str, Any]:
     return {"hold": hold, **_b_notices()}
 
 
+def api_b_price_formula(body: Any) -> dict[str, Any]:
+    """帰り便の値段の式（SPEC §21.6）。基準積載率は 0〜1（既定 0.7）、リードタイムの割引は 0〜0.5 の 0.1 刻み、地域は 近畿 / 関東。"""
+    body = _need_dict(body)
+    trip = next((t for t in spaceb.load_trips() if t["id"] == body.get("trip_id")), None)
+    if trip is None:
+        raise BadRequest(f"便 {body.get('trip_id')!r} が見つかりません")
+    s = _b_shipment({**body, "dest_code": body.get("dest_code") or trip["dest_code"]})
+    carrier = next((c for c in spaceb.load_demo()["carriers"] if c["id"] == trip["carrier_id"]), {})
+    try:
+        ref = spaceb.per_unit_reference(trip, s, body.get("base_load_rate", spaceb.DEFAULT_BASE_LOAD_RATE),
+                                        body.get("lead_discount", 0), body.get("region") or carrier.get("tariff_region") or "関東")
+    except ValueError as e:
+        raise BadRequest(str(e)) from e
+    return {"reference": ref, **_b_notices()}
+
+
 def api_b_reset(body: Any) -> dict[str, Any]:
     _need_dict(body)
     BOARD_B.reset()
@@ -595,16 +612,20 @@ def api_waiting_calc(body: Any) -> dict[str, Any]:
     year = body.get("year")
     if year is not None and (isinstance(year, bool) or not isinstance(year, int)):
         raise BadRequest("year は整数で渡してください")
+    pasted = None
     if body.get("rows") is not None:
         rows = body["rows"]
     elif isinstance(body.get("text"), str):
-        rows = waiting.parse_paste(body["text"])
+        rows = pasted = waiting.parse_paste(body["text"])
     else:
         raise BadRequest("rows（行の配列）か text（貼り付けたタブ区切り）を渡してください")
     try:
-        return waiting.calc(rows, year)
+        res = waiting.calc(rows, year)
     except ValueError as e:
         raise BadRequest(str(e)) from e
+    if pasted is not None:
+        res["input_rows"] = pasted  # 画面の表に入れ直すための、貼り付けを読んだ行（見出しの順に従った結果）
+    return res
 
 
 GET_ROUTES = {"/api/scenarios": lambda q: api_scenarios(), "/api/demo_quotes": api_demo_quotes,
@@ -615,7 +636,7 @@ POST_ROUTES = {
     "/api/compare": api_compare, "/api/save": api_save, "/api/load": api_load,
     "/api/confirm": api_confirm, "/api/add_quote": api_add_quote, "/api/add_demo_quotes": api_add_demo_quotes,
     "/api/b/match": api_b_match, "/api/b/hold": api_b_hold, "/api/b/decide": api_b_decide, "/api/b/reset": api_b_reset,
-    "/api/b/contract": api_b_contract,
+    "/api/b/contract": api_b_contract, "/api/b/price_formula": api_b_price_formula,
 }
 
 

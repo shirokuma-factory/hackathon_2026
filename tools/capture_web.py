@@ -8,6 +8,8 @@
     uv run python tools/capture_web.py --all
     uv run python tools/capture_web.py --flow     # S5 の筋書きを本物のクリックと入力でたどり、5枚を docs/assets に保存する
     uv run python tools/capture_web.py --v21flow  # S6（SPEC §21）の照合・仮予約・承諾・書面・締切のカードを撮る
+    uv run python tools/capture_web.py --v216flow # 値段の式（SPEC §21.6）の荷主の役と運送会社の役の画面を撮る
+    uv run python tools/capture_web.py --bflow    # S6 と T7 で 照合・仮予約・運送会社の承諾（SPEC §16.2）を撮る
 """
 
 from __future__ import annotations
@@ -86,6 +88,13 @@ SCENES = {
                     "(function(){const b=document.querySelector('#own-body .o-ins [data-act=\"ev\"]'); if(b) b.click();})()", "2026-11-05_v22_own_insight.jpg"),
     "own_draft": ("#v=own&ot=insight", 9.0,
                   "(function(){const b=document.querySelector('#own-body .o-ins [data-act=\"next\"][data-a=\"draft_backhaul\"]'); if(b) b.click();})()", "2026-11-05_v22_own_draft.jpg"),
+    # 版5 荷待ちを入れる（SPEC §23、G79）。「例を入れる」の 11 行と相手ごとの表、書面の下書き（右の欄を下げて見せる）
+    "own_wait": ("#v=own&ot=wait", 9.0,
+                 "(function(){const b=document.querySelector('#own-body [data-w=\"example\"]'); if(b) b.click();})()", "2026-11-05_v23_input.jpg"),
+    "own_wait_draft": ("#v=own&ot=wait", 9.0,
+                       "(function(){const b=document.querySelector('#own-body [data-w=\"example\"]'); if(b) b.click();"
+                       "setTimeout(()=>{const d=document.querySelector('#wait-doc'); if(d) d.scrollIntoView({block:'start'});},3500);})()",
+                       "2026-11-05_v23_draft.jpg"),
 }
 
 
@@ -194,22 +203,47 @@ def flow_steps(page, base: str, out_dir: Path, dl_dir: Path):
         print("読み込み後の荷物欄:", page.js("document.querySelector('#cargo-ver').textContent + ' ' + document.querySelector('#cargo').textContent"))
 
 
-def bflow_steps(page, base: str, out_dir: Path, dl_dir: Path):
-    """空きを探す・つなぐ（SPEC §16.2、G39）の筋書き。S1 の荷物で照合 → 仮予約 → 運送会社の役 → 承諾。"""
+def select_s6(page, base: str) -> None:
+    """場面 S6 の荷物を確定して、空きを探す・つなぐの画面を開く（便の一覧と照合の結果が出るまで待つ）。"""
     page.goto("about:blank")
-    page.goto(base + "#v=find")
+    page.goto(base + "#o=13104&l=fare&d=27128")
     page.wait(lambda: page.js("!!window.__app"), 60, "アプリの起動")
-    page.wait(lambda: page.js("document.querySelectorAll('#f-list .f-card').length >= 6"), 30, "便の一覧")
+    page.wait(lambda: page.js("document.querySelector('#loading').classList.contains('done')"), 480, "読み込み画面の終了")  # 他の処理で混んでいると 240 秒を超える
+    time.sleep(8.0)
+    click(page, "#cargo-toggle")
+    set_select(page, "#sc-select", "S6")
+    for _ in range(4):  # 重いときは 1 回目のクリックが効かないことがある。S6 になるまで押し直す
+        page.js("document.querySelector('#ed-confirm').click()")
+        time.sleep(3.0)
+        if page.js("Work.scenarioId() === 'S6'"):
+            break
+        set_select(page, "#sc-select", "S6")
+    page.wait(lambda: page.js("Work.scenarioId() === 'S6'"), 30, "場面 S6 の確定")
+    page.js("__app.setView('find')")
+    page.wait(lambda: page.js("document.querySelectorAll('#f-list .f-card').length >= 7"), 30, "便の一覧")
+    page.wait(lambda: page.js("!!document.querySelector('#f-list .f-card.ok')"), 30, "照合の結果")
+
+
+def bflow_steps(page, base: str, out_dir: Path, dl_dir: Path):
+    """空きを探す・つなぐ（SPEC §16.2、G39）の筋書き。S6 の荷物で照合（T7 だけ ○）→ 仮予約 → 運送会社の役（C4）→ 承諾。
+    S1 の荷物は T6 に載らなくなった（SPEC §21.2 の日の幅・集荷の地点の照合を全便で行うため）ので、S6 と T7 に直した。"""
+    select_s6(page, base)
+    page.js("__app.Find.select('T7', {fly: true})")
     time.sleep(7.0)
     yield "2026-11-03_b_match.jpg"
-    # 載る便（T6）を仮予約する
-    click(page, '#f-list .f-card[data-t="T6"] [data-act="hold"]', 1.5)
-    page.wait(lambda: page.js("!!document.querySelector('#f-list .f-hold.held')"), 20, "仮予約中の表示")
+    # 載る便（T7）を仮予約する（重いときは押した直後に一覧が作り直されて効かないことがあるので押し直す）
+    for _ in range(3):
+        page.wait(lambda: page.js("!!document.querySelector('#f-list .f-card[data-t=\"T7\"] [data-act=hold]')"), 40, "仮予約のボタン")
+        page.js("document.querySelector('#f-list .f-card[data-t=\"T7\"] [data-act=hold]').click()")
+        time.sleep(3.0)
+        if page.js("!!document.querySelector('#f-list .f-hold.held')"):
+            break
+    page.wait(lambda: page.js("!!document.querySelector('#f-list .f-hold.held')"), 40, "仮予約中の表示")
     time.sleep(3.0)
     yield "2026-11-03_b_hold.jpg"
-    # 運送会社の役に切り替える（T6 は C2 の便）
+    # 運送会社の役に切り替える（T7 は C4 の便）
     click(page, '#f-role button[data-role="carrier"]', 0.8)
-    set_select(page, "#f-carrier-sel", "C2")
+    set_select(page, "#f-carrier-sel", "C4")
     page.wait(lambda: page.js("!!document.querySelector('#f-list [data-act=accept]')"), 20, "承諾のボタン")
     time.sleep(3.0)
     yield "2026-11-03_b_carrier.jpg"
@@ -218,6 +252,22 @@ def bflow_steps(page, base: str, out_dir: Path, dl_dir: Path):
     page.wait(lambda: page.js("!!document.querySelector('#f-list .f-hold.accepted')"), 20, "承諾の表示")
     time.sleep(3.0)
     yield "2026-11-03_b_accepted.jpg"
+
+
+def v216flow_steps(page, base: str, out_dir: Path, dl_dir: Path):
+    """帰り便の値段の式（SPEC §21.6、G81）。荷主の役の画面（式の欄が無い）と、運送会社の役（C4）の画面（割引 20%・基準積載率 70%）を撮る。"""
+    select_s6(page, base)
+    page.js("__app.Find.select('T7', {fly: true})")
+    time.sleep(6.0)
+    yield "2026-11-05_v216_shipper.jpg"
+    click(page, '#f-role button[data-role="carrier"]', 0.8)
+    set_select(page, "#f-carrier-sel", "C4")
+    page.wait(lambda: page.js("!!document.querySelector('#fm-rate')"), 20, "値段の式の欄")
+    set_select(page, "#fm-disc", "20")
+    page.wait(lambda: page.js("(document.querySelector('#fm-out .sum b')||{}).textContent === '50,556 円'"), 30, "参考額 50,556 円")
+    page.js("document.querySelector('#f-formula').scrollIntoView({block: 'start'})")
+    time.sleep(2.5)
+    yield "2026-11-05_v216_formula.jpg"
 
 
 def v21flow_steps(page, base: str, out_dir: Path, dl_dir: Path):
@@ -300,12 +350,13 @@ def main() -> int:
     ap.add_argument("--flow", action="store_true", help="S5 の筋書きをたどって web_cargo / request / quotes / compare / save を撮る")
     ap.add_argument("--bflow", action="store_true", help="空きを探す・つなぐの筋書きをたどって b_match / b_hold / b_carrier / b_accepted を撮る")
     ap.add_argument("--v21flow", action="store_true", help="S6（SPEC §21）の筋書きをたどって v21_* を撮る")
+    ap.add_argument("--v216flow", action="store_true", help="値段の式（SPEC §21.6）の荷主の役と運送会社の役の画面を撮る")
     ap.add_argument("--size", default="1920x1080")
     ap.add_argument("--out", help="単一の場面のときの出力先（省略すると docs/assets）")
     ap.add_argument("--click", help="経度,緯度。その地点を本物のマウスでクリックしてから撮る")
     ap.add_argument("--port", type=int, default=0, help="既に起動している配信サーバーのポート（省略すると自分で起動）")
     args = ap.parse_args()
-    names = list(SCENES) if args.all else ([] if (args.flow or args.bflow or args.v21flow) else (args.scene or ["overview"]))
+    names = list(SCENES) if args.all else ([] if (args.flow or args.bflow or args.v21flow or args.v216flow) else (args.scene or ["overview"]))
     w, h = (int(x) for x in args.size.split("x"))
     cs.W, cs.H = w, h
 
@@ -373,11 +424,11 @@ def main() -> int:
             path.parent.mkdir(parents=True, exist_ok=True)
             img.save(path, "JPEG", quality=88)
             print(f"保存: {path}  {img.size[0]}x{img.size[1]}")
-        if args.flow or args.bflow or args.v21flow:
+        if args.flow or args.bflow or args.v21flow or args.v216flow:
             from PIL import Image
             dl = Path(tempfile.mkdtemp(prefix="edge_dl_"))
             try:
-                for fname in (flow_steps if args.flow else v21flow_steps if args.v21flow else bflow_steps)(page, base, OUT_DIR, dl):
+                for fname in (flow_steps if args.flow else v21flow_steps if args.v21flow else v216flow_steps if args.v216flow else bflow_steps)(page, base, OUT_DIR, dl):
                     errs = page.js("window.__errs") or []
                     if errs:
                         print("ブラウザのエラー:", *errs[:5], sep="\n  ")

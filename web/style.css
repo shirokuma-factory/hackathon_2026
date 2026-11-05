@@ -712,6 +712,20 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 #find-view .field > .lbl { display: block; margin: 0 0 4px 2px; }
 .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
 .f-grid .lbl { display: block; margin: 0 0 4px 2px; }
+.f-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.f-grid3 .lbl { display: block; margin: 0 0 4px 2px; font-size: 11px; }
+/* 値段の式（SPEC §21.6、運送会社の役だけ） */
+.f-formula { margin-top: 10px; padding-top: 4px; border-top: 1px solid var(--line); }
+.fm-line { margin: 0 0 8px; font-size: 11.5px; line-height: 1.6; color: var(--muted); }
+.fm-tbl > div { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.fm-tbl > div > span { color: var(--muted); }
+.fm-tbl > div.big > span, .fm-tbl > div.big > b { color: var(--text); font-weight: 700; }
+.fm-tbl > div.sum { border-bottom: 0; padding-top: 7px; }
+.fm-tbl > div.sum span { color: var(--text); font-weight: 700; }
+.fm-tbl > div.sum b { font-size: 20px; color: var(--accent); }
+.fm-miss { margin: 4px 0; font-size: 12px; color: var(--warn); }
+.fm-km { margin: 2px 0 0; font-size: 11px; color: var(--faint); }
+.fm-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--warn); font-weight: 700; }
 .f-checks { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
 .f-chk { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
 .f-chk input { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; margin: 0; border-radius: 5px; border: 1px solid var(--line-strong); background: rgba(255,255,255,.05); display: grid; place-content: center; cursor: pointer; flex: none; }

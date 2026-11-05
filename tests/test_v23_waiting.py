@@ -1,6 +1,6 @@
 """SPEC §23 荷待ち・荷役の記録の計算（受入条件 G73〜G78）。
 
-G78 の「守る線と根拠の欄の文言が画面に常に出る」は画面ができてから試験する（ここでは扱わない）。
+G78 の「守る線と根拠の欄の文言が画面に常に出る」は web/own.js の文言を見る（末尾）。
 積込料・取卸料の数え方は告示の文言からの読み取りで、Q&A の例で確かめたのは待機時間料だけ。
 """
 
@@ -233,5 +233,79 @@ def test_g78_api_calc_and_does_not_write_files(monkeypatch):
     assert writes == []  # 記録を保存しない（ファイルを書き込みで開いていない）
 
 
-def test_g78_ui_text_is_tested_when_the_ui_exists():
-    pytest.skip("守る線と根拠の欄の文言が画面に出ることの試験は、画面（web/own.js）ができてから別に足す")
+def test_g78_api_text_returns_input_rows_for_the_table():
+    mod = _server()
+    httpd = mod.make_server(0)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        status, data = _post(httpd.server_address[1], {"year": 2026, "text": "\n".join([HEADER, LINE1, LINE2])})
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+    assert status == 200 and len(data["input_rows"]) == 2 and data["input_rows"][0]["partner"] == "A運輸"
+    assert data["tariff"]["waiting"]["normal"]["中型"] == 1760 and data["tariff"]["handling"]["手積み"]["normal"]["小型"] == 2000
+    assert data["by_partner"][0]["date_from"] == "2026-10-05" and data["by_partner"][0]["date_to"] == "2026-10-05"
+
+
+# ---------------------------------------------------------------- SPEC 23.6 の訂正
+def test_s23_6_over_1h_counts_waiting_only_and_over_2h_counts_waiting_plus_driver_handling():
+    # 待機 50 分 + 運転者の荷役 20 分: 1 時間以上ではない。合計 70 分で 2 時間以上でもない
+    r = one(start="09:50", end="10:10", handler="運転者", method="手積み")
+    assert (r["over_1h"], r["over_2h_total"]) == (False, False)
+    # 待機 50 分 + 運転者の荷役 80 分: 1 時間以上ではないが、合計 130 分で 2 時間以上
+    r = one(start="09:50", end="11:10", handler="運転者", method="手積み")
+    assert (r["wait_min"], r["handling_min"], r["over_1h"], r["over_2h_total"]) == (50, 80, False, True)
+    # 待機 60 分ちょうど: 1 時間以上。荷役なしで 2 時間未満
+    r = one(start="10:00")
+    assert (r["over_1h"], r["over_2h_total"]) == (True, False)
+    # 荷主側の荷役は待機に入る: 待機 30 分 + 荷主側の荷役 30 分 = 60 分 → 1 時間以上
+    r = one(start="09:30", end="10:00", handler="荷主側")
+    assert (r["wait_min"], r["over_1h"]) == (60, True)
+    # 荷主等の都合でない待機は 0 分。運転者の荷役が 2 時間以上でも 1 時間以上の荷待ちには入らない
+    r = one(start="09:10", end="11:30", handler="運転者", method="手積み", shipper_fault="いいえ")
+    assert (r["wait_min"], r["over_1h"], r["over_2h_total"]) == (0, False, True)
+
+
+def test_s23_6_partner_counts_follow_the_two_rules():
+    rows = [row(start="09:50", end="11:10", handler="運転者", method="手積み"), row(date="2026-10-06", start="10:00"),
+            row(date="2026-10-07", start="09:20")]
+    p = waiting.calc(rows, 2026)["by_partner"][0]
+    assert (p["over_1h_count"], p["over_2h_count"]) == (1, 1)
+
+
+# ---------------------------------------------------------------- G78（画面の文言）
+OWN_JS = (ROOT / "web" / "own.js").read_text(encoding="utf-8")
+
+
+def test_g78_ui_always_shows_protect_lines_and_legal_basis():
+    for text in ("参考額は告示の表に当てた計算です。請求するか、いくらにするかは運送会社が決めます。法的な判断は弁護士・運輸支局などに確かめてください",
+                 "入れた記録はこの PC の中だけで計算し、外に送りません",
+                 "改正法 Q&A 問2-2・2-3", "標準運送約款 第 34 条", "取適法", "Q42・Q132", "トラック・物流Gメンの情報提供の窓口"):
+        assert text in OWN_JS, text
+    # 守る線と根拠の欄は、計算の結果の有無に関わらず右の欄に出す（waitRightHtml の先頭で作る）
+    head = OWN_JS[OWN_JS.index("function waitRightHtml()"):]
+    assert head.index("const protect") < head.index("if (!r ||") and head.index("const basis") < head.index("if (!r ||")
+    assert 'class="w-protect no-print"' not in OWN_JS  # 画面では隠さない
+
+
+def test_g78_ui_has_the_four_tab_wait_input_and_examples():
+    assert 'data-tab="wait"' in OWN_JS and "荷待ちを入れる" in OWN_JS
+    for label in ("日付", "車番", "車種", "契約の相手", "場所", "到着", "荷役開始", "荷役終了", "出発", "荷役をした人", "荷役の方法", "荷主等の都合の待機か"):
+        assert f"t: '{label}'" in OWN_JS, label
+    assert "例を入れる" in OWN_JS and "架空 元請A物流" in OWN_JS and "江東区 地点07" in OWN_JS and "W_EXAMPLE_DAYS = [1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16]" in OWN_JS
+    assert "/api/waiting/calc" in OWN_JS and "text/csv" in OWN_JS and "window.print()" in OWN_JS
+
+
+def test_g78_ui_example_rows_give_11_times_52_min_and_19360_yen():
+    """画面の「例を入れる」と同じ行を API の計算に通すと、G74 の 19,360 円になる。"""
+    ex = [{"date": f"2026-10-{d:02d}", "vehicle_class": "中型", "partner": "架空 元請A物流", "place": "江東区 地点07", "arrive": "09:00",
+           "start": "09:30", "end": "09:52", "depart": "10:00", "handler": "荷主側", "shipper_fault": "はい"} for d in (1, 2, 5, 6, 7, 8, 9, 13, 14, 15, 16)]
+    res = waiting.calc(ex, 2026)
+    assert res["errors"] == []
+    p = res["by_partner"][0]
+    assert p["count"] == 11 and p["wait_minutes"] == 11 * 52 and p["amount"] == 19360 and p["over_1h_count"] == 0
+
+
+def test_g78_print_css_prints_only_the_draft():
+    css = (ROOT / "web" / "own.css").read_text(encoding="utf-8")
+    assert "@media print" in css and "#wait-doc" in css

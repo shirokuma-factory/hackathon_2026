@@ -107,6 +107,6 @@ def test_spec16_2_ui_notices_always_in_page():
 def test_spec16_2_ui_find_js_uses_only_the_b_endpoints():
     js = (WEB / "find.js").read_text(encoding="utf-8")
     used = set(re.findall(r"'(/api/[^']+)'", js))
-    # /api/scenarios は場面の追加項目（SPEC §21 の backhaul）を読むだけ。書き込みは b の API だけ
-    assert used == {"/api/b/trips", "/api/b/match", "/api/b/hold", "/api/b/decide", "/api/b/reset", "/api/b/contract", "/api/scenarios"}
+    # /api/scenarios は場面の追加項目（SPEC §21 の backhaul）を読むだけ。price_formula は式の計算だけ（SPEC §21.6）。書き込みは b の API だけ
+    assert used == {"/api/b/trips", "/api/b/match", "/api/b/hold", "/api/b/decide", "/api/b/reset", "/api/b/contract", "/api/b/price_formula", "/api/scenarios"}
     assert "is_demo" not in js and "fetch(" not in js  # 通信は Work.api だけを通す（サーバーに書くのは b の API だけ）
