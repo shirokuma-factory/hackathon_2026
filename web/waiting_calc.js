@@ -456,7 +456,9 @@ const WaitingShared = (() => {
       driverHandlingMin = handlingMin;
       const before = Math.max(0, Math.min(eRel, boundary) - Math.min(sRel, boundary));
       const after = Math.max(0, eRel - Math.max(sRel, boundary));
-      hnUnits = ceilDiv(before, unit); hoUnits = ceilDiv(after, unit);
+      // SPEC §39 #5: 荷役の時間全体を荷役開始から 30 分ごとに区切って数え、2 時間の境より後に始まる区切りだけ 2 時間超の額（境の前後で別々に切り上げない）
+      const totalUnits = ceilDiv(before + after, unit);
+      hnUnits = Math.min(totalUnits, ceilDiv(before, unit)); hoUnits = totalUnits - hnUnits;
       hnRate = tariff.handling[method].normal[vclass];
       hoRate = tariff.handling[method].over_2h[vclass];
     }

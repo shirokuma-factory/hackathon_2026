@@ -1197,17 +1197,17 @@
    "expect": {
     "by_partner": [
      {
-      "amount": 9610,
+      "amount": 7120,
       "count": 1,
       "date_from": "2026-10-05",
       "date_to": "2026-10-05",
-      "handling_fee": 4570,
+      "handling_fee": 2080,
       "handling_minutes": 30,
       "months": [
        {
-        "amount": 9610,
+        "amount": 7120,
         "count": 1,
-        "handling_fee": 4570,
+        "handling_fee": 2080,
         "handling_minutes": 30,
         "month": "2026-10",
         "over_1h_count": 1,
@@ -1241,7 +1241,7 @@
     "errors": [],
     "hotspots": [
      {
-      "amount": 9610,
+      "amount": 7120,
       "avg_minutes": 110,
       "band": "9時台",
       "count": 1,
@@ -1256,7 +1256,7 @@
     ],
     "rows": [
      {
-      "amount": 9610,
+      "amount": 7120,
       "appointed": "",
       "arrive": "09:00",
       "crosses_midnight": false,
@@ -1264,12 +1264,12 @@
       "depart": "",
       "end": "11:20",
       "handler": "運転者",
-      "handling_fee": 4570,
+      "handling_fee": 2080,
       "handling_min": 30,
       "handling_normal_rate": 2080,
       "handling_normal_units": 1,
       "handling_over_rate": 2490,
-      "handling_over_units": 1,
+      "handling_over_units": 0,
       "has_side_work": false,
       "method": "フォークリフト等",
       "month": "2026-10",
