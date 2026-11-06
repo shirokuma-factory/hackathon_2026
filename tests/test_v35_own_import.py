@@ -7,7 +7,7 @@
 - G147: 単価を入れると空車 km の費用が式つきで出る。空なら費用の欄が出ない。
 - G148: 区間の判定の CSV と、数字・気づきの文をコピーできる。
 - G149: examples/own/ と docs/guide/自社の運行を分析する.md がある。
-Edge が無い環境では、画面の試験を飛ばす。
+Edge が無い環境だけ、画面の試験を飛ばす（起動の時間切れは失敗）。
 """
 
 from __future__ import annotations
@@ -15,15 +15,12 @@ from __future__ import annotations
 import json
 import math
 import re
-import shutil
-import subprocess
 import sys
-import tempfile
 import time
-import urllib.request
 from pathlib import Path
 
 import pytest
+from conftest import edge_page, edge_path_or_skip, fail_with_evidence
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -75,66 +72,6 @@ def test_own_calc_never_talks_to_the_network():
     assert "own_calc.js" in (WEB / "index.html").read_text(encoding="utf-8")
 
 
-# ---------------------------------------------------------------- Edge の用意
-
-def _edge_or_skip():
-    import capture_screens as cs
-    try:
-        return cs, cs.find_edge()
-    except Exception:  # noqa: BLE001
-        pytest.skip("Microsoft Edge が見つかりません")
-
-
-def _session(cs, edge, w, h):
-    profile = tempfile.mkdtemp(prefix="edge_profile_")
-    dbg = cs.free_port()
-    proc = subprocess.Popen(
-        [edge, "--headless=new", f"--remote-debugging-port={dbg}", f"--window-size={w},{h}", f"--user-data-dir={profile}", "--hide-scrollbars",
-         "--force-device-scale-factor=1", "--no-first-run", "--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader",
-         *cs.EDGE_CLEAN_FLAGS, "about:blank"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return proc, profile, dbg
-
-
-def _connect(cs, dbg):
-    targets = []
-    for _ in range(60):
-        try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{dbg}/json/list", timeout=2) as r:
-                targets = cs.blank_targets(json.load(r))
-            if targets:
-                break
-        except Exception:  # noqa: BLE001
-            pass
-        time.sleep(0.5)
-    if not targets:
-        pytest.skip("Edge のページに接続できませんでした")
-    return cs.Page(targets[0]["webSocketDebuggerUrl"])
-
-
-def _wait_server(port, timeout=40):
-    end = time.time() + timeout
-    while time.time() < end:
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{port}/index.html", timeout=2).read(10)
-            return
-        except Exception:  # noqa: BLE001
-            time.sleep(0.4)
-    pytest.skip("配信サーバーが起動しません")
-
-
-def _stop(cs, server, proc, profile):
-    for p in (proc, server):
-        if p is not None:
-            try:
-                cs.stop_tree(p)
-            except Exception:  # noqa: BLE001
-                pass
-    if profile:
-        cs.stop_edge_profile(profile)
-        shutil.rmtree(profile, ignore_errors=True)
-
-
 # ---------------------------------------------------------------- G145 JS と Python の一致
 
 def _py_reference() -> dict:
@@ -181,7 +118,7 @@ def _close(a, b, path, out, ignore):
 def _strip(d: dict) -> dict:
     """比べない項目を外す。Claude の欄、道路の形、JS だけが足した項目。"""
     d = json.loads(json.dumps(d))
-    for k in ("claude", "route", "paper", "company", "fiction", "unplaced", "encodings", "version", "month"):
+    for k in ("claude", "route", "paper", "company", "fiction", "unplaced", "encodings", "version", "month", "year_choice", "period", "failed"):
         d.pop(k, None)
     for c in d["columns"]:
         c.pop("claude_note", None)
@@ -194,25 +131,21 @@ def _strip(d: dict) -> dict:
     d["counts"].pop("outside_pair", None)
     for c in d["confirm"]:
         c.pop("file", None)  # JS は「デジタコの CSV」と書く（Python は digitaco_*.csv）
+        for k in ("key", "effect", "decision"):  # 確認の決定の鍵と反映の欄は JS だけ（SPEC §39）
+            c.pop(k, None)
     return d
 
 
-def test_g145_js_and_python_give_the_same_result_on_the_three_raw_csvs():
-    cs, edge = _edge_or_skip()
+def test_g145_js_and_python_give_the_same_result_on_the_three_raw_csvs(local_server):
+    edge_path_or_skip()
     ref = _py_reference()
     opts = _js_options(ref)
     files = [{"name": n, "text": (RAW / n).read_text(encoding="utf-8")} for n in RAW_NAMES]
     # Shift_JIS にしたファイルでも同じ結果になること（文字コードの判定）
     sjis = [{"name": n, "bytes": list((RAW / n).read_text(encoding="utf-8").encode("cp932"))} for n in RAW_NAMES]
 
-    import capture_web as cw
-    port = cs.free_port()
-    server = cw.serve(port)
-    proc = profile = None
-    try:
-        _wait_server(port)
-        proc, profile, dbg = _session(cs, edge, 1280, 800)
-        page = _connect(cs, dbg)
+    port = local_server
+    with edge_page(1280, 800, webgl=False) as page:
         page.goto(f"http://localhost:{port}/data/meta.json")  # 同じ配信元の何もない文書に own_calc.js を script として読み込む
         page.js("new Promise((ok, ng) => { const s = document.createElement('script'); s.src = '/own_calc.js'; s.onload = ok; s.onerror = () => ng(new Error('own_calc.js')); document.head.appendChild(s); })")
         assert page.js("typeof OwnCalc === 'object'")
@@ -222,8 +155,6 @@ def test_g145_js_and_python_give_the_same_result_on_the_three_raw_csvs():
             "return { enc: fs.map(f => f.encoding), res: OwnCalc.analyze(fs, %s) };})()" % (json.dumps(sjis), json.dumps(opts, ensure_ascii=False)))
         cases = [[2.5, 0], [3.5, 0], [0.5, 0], [0.125, 2], [1.005, 2], [2.675, 2], [0.15, 1], [0.25, 1], [0.75, 1], [11.35, 1], [9.55, 1], [37.5, 0], [0.3333333335, 9], [12.25, 1]]
         js_round = page.js("%s.map(([x, n]) => OwnCalc.pyRound(x, n))" % json.dumps(cases))
-    finally:
-        _stop(cs, server, proc, profile)
 
     # 四捨五入は Python の round と同じ（ちょうど 0.5 のときだけ偶数へ）
     assert js_round == [round(x, n) for x, n in cases]
@@ -241,33 +172,56 @@ def test_g145_js_and_python_give_the_same_result_on_the_three_raw_csvs():
     assert not diffs2, f"Shift_JIS: {len(diffs2)} 件の違い: " + " | ".join(diffs2[:8])
 
 
+# 壊れた行（SPEC §39）。Python と JS が同じ理由・同じ走行と停車を返す
+BROKEN_ROWS_CSV = """KBN,ST_TIME,ED_TIME,ODO_KM,JK_FLG,POS_NAME,DRV_CD
+1,2026-10-06 20:10,2026-10-07 03:00,551.8,1,,D01
+2,2026-10-07 03:00,2026-10-07 04:10,,,加古川,D01
+1,2026-10-07 04:10,2026-10-07 05:00,abc,0,,D01
+2,2026-10-07 05:00,2026-10-07 05:00,,,江東,D01
+1,2026-10-07 06:00,2026-10-07 05:30,12,1,,D01
+1,2026-10-07 08:00,2026-10-07 09:00,"1,234.5km",0,,D01
+"""
+
+
+def test_g145_js_and_python_agree_on_end_before_start_and_non_numeric_distance(local_server):
+    import csv
+    import io
+
+    from shipcompare import own
+    edge_path_or_skip()
+    py = own.parse_digitaco(list(csv.DictReader(io.StringIO(BROKEN_ROWS_CSV))), lambda n: n, "1234")
+    assert [(e["line"], e["reason"]) for e in py["errors"]] == [(4, "距離が読めません"), (5, own.END_BEFORE_START), (6, own.END_BEFORE_START)]
+    with edge_page(1280, 800, webgl=False) as page:
+        page.goto(f"http://localhost:{local_server}/data/meta.json")
+        page.js("new Promise((ok, ng) => { const s = document.createElement('script'); s.src = '/own_calc.js'; s.onload = ok; s.onerror = () => ng(new Error('own_calc.js')); document.head.appendChild(s); })")
+        rows = list(csv.reader(io.StringIO(BROKEN_ROWS_CSV)))
+        js = page.js(f"OwnCalc.parseDigitaco({json.dumps(rows, ensure_ascii=False)}, (n) => n, '1234')")
+    assert js == json.loads(json.dumps(py))
+
+
 # ---------------------------------------------------------------- 画面の試験（G146〜G148）
 
 @pytest.fixture(scope="module")
-def app():
-    """配信サーバーと Edge（1920x1080）を 1 つずつ起動し、自社の運行の画面を開いた状態の page を渡す。終わると必ず止める。"""
-    cs, edge = _edge_or_skip()
+def app(local_server):
+    """Edge（1920x1080）を 1 つ起動し、自社の運行の画面を開いた状態の page を渡す。配信サーバーはセッションで 1 つ。終わると必ず止める。"""
     import capture_web as cw
-    port = cs.free_port()
-    server = cw.serve(port)
-    proc = profile = None
-    try:
-        _wait_server(port)
-        proc, profile, dbg = _session(cs, edge, 1920, 1080)
-        page = _connect(cs, dbg)
-        page.send("Page.addScriptToEvaluateOnNewDocument", source=cw.ERR_HOOK)
-        page.send("Page.addScriptToEvaluateOnNewDocument", source=NET_HOOK)
-        page.goto(f"http://localhost:{port}/index.html#v=own")
+    port = local_server
+    with edge_page(1920, 1080, hooks=(cw.ERR_HOOK, NET_HOOK)) as page:
+        # 地図の部品の CDN が遅いと、Page.goto の 30 秒（読み込みの完了待ち）で足りない。移動だけして、起動を 240 秒まで待つ。時間切れは失敗
+        from conftest import RESOURCE_HOOK
+        page.send("Page.addScriptToEvaluateOnNewDocument", source=RESOURCE_HOOK)
+        page.send("Page.navigate", url=f"http://localhost:{port}/index.html#v=own")
         try:
-            page.wait(lambda: page.js("!!window.__app"), 180, "アプリの起動")
+            page.wait(lambda: page.js("!!window.__app"), 240, "アプリの起動")
             page.wait(lambda: page.js("!document.querySelector('#loading') || document.querySelector('#loading').classList.contains('done')"), 240, "読み込み")
         except Exception as e:  # noqa: BLE001
-            pytest.skip(f"地図の画面が起動しません（地図の部品を取得できない環境）: {e}")
-        page.wait(lambda: page.js("!!document.querySelector('#own-file')"), 60, "ファイルを落とす欄")
+            fail_with_evidence(page, "地図の画面が起動しません", e, "own_import_fail")
+        try:
+            page.wait(lambda: page.js("!!document.querySelector('#own-file')"), 60, "ファイルを落とす欄")
+        except Exception as e:  # noqa: BLE001
+            fail_with_evidence(page, "ファイルを落とす欄が出ません", e, "own_import_fail")
         time.sleep(2.0)
-        yield {"page": page, "port": port, "cs": cs, "warns0": page.js("window.__warns.length")}
-    finally:
-        _stop(cs, server, proc, profile)
+        yield {"page": page, "port": port, "warns0": page.js("window.__warns.length")}
 
 
 def _api_calls(page) -> list[str]:
@@ -296,7 +250,7 @@ def _import_examples(page):
     _to_sample(page)
     page.js("Own.setTab('import')")
     _set_files(page, [EXAMPLES / n for n in RAW_NAMES])
-    page.wait(lambda: "自社のファイル: 3 件" in _src_text(page), 30, "取り込み")
+    page.wait(lambda: "自社のファイル: 3 件" in _src_text(page), 120, "取り込み")
     time.sleep(0.5)
 
 
@@ -369,7 +323,7 @@ def test_g146_shift_jis_file_and_unreadable_files_are_reported_in_the_page(app, 
     xlsx = tmp_path / "x.xlsx"
     xlsx.write_bytes(b"PK\x03\x04")
     _set_files(page, [*sj, bad, xlsx])
-    page.wait(lambda: "自社のファイル: 4 件" in _src_text(page), 30, "取り込み")
+    page.wait(lambda: "自社のファイル: 4 件" in _src_text(page), 120, "取り込み")
     d = page.js("Own.state.data")
     enc = {f["file"]: f["encoding"] for f in d["files"]}
     assert enc["haisha_2026-10.csv"] == "Shift_JIS" and enc["digitaco_1234.csv"] == "Shift_JIS"
@@ -413,7 +367,7 @@ def test_g147_unit_cost_shows_formula_and_is_hidden_when_empty(app):
     page.js("document.querySelector('#own-perkm').focus()")
     page.insert("30")
     page.wait(lambda: page.js("document.querySelectorAll('#own-cost-out .o-crow').length") == 1, 10, "費用の表示")
-    km_txt = f"{round(empty_km, 1):,}".rstrip("0").rstrip(".") if False else f"{round(empty_km):,}"
+    km_txt = f"{round(empty_km, 1):,.1f}"  # 式の km は小数 1 桁で、その表示どおりに掛ける（SPEC §39）
     yen = round(round(empty_km, 1) * 30)
     txt = page.js("document.querySelector('#own-cost-out').innerText")
     assert f"空車 {km_txt} km × 30 円/km = {yen:,} 円" in txt, txt
@@ -426,7 +380,7 @@ def test_g147_unit_cost_shows_formula_and_is_hidden_when_empty(app):
     page.insert("3000")
     page.wait(lambda: page.js("document.querySelectorAll('#own-cost-out .o-crow').length") == 2, 10, "停車の費用")
     txt = page.js("document.querySelector('#own-cost-out').innerText")
-    assert f"× 3,000 円/時 = {round(long_min / 60 * 3000):,} 円" in txt, txt
+    assert f"{round(long_min / 60, 1):.1f} 時間 × 3,000 円/時 = {round(round(long_min / 60, 1) * 3000):,} 円" in txt, txt
     assert "停車の費用" in page.js("[...document.querySelectorAll('#own-tw th')].map(t => t.textContent)")
     assert "削減額の約束ではありません" in page.js("document.querySelector('#own-right').innerText")
     # 消すと、また出ない

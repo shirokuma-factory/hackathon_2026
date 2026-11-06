@@ -2,7 +2,7 @@
 
 - 静的な確認（文字列）: 入口の条件、見出しの期間、折り返しの CSS など。
 - 画面の確認: tools/serve_web.py --public とヘッドレス Edge で、兵庫県→東京都の入口、余白、距離のそろい、
-  経路が取れない着地の最後の区間、狭い画面の先頭位置を確かめる。Edge が無い環境では飛ばす。
+  経路が取れない着地の最後の区間、狭い画面の先頭位置を確かめる。Edge が無い環境だけ飛ばす。起動の時間切れは失敗にする。
 """
 
 from __future__ import annotations
@@ -10,15 +10,11 @@ from __future__ import annotations
 import contextlib
 import json
 import re
-import shutil
-import subprocess
 import sys
-import tempfile
 import time
-import urllib.request
 from pathlib import Path
 
-import pytest
+from conftest import edge_page, open_app, server_port
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -85,61 +81,23 @@ def test_g141_14_narrow_select_scrolls_the_sheet_to_the_top():
 
 
 # ---------------------------------------------------------------- 画面（Edge）
+ERR_HOOK = ("window.__errs=[];window.addEventListener('error',e=>window.__errs.push(e.message));"
+            "window.addEventListener('unhandledrejection',e=>window.__errs.push(String(e.reason)));")
+
+
 @contextlib.contextmanager
 def _browser(width: int, height: int):
-    import capture_screens as cs
-    try:
-        edge = cs.find_edge()
-    except Exception:  # noqa: BLE001
-        pytest.skip("Microsoft Edge が見つかりません")
-    port, dbg = cs.free_port(), cs.free_port()
-    server = subprocess.Popen([sys.executable, str(ROOT / "tools" / "serve_web.py"), "--public", "--port", str(port)], cwd=str(ROOT),
-                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    profile = tempfile.mkdtemp(prefix="edge_profile_v31mr_")
-    proc = subprocess.Popen(
-        [edge, "--headless=new", f"--remote-debugging-port={dbg}", f"--window-size={width},{height}", f"--user-data-dir={profile}", "--hide-scrollbars",
-         "--force-device-scale-factor=1", "--no-first-run", "--disable-extensions", "--disable-sync", "--enable-webgl", "--ignore-gpu-blocklist",
-         "--enable-unsafe-swiftshader", "about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    try:
-        targets = []
-        for _ in range(60):
-            try:
-                with urllib.request.urlopen(f"http://127.0.0.1:{dbg}/json/list", timeout=2) as r:
-                    targets = [t for t in json.load(r) if t.get("type") == "page" and t.get("url") == "about:blank"]
-                if targets:
-                    break
-            except Exception:  # noqa: BLE001
-                pass
-            time.sleep(0.5)
-        if not targets:
-            pytest.skip("Edge のページに接続できませんでした")
-        for _ in range(60):
-            try:
-                urllib.request.urlopen(f"http://127.0.0.1:{port}/index.html", timeout=2)
-                break
-            except Exception:  # noqa: BLE001
-                time.sleep(0.5)
-        page = cs.Page(targets[0]["webSocketDebuggerUrl"])
-        page.send("Page.addScriptToEvaluateOnNewDocument", source="window.__errs=[];window.addEventListener('error',e=>window.__errs.push(e.message));"
-                  "window.addEventListener('unhandledrejection',e=>window.__errs.push(String(e.reason)));")
-        page.send("Emulation.setDeviceMetricsOverride", width=width, height=height, deviceScaleFactor=1, mobile=False)
-
+    """公開版の配信サーバー（セッションで 1 つ）に、Edge を 1 つ直列に起動してつなぐ。起動の時間切れは失敗（CDN に届かないと確かめたときだけ飛ばす）。"""
+    port = server_port("public")
+    with edge_page(width, height, hooks=(ERR_HOOK,)) as page:
         def open_(hash_: str) -> None:
             page.send("Page.navigate", url="about:blank")
             time.sleep(0.4)
-            page.send("Page.navigate", url=f"http://127.0.0.1:{port}/index.html{hash_}")
-            try:
-                page.wait(lambda: page.js("!!window.__app && !document.querySelector('#loading')"), 180, "起動")
-            except Exception as e:  # noqa: BLE001
-                pytest.skip(f"地図の画面が起動しません（地図の部品を取得できない環境）: {e}")
+            open_app(page, f"http://127.0.0.1:{port}/index.html{hash_}", ready_js="!!window.__app && !document.querySelector('#loading')",
+                     wait_loading=False, start_timeout=180, tag="market_routes_fail")
             time.sleep(2.5)
 
         yield page, open_
-    finally:
-        cs.stop_tree(proc)
-        cs.stop_edge_profile(profile)
-        cs.stop_tree(server)
-        shutil.rmtree(profile, ignore_errors=True)
 
 
 ENDS_JS = """(function(){const M=__app.Market.state, r=M.rows.find(x=>x.k==='27-12'), m=__app.map();

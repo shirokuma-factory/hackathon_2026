@@ -176,7 +176,7 @@ const Market = (() => {
       const rt = { path: pts, cum, total };
       const w = 1.6 + 6 * Math.sqrt(r.short / maxShort);
       const bright = 1 - Math.min(1, r.ratio); // 帰りの荷が少ないほど明るい
-      const col = mix([88, 150, 205], [236, 249, 255], Math.pow(bright, 0.6));
+      const col = mix(Kit.palette.flows.base, Kit.palette.flows.bright, Math.pow(bright, 0.6));
       const reps = clampI(Math.round(PERIOD / (6 + r.km / 100)), 1, 4), dur = PERIOD / reps;
       const ph = ((ri * 0.6180339) % 1) * dur;
       const route = { r, rt, w, col, dur, starts: [], real: pts === real };

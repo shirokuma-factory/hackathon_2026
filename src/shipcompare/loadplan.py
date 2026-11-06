@@ -395,4 +395,9 @@ def plan_load(items: list[LoadItem], container: Container) -> dict[str, Any]:
     tariff_note = tariff_class_note(container.id, float(total_kg))
     if tariff_note:
         summary["tariff_note"] = tariff_note
-    return {"container": container.to_dict(), "placements": placements, "unplaced": unplaced, "summary": summary}
+    # items: 要求した荷物の行の要約（placements[].item と unplaced[].item は、この何番目か。0 始まり）。web/kit/schema/placement.json の必須項目
+    items_out = [{"count": it.count, "length_cm": float(to_decimal(it.length_cm)), "width_cm": float(to_decimal(it.width_cm)),
+                  "height_cm": float(to_decimal(it.height_cm)), "weight_kg": float(to_decimal(it.weight_kg)),
+                  "stackable": bool(it.stackable)} for it in items]
+    return {"container": container.to_dict(), "items": items_out, "placements": placements, "unplaced": unplaced,
+            "summary": summary}

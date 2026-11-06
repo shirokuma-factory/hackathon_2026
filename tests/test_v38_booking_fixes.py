@@ -116,8 +116,8 @@ def test_s1_shelf_trip_floor_is_unit_footprint_not_truck_floor():
 def test_s1_inside_rb_upper_uses_unit_footprint_and_other_types_use_truck_floor():
     t2 = next(t for t in spaceb.load_trips() if t["id"] == "T2")
     assert float(spaceb._trip_floor(t2)) == pytest.approx(0.94 * 0.745)
-    t4 = next(t for t in spaceb.load_trips() if t["id"] == "T4")  # free_bed は車の床
-    assert spaceb._trip_floor(t4) == 6.0
+    t4 = next(t for t in spaceb.load_trips() if t["id"] == "T4")  # free_bed は入れた床の空き（車の床 6.0m² ではない。r1b #4）
+    assert spaceb._trip_floor(t4) == 3.0
 
 
 def test_s1_hold_on_shelf_reduces_unit_floor():

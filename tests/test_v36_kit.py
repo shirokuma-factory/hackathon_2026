@@ -4,7 +4,7 @@
 - G150: examples/kit/index.html を静的サーバー（この試験の中で起動）から開き、5 つの部品が描かれ、コンソールの誤り・警告が 0 件（ヘッドレス Edge、1920 と 400）。
 - G152: update と destroy が働き、destroy の後に地図の層・DOM が残らない。
 - G153: 今のアプリの試験は別のファイルが受け持つ。ここでは既存の web/*.js を部品が書き換えていないこと（部品は web/kit/ だけ）を文字列で確かめる。
-Edge が無い環境では画面の試験を飛ばす。
+Edge が無い環境だけ画面の試験を飛ばす（起動の時間切れは失敗。CDN に届かないと確かめたときだけ飛ばす）。
 """
 
 from __future__ import annotations
@@ -12,15 +12,13 @@ from __future__ import annotations
 import json
 import os
 import re
-import shutil
-import subprocess
 import sys
 import tempfile
 import time
-import urllib.request
 from pathlib import Path
 
 import pytest
+from conftest import edge_page, startup_failed
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -168,12 +166,13 @@ def test_modules_are_display_only_and_have_no_fixed_paths(name):
         assert "destroy()" in src and "update(" in src
 
 
-def test_kit_files_stay_inside_web_kit_and_the_app_does_not_load_them():
-    """部品を足しても今の画面は変わらない: アプリの index.html は部品を読み込まない。"""
+def test_kit_files_stay_inside_web_kit_and_the_app_loads_only_the_shared_palette():
+    """アプリが読むのは web/kit/kit.js だけ（色と区分の共有。道具の採点 r1b #16）。ほかの部品は読まず、既存の web/*.js が Kit を使うのは Kit.palette だけ。"""
     html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
-    assert "kit/" not in html
+    assert re.findall(r'src="(kit/[^"]+)"', html) == ["kit/kit.js"]
     for p in (ROOT / "web").glob("*.js"):
-        assert "Kit." not in p.read_text(encoding="utf-8"), p.name
+        uses = re.findall(r"Kit\.(\w+)", p.read_text(encoding="utf-8"))
+        assert set(uses) <= {"palette"}, (p.name, set(uses))
 
 
 def test_example_page_pins_the_same_cdn_versions_as_the_app():
@@ -185,14 +184,6 @@ def test_example_page_pins_the_same_cdn_versions_as_the_app():
 
 
 # ---------------------------------------------------------------- 画面（Edge）
-def _edge_or_skip():
-    import capture_screens as cs
-    try:
-        return cs, cs.find_edge()
-    except Exception:  # noqa: BLE001
-        pytest.skip("Microsoft Edge が見つかりません")
-
-
 def _make_page_class(cs):
     class CapPage(cs.Page):
         """CDP のイベント（コンソール・例外・ログ）を取っておく。"""
@@ -239,46 +230,18 @@ def _make_page_class(cs):
 
 
 class Env:
-    """静的サーバーと Edge を起動し、終わりに必ず止める。"""
+    """静的サーバー（セッションで 1 つ）に Edge を 1 つ直列につなぐ。終わりに必ず止める。"""
 
-    def __init__(self):
-        self.cs, self.edge = _edge_or_skip()
-        self.server = None
-        self.proc = None
-        self.profile = None
+    def __init__(self, port):
+        import capture_screens as cs
+        self.port = port
+        self.cs = cs
+        self._cm = None
         self.page = None
 
     def __enter__(self):
-        cs = self.cs
-        self.port = cs.free_port()
-        self.server = subprocess.Popen([sys.executable, "-m", "http.server", str(self.port), "--bind", "127.0.0.1", "--directory", str(ROOT)],
-                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(50):
-            try:
-                urllib.request.urlopen(f"http://127.0.0.1:{self.port}/examples/kit/index.html", timeout=1).read()
-                break
-            except Exception:  # noqa: BLE001
-                time.sleep(0.2)
-        self.profile = tempfile.mkdtemp(prefix="edge_profile_")
-        dbg = cs.free_port()
-        self.proc = subprocess.Popen(
-            [self.edge, "--headless=new", f"--remote-debugging-port={dbg}", "--window-size=1920,1080", f"--user-data-dir={self.profile}", "--hide-scrollbars",
-             "--force-device-scale-factor=1", "--no-first-run", *cs.EDGE_CLEAN_FLAGS, "--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader", "about:blank"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        targets = []
-        for _ in range(60):
-            try:
-                with urllib.request.urlopen(f"http://127.0.0.1:{dbg}/json/list", timeout=2) as r:
-                    targets = cs.blank_targets(json.load(r))
-                if targets:
-                    break
-            except Exception:  # noqa: BLE001
-                pass
-            time.sleep(0.5)
-        if not targets:
-            self.__exit__(None, None, None)
-            pytest.skip("Edge のページに接続できませんでした")
-        self.page = _make_page_class(cs)(targets[0]["webSocketDebuggerUrl"])
+        self._cm = edge_page(1920, 1080, page_cls=_make_page_class(self.cs))
+        self.page = self._cm.__enter__()
         self.page.send("Log.enable")
         return self
 
@@ -287,25 +250,18 @@ class Env:
         p.events.clear()
         p.send("Emulation.setDeviceMetricsOverride", width=width, height=height, deviceScaleFactor=1, mobile=width < 600)
         p.goto("about:blank")
-        p.goto(f"http://127.0.0.1:{self.port}/examples/kit/index.html")
         try:
+            p.goto(f"http://127.0.0.1:{self.port}/examples/kit/index.html")
             p.wait(lambda: p.js("!!(window.__kit && window.__kit.ready)"), 120, "例の画面の準備")
         except Exception as e:  # noqa: BLE001
             msg = p.js("document.querySelector('#status') && document.querySelector('#status').textContent")
-            pytest.skip(f"例の画面が準備できません（CDN から地図の部品を取得できない環境か）: {e} {msg}")
+            startup_failed(p, f"例の画面が準備できません（状態表示: {msg}）", e, "kit_fail")
         p.pump(3)  # 地図の読み込みと描画が落ち着くまで
         return p
 
     def __exit__(self, *a):
-        cs = self.cs
-        if self.proc is not None:
-            cs.stop_tree(self.proc)
-        if self.profile:
-            cs.stop_edge_profile(self.profile)
-        if self.server is not None:
-            cs.stop_tree(self.server)
-        if self.profile:
-            shutil.rmtree(self.profile, ignore_errors=True)
+        if self._cm is not None:
+            self._cm.__exit__(*a)
 
 
 def _shot(page, path: Path, width: int):
@@ -347,8 +303,8 @@ BASE_LAYERS = {"kit-bg", "kit-outline-fill", "kit-outline-line"}
 
 
 @pytest.mark.parametrize("width", [1920, 400])
-def test_g150_example_page_draws_five_parts_without_console_problems(width):
-    with Env() as env:
+def test_g150_example_page_draws_five_parts_without_console_problems(width, examples_server):
+    with Env(examples_server) as env:
         page = env.open(width)
         s = _state(page)
         # 5 つの部品が描かれている
@@ -388,8 +344,8 @@ def test_g150_example_page_draws_five_parts_without_console_problems(width):
         assert page.problems() == [], page.problems()
 
 
-def test_g152_update_and_destroy_leave_nothing_behind():
-    with Env() as env:
+def test_g152_update_and_destroy_leave_nothing_behind(examples_server):
+    with Env(examples_server) as env:
         page = env.open(1920)
         before = _state(page)
         assert before["markers"] > 0 and before["kitDom"] > 0
@@ -443,8 +399,8 @@ def test_g152_update_and_destroy_leave_nothing_behind():
         assert page.problems() == [], page.problems()
 
 
-def test_destroy_after_the_map_is_removed_does_not_throw():
-    with Env() as env:
+def test_destroy_after_the_map_is_removed_does_not_throw(examples_server):
+    with Env(examples_server) as env:
         page = env.open(1920)
         r = page.js("""(function(){
           try { __kit.maps.flows.remove(); __kit.parts.flows.destroy(); __kit.maps.legs.remove(); __kit.parts.legs.destroy(); return 'ok'; }

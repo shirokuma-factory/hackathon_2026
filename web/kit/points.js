@@ -8,12 +8,7 @@
   const { esc, merge, hasLL, finite, rgba, uid } = Kit.util;
 
   const DEFAULTS = {
-    bands: [
-      { min: 0, label: '30 分未満', color: [255, 226, 120] },
-      { min: 30, label: '30〜59 分', color: [255, 170, 54] },
-      { min: 60, label: '60〜119 分', color: [238, 92, 64] },
-      { min: 120, label: '120 分以上', color: [178, 28, 92] },
-    ],
+    bands: Kit.palette.bands,
     size: { min: 18, max: 58, k: 1.5 }, // 直径 px = min(max, min + √量 × k)
     unit: '', levelUnit: '',
     fit: true,

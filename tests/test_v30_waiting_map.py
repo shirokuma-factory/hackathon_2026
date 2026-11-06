@@ -8,17 +8,11 @@
 
 from __future__ import annotations
 
-import json
 import re
-import shutil
-import subprocess
 import sys
-import tempfile
-import time
-import urllib.request
 from pathlib import Path
 
-import pytest
+from conftest import edge_page, fail_with_evidence, open_app
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -83,68 +77,18 @@ def test_unmatched_places_and_legend_texts_are_in_the_map_script():
 
 
 # ---------------------------------------------------------------- 画面（Edge）
-def _edge_or_skip():
-    import capture_screens as cs
-    try:
-        return cs, cs.find_edge()
-    except Exception:  # noqa: BLE001
-        pytest.skip("Microsoft Edge が見つかりません")
-
-
-def _text(page, js: str):
-    return page.js(js)
-
-
-def test_g132_map_tab_numbers_match_the_waiting_page_example_and_points_have_a_legend():
-    cs, edge = _edge_or_skip()
+def test_g132_map_tab_numbers_match_the_waiting_page_example_and_points_have_a_legend(local_server):
     import capture_web as cw
 
-    port = cs.free_port()
-    server = cw.serve(port)
-    profile = tempfile.mkdtemp(prefix="edge_profile_")
-    dbg = cs.free_port()
-    proc = subprocess.Popen(
-        [edge, "--headless=new", f"--remote-debugging-port={dbg}", "--window-size=1920,1080", f"--user-data-dir={profile}", "--hide-scrollbars",
-         "--force-device-scale-factor=1", "--no-first-run", "--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader",
-         *cs.EDGE_CLEAN_FLAGS, "about:blank"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    try:
-        # サーバーが index.html を返すまで待つ（返らなければ失敗。飛ばさない）
-        end = time.time() + 60
-        while True:
-            try:
-                with urllib.request.urlopen(f"http://127.0.0.1:{port}/index.html", timeout=3) as r:
-                    if r.status == 200:
-                        break
-            except Exception:  # noqa: BLE001
-                pass
-            assert time.time() < end, "サーバーが 60 秒以内に index.html を返しません"
-            time.sleep(0.5)
-        time.sleep(1.5)
-        targets = []
-        for _ in range(60):
-            try:
-                with urllib.request.urlopen(f"http://127.0.0.1:{dbg}/json/list", timeout=2) as r:
-                    targets = cs.blank_targets(json.load(r))
-                if targets:
-                    break
-            except Exception:  # noqa: BLE001
-                pass
-            time.sleep(0.5)
-        assert targets, "Edge のページ（about:blank）に接続できませんでした"
-
-        page = cs.Page(targets[0]["webSocketDebuggerUrl"])
-        page.send("Page.addScriptToEvaluateOnNewDocument", source=cw.ERR_HOOK)
-        page.send("Emulation.setDeviceMetricsOverride", width=1920, height=1080, deviceScaleFactor=1, mobile=False)
-        page.goto(f"http://localhost:{port}/index.html#v=own&ot=wait")
+    port = local_server
+    with edge_page(1920, 1080, hooks=(cw.ERR_HOOK,)) as page:
+        open_app(page, f"http://localhost:{port}/index.html#v=own&ot=wait", start_timeout=120, load_timeout=120, tag="waiting_map_fail")
         try:
-            page.wait(lambda: page.js("!!window.__app"), 60, "アプリの起動")
-            page.wait(lambda: page.js("!document.querySelector('#loading') || document.querySelector('#loading').classList.contains('done')"), 60, "読み込み")
+            page.wait(lambda: page.js("!!document.querySelector('[data-w=example]')"), 60, "例を入れるボタン")
+            page.js("document.querySelector('[data-w=example]').click()")
+            page.wait(lambda: page.js("!!document.querySelector('#hotspots') && document.querySelectorAll('.wm-pt').length > 0"), 60, "表と点")
         except Exception as e:  # noqa: BLE001
-            pytest.fail(f"地図の画面が起動しません: {e} / window.__errs {page.js('window.__errs || []')}")
-        page.wait(lambda: page.js("!!document.querySelector('[data-w=example]')"), 60, "例を入れるボタン")
-        page.js("document.querySelector('[data-w=example]').click()")
-        page.wait(lambda: page.js("!!document.querySelector('#hotspots') && document.querySelectorAll('.wm-pt').length > 0"), 60, "表と点")
+            fail_with_evidence(page, "地図の画面の表と点が出ません", e, "waiting_map_fail")
 
         # 参考額（相手ごとの合計の和）は 46,780 円
         amounts = page.js("[...document.querySelectorAll('table.w-par:not(.wm-card) tbody tr')].map(tr => tr.children[4].textContent.replace(/,/g, '')).join(',')")
@@ -177,8 +121,3 @@ def test_g132_map_tab_numbers_match_the_waiting_page_example_and_points_have_a_l
         assert "架空 第3倉庫" in page.js("document.querySelector('#wm-unplaced').textContent")
         assert page.js("document.querySelectorAll('.wm-pt').length") == 3
         assert not page.js("window.__errs.length")
-    finally:
-        cs.stop_tree(proc)
-        cs.stop_edge_profile(profile)
-        cs.stop_tree(server)
-        shutil.rmtree(profile, ignore_errors=True)

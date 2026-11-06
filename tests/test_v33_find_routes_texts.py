@@ -37,7 +37,7 @@ def test_pages_have_data_favicon_and_t7_source():
         assert 'rel="icon" href="data:image/svg+xml' in _read(ROOT / "tools" / name), name
     for name in ("waiting.html", "compare_lite.html"):
         assert 'rel="icon" href="data:image/svg+xml' in _read(WEB / name), name
-    src = "最大 3,500kg・床 13.0m²（車両の大きさ。地図のカードの数字は空いている分）"
+    src = "空きが重さ 2,000kg・床 6.0m²（車両は最大 2,700kg・床 13.64m²）"
     assert src in _read(ROOT / "tools" / "compare_lite_template.html")
     assert src in _read(WEB / "compare_lite.html")
 

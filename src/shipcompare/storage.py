@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -189,6 +190,13 @@ def validate_shipment(s: Shipment) -> None:
         for name in ("count", "length_cm", "width_cm", "height_cm", "weight_kg"):
             v = getattr(item, name)
             _check(v is None or _is_num(v), f"荷物{n}行目の {name} が数値ではありません")
+            if v is not None:
+                # 画面の入力と同じ範囲（個数は 1 以上の整数、寸法と重さは 0 より大きい有限の数。r1b #12）
+                _check(math.isfinite(v), f"荷物{n}行目の {name} が有限の数ではありません")
+                if name == "count":
+                    _check(v >= 1 and float(v) == int(v), f"荷物{n}行目の個数は 1 以上の整数でなければなりません")
+                else:
+                    _check(v > 0, f"荷物{n}行目の {name} は 0 より大きい数でなければなりません")
     _check(s.route is None or s.route in ROUTES, f"区間 {s.route!r} は対応していません")
     _check(s.distance_km is None or (_is_num(s.distance_km) and s.distance_km >= 0), "距離が不正です")
     _check(s.monthly_shipments is None or (isinstance(s.monthly_shipments, int)
