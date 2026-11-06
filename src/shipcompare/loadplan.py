@@ -283,12 +283,20 @@ def tariff_class_note(container_id: str, total_kg: float) -> str:
     return ""
 
 
+def _over_text(over_kg: float) -> str:
+    """超えた重さの文字。丸めて 0.0kg に見えないだけの桁で出す。"""
+    for digits in (1, 2, 3, 4, 6):
+        if round(over_kg, digits) > 0:
+            return f"{over_kg:,.{digits}f}kg" if over_kg >= 1 or digits > 1 else f"{over_kg:,.1f}kg"
+    return f"{over_kg:.2e}kg"
+
+
 def _failed_verdict(boxes: list[_Box], weight_over: bool, container: Container, reasons: dict[int, str],
                     placed_seq: set[int], over_kg: float) -> tuple[str, str]:
     """全部は載らなかったときの判定。確実に載らない理由があるときだけ × にし、手順で見つけられなかっただけなら △ にする。"""
     L, W, H = container.length_mm, container.width_mm, container.height_mm
     if weight_over:
-        return "×", f"重さが最大積載量を {over_kg:,.1f}kg 超えます"
+        return "×", f"重さが最大積載量を {_over_text(over_kg)} 超えます"
     def fits_as_is(b: _Box) -> bool:
         return b.h <= H and any(dx <= L and dy <= W for dx, dy, _ in _orientations(b))
 

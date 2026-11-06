@@ -74,6 +74,7 @@ HEADER = "\t".join(["日付", "車番", "車種", "契約の相手", "場所", "
 LINE1 = "10/5\t品川100あ1\t小型（2t）\tA運輸\t川崎\t09:00\t11:15\t\t\t\t\tはい"
 LINE2 = "10/6\t\t中型\tB商事\t\t8:00\t8:40\t9:10\t9:30\t運転者\tフォークリフト等\tはい\t07:45\t検品\t15"
 
+DEFAULTS = {"vehicle_class": "中型", "method": "手積み"}   # 画面が既定として出す車種と荷役の方法（SPEC §41）
 CASES: list[dict] = [
     {"name": "q29_small_1h_is_1680", "year": 2026, "rows": [row(start="10:00")]},
     {"name": "q29_small_2h15_is_7050", "year": 2026, "rows": [row(start="11:15")]},
@@ -294,6 +295,38 @@ CASES: list[dict] = [
               row(vehicle_class="中型", start="09:30", end="10:10", depart="12:30", handler="荷主側", post_wait="はい"),
               row(vehicle_class="中型", arrive="08:10", appointed="08:30", start="09:00", end="10:00", depart="11:10", handler="運転者", method="手積み", post_wait="はい"),
               row(vehicle_class="中型", start="09:30", end="11:30", depart="12:30", handler="運転者", method="手積み", post_wait="はい", shipper_fault="いいえ")]},
+    # ---- SPEC §41 (2026-11-06, 実務の効き目 r1): ドライバーの LINE の文、現場の見出し、時刻の言い方、既定の車種・方法、早着
+    {"name": "paste_driver_line_text_many_blocks", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": ("[LINE] 山田 太郎\n"
+              "荷待ち記録 11/10 江東区 ○○倉庫 着 7:50 受付 8:05 荷役開始 9:40 終了 10:30 出発 10:40 車番 1234 相手 ○○\n"
+              "10:41\n"
+              "荷待ち記録 11/10 川崎市 △△センター 着 13:05 荷役開始 13:45 出発 13:55 車番 1234 相手 ○○ 車種 大型\n"
+              "荷待ち記録 11/11 江東区 ○○倉庫 着 8:30 指定 8:30 荷役開始 8:50 終了 9:20 荷役 荷主側 相手 ○○ 車番 1234\n"
+              "荷待ち記録 11/12 市川市 着 5時半 荷役開始 10時半 荷役 運転者 終了 11時20分 相手 □□")},
+    {"name": "paste_driver_text_one_line_and_bad_values", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "荷待ち記録 11/10(火) 江東区 着 7:50 荷役開始 9:40 相手 ○○ 荷待ち記録 11/10 川崎 着 abc 荷役開始 9:00 相手 ○○ 荷待ち記録 江東 着 9:00 荷役開始 10:00 相手 ○○"},
+    {"name": "paste_memo_headings_and_japanese_times", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": ("日付\t荷主\t場所\t着\t受付\t積み始め\t積み終わり\t出発\t積んだ人\t備考\n"
+              "11/10\t○○\t江東区 ○○倉庫\t5時半\t7時50分\t10時半\t11時20分\t11時半\t運転者\t雨\n"
+              "11/11\t○○\t江東区 ○○倉庫\t7:50\t8:05\t9:40\t\t9:50\t\t\n"
+              "11/12\t○○\t江東区 ○○倉庫\t8:30\t\t9:00\t9:30\t9:40\t自分\t\n")},
+    {"name": "defaults_fill_missing_vehicle_class_and_method", "year": 2026, "defaults": DEFAULTS,
+     "rows": [row(vehicle_class="", start="10:00"), row(vehicle_class="", start="10:30", end="11:00", handler="運転者", method=""),
+              row(start="10:30", end="11:00", handler="運転者", method=""), row(vehicle_class="大型", start="10:00"),
+              row(vehicle_class="軽", start="10:00"), row(vehicle_class="", start="10:00", end="10:20", handler="荷主側")]},
+    {"name": "without_defaults_missing_class_and_method_are_errors", "year": 2026,
+     "rows": [row(vehicle_class="", start="10:00"), row(start="10:30", end="11:00", handler="運転者", method="")]},
+    {"name": "early_arrival_rules", "year": 2026,
+     "rows": [row(arrive="07:50", start="09:00"), row(arrive="05:00", start="06:00"), row(arrive="04:59", start="06:00"), row(arrive="08:00", start="09:30"),
+              row(arrive="07:50", appointed="08:00", start="09:00"), row(arrive="07:50", appointed="07:30", start="09:00"),
+              row(arrive="07:50", start="09:00", shipper_fault="いいえ"), row(partner="B商事", arrive="06:10", start="08:40")]},
+    {"name": "paste_reception_only_means_arrival_for_a_shippers_own_records", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": ("日付\t運送会社\t施設\t受付\t荷役開始\n"
+              "10/5\tX運輸\tA工場\t8:10\t9:00\n10/6\tY運送\tA工場\t8:20\t9:30\n11/2\tX運輸\tB倉庫\t13:00\t13:20\n")},
+    {"name": "reception_column_with_arrival_is_kept_for_the_record_list", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "日付\t契約の相手\t着\t受付\t荷役開始\n10/5\tA運輸\t7:50\t8:05\t9:00\n10/6\tA運輸\t9:00\t9時10分\t10:00\n10/7\tA運輸\t9:00\tabc\t10:00\n"},
+    {"name": "times_with_han", "year": 2026,
+     "rows": [row(arrive="5時半", start="10時半"), row(arrive="9時半", start="2026/10/5 10時半"), row(arrive="9時 半", start="10時半"), row(arrive="9時半30", start="10時")]},
 ]
 
 
@@ -303,16 +336,19 @@ def build() -> dict:
         c = dict(c)
         defaulted: list[str] = []
         notes: list[str] = []
+        det: dict = {}
         if c.get("paste"):
-            rows, defaulted, notes = waiting.parse_paste_ex(c["text"])
+            det = waiting.parse_paste_detail(c["text"])
+            rows, defaulted, notes = det["rows"], det["defaulted"], det["notes"]
         else:
             rows = c["rows"]
-        res = waiting.calc(rows, c["year"])
+        res = waiting.calc(rows, c["year"], defaults=c.get("defaults"))
         exp = {"rows": res["rows"], "by_partner": res["by_partner"], "hotspots": res["hotspots"], "by_place_month": res["by_place_month"], "errors": res["errors"]}
         if c.get("paste"):
             exp["input_rows"] = rows
             exp["defaulted"] = defaulted
             exp["notes"] = notes
+            exp["asks"] = det["asks"]
         c["expect"] = exp
         cases.append(c)
     return {"note": "tools/build_waiting_vectors.py が waiting.py の出力から作る。手で直さない（SPEC §23.7 G82）", "cases": cases}

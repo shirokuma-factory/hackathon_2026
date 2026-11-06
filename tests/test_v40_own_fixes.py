@@ -152,12 +152,14 @@ def test_columns_with_japanese_values_are_not_given_confidence_half():
         assert c == 1.0 and own.confidence_color(c) == "green"
 
 
-def test_python_infer_year_does_not_pick_the_latest_year_for_ambiguous_weekdays():
+def test_python_infer_year_picks_the_latest_year_up_to_the_demo_year_for_ambiguous_weekdays():
     r = own.infer_year(["車番", "車種", "10/1(水)", "10/2(木)"])
-    assert r["year"] is None and r["ambiguous"] is True and r["source"] == "weekday"
-    assert r["candidates"] == [y for y in range(2020, 2037) if date(y, 10, 1).weekday() == 2] and 2036 in r["candidates"]
+    cands = [y for y in range(2020, 2037) if date(y, 10, 1).weekday() == 2]
+    assert r["ambiguous"] is True and r["year_assumed"] is True and r["source"] == "weekday"
+    assert r["candidates"] == cands and 2036 in cands
+    assert r["year"] == 2025 and r["year"] != 2036  # 2026 年以下でいちばん新しい年。2036 年のような先の年は選ばない（SPEC §41）
     one = own.infer_year(["車番", "2/27(金)", "2/28(土)", "3/1(日)"])
-    assert one["year"] == 2026 and one["ambiguous"] is False
+    assert one["year"] == 2026 and one["ambiguous"] is False and one["year_assumed"] is False
 
 
 def _vehicles():
@@ -299,12 +301,12 @@ def test_js_reads_japanese_digitaco_without_a_needless_confirm_card(calc):
     assert cols["区分"]["shape_ratio"] > 0.85 and cols["実空区分"]["confidence"] == 1.0
 
 
-def test_js_year_is_not_chosen_for_the_user_when_several_years_match(calc):
+def test_js_year_is_assumed_not_asked_when_several_years_match(calc):
     head = ["車番", "車種", "10/1(水)", "10/2(木)"]
     files = [{"name": "haisha.csv", "text": _haisha(head, ["加古川→江東", "江東→加古川"])}]
     d = _an(calc, files)
     cands = [y for y in range(2020, 2037) if date(y, 10, 1).weekday() == 2]
-    assert d["needs_year"] is True and d["year_choice"]["year"] is None and d["year_choice"]["candidates"] == cands and "legs" not in d
+    assert not d.get("needs_year") and d["year"] == 2025 and d["year_choice"]["year_assumed"] is True and d["year_choice"]["candidates"] == cands and d["counts"]["legs"] == 2
     ok = _an(calc, files, {"year": 2025})
     assert ok["year"] == 2025 and ok["counts"]["legs"] == 2 and ok["legs"][0]["date"] == "2025-10-01"
     # デジタコの日付があれば、その年に絞れるので選ばせない
@@ -411,21 +413,14 @@ def test_ui_unreadable_files_formula_text_and_stop_scope(app, tmp_path):
     _to_sample(page)
 
 
-def test_ui_year_is_chosen_by_the_user_before_anything_is_computed(app, tmp_path):
+def test_ui_year_is_assumed_and_can_be_changed_when_several_years_match(app, tmp_path):
     page = app
     _to_sample(page)
     page.js("Own.setTab('import')")
     _set_files(page, [_write(tmp_path, "haisha_wed.csv", "車番,車種,10/1(水),10/2(木)\n1234,大型,加古川→江東,江東→加古川\n")])
-    page.wait(lambda: page.js("!!document.querySelector('#own-year-pick')"), 60, "年を選ぶ欄")
-    assert page.js("Own.state.mode") == "sample" and "サンプル（架空の会社）" in _src(page)  # 計算していない
-    opts = page.js("[...document.querySelectorAll('#own-year-pick option')].map(o => o.value)")
-    assert opts[0] == "" and "2036" in opts and "2025" in opts
-    assert page.js("document.querySelector('#own-year-pick').value") == ""  # いちばん新しい年を選んだ状態にしない
-    page.js("(function(){const s = document.querySelector('#own-year-pick'); s.value = '2025'; s.dispatchEvent(new Event('change', {bubbles: true}));})()")
-    page.wait(lambda: page.js("Own.state.mode") == "import" and page.js("Own.state.data.year") == 2025, 30, "年を選んだあとの計算")
-    assert page.js("Own.state.data.legs.every(l => l.date.startsWith('2025-'))")
-    assert not page.js("!!document.querySelector('#own-year-pick')")
-    # 年の選び直しは、その年のまま計算し直す（また年を聞かない）
+    page.wait(lambda: page.js("Own.state.mode") == "import", 60, "取り込み")
+    d = page.js("Own.state.data")
+    assert d["year"] == 2025 and d["year_choice"]["year_assumed"] is True and d["counts"]["legs"] == 2  # 先の年（2036）にしない。年を聞かずに計算する（SPEC §41）
     page.js("(function(){const s = document.querySelector('#own-year'); s.value = '2031'; s.dispatchEvent(new Event('change', {bubbles: true}));})()")
     page.wait(lambda: page.js("Own.state.data.year") == 2031, 20, "年の選び直し")
     _to_sample(page)

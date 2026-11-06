@@ -313,3 +313,104 @@ td.o-hint { padding: 4px; }
 .o-fm summary:focus-visible { outline: 2px solid var(--accent, #5cc8ff); outline-offset: 2px; }
 .o-fm ul { margin: 4px 0 0; padding-left: 18px; line-height: 1.7; }
 .o-scope { margin-top: 6px; }
+
+/* ======================================================================
+   版41: 自社の画面を仕事で使えるようにする（SPEC §41）。用語の説明、売上の目安、月の保存と比べ、印刷、列の役割、24px の欄
+   ====================================================================== */
+/* 列の対応づけ: 日本語の役割と理由（英語の役割名や点数は出さない） */
+.o-col { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) minmax(0, 2fr) 104px; }
+.o-cs { font-size: 11px; line-height: 1.5; }
+.o-cc { font-size: 11px; color: var(--muted); }
+
+/* 用語の「?」 */
+.o-tipw { display: inline; margin-left: 4px; }
+.o-tip { width: 24px; height: 24px; padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: rgba(255,255,255,.06); color: var(--muted); font: inherit; font-size: 12px; line-height: 1; cursor: help; vertical-align: middle; }
+.o-tip:hover, .o-tip:focus-visible, .o-tipw.open .o-tip { border-color: var(--accent); color: var(--text); outline: none; }
+.o-tipb { display: none; margin: 4px 0 2px; padding: 6px 8px; border-radius: 8px; background: rgba(92,200,255,.12); border: 1px solid rgba(92,200,255,.35); color: var(--text); font-size: 11.5px; line-height: 1.6; font-weight: 400; white-space: normal; }
+.o-tipw.open .o-tipb { display: block; }
+.o-gloss ul { list-style: none; padding-left: 0; }
+.o-gloss li { margin-bottom: 3px; }
+
+/* 帰り荷 1 便の売上の目安 */
+.o-rev { margin: 0 14px 8px; padding: 8px 12px 9px; border-radius: 12px; border: 1px solid rgba(92,200,255,.45); background: rgba(92,200,255,.06); flex: none; }
+.o-rev .o-crow:first-of-type { border-top: 0; }
+.o-keep { display: block; color: var(--warn); font-size: 10.5px; font-weight: 700; }
+.o-why { display: block; margin-top: 4px; color: var(--faint); font-size: 10.5px; line-height: 1.55; }
+.o-exnote { margin: 4px 18px 8px; }
+
+/* 求荷求車の文 */
+.o-board { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+.o-board .o-ta { color: var(--text); }
+
+/* 月の保存と比べ */
+.o-month { margin: 8px 0; padding: 4px 10px 8px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.03); }
+.o-save { color: var(--ok, #7ad39a); }
+.o-cmpbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 6px 0; }
+.o-cmpbar .btn-sm { height: 30px; padding: 0 12px; font-size: 12px; }
+.o-cmp { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0 2px; }
+.o-cmp th { text-align: right; font-weight: 500; color: var(--muted); font-size: 11px; padding: 3px 4px; border-bottom: 1px solid var(--line-strong); }
+.o-cmp tbody th { text-align: left; color: var(--text); }
+.o-cmp td { padding: 3px 4px; border-bottom: 1px solid var(--line); text-align: right; }
+.o-df { color: var(--accent); white-space: nowrap; }
+.o-restore { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.o-restore > b { flex: 1 1 100%; font-size: 12px; }
+.o-restore > small { flex: 1 1 100%; }
+
+/* 列の役割を選ぶ */
+.o-roles { margin: 8px 0; padding: 6px 10px 8px; border: 1px solid rgba(240,182,78,.45); border-radius: 10px; background: rgba(240,182,78,.08); }
+.o-rl { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 6px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.o-rn b { display: block; font-weight: 500; word-break: break-all; }
+.o-rn small { display: block; color: var(--faint); font-size: 10.5px; }
+.o-assumed label { color: var(--warn); }
+
+/* 荷待ちの下書きの行: 契約の相手が空のとき目立たせる */
+.w-in.w-need:placeholder-shown, select.w-in.w-need:has(option:checked[value=""]) { border-color: var(--warn); background: rgba(240,182,78,.1); }
+.w-in.w-need:placeholder-shown::placeholder { color: var(--warn); opacity: 1; }
+.w-draft { padding: 6px 8px; border-radius: 8px; background: rgba(92,200,255,.07); }
+
+/* チェックボックスは 24px 以上 */
+body.view-own #own-view input[type="checkbox"], body.view-own #own-right input[type="checkbox"], body.view-own #own-right .f-chk input { width: 24px; height: 24px; min-width: 24px; min-height: 24px; flex: none; }
+body.view-own #own-right .f-chk { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+
+/* 印刷: 画面では隠し、「1 ページで印刷」のときだけ出す（style.css の @media print が body 全体を隠すので、この欄だけ戻す） */
+.o-printsheet { display: none; }
+.o-pt { width: 100%; border-collapse: collapse; margin: 6px 0; }
+.o-pt th { text-align: left; font-weight: 700; padding: 3px 6px; width: 28%; border-bottom: 1px solid #888; }
+.o-pt td { padding: 3px 6px; border-bottom: 1px solid #888; }
+@media print {
+  @page { size: A4; margin: 14mm; }
+  body.own-print-sum .o-printsheet { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: #fff; color: #000; font-size: 10pt; line-height: 1.5; }
+  body.own-print-sum .o-printsheet, body.own-print-sum .o-printsheet * { visibility: visible !important; color: #000 !important; border-color: #888 !important; }
+  body.own-print-sum #own-right { position: static !important; overflow: visible !important; }
+  .o-printsheet h2 { font-size: 14pt; margin: 0 0 4px; } .o-printsheet h3 { font-size: 11pt; margin: 8px 0 2px; }
+  .o-printsheet ol { margin: 2px 0; padding-left: 18px; }
+  .o-printsheet { page-break-inside: avoid; }
+}
+
+/* 400px の幅: 区間と曜日の表は 1 行を縦のカードにし、費用の欄は行の下に回す。枠からはみ出さない */
+@media (max-width: 600px) {
+  .o-cin { grid-template-columns: 1fr; }
+  .o-rl { grid-template-columns: 1fr; }
+  .o-col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .o-col .o-cs { grid-column: 1 / -1; }
+  table.o-tab, table.o-tab thead, table.o-tab tbody { display: block; width: 100%; }
+  table.o-tab thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table.o-tab tr { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+  table.o-tab tr.grp { display: block; }
+  table.o-tab td { display: block; padding: 0; border: 0; text-align: left; }
+  table.o-tab td:first-child { flex: 1 1 100%; font-weight: 700; }
+  table.o-tab td.num { text-align: left; white-space: nowrap; }
+  table.o-tab td[data-l]::before { content: attr(data-l) " "; color: var(--muted); font-size: 10.5px; font-weight: 400; }
+  table.o-tab td.o-ccell { flex: 1 1 100%; order: 9; }
+  .o-tw { padding: 0 8px; }
+  .o-cmp th, .o-cmp td { font-size: 11px; padding: 3px 2px; }
+}
+
+/* 右の欄は、中身が多いとき（用語の説明・売上の目安を開いたとき）に表が見えなくならないよう、欄ぜんたいを縦に送る */
+#own-right:not(:has(.w-rbody)) { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+#own-right:not(:has(.w-rbody)) .o-tw { flex: none; overflow: visible; }
+#own-right:not(:has(.w-rbody)) .o-tab thead th { top: 0; }
+.o-lay, .o-how { display: block; color: var(--muted); font-size: 10.5px; line-height: 1.5; font-weight: 400; }
+.o-how { color: var(--warn); }
+.o-notices .o-hint { color: var(--warn); }
+

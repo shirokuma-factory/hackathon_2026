@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>荷待ちの記録（ドライバー用）</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%231f4e79%27/%3E%3Cpath d=%27M6 20h20M8 20V11h11v9M19 14h4l3 3v3%27 stroke=%27white%27 stroke-width=%272%27 fill=%27none%27/%3E%3C/svg%3E">
+<!-- 1 ファイルで動きます。通信はしません。記録はこの端末のブラウザの中にだけ残ります。ここで作る文は web/waiting.html の貼り付け欄がそのまま読みます（SPEC §41）。 -->
+<style>
+:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --line: #c9cfda; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --done: #e6f2e8; --done-line: #2e7d32; --field: #ffffff; }
+@media (prefers-color-scheme: dark) { :root { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --line: #3d4656; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a90; --done: #1c2e20; --done-line: #6fcf7a; --field: #141922; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0 16px 32px; background: var(--bg); color: var(--text); font: 16px/1.6 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; overflow-wrap: anywhere; }
+main { max-width: 560px; margin: 0 auto; }
+h1 { margin: 14px 0 2px; font-size: 20px; }
+h2 { margin: 0 0 8px; font-size: 16px; }
+p { margin: 4px 0; }
+.sub, .hint { color: var(--muted); font-size: 13px; }
+section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+label { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+input, select, textarea { display: block; width: 100%; min-height: 44px; margin-top: 2px; padding: 8px 10px; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: 8px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.stamp { display: grid; grid-template-columns: minmax(0, 1fr) 100px 44px; gap: 6px; align-items: center; margin: 8px 0; }
+.stamp.done button.big { background: var(--done); border-color: var(--done-line); }
+button { font: inherit; min-height: 44px; padding: 8px 14px; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+button.big { min-height: 56px; font-size: 16px; font-weight: 700; text-align: left; padding: 8px 10px; }
+button.primary { width: 100%; min-height: 52px; font-weight: 700; color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+button.primary:hover { background: var(--accent-hover); }
+button.x { padding: 0; font-size: 20px; color: var(--muted); }
+.stamp input { margin: 0; padding: 8px 6px; text-align: center; }
+ul.recs { list-style: none; margin: 6px 0; padding: 0; }
+ul.recs li { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 6px; align-items: start; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+ul.recs li.empty { display: block; color: var(--muted); }
+.msg { min-height: 1.6em; margin: 6px 0; font-weight: 700; font-size: 14px; }
+.msg.bad { color: var(--warn); }
+textarea { min-height: 120px; font-size: 14px; }
+.note { margin: 8px 0; padding: 8px 10px; border-left: 4px solid var(--warn); background: var(--card); font-size: 14px; }
+a { color: var(--accent); }
+[hidden] { display: none !important; }
+@media (max-width: 380px) { .stamp { grid-template-columns: minmax(0, 1fr) 92px 44px; } button.big { font-size: 15px; } }
+</style>
+</head>
+<body>
+<main>
+<h1>荷待ちの記録</h1>
+<p class="sub">着いたら押すだけです。時刻は押した瞬間の時刻が入り、右の欄で直せます。通信はしません。</p>
+<p class="note" id="broken" hidden>保存した記録が読めませんでした（消していません）。</p>
+
+<section aria-label="場所と相手">
+  <h2>場所と相手（この端末に覚えます）</h2>
+  <label>場所<input id="place" type="text" autocomplete="off" placeholder="例 江東区 ○○倉庫"></label>
+  <label>相手（荷主）<input id="partner" type="text" autocomplete="off" placeholder="例 ○○"></label>
+  <div class="two">
+    <label>車番<input id="vno" type="text" autocomplete="off" placeholder="例 1234"></label>
+    <label>車種<select id="vclass"><option value="">選ばない</option><option>小型</option><option>中型</option><option>大型</option><option>トレーラー</option></select></label>
+  </div>
+  <div class="two">
+    <label>荷役をした人<select id="handler"><option value="">分からない</option><option>運転者</option><option>荷主側</option></select></label>
+    <label>指定の到着時刻（あれば）<input id="appointed" type="time" step="60"></label>
+  </div>
+</section>
+
+<section aria-label="いまの 1 回">
+  <h2>いまの 1 回</h2>
+  <label>日付（月/日）<input id="date" type="text" inputmode="numeric" autocomplete="off" placeholder="例 11/10"></label>
+  <div id="stamps"></div>
+  <p class="hint">押した時刻が入ります。もう一度押しても書き換えません。直すときは右の時刻の欄を変え、消すときは × を押します。</p>
+  <button type="button" class="primary" id="b-save">この 1 回を今日の一覧に入れる</button>
+</section>
+
+<section aria-label="今日の記録">
+  <h2 id="list-title">今日の記録</h2>
+  <ul class="recs" id="recs"></ul>
+  <button type="button" class="primary" id="b-copy">LINE に貼る文をコピー</button>
+  <p class="msg" id="msg" role="status"></p>
+  <div id="fallback" hidden>
+    <p class="hint">自動でコピーできませんでした。下の文を選んで、長押しか Ctrl+C でコピーしてください。</p>
+    <textarea id="ta" readonly aria-label="コピーする文"></textarea>
+  </div>
+  <p class="hint">入力中の 1 回も、着いた時刻が入っていれば含めます。事務の人は、受け取った文をそのまま<a href="waiting.html">荷待ちのページ</a>の「Excel から貼り付ける」に貼ります。</p>
+  <button type="button" id="b-clear">今日の記録を消す</button>
+  <p class="hint" id="older"></p>
+</section>
+</main>
+
+<script>
+"use strict";
+/* 通信はしません。保存は localStorage だけで、使えなくても画面は動きます。
+   LINE に貼る文の形（1 件 = 1 行）:
+   荷待ち記録 11/10 江東区 ○○倉庫 着 7:50 受付 8:05 荷役開始 9:40 終了 10:30 出発 10:40 車番 1234 相手 ○○ [車種 中型] [指定 8:00] [荷役 運転者|荷主側]
+   読む側は web/waiting_calc.js の parseDriverText と src/shipcompare/waiting.py の parse_driver_text。 */
+const STAMPS = [['arrive', '着いた', '着'], ['reception', '受付した', '受付'], ['start', '呼ばれた（荷役開始）', '荷役開始'], ['end', '荷役が終わった', '終了'], ['depart', '出発した', '出発']];
+const KEYWORDS = new Set(['着', '到着', '受付', '荷役開始', '積込開始', '開始', '終了', '荷役終了', '積込終了', '出発', '車番', '相手', '荷主', '車種', '指定', '指定時刻', '荷役', '荷待ち記録']);
+const K_SET = 'driver_settings_v1', K_CUR = 'driver_current_v1', K_REC = 'driver_records_v1';
+const SETTING_IDS = ['place', 'partner', 'vno', 'vclass', 'handler'];
+const $ = (s) => document.querySelector(s);
+const pad = (n) => String(n).padStart(2, '0');
+const S = { cur: null, recs: [], broken: false, clearArmed: false };
+
+function load(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { S.broken = true; return null; }
+}
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (e) { return false; } }
+
+const today = () => { const d = new Date(); return `${d.getMonth() + 1}/${d.getDate()}`; };
+const nowHM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const shortTime = (v) => { const m = /^([0-9]{1,2}):([0-9]{2})/.exec(v || ''); return m ? `${Number(m[1])}:${m[2]}` : ''; };
+const blankCur = () => ({ date: today(), arrive: '', reception: '', start: '', end: '', depart: '' });
+const clean = (v) => String(v || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).map((t) => (KEYWORDS.has(t) ? `(${t})` : t)).join(' ');
+
+function settings() {
+  const o = {};
+  SETTING_IDS.forEach((id) => { o[id] = $(`#${id}`).value; });
+  o.appointed = $('#appointed').value;
+  return o;
+}
+
+// 1 件の文（上の形）。空の欄は書かない
+function recordLine(r) {
+  const p = ['荷待ち記録', r.date];
+  if (clean(r.place)) p.push(clean(r.place));
+  STAMPS.forEach(([k, , word]) => { if (shortTime(r[k])) p.push(word, shortTime(r[k])); });
+  if (clean(r.vno)) p.push('車番', clean(r.vno));
+  if (clean(r.partner)) p.push('相手', clean(r.partner));
+  if (r.vclass) p.push('車種', r.vclass);
+  if (shortTime(r.appointed)) p.push('指定', shortTime(r.appointed));
+  if (r.handler) p.push('荷役', r.handler);
+  return p.join(' ');
+}
+
+const todays = () => S.recs.filter((r) => r.date === today());
+const curRecord = () => ({ ...settings(), ...S.cur });
+
+function persistCur() { save(K_CUR, S.cur); }
+function persistSettings() { const o = settings(); delete o.appointed; save(K_SET, o); }   // 指定の到着時刻はその回ごとなので覚えない
+
+function renderStamps() {
+  $('#stamps').innerHTML = STAMPS.map(([k, label]) => `<div class="stamp${S.cur[k] ? ' done' : ''}">` +
+    `<button type="button" class="big" data-stamp="${k}">${label}</button>` +
+    `<input type="time" step="60" data-time="${k}" value="${S.cur[k] || ''}" aria-label="${label}の時刻">` +
+    `<button type="button" class="x" data-clear="${k}" aria-label="${label}の時刻を消す">×</button></div>`).join('');
+}
+
+function renderList() {
+  const list = todays();
+  $('#list-title').textContent = `今日の記録（${list.length} 件）`;
+  const inProgress = S.cur.arrive ? `<li><span>入力中: ${recordLine(curRecord())}</span><span></span></li>` : '';
+  $('#recs').innerHTML = list.map((r) => `<li><span>${recordLine(r)}</span><button type="button" class="x" data-del="${r.id}" aria-label="この記録を消す">×</button></li>`).join('') + inProgress ||
+    '<li class="empty">まだ記録がありません。着いたら「着いた」を押してください。</li>';
+  const older = S.recs.length - list.length;
+  $('#older').textContent = older > 0 ? `ほかの日の記録 ${older} 件は、この端末に残っています（今日の分だけ表示しています）。` : '';
+}
+
+function setMsg(t, bad) { const el = $('#msg'); el.textContent = t; el.classList.toggle('bad', !!bad); }
+
+function stamp(k) {
+  if (S.cur[k]) { setMsg('その時刻はもう入っています。直すときは右の時刻の欄を変えてください。'); return; }
+  S.cur[k] = nowHM();
+  persistCur(); renderStamps(); renderList(); setMsg('');
+}
+
+function saveCurrent() {
+  if (!S.cur.arrive) { setMsg('「着いた」の時刻がありません。先に「着いた」を押してください。', true); return; }
+  if (!/^[0-9]{1,2}\/[0-9]{1,2}$/.test(S.cur.date.trim())) { setMsg('日付は 11/10 のように、月/日で入れてください。', true); return; }
+  const rec = { id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...curRecord(), date: S.cur.date.trim() };
+  S.recs.push(rec);
+  S.recs = S.recs.slice(-300);
+  save(K_REC, S.recs);
+  S.cur = blankCur(); persistCur(); renderStamps(); renderList();
+  $('#date').value = S.cur.date;
+  setMsg('一覧に入れました。');
+}
+
+function copyAll() {
+  const lines = todays().map(recordLine);
+  if (S.cur.arrive) lines.push(recordLine(curRecord()));
+  if (!lines.length) { setMsg('コピーする記録がありません。', true); return; }
+  const text = lines.join('\n');
+  const fallback = () => {
+    const ta = $('#ta');
+    ta.value = text; $('#fallback').hidden = false; ta.focus(); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    setMsg(ok ? `${lines.length} 件をコピーしました。LINE の入力欄に貼ってください。` : '', false);   // 失敗のときは下の説明の枠を見てもらう
+  };
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+    navigator.clipboard.writeText(text).then(() => { $('#fallback').hidden = true; setMsg(`${lines.length} 件をコピーしました。LINE の入力欄に貼ってください。`); }, fallback);
+  } catch (e) { fallback(); }
+}
+
+function clearToday() {
+  const btn = $('#b-clear');
+  if (!S.clearArmed) {
+    S.clearArmed = true; btn.textContent = 'もう一度押すと、今日の記録を消します';
+    setTimeout(() => { S.clearArmed = false; btn.textContent = '今日の記録を消す'; }, 5000);
+    return;
+  }
+  S.clearArmed = false; btn.textContent = '今日の記録を消す';
+  S.recs = S.recs.filter((r) => r.date !== today());
+  save(K_REC, S.recs); renderList(); setMsg('今日の記録を消しました。');
+}
+
+function init() {
+  const set = load(K_SET);
+  if (set && typeof set === 'object') {
+    SETTING_IDS.forEach((id) => { if (typeof set[id] === 'string') $(`#${id}`).value = set[id]; });
+  }
+  const cur = load(K_CUR);
+  S.cur = cur && typeof cur === 'object' && !Array.isArray(cur) ? { ...blankCur(), ...cur } : blankCur();
+  const recs = load(K_REC);
+  S.recs = Array.isArray(recs) ? recs.filter((r) => r && typeof r === 'object' && typeof r.date === 'string') : [];
+  $('#broken').hidden = !S.broken;
+  $('#date').value = S.cur.date;
+  renderStamps(); renderList();
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.stamp) stamp(t.dataset.stamp);
+    else if (t.dataset.clear) { S.cur[t.dataset.clear] = ''; persistCur(); renderStamps(); renderList(); }
+    else if (t.dataset.del) { S.recs = S.recs.filter((r) => r.id !== t.dataset.del); save(K_REC, S.recs); renderList(); }
+    else if (t.id === 'b-save') saveCurrent();
+    else if (t.id === 'b-copy') copyAll();
+    else if (t.id === 'b-clear') clearToday();
+  });
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset && t.dataset.time) { S.cur[t.dataset.time] = t.value; persistCur(); t.closest('.stamp').classList.toggle('done', !!t.value); renderList(); }
+    else if (t.id === 'date') { S.cur.date = t.value; persistCur(); renderList(); }
+    else if (SETTING_IDS.includes(t.id)) { persistSettings(); renderList(); }
+    else if (t.id === 'appointed') renderList();
+  });
+}
+init();
+</script>
+</body>
+</html>

@@ -49,13 +49,13 @@ CLOCK_2027 = """
 # (見出し, year, candidates, ambiguous, source)
 YEAR_VECTORS = [
     (["車番", "車種", "2/27(金)", "2/28(土)", "3/1(日)"], 2026, [2026], False, "weekday"),  # 2 月の曜日: 2026 年だけ（2020 年は閏年で木曜）
-    (["車番", "10/1(木)", "10/2(金)"], None, [2020, 2026], True, "weekday"),  # 10 月の曜日: 2020 年と 2026 年が同じ。年は決めない（SPEC §40）
-    (["車番", "12/30(水)", "12/31(木)", "1/1(金)", "1/2(土)"], None, [2020, 2026], True, "weekday"),  # 年をまたぐ
+    (["車番", "10/1(木)", "10/2(金)"], 2026, [2020, 2026], True, "weekday"),  # 10 月の曜日: 2020 年と 2026 年が同じ。2026 年以下でいちばん新しい年にする（SPEC §41）
+    (["車番", "12/30(水)", "12/31(木)", "1/1(金)", "1/2(土)"], 2026, [2020, 2026], True, "weekday"),  # 年をまたぐ
     (["車番", "10/1", "10/2"], 2026, [2024, 2025, 2026, 2027, 2028, 2029, 2030], True, "none"),  # 曜日が無い
     (["車番", "10/1(木)", "10/2(木)"], 2026, [2024, 2025, 2026, 2027, 2028, 2029, 2030], True, "mismatch"),  # どの年にも合わない（続く 2 日が同じ曜日）
     (["車番", "２/２７(金)", "２/２８(土)", "３/１(日)"], 2026, [2026], False, "weekday"),  # 全角
     (["車番", "2025/10/1", "2025/10/2"], 2025, [2025], False, "explicit"),
-    (["車番", "10月1日(木)", "10月2日(金)"], None, [2020, 2026], True, "weekday"),
+    (["車番", "10月1日(木)", "10月2日(金)"], 2026, [2020, 2026], True, "weekday"),
     (["車番", "2/29(土)", "3/1(日)"], 2020, [2020], False, "weekday"),  # 2/29 があるのは閏年だけ
 ]
 
@@ -194,10 +194,10 @@ def test_year_comes_from_weekday_headings_not_from_the_2027_clock(calc):
     d2 = _an(calc, [{"name": "haisha.csv", "text": _haisha(["車番", "車種", "10/1", "10/2"])}])
     assert d2["year"] == 2026 and d2["year_choice"]["ambiguous"] is True and d2["year_choice"]["source"] == "none"
     assert 2027 in d2["year_choice"]["candidates"] and all(lg["date"].startswith("2026-") for lg in d2["legs"])
-    # 合う年が複数: いちばん新しい年を黙って使わず、年が選ばれるまで計算しない（SPEC §40）
+    # 合う年が複数: 2026 年以下でいちばん新しい年にして、year_assumed を真にする（SPEC §41。先の年は選ばない。年は利用者が変えられる）
     head3 = ["車番", "車種", "10/1(木)", "10/2(金)"]
     d3 = _an(calc, [{"name": "haisha.csv", "text": _haisha(head3)}])
-    assert d3["needs_year"] is True and d3["year_choice"]["year"] is None and d3["year_choice"]["candidates"] == [2020, 2026] and "legs" not in d3
+    assert not d3.get("needs_year") and d3["year"] == 2026 and d3["year_choice"]["year_assumed"] is True and d3["year_choice"]["candidates"] == [2020, 2026] and d3["legs"]
     d3b = _an(calc, [{"name": "haisha.csv", "text": _haisha(head3)}], {"year": 2026})
     assert d3b["year"] == 2026 and d3b["year_choice"]["ambiguous"] is True and d3b["year_choice"]["by_user"] is True
     d4 = _an(calc, [{"name": "haisha.csv", "text": _haisha(head3)}], {"year": 2020})

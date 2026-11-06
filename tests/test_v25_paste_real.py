@@ -231,8 +231,10 @@ def test_g99_lite_page_has_texts_and_contact_links_from_contacts_json():
     for key in ("takuhai", "rosen", "jitbox"):
         for c in contacts[key]:
             assert c["url"] in html, c["url"]
-    for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "localStorage"):
+    for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon"):
         assert bad not in html, bad
+    # 保存は自社の契約単価（CKEY）だけ。端末の中に置き、外へは送らない（SPEC §41）
+    assert set(re.findall(r"localStorage\.(\w+)\(([A-Za-z_]+)", html)) == {("setItem", "CKEY"), ("getItem", "CKEY")}
     assert not re.search(r"<script[^>]+src\s*=", html, re.I) and not re.search(r"<link(?![^>]*href\s*=\s*.data:)[^>]+href\s*=", html, re.I)
     assert not re.search(r"<(img|iframe|form)\b", html, re.I)
     # 窓口の記録が無い手段に、URL を作り出していない（軽貨物のハコベル・PickGo など）

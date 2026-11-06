@@ -48,16 +48,19 @@ def test_g82_python_matches_the_vectors_file():
     for c in data["cases"]:
         defaulted: list = []
         notes: list = []
+        asks: list = []
         if c.get("paste"):
-            rows, defaulted, notes = waiting.parse_paste_ex(c["text"])
+            det = waiting.parse_paste_detail(c["text"])
+            rows, defaulted, notes, asks = det["rows"], det["defaulted"], det["notes"], det["asks"]
         else:
             rows = c["rows"]
-        res = waiting.calc(rows, c["year"])
+        res = waiting.calc(rows, c["year"], defaults=c.get("defaults"))
         got = {"rows": res["rows"], "by_partner": res["by_partner"], "hotspots": res["hotspots"], "by_place_month": res["by_place_month"], "errors": res["errors"]}
         if c.get("paste"):
             got["input_rows"] = rows
             got["defaulted"] = defaulted
             got["notes"] = notes
+            got["asks"] = asks
         assert json.loads(json.dumps(got, ensure_ascii=False)) == c["expect"], c["name"]
 
 

@@ -118,7 +118,9 @@ def _close(a, b, path, out, ignore):
 def _strip(d: dict) -> dict:
     """比べない項目を外す。Claude の欄、道路の形、JS だけが足した項目。"""
     d = json.loads(json.dumps(d))
-    for k in ("claude", "route", "paper", "company", "fiction", "unplaced", "encodings", "version", "month", "year_choice", "period", "failed", "files_read", "files_unread"):
+    # SPEC §41 で JS だけが足した項目（列の役割の選択、ファイルの形の目印、重複、県内の往復の情報）も比べない
+    for k in ("claude", "route", "paper", "company", "fiction", "unplaced", "encodings", "version", "month", "year_choice", "period", "failed", "files_read", "files_unread",
+              "column_roles_needed", "shape_signatures", "layouts", "needs_month", "month_choice", "digitaco_duplicates", "notices", "geo"):
         d.pop(k, None)
     for c in d["columns"]:
         c.pop("claude_note", None)
@@ -127,7 +129,8 @@ def _strip(d: dict) -> dict:
         v.pop("registered", None)
         v.pop("max_load_assumed", None)
     for f in d["files"]:
-        f.pop("encoding", None)
+        for k in ("encoding", "layout_note_ja", "shape_signature", "duplicates"):
+            f.pop(k, None)
     d["counts"].pop("outside_pair", None)
     for c in d["confirm"]:
         c.pop("file", None)  # JS は「デジタコの CSV」と書く（Python は digitaco_*.csv）

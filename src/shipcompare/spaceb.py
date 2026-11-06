@@ -143,7 +143,7 @@ def parse_shipment(body: dict[str, Any]) -> BShipment:
         if not isinstance(it, dict):
             raise ValueError(f"荷物{n}行目が辞書ではありません")
         count = it.get("count")
-        if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+        if isinstance(count, bool) or not isinstance(count, int) or count < 1 or count >= 10**9:
             raise ValueError(f"荷物{n}行目の個数は1以上の整数で入れてください")
         vals = {}
         for key, label in (("length_cm", "縦"), ("width_cm", "横"), ("height_cm", "高さ"), ("weight_kg", "1個の重さ")):
@@ -205,6 +205,29 @@ def _dec(v: Any) -> Decimal:
 
 def _fmt(d: Decimal) -> str:
     return format(d.normalize(), "f")
+
+
+def _g(d: Decimal) -> str:
+    """桁区切りつきで、必要な桁をそのまま出す（丸めて同じ数に見せない）。"""
+    if d.as_tuple().exponent < -6:
+        d = d.quantize(Decimal("1e-6"))
+    return format(d.normalize(), ",f")
+
+
+def _g2(d: Decimal) -> str:
+    """面積用。小数は 2 桁以上で出す（1.00m² のように、これまでの書き方を保つ）。"""
+    t = _g(d)
+    head, _, frac = t.partition(".")
+    return f"{head}.{frac.ljust(2, '0')}"
+
+
+def _over(over: Decimal, unit: str) -> str:
+    """超えた分を、丸めて 0 に見えないだけの桁で出す。"""
+    for digits in (2, 3, 4, 6, 9):
+        q = over.quantize(Decimal(1).scaleb(-digits))
+        if q > 0 and (q == over or digits == 9):  # 丸めずに言い切れる桁まで出す
+            return f"+{format(q.normalize(), 'f')}{unit}"
+    return f"+{over:.2e}{unit}"
 
 
 def _md(d: date) -> str:
@@ -284,7 +307,7 @@ def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf
         if shelf < cap:
             cap, cap_label = shelf, "棚の耐荷重の残り"
     if total > cap:
-        reasons.append(f"合計の重さ {_fmt(total)}kg が{cap_label} {_fmt(cap)}kg を超えます")
+        reasons.append(f"合計の重さ {_g(total)}kg が{cap_label} {_g(cap)}kg を超えます（{_over(total - cap, 'kg')}）")
 
     # 降ろせる地点
     if shipment.dest_code not in trip["drop_points"]:
@@ -313,7 +336,7 @@ def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf
         free = _dec(free_src)
         need = shipment.total_floor_m2
         if need > free:
-            reasons.append(f"床の空き {free:.2f}m² に対して荷の床 {need:.2f}m² で、超えます")
+            reasons.append(f"床の空き {_g2(free)}m² に対して荷の床 {_g2(need)}m² で、超えます（{_over(need - free, 'm²')}）")
 
     # 容器
     if trip["container_required"] and not shipment.in_container:
@@ -723,8 +746,10 @@ def per_unit_reference(trip: dict[str, Any], shipment: BShipment, base_load_rate
     fare = fares[0]  # 最大積載量が載る最小の車格
     weight_ratio = shipment.total_kg / max_kg
     if weight_ratio > 1:
-        raise ValueError(f"この車に載りません（荷の重さ {shipment.total_kg:,.0f}kg が最大積載量 {max_kg:,.0f}kg の{weight_ratio * 100:.0f}%）")
+        raise ValueError(f"この車に載りません（荷の重さ {_g(shipment.total_kg)}kg が最大積載量 {_g(max_kg)}kg を超えます。{_over(shipment.total_kg - max_kg, 'kg')}）")
     floor_ratio = shipment.total_floor_m2 / floor_m2
+    if floor_ratio > 1:
+        raise ValueError(f"この車に載りません（床）。荷の床 {_g2(shipment.total_floor_m2)}m² が荷台の床 {_g2(floor_m2)}m² を超えます（{_over(shipment.total_floor_m2 - floor_m2, 'm²')}）")
     ratio = max(weight_ratio, floor_ratio)
     raw = Decimal(fare["amount"]) * ratio / rate * (1 - disc)
     return {
