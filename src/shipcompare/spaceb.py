@@ -11,7 +11,7 @@ import json
 import threading
 import time
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable
@@ -34,6 +34,8 @@ FICTION_NOTICE = "架空の運送会社と便です。"
 BOOKING_NOTICE = "積むかどうか、どこにどう積むかは運送会社が決めます。受付で量って条件に合わないときは受け付けません。"
 
 HELD, ACCEPTED, DECLINED, EXPIRED = "held", "accepted", "declined", "expired"
+
+_JST = timezone(timedelta(hours=9))  # 盤の時計は日本時間
 
 
 DEMO_NOW_LABEL = "デモの時刻: {md} {hm}（架空の便に合わせています）"
@@ -524,7 +526,7 @@ class Board:
         except ValueError:
             raise BoardError("締切（hold_until）は 2026-11-10T17:00 のような日時で入れてください") from None
         if t.tzinfo is not None:
-            t = t.astimezone().replace(tzinfo=None)
+            t = t.astimezone(_JST).replace(tzinfo=None)
         if t <= now:
             raise BoardError("締切（hold_until）は仮予約の時刻より後にしてください")
         if t - now > timedelta(minutes=MAX_HOLD_MINUTES):
@@ -720,6 +722,8 @@ def per_unit_reference(trip: dict[str, Any], shipment: BShipment, base_load_rate
         raise ValueError("最大積載量が表の車格を超えています")
     fare = fares[0]  # 最大積載量が載る最小の車格
     weight_ratio = shipment.total_kg / max_kg
+    if weight_ratio > 1:
+        raise ValueError(f"この車に載りません（荷の重さ {shipment.total_kg:,.0f}kg が最大積載量 {max_kg:,.0f}kg の{weight_ratio * 100:.0f}%）")
     floor_ratio = shipment.total_floor_m2 / floor_m2
     ratio = max(weight_ratio, floor_ratio)
     raw = Decimal(fare["amount"]) * ratio / rate * (1 - disc)
@@ -792,7 +796,10 @@ def _local_dt(v: Any, label: str) -> datetime:
     try:
         if not isinstance(v, str) or not v:
             raise ValueError
-        return datetime.fromisoformat(v).replace(tzinfo=None, second=0, microsecond=0)
+        t = datetime.fromisoformat(v)
+        if t.tzinfo is not None:  # 締切（_parse_until）と同じく、盤の時計（日本時間）の時刻に直す
+            t = t.astimezone(_JST)
+        return t.replace(tzinfo=None, second=0, microsecond=0)
     except ValueError:
         raise ValueError(f"{label}は 2026-11-13T17:00 のような日時で入れてください") from None
 

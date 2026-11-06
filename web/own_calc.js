@@ -38,12 +38,13 @@ const OwnCalc = (() => {
 
   /* ------------------------------------------------------------ 日時（分の整数で持つ。時差の影響を受けない） */
 
-  const DT = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
+  // 「2026-10-01 05:00」「2026/10/6 20:10」「２０２６/１０/１ ５:００」（全角は NFKC で直す）。秒は捨てる。時差つきと 20261001T0500 のような区切りの無い形は読まない（own.py の parse_dt と同じ）
+  const DT = /^([0-9]{4})[-/]([0-9]{1,2})[-/]([0-9]{1,2})(?:[ T]+([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?)?$/;
   function parseDT(s) {
     const m = DT.exec(nfkc(s).trim());
     if (!m) return null;
     const [y, mo, d, h, mi] = [+m[1], +m[2], +m[3], +(m[4] || 0), +(m[5] || 0)];
-    if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return null;
+    if (y < 1900 || mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return null;
     const t = Date.UTC(y, mo - 1, d, h, mi);
     const chk = new Date(t);
     if (chk.getUTCMonth() !== mo - 1) return null;
@@ -152,7 +153,7 @@ const OwnCalc = (() => {
       if (wdCols.every(([i, wd]) => { const g = got[i], iso = isoDate(g.y, g.m, g.d); return iso != null && weekdayOf(iso) === wd; })) cands.push(y);
     }
     if (!cands.length) return noHint('mismatch');
-    return { year: Math.max(...cands), candidates: cands, ambiguous: cands.length > 1, source: 'weekday' };
+    return { year: cands.length === 1 ? cands[0] : null, candidates: cands, ambiguous: cands.length > 1, source: 'weekday' }; // 複数あるときは年を決めない（いちばん新しい年を黙って使わない）
   }
   const isoDate = (y, m, d) => {
     const t = new Date(Date.UTC(y, m - 1, d));
@@ -227,7 +228,17 @@ const OwnCalc = (() => {
 
   const NONLEG = ['休', '整備', '休み', '車検', '待機'];
   const ARR = /着\s*([^\s（(]+)/;
-  const WEIGHT = /(\d+(?:\.\d+)?)\s*[tｔ](?![a-zA-Z])/;
+  // 重さ: 「6.5t」「4600kg」「4,600kg」。記号つき（-1t、+5t）は読まない（own.py の parse_weight と同じ）
+  const WEIGHT = /(?<![0-9A-Za-z.])([-−‐‑–+]?)\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?)\s*([kK][gG]|t)(?![a-zA-Z])/;
+  const WEIGHT_SIGN_ERR = '重さが読めません（マイナスやプラスの記号つきは入れられません）';
+  // 戻り値: { kg } か { error }（記号つき）。重さが無ければ null
+  function parseWeight(text) {
+    const m = WEIGHT.exec(nfkc(text));
+    if (!m) return null;
+    if (m[1]) return { error: WEIGHT_SIGN_ERR };
+    const v = parseFloat(m[2].replace(/,/g, ''));
+    return { kg: m[3].toLowerCase() === 'kg' ? v : v * 1000 };
+  }
 
   function parseTime(tok) {
     const t = nfkc(tok).trim();
@@ -252,15 +263,16 @@ const OwnCalc = (() => {
       let arr = null;
       const am = ARR.exec(rest);
       if (am) { arr = parseTime(am[1]); if (arr == null) res.errors.push('時刻が読めません'); }
-      const wm = WEIGHT.exec(rest);
-      res.legs.push({ frm, to, empty: part.includes('（空）') || part.includes('(空)') || part.includes('空車'), arr, weight_kg: wm ? parseFloat(wm[1]) * 1000 : null });
+      const wt = parseWeight(rest);
+      if (wt && wt.error) res.errors.push(wt.error);
+      res.legs.push({ frm, to, empty: part.includes('（空）') || part.includes('(空)') || part.includes('空車'), arr, weight_kg: wt && wt.kg != null ? wt.kg : null });
     }
     return res;
   }
 
   /* ------------------------------------------------------------ デジタコ */
 
-  // 列名の辞書。own.py の DIGITACO_DICT と同じものに、よくある別の書き方を足してあります（足した分は JS だけ）
+  // 列名の辞書。own.py の DIGITACO_DICT と DIGITACO_EXTRA と同じもの
   const DIGITACO_DICT = { KBN: 'kind', ST_TIME: 'start_time', ED_TIME: 'end_time', ODO_KM: 'distance_km', JK_FLG: 'loaded_flag', POS_NAME: 'place_name', DRV_CD: 'driver_code' };
   const DIGITACO_EXTRA = {
     '区分': 'kind', '開始日時': 'start_time', '開始時刻': 'start_time', '終了日時': 'end_time', '終了時刻': 'end_time',
@@ -268,6 +280,8 @@ const OwnCalc = (() => {
     '地点名': 'place_name', '停車地': 'place_name', '停車場所': 'place_name', '乗務員コード': 'driver_code', '運転者コード': 'driver_code',
   };
   const HAISHA_DICT = { '車番': 'plate', '車種': 'vehicle_type' };
+  const KIND_RUN = ['1', '走行'], KIND_STOP = ['2', '停車']; // 区分の値（全角は NFKC で直してから比べる。own.py と同じ）
+  const JK_LOADED = ['1', '実', '実車'], JK_EMPTY = ['0', '空', '空車'];
   // 利用者が「確認」で決めた列の役割（{大文字にした列名: 役割か null（読まない）}）。analyze の間だけ入る。辞書より先に使う
   let ROLE_OV = null;
   const colKey = (name) => nfkc(name).trim().toUpperCase();
@@ -312,7 +326,7 @@ const OwnCalc = (() => {
       if (st == null || ed == null) { errors.push({ line: i, reason: '時刻が読めません' }); return; }
       if (ed <= st) { errors.push({ line: i, reason: END_BEFORE_START }); return; }
       const kindRaw = nfkc(get(r, 'kind'));
-      const kind = ['1', '走行'].includes(kindRaw) ? '1' : ['2', '停車'].includes(kindRaw) ? '2' : kindRaw;
+      const kind = KIND_RUN.includes(kindRaw) ? '1' : KIND_STOP.includes(kindRaw) ? '2' : kindRaw;
       const driver = get(r, 'driver_code') || null;
       if (kind === '1') {
         const kmS = get(r, 'distance_km');
@@ -321,7 +335,7 @@ const OwnCalc = (() => {
         if (kmS) { km = parseKm(kmS); if (km == null) errors.push({ line: i, reason: '距離が読めません' }); }
         const run = {
           plate, start: isoOf(st), end: isoOf(ed), km,
-          jk: ['1', '実', '実車'].includes(jkS) ? 1 : ['0', '空', '空車'].includes(jkS) ? 0 : null,
+          jk: JK_LOADED.includes(jkS) ? 1 : JK_EMPTY.includes(jkS) ? 0 : null,
           frm: prevStop ? prevStop.place : null, to: null, driver, line: i,
         };
         runs.push(run); openRun = run;
@@ -436,14 +450,14 @@ const OwnCalc = (() => {
   }
   const KANA_KANJI = /^[぀-ヿ一-鿿々]+$/;
   const VALUE_SHAPES = {
-    datetime: ['YYYY-MM-DD HH:MM の日時', (v) => /^\d{4}[-/]\d{1,2}[-/]\d{1,2}[ T]\d{1,2}:\d{2}(:\d{2})?$/.test(v)],
-    date_header: ['月/日 の日付の見出し', (v) => /^\d{1,2}\/\d{1,2}(\(.\))?$/.test(v) || /^\d{1,2}月\d{1,2}日(\(.\))?$/.test(v) || /^\d{4}[-/]\d{1,2}[-/]\d{1,2}(\(.\))?$/.test(v)],
-    flag01: ['0 か 1', (v) => v === '0' || v === '1'],
-    code12: ['1 か 2', (v) => v === '1' || v === '2'],
-    driver_code: ['英大文字 1 字と数字 2 桁', (v) => /^[A-Z]\d{2}$/.test(v)],
+    datetime: ['YYYY-MM-DD HH:MM の日時', (v) => /^[0-9]{4}[-/][0-9]{1,2}[-/][0-9]{1,2}[ T][0-9]{1,2}:[0-9]{2}(:[0-9]{2})?$/.test(v)],
+    date_header: ['月/日 の日付の見出し', (v) => /^[0-9]{1,2}\/[0-9]{1,2}(\(.\))?$/.test(v) || /^[0-9]{1,2}月[0-9]{1,2}日(\(.\))?$/.test(v) || /^[0-9]{4}[-/][0-9]{1,2}[-/][0-9]{1,2}(\(.\))?$/.test(v)],
+    flag01: ['0 か 1', (v) => ['0', '1', ...JK_LOADED, ...JK_EMPTY].includes(v)],
+    code12: ['1 か 2', (v) => ['1', '2', ...KIND_RUN, ...KIND_STOP].includes(v)],
+    driver_code: ['英大文字 1 字と数字 2 桁', (v) => /^[A-Z][0-9]{2}$/.test(v)],
     plate: ['4 桁の番号をふくむ車番', (v) => normalizePlate(v) != null],
-    vehicle_type: ['「大型」か「数字 + t」', (v) => /^(大型|\d+t)$/.test(v)],
-    decimal: ['小数まじりの数字', (v) => /^\d+(\.\d+)?$/.test(v)],
+    vehicle_type: ['「大型」か「数字 + t」', (v) => /^(大型|[0-9]+t)$/.test(v)],
+    decimal: ['小数まじりの数字', (v) => /^[0-9]+(\.[0-9]+)?$/.test(v)],
     place_kanji: ['漢字・かなだけの名称', (v) => KANA_KANJI.test(v)],
   };
   const ROLE_SHAPE = {
@@ -456,8 +470,9 @@ const OwnCalc = (() => {
     vehicle_type: '車種', date: '日付',
   };
   const nonBlank = (values) => values.map((v) => (v || '').trim()).filter((v) => v);
+  const NFKC_SHAPES = ['datetime', 'date_header', 'flag01', 'code12', 'decimal', 'driver_code']; // 全角を直してから当てる形（車種と地点名は、サンプルの黄色の例のため元の文字のまま。own.py と同じ）
   function shapeRatio(values, key) {
-    const vs = nonBlank(values);
+    const vs = values.map((v) => (NFKC_SHAPES.includes(key) ? nfkc(v) : String(v == null ? '' : v)).trim()).filter((v) => v);
     if (!vs.length) return 0.0;
     const ok = VALUE_SHAPES[key][1];
     return vs.filter(ok).length / vs.length;
@@ -504,9 +519,29 @@ const OwnCalc = (() => {
 
   /* ------------------------------------------------------------ 数字と表 */
 
+  // 積んだ重さが、その車の最大積載量を超える区間。積載率・積載効率の平均には入れず、確認のカードと気づきに出す（own.py の over_max_legs と同じ）
+  function overMaxLegs(legs, vehicles) {
+    const cap = {};
+    for (const v of vehicles) cap[v.plate] = v.max_load_kg;
+    return legs.filter((l) => l.weight_kg && cap[l.plate] && l.weight_kg > cap[l.plate]);
+  }
+  const tons = (kg) => fix(kg / 1000, 1);
+  // 最大積載量を超える重さの区間ごとの確認のカード（id は呼び出し側が付ける。own.py の weight_confirm_items と同じ）
+  function weightConfirmItems(legs, vehicles) {
+    const cap = {};
+    for (const v of vehicles) cap[v.plate] = v.max_load_kg;
+    return overMaxLegs(legs, vehicles).map((l) => ({
+      id: '', key: `weight:${l.id}`, effect: 'kpi', kind: 'weight', source: '配車表', title: `${md(l.date)} 車番 ${l.plate} の積んだ重さ`,
+      original: `配車表の重さ ${tons(l.weight_kg)}t が、最大積載量 ${tons(cap[l.plate])}t を超えています`,
+      proposal: '積載率・積載効率に入れない（t と kg の取り違えや、桁の間違いかもしれません）', confidence: null, color: 'yellow', leg: l.id,
+      formula: '積んだ重さが最大積載量を超える区間は、率に入れません', claude: null,
+    }));
+  }
+
   function kpis(legs, vehicles) {
     const cls = {};
     for (const v of vehicles) cls[v.plate] = v;
+    const overSet = new Set(overMaxLegs(legs, vehicles));
     const n = legs.length;
     const isJudged = (l) => (l.kind === 'loaded' || l.kind === 'empty') && l.km;
     const judged = legs.filter(isJudged);
@@ -514,7 +549,7 @@ const OwnCalc = (() => {
     const rate = (ls) => { const tot = sum(ls); return tot ? sum(ls.filter((l) => l.kind === 'loaded')) / tot : null; };
     const large = legs.filter((l) => (cls[l.plate] || {}).cls === '大型');
     const largeJudged = large.filter(isJudged);
-    const withW = large.filter((l) => l.kind === 'loaded' && l.weight_kg && cls[l.plate].max_load_kg);
+    const withW = large.filter((l) => l.kind === 'loaded' && l.weight_kg && cls[l.plate].max_load_kg && !overSet.has(l));
     const loadRate = withW.length ? withW.reduce((a, l) => a + l.weight_kg / cls[l.plate].max_load_kg, 0) / withW.length : null;
     const largeRate = rate(largeJudged);
     return {
@@ -523,7 +558,8 @@ const OwnCalc = (() => {
         km_loaded: pyRound(sum(judged.filter((l) => l.kind === 'loaded')), 1), km_empty: pyRound(sum(judged.filter((l) => l.kind === 'empty')), 1),
         formula: '実車の km ÷ 走った km（実車か空車かが判定できた区間だけ）',
       },
-      load_rate: { value: loadRate, legs: withW.length, of_large: large.length, of: n, share: n ? withW.length / n : 0.0, formula: '積んだ重さ ÷ 最大積載量（大型の実車の区間のうち、重さが分かる区間の平均）' },
+      load_rate: { value: loadRate, legs: withW.length, of_large: large.length, of: n, share: n ? withW.length / n : 0.0,
+        over_max: overSet.size, formula: '積んだ重さ ÷ 最大積載量（大型の実車の区間のうち、重さが分かる区間の平均。最大積載量を超える重さの区間は入れません）' },
       large_actual_rate: { value: largeRate, legs: largeJudged.length, of_large: large.length },
       load_efficiency: { value: loadRate != null && largeRate != null ? loadRate * largeRate : null, formula: '大型の積載率 × 大型の実車率' },
     };
@@ -658,6 +694,17 @@ const OwnCalc = (() => {
         { label: '配車表を取り込む', action: 'import', payload: {} },
         unk.slice().sort((a, b) => cmp(a.date, b.date) || cmp(a.plate, b.plate)).map(evLeg));
     }
+
+    // 規則 7: 積んだ重さが最大積載量を超える記録（積載率に入れていない。無いときは出さない）
+    const over = overMaxLegs(legs, vehicles);
+    if (over.length) {
+      const cap = {};
+      for (const v of vehicles) cap[v.plate] = v.max_load_kg;
+      add(7, `積んだ重さが最大積載量を超えている記録が ${over.length} 件ありました。積載率と積載効率の平均には入れていません。重さの単位（t と kg）や桁を、元の配車表で確かめてください。`,
+        [{ k: '最大積載量を超える記録', v: `${over.length} 件` }],
+        { label: '元の行を見る', action: 'show_evidence', payload: {} },
+        over.slice().sort((a, b) => cmp(a.date, b.date) || cmp(a.plate, b.plate)).map((l) => ({ ...evLeg(l), text: `重さ ${tons(l.weight_kg)}t > 最大積載量 ${tons(cap[l.plate])}t` })).slice(0, 40));
+    }
     return out;
   }
 
@@ -774,7 +821,9 @@ const OwnCalc = (() => {
   function analyzeInner(files, o) {
     const parsed = files.map((f) => ({ name: f.name, encoding: f.encoding || null, rows: parseCsv(f.text) }));
     for (const f of parsed) f.kind = fileKind(f.rows);
-    const hf = parsed.find((f) => f.kind === 'haisha') || null;
+    const hfs = parsed.filter((f) => f.kind === 'haisha');
+    const hf = hfs[0] || null;
+    const extraHaisha = hfs.slice(1); // 配車表は 1 つだけ読む。2 つ目以降は読まずに、読めなかったファイルとして出す
     const dfs = parsed.filter((f) => f.kind === 'digitaco');
     const otherFiles = parsed.filter((f) => !f.kind);
 
@@ -799,6 +848,9 @@ const OwnCalc = (() => {
       yc = { year: y0, candidates: [y0], ambiguous: false, source: 'digitaco' };
     } else yc = inferYear([]);
     const byUser = !!o.year;
+    if (!byUser && yc.year == null) { // 見出しの曜日に合う年が複数ある（デジタコの日付でも絞れない）: いちばん新しい年を黙って使わず、利用者が選ぶまで計算しない
+      return { needs_year: true, failed: null, year_choice: { year: null, candidates: yc.candidates, ambiguous: true, source: yc.source, by_user: false }, files: parsed.map((f) => ({ name: f.name, kind: f.kind })) };
+    }
     const year = byUser ? +o.year : yc.year;
     const yearChoice = { year, candidates: yc.candidates, ambiguous: !!yc.ambiguous, source: yc.source, by_user: byUser };
 
@@ -896,6 +948,9 @@ const OwnCalc = (() => {
     }
     for (const f of otherFiles) {
       unreadable.push({ line: 1, col: null, original: (f.rows[0] || []).slice(0, 6).join('、'), reason: '配車表にもデジタコにも見えません（車番と日付の列、または開始・終了の日時の列が必要です）', file: f.name, where: '見出しの行' });
+    }
+    for (const f of extraHaisha) {
+      unreadable.push({ line: 1, col: null, original: (f.rows[0] || []).slice(0, 6).join('、'), reason: `配車表は 1 つだけ読みます（${hf.name} を読みました）。この配車表は読んでいません`, file: f.name, where: '見出しの行' });
     }
 
     // 車両
@@ -1008,6 +1063,23 @@ const OwnCalc = (() => {
       }
     }
 
+    // 最大積載量を超える重さ: 確認のカードを作り、利用者の決定を当ててから率を計算する
+    const wItems = weightConfirmItems(legs, vehicles), wNote = {};
+    const capOf = {};
+    for (const v of vehicles) capOf[v.plate] = v.max_load_kg;
+    for (const it of wItems) {
+      const dd = decOf(it.key), l = legs.find((x) => x.id === it.leg);
+      if (!dd) continue;
+      let applied = false, note = '';
+      if (dd.act === 'ok') note = '確定しました（率に入れないままです）';
+      else if (dd.act === 'skip') { l.weight_kg = null; l.sources.weight = '読まない'; applied = true; note = 'この重さを読まないことにして、計算し直しました（積載率には入れません）'; }
+      else {
+        const w = parseWeight(dd.text);
+        if (w && w.kg > 0) { l.weight_kg = w.kg; l.sources.weight = '利用者の修正'; applied = true; note = `重さを ${tons(w.kg)}t にしました。` + (w.kg > capOf[l.plate] ? 'まだ最大積載量を超えているので、率には入れません' : '積載率に入れました'); }
+        else note = '重さを 4.6t や 4600kg のように入れてください（記号は付けません）。値は変えていません';
+      }
+      wNote[it.key] = { applied, note };
+    }
     const estLabel = o.estKm ? 'OSRM の推定' : '推定';
     const kp = kpis(legs, vehicles);
     const table = weekdayTable(legs, stops, dock);
@@ -1039,12 +1111,14 @@ const OwnCalc = (() => {
         });
       }
     }
+    confirm.push(...wItems);
     confirm.forEach((it, n) => { it.id = `C${n + 1}`; });
     for (const c of confirm) { // 利用者の決定を添える（カードは決定のあとも残す。取り消せるように）
       const dd = decOf(c.key);
       if (!dd) { c.decision = null; continue; }
       let applied = false, note = '';
       if (c.kind === 'link') ({ applied, note } = legNote[c.key] || { applied: false, note: '' });
+      else if (c.kind === 'weight') ({ applied, note } = wNote[c.key] || { applied: false, note: '' });
       else if (c.kind === 'column') {
         const known = !!roleOfDict(c.column);
         if (dd.act === 'ok') note = '確定しました（読み方は変えていません）';
@@ -1077,11 +1151,20 @@ const OwnCalc = (() => {
         file: df.file, kind: 'デジタコ', shape: '1 行 = 1 回の走行か停車の縦の形', encoding: df.encoding,
         verdict: `1 行 = 1 回の走行か停車の縦の形です。列 ${df.columns.length} 個のうち ${mapped} 個を辞書で対応づけました。${miss.length} 個は分かりません（列名: ${miss.join('、')}）。読まずに進めます。`,
         cells: df.rows, ok: df.rows - df.errors, pending: i === 0 ? pendD : 0, unreadable: df.errors,
-        note: i === 0 ? null : `列の対応は ${dFiles[0].file} と同じです`,
+        note: (() => { const same = dFiles.slice(0, i).find((e) => columnSignature(e.columns) === columnSignature(df.columns)); return same ? `列の対応は ${same.file} と同じです` : null; })(),
       });
     });
     for (const x of noPlate) files2.push({ file: x.f.name, kind: 'デジタコ', shape: '読めませんでした', encoding: x.f.encoding, verdict: 'ファイル名から車番が分からないため、読みませんでした。', cells: 0, ok: 0, pending: 0, unreadable: 1 });
     for (const f of otherFiles) files2.push({ file: f.name, kind: '不明', shape: '読めませんでした', encoding: f.encoding, verdict: '配車表にもデジタコにも見えないため、読みませんでした。', cells: Math.max(0, f.rows.length - 1), ok: 0, pending: 0, unreadable: 1 });
+    for (const f of extraHaisha) files2.push({ file: f.name, kind: '配車表', shape: '読めませんでした', encoding: f.encoding, verdict: `配車表は 1 つだけ読みます（${hf.name} を読みました）。この配車表は読みませんでした。`, cells: Math.max(0, f.rows.length - 1), ok: 0, pending: 0, unreadable: 1 });
+
+    // ファイルごとに、区間か停車を 1 件でも取り出せたかを数える（取り出せなかったファイルは「読めなかった」）
+    const filesUnread = [];
+    if (hf && !haishaLegs.length) filesUnread.push({ file: hf.name, reason: '区間を 1 件も取り出せませんでした' });
+    for (const df of dFiles) if (!runs.some((r) => r.plate === df.plate && r.ref.file === df.file) && !stops.some((s) => s.plate === df.plate && s.ref.file === df.file)) filesUnread.push({ file: df.file, reason: '走行も停車も取り出せませんでした' });
+    for (const x of noPlate) filesUnread.push({ file: x.f.name, reason: 'ファイル名から車番が分かりません' });
+    for (const f of otherFiles) filesUnread.push({ file: f.name, reason: '配車表にもデジタコにも見えません' });
+    for (const f of extraHaisha) filesUnread.push({ file: f.name, reason: '配車表は 1 つだけ読みます' });
 
     const counts = {
       legs: legs.length, loaded: cl.counts.loaded, empty: cl.counts.empty, unknown: cl.counts.unknown, unknown_ratio: pyRound(cl.unknown_ratio, 4),
@@ -1097,13 +1180,18 @@ const OwnCalc = (() => {
       company: { name: co.name || '自社のファイル', city: co.city || '', code: co.code || '', vehicles: vehicles.length },
       places, base, dock,
       route: { path: o.routePath || null, osrm_km: null, note: o.routeNote || '' },
-      vehicles, files: files2, unreadable, paper: { count: 0, text: '紙の日報・チャート紙は読みません' },
+      vehicles, files: files2, files_read: parsed.length - filesUnread.length, files_unread: filesUnread, unreadable, paper: { count: 0, text: '紙の日報・チャート紙は読みません' },
       columns: columns.map((c) => { const { claude_input: _x, ...rest } = c; return rest; }),
       claude: { present: false, model: null, created_at: null, label: 'Claude の提案: 使いません' },
       confirm, legs: legs.map(legJson), stops: stops.map(stopJson), shifts,
       kpis: kp, table, insights: ins, counts, national: NATIONAL, unplaced,
       encodings: parsed.map((f) => ({ file: f.name, encoding: f.encoding })),
     };
+  }
+
+  // 列の対応（列名 → 役割）。同じ名前の列が同じ役割に当たるときだけ、2 つのファイルの列の対応が同じ（own.py の column_signature と同じ）
+  function columnSignature(columns) {
+    return columns.map((c) => `${colKey(c)}=${roleOf(c) || ''}`).sort().join('|');
   }
 
   function legJson(l) {
@@ -1252,7 +1340,7 @@ const OwnCalc = (() => {
   return {
     analyze, decode, parseCsv, wideToLong, parseCell, parseTime, parseDigitaco, normalizePlate, link, classifyLegs, confidence, confidenceColor, shapeRatio, bestRoleFor,
     kousokuHours, buildShifts, kpis, weekdayTable, insights, matchMuni, legsCsv, costs, summaryText, pyRound,
-    toKitLegs, resolveRole, inferYear, assignHeadYears, parseKm, parseUnit, YEAR_RANGE: [YEAR_MIN, YEAR_MAX], DIGITACO_DICT, HAISHA_DICT, ROLE_LABEL, NATIONAL,
+    toKitLegs, resolveRole, inferYear, assignHeadYears, parseKm, parseWeight, parseDT, overMaxLegs, parseUnit, YEAR_RANGE: [YEAR_MIN, YEAR_MAX], DIGITACO_DICT, HAISHA_DICT, ROLE_LABEL, NATIONAL,
   };
 })();
 if (typeof window !== 'undefined') window.OwnCalc = OwnCalc;

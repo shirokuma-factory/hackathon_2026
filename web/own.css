@@ -303,3 +303,13 @@ td.o-hint { padding: 4px; }
 .o-err { margin: 4px 0; font-size: 12px; font-weight: 700; color: var(--error); line-height: 1.5; }
 .o-cin input[aria-invalid="true"] { border-color: var(--error); }
 .o-eff { color: var(--muted); }
+
+/* 年を選ぶまで計算しない配車表（2026-11-06）と、3 つの数字の式・停車の範囲の注 */
+.o-year.o-pend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.o-year.o-pend > b { flex: 1 1 100%; font-size: 12.5px; }
+.o-year.o-pend > small { flex: 1 1 100%; margin-top: 0; }
+.o-fm { margin: 6px 14px 0; font-size: 12px; color: var(--muted); }
+.o-fm summary { cursor: pointer; padding: 4px 0; color: var(--text, inherit); }
+.o-fm summary:focus-visible { outline: 2px solid var(--accent, #5cc8ff); outline-offset: 2px; }
+.o-fm ul { margin: 4px 0 0; padding-left: 18px; line-height: 1.7; }
+.o-scope { margin-top: 6px; }

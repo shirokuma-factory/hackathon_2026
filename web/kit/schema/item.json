@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kit/schema/item.json",
+  "title": "荷（送り方を比べる・積付けの入力の 1 行）",
+  "description": "荷物の 1 行。送り方を比べる画面（web/work.js の items）と src/shipcompare/models.py の Item と同じ欄。寸法は cm、重さは 1 個あたりの kg。分からない欄は null にし、0 にはしない。",
+  "type": "object",
+  "required": [
+    "items"
+  ],
+  "properties": {
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/item"
+      }
+    }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "description": "ファイルの説明（任意）。架空のデータには fiction: true を付ける",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "fiction": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "basis": {
+      "type": "string",
+      "enum": [
+        "実測",
+        "推定",
+        "仮定"
+      ],
+      "description": "実測 = 記録から数えた値、推定 = 計算で求めた値、仮定 = 利用者が置いた値"
+    },
+    "item": {
+      "type": "object",
+      "required": [
+        "count",
+        "length_cm",
+        "width_cm",
+        "height_cm",
+        "weight_kg",
+        "basis"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "荷の呼び名（任意）"
+        },
+        "count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "個数。未入力は null（0 にはしない）"
+        },
+        "length_cm": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "description": "縦（cm）。未入力は null"
+        },
+        "width_cm": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "description": "横（cm）。未入力は null"
+        },
+        "height_cm": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "description": "高さ（cm）。未入力は null"
+        },
+        "weight_kg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "description": "1 個の重さ（kg）。全体の重さではない。未入力は null"
+        },
+        "source": {
+          "type": "string"
+        },
+        "basis": {
+          "$ref": "#/$defs/basis"
+        }
+      }
+    }
+  }
+}

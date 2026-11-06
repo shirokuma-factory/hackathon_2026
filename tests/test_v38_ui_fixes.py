@@ -195,7 +195,8 @@ def test_f08_loadview_dialog_traps_focus_and_returns_it():
         _key(page, "Escape", "Escape", 27)
         time.sleep(0.4)
         assert page.js("document.activeElement.id") == "ed-3d"
-        assert page.js("document.querySelectorAll('[inert]').length") == 0
+        # 閉じている詳細・作業パネルは inert が付いたまま（SPEC §40）。ダイアログが付けた inert だけが残っていないことを見る
+        assert page.js("document.querySelectorAll('[inert]:not(#detail):not(#work)').length") == 0
         _clean(page)
 
 

@@ -49,13 +49,13 @@ CLOCK_2027 = """
 # (見出し, year, candidates, ambiguous, source)
 YEAR_VECTORS = [
     (["車番", "車種", "2/27(金)", "2/28(土)", "3/1(日)"], 2026, [2026], False, "weekday"),  # 2 月の曜日: 2026 年だけ（2020 年は閏年で木曜）
-    (["車番", "10/1(木)", "10/2(金)"], 2026, [2020, 2026], True, "weekday"),  # 10 月の曜日: 2020 年と 2026 年が同じ
-    (["車番", "12/30(水)", "12/31(木)", "1/1(金)", "1/2(土)"], 2026, [2020, 2026], True, "weekday"),  # 年をまたぐ
+    (["車番", "10/1(木)", "10/2(金)"], None, [2020, 2026], True, "weekday"),  # 10 月の曜日: 2020 年と 2026 年が同じ。年は決めない（SPEC §40）
+    (["車番", "12/30(水)", "12/31(木)", "1/1(金)", "1/2(土)"], None, [2020, 2026], True, "weekday"),  # 年をまたぐ
     (["車番", "10/1", "10/2"], 2026, [2024, 2025, 2026, 2027, 2028, 2029, 2030], True, "none"),  # 曜日が無い
     (["車番", "10/1(木)", "10/2(木)"], 2026, [2024, 2025, 2026, 2027, 2028, 2029, 2030], True, "mismatch"),  # どの年にも合わない（続く 2 日が同じ曜日）
     (["車番", "２/２７(金)", "２/２８(土)", "３/１(日)"], 2026, [2026], False, "weekday"),  # 全角
     (["車番", "2025/10/1", "2025/10/2"], 2025, [2025], False, "explicit"),
-    (["車番", "10月1日(木)", "10月2日(金)"], 2026, [2020, 2026], True, "weekday"),
+    (["車番", "10月1日(木)", "10月2日(金)"], None, [2020, 2026], True, "weekday"),
     (["車番", "2/29(土)", "3/1(日)"], 2020, [2020], False, "weekday"),  # 2/29 があるのは閏年だけ
 ]
 
@@ -194,17 +194,19 @@ def test_year_comes_from_weekday_headings_not_from_the_2027_clock(calc):
     d2 = _an(calc, [{"name": "haisha.csv", "text": _haisha(["車番", "車種", "10/1", "10/2"])}])
     assert d2["year"] == 2026 and d2["year_choice"]["ambiguous"] is True and d2["year_choice"]["source"] == "none"
     assert 2027 in d2["year_choice"]["candidates"] and all(lg["date"].startswith("2026-") for lg in d2["legs"])
-    # 合う年が複数: いちばん新しい年を初期値にして、選び直せる
+    # 合う年が複数: いちばん新しい年を黙って使わず、年が選ばれるまで計算しない（SPEC §40）
     head3 = ["車番", "車種", "10/1(木)", "10/2(金)"]
     d3 = _an(calc, [{"name": "haisha.csv", "text": _haisha(head3)}])
-    assert d3["year"] == 2026 and d3["year_choice"]["candidates"] == [2020, 2026] and d3["year_choice"]["ambiguous"] is True
+    assert d3["needs_year"] is True and d3["year_choice"]["year"] is None and d3["year_choice"]["candidates"] == [2020, 2026] and "legs" not in d3
+    d3b = _an(calc, [{"name": "haisha.csv", "text": _haisha(head3)}], {"year": 2026})
+    assert d3b["year"] == 2026 and d3b["year_choice"]["ambiguous"] is True and d3b["year_choice"]["by_user"] is True
     d4 = _an(calc, [{"name": "haisha.csv", "text": _haisha(head3)}], {"year": 2020})
     assert d4["year"] == 2020 and d4["year_choice"]["by_user"] is True and sorted({lg["date"] for lg in d4["legs"]}) == ["2020-10-01", "2020-10-02"]
 
 
 def test_sheet_spanning_years_rolls_january_into_the_next_year(calc):
     head = ["車番", "車種", "12/30(水)", "12/31(木)", "1/1(金)", "1/2(土)"]
-    d = _an(calc, [{"name": "haisha.csv", "text": _haisha(head)}])
+    d = _an(calc, [{"name": "haisha.csv", "text": _haisha(head)}], {"year": 2026})
     assert d["year"] == 2026
     assert sorted({lg["date"] for lg in d["legs"]}) == ["2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02"]
     assert d["period"] == {"from": "2026-12-30", "to": "2027-01-02"}
@@ -221,7 +223,7 @@ def test_unreadable_files_only_is_an_import_failure_with_no_month_and_no_cost(ca
     assert d["mon"] is None and d["month"] == "" and d["period"] is None
     c = calc.js(f"OwnCalc.costs({json.dumps(d, ensure_ascii=False)}, '30', '3000')")
     assert c["empty"] is None and c["wait"] is None and c["emptyKm"] is None
-    ok = _an(calc, [{"name": "haisha.csv", "text": _haisha(["車番", "車種", "2/27(金)"])}])
+    ok = _an(calc, [{"name": "haisha.csv", "text": _haisha(["車番", "車種", "2/27(金)"])}], {"year": 2026})  # 曜日 1 つでは年が決まらない（2015・2026・2032）
     assert ok["failed"] is None and ok["mon"] == 2
 
 
@@ -404,15 +406,34 @@ def _import_examples(page):
     time.sleep(0.4)
 
 
-def test_ui_confirm_decisions_recompute_the_numbers_and_can_be_undone(app):
+# 距離のずれが必ず出る自作の入力（SPEC §40）。行き 1 本のデジタコのメーターが 900 km で、直線距離 × 1.25 の推定（約 575 km）より 15% 以上長い。
+# 例のデータの有無にかかわらず、距離のずれの確認カードが 1 枚以上できる
+GAP_HAISHA = "車番,車種,2026/10/1,2026/10/2\n1234,大型,加古川→江東 着5:30,江東→加古川 （空）\n"
+GAP_DIGITACO = ("KBN,ST_TIME,ED_TIME,ODO_KM,JK_FLG,POS_NAME,DRV_CD\n"
+                "1,2026-10-01 00:00,2026-10-01 10:00,900,1,,D01\n"
+                "2,2026-10-01 10:00,2026-10-01 11:00,,,江東,D01\n")
+
+
+def _import_gap_files(page, tmp_path):
+    h = tmp_path / "haisha_gap.csv"
+    h.write_text(GAP_HAISHA, encoding="utf-8")
+    d = tmp_path / "digitaco_1234.csv"
+    d.write_text(GAP_DIGITACO, encoding="utf-8")
+    _to_sample(page)
+    page.js("Own.setTab('import')")
+    _set_files(page, [h, d])
+    page.wait(lambda: "自社のファイル: 2 件" in _src(page), 120, "取り込み")
+    time.sleep(0.4)
+
+
+def test_ui_confirm_decisions_recompute_the_numbers_and_can_be_undone(app, tmp_path):
     page = app
-    _import_examples(page)
+    _import_gap_files(page, tmp_path)
     kp0 = page.js("Own.state.data.kpis.actual_rate")
     page.js("Own.setTab('confirm')")
     key = page.js("(Own.state.data.confirm.find(c => c.kind === 'link' && c.key.endsWith(':distance') && "
                   "Own.state.data.legs.find(l => l.id === c.leg && l.kind !== 'unknown')) || {}).key")
-    if not key:
-        pytest.skip("この例のデータには、判定できた区間の距離のずれがありません（place が置けないため推定距離が無い）")
+    assert key, "距離のずれの確認カードができていません（自作の入力で必ずできるはず）"
     sel = f"#own-body .o-card[data-key=\"{key}\"]"
     page.js(f"document.querySelector('{sel} [data-act=skip]').click()")
     page.wait(lambda: page.js(f"(Own.state.data.confirm.find(c => c.key === {json.dumps(key)}) || {{}}).decision != null"), 20, "決定の反映")

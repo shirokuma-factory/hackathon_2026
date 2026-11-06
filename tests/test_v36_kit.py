@@ -29,6 +29,7 @@ DATA = ROOT / "examples" / "kit" / "data"
 PAIRS = {  # データのファイル → 形のファイル
     "flows.json": "flow.json", "legs.json": "leg.json", "points.json": "point.json",
     "trips.json": "trip.json", "vehicle.json": "vehicle.json", "placement.json": "placement.json",
+    "items.json": "item.json", "waiting_records.json": "waiting_record.json", "sites.json": "site.json",  # 設計 §4 の荷・荷待ちの記録・拠点（SPEC §40）
 }
 MODULES = ["kit", "flows", "legs", "points", "timeline", "load3d"]
 
@@ -131,10 +132,11 @@ def test_g151_schemas_reject_broken_data(data_file, schema_file):
     """形が緩すぎないことの確認: 必須の欄を 1 つ消すと落ちる。"""
     schema = _load(SCHEMA / schema_file)
     inst = _load(DATA / data_file)
-    if "required" in schema and not any(k in inst for k in ("flows", "legs", "points", "vehicles")):
+    keys = ("flows", "legs", "points", "vehicles", "records", "sites") + (("items",) if schema_file == "item.json" else ())  # placement.json にも items がある
+    if "required" in schema and not any(k in inst for k in keys):
         broken = {k: v for k, v in inst.items() if k != schema["required"][0]}
     else:
-        key = next(k for k in ("flows", "legs", "points", "vehicles") if k in inst)
+        key = next(k for k in keys if k in inst)
         first = dict(inst[key][0])
         first.pop(next(k for k in ("basis", "unit") if k in first), None)
         broken = {**inst, key: [first] + inst[key][1:]}
@@ -143,9 +145,9 @@ def test_g151_schemas_reject_broken_data(data_file, schema_file):
 
 
 def test_every_example_item_says_whether_it_is_measured_estimated_or_assumed():
-    for d in ("flows.json", "legs.json", "points.json", "vehicle.json"):
+    for d in ("flows.json", "legs.json", "points.json", "vehicle.json", "items.json", "waiting_records.json", "sites.json"):
         inst = _load(DATA / d)
-        items = next((inst[k] for k in ("flows", "legs", "points") if k in inst), [inst])
+        items = next((inst[k] for k in ("flows", "legs", "points", "items", "records", "sites") if k in inst), [inst])
         assert items and all(x["basis"] in ("実測", "推定", "仮定") for x in items), d
     assert all(v["basis"] in ("実測", "推定", "仮定") for v in _load(DATA / "trips.json")["vehicles"])
     for d in PAIRS:
@@ -326,13 +328,24 @@ def test_g150_example_page_draws_five_parts_without_console_problems(width, exam
         # 横にあふれない
         assert s["scrollW"] <= s["clientW"] + 1, s
         # 再生ボタン: 押すと時刻が進み、もう一度押すと止まる
+        # 「1 秒 = 15 分」で約 2 秒再生すると、約 30 分（1 800 000 ms）進む。実際に経過した時間で期待値を出して比べる
+        page.js("(() => { const s = document.querySelector('[data-k=speed]'); s.value = '15'; s.dispatchEvent(new Event('change')); })()")
         t0 = page.js("__kit.parts.timeline.time")
-        page.js("document.querySelector('[data-k=play]').click()")
-        page.pump(1.5)
+        page.js("window.__playT = performance.now(); document.querySelector('[data-k=play]').click()")
+        page.pump(2)
         assert page.js("__kit.parts.timeline.playing") is True
-        assert page.js("__kit.parts.timeline.time") > t0
         page.js("document.querySelector('[data-k=play]').click()")
         assert page.js("__kit.parts.timeline.playing") is False
+        moved = page.js("__kit.parts.timeline.time") - t0
+        elapsed = page.js("(performance.now() - window.__playT) / 1000")
+        expected = elapsed * 15 * 60000
+        # 1 コマが 100ms を超えると進みを切り詰めるので、下は広めに取る。1/1000 の速さ（約 1800 ms）は確実に落ちる
+        assert 0.4 * expected <= moved <= 1.05 * expected, (moved, expected, elapsed)
+        assert moved >= 10 * 60000, moved  # 少なくとも 10 分は進む
+        # 帯（スライダー）の値は、開始からの分数と一致する
+        assert page.js("Number(document.querySelector('[data-k=range]').value)") >= 10
+        clock_txt = page.js("document.querySelector('[data-k=clock]').textContent")
+        assert clock_txt != "05:30", clock_txt
         # 点を押す
         page.js("document.querySelector('[data-kit=point]').click()")
         assert "を選びました" in page.js("document.querySelector('#status').textContent")

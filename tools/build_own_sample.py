@@ -400,6 +400,7 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
             lk_items.append({"id": "", "kind": "link", "source": "配車表とデジタコ", "title": f"{int(l['date'][5:7])}/{int(l['date'][8:10])} 車番 {l['plate']} の{'行き' if l['dir'] == 'out' else '帰り'}（{'時刻' if fl['type'] == 'time' else '距離'}）",
                              "original": orig, "proposal": prop, "confidence": None, "color": "yellow", "leg": l["id"], "formula": "距離が 15% 以上、時刻が 60 分以上ずれたら確認待ちに入れます", "claude": None})
     confirm += lk_items
+    confirm += own.weight_confirm_items(legs, vehicles)  # 最大積載量を超える重さ（サンプルには無い）
     for n, it in enumerate(confirm, start=1):
         it["id"] = f"C{n}"
     for u in unreadable:
@@ -417,14 +418,15 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
         "cells": h_cells, "ok": h_cells - len(unreadable), "pending": pend_h, "unreadable": len(unreadable),
     }]
     for df in d_files:
-        mapped = sum(1 for c in df["columns"] if c.upper() in own.DIGITACO_DICT)
-        miss = [c for c in df["columns"] if c.upper() not in own.DIGITACO_DICT]
+        mapped = sum(1 for c in df["columns"] if own.role_of(c))
+        miss = [c for c in df["columns"] if not own.role_of(c)]
         first = df is d_files[0]
+        same = next((e for e in d_files[:d_files.index(df)] if own.column_signature(e["columns"]) == own.column_signature(df["columns"])), None)  # 列の対応が同じ前のファイル
         files.append({
             "file": df["file"], "kind": "デジタコ", "shape": "1 行 = 1 回の走行か停車の縦の形",
             "verdict": f"1 行 = 1 回の走行か停車の縦の形です。列 {len(df['columns'])} 個のうち {mapped} 個を辞書で対応づけました。{len(miss)} 個は分かりません（列名: {'、'.join(miss)}）。読まずに進めます。",
             "cells": df["rows"], "ok": df["rows"] - df["errors"], "pending": pend_d if first else 0, "unreadable": df["errors"],
-            "note": None if first else "列の対応は digitaco_1234.csv と同じです",
+            "note": f"列の対応は {same['file']} と同じです" if same else None,
         })
     counts = {
         "legs": len(legs), "loaded": cl["counts"]["loaded"], "empty": cl["counts"]["empty"], "unknown": cl["counts"]["unknown"],

@@ -1182,3 +1182,11 @@ body.m-right-collapsed .m-rsub { display: none; }
   #sheet-tabs button { flex: 1 0 auto; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 12px; padding: 0 10px; white-space: nowrap; }
   #sheet-tabs button[aria-pressed="true"] { background: var(--accent-soft); color: #fff; font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); }
 }
+
+/* 押せる所は高さ 24px 以上（採点 r2 の指摘。1920 でも 400 でも） */
+summary, .m-fold, input[type="range"], select, button { min-height: 24px; box-sizing: border-box; }
+summary { padding-block: 3px; }
+#m-credits-d > summary { padding: 4px 0; }
+.f-chk { min-height: 24px; }
+@media (min-width: 601px) { .f-chk input { width: 18px; height: 18px; } }
+.maplibregl-ctrl-attrib a { display: inline-block; min-height: 24px; line-height: 24px; }

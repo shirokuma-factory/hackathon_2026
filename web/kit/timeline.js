@@ -188,7 +188,7 @@
       btn.textContent = cfg.texts.play; btn.setAttribute('aria-pressed', 'false');
     }
     function step(dtMs) {
-      st.t += dtMs * st.speed / 1000 * 60; // 1 秒に speed 分
+      st.t += dtMs / 1000 * st.speed * 60000; // st.t はミリ秒。実時間 1 秒に speed 分（= speed × 60000 ms）進める
       if (st.t >= st.t1) { st.t = st.t1; paint(); pauseNow(); return false; }
       paint();
       return true;

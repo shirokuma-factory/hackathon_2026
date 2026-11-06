@@ -56,10 +56,11 @@ def test_formula_kanto_table_gives_a_different_amount():
 
 
 def test_formula_weight_ratio_wins_for_a_heavy_light_floor_cargo():
-    s = spaceb.parse_shipment({"shipment": {"items": [{"count": 10, "length_cm": 50, "width_cm": 50, "height_cm": 50, "weight_kg": 300}]},
+    # 3000kg は最大積載量 2700kg を超えるので式を出さない（r2）。2500kg の重さで重さの割合が床の割合に勝つことを見る
+    s = spaceb.parse_shipment({"shipment": {"items": [{"count": 10, "length_cm": 50, "width_cm": 50, "height_cm": 50, "weight_kg": 250}]},
                                "dest_code": "28210"})
     r = spaceb.per_unit_reference(t7(), s, "0.7", "0", "近畿")
-    assert r["ratio_by"] == "重さ" and abs(r["ratio"] - 3000 / 2700) < 1e-9
+    assert r["ratio_by"] == "重さ" and abs(r["ratio"] - 2500 / 2700) < 1e-9
 
 
 @pytest.mark.parametrize("rate,disc,region", [("0", "0", "近畿"), ("1.1", "0", "近畿"), ("0.7", "0.15", "近畿"), ("0.7", "0.6", "近畿"),

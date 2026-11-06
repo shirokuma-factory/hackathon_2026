@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kit/schema/waiting_record.json",
+  "title": "荷待ちの記録（1 回の荷待ちの 1 行）",
+  "description": "web/waiting_calc.js と荷待ちのページ（web/waiting.html）の入力の 1 行（欄は COLUMNS の 16 個）。計算結果の欄（wait_min など）は入力に書かなくてよい。時刻は同じ日の HH:MM。",
+  "type": "object",
+  "required": [
+    "records"
+  ],
+  "properties": {
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/record"
+      }
+    }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "description": "ファイルの説明（任意）。架空のデータには fiction: true を付ける",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "fiction": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "basis": {
+      "type": "string",
+      "enum": [
+        "実測",
+        "推定",
+        "仮定"
+      ],
+      "description": "実測 = 記録から数えた値、推定 = 計算で求めた値、仮定 = 利用者が置いた値"
+    },
+    "record": {
+      "type": "object",
+      "required": [
+        "date",
+        "partner",
+        "arrive",
+        "start",
+        "basis"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "日付（YYYY-MM-DD）"
+        },
+        "vehicle_no": {
+          "type": "string",
+          "description": "車両番号（任意）"
+        },
+        "vehicle_class": {
+          "type": "string",
+          "description": "車両の区分（小型・中型・大型・トレーラー など）"
+        },
+        "partner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "契約の相手（荷主・元請）"
+        },
+        "place": {
+          "type": "string",
+          "description": "荷待ちをした場所。空なら「場所の記入なし」として数える"
+        },
+        "arrive": {
+          "type": "string",
+          "pattern": "^$|^[0-9]{1,2}:[0-9]{2}$",
+          "description": "実際の到着（HH:MM。記入なしは空の文字）"
+        },
+        "start": {
+          "type": "string",
+          "pattern": "^$|^[0-9]{1,2}:[0-9]{2}$",
+          "description": "荷役の開始（HH:MM。記入なしは空の文字）"
+        },
+        "end": {
+          "type": "string",
+          "pattern": "^$|^[0-9]{1,2}:[0-9]{2}$",
+          "description": "荷役の終了（HH:MM。記入なしは空の文字）"
+        },
+        "depart": {
+          "type": "string",
+          "pattern": "^$|^[0-9]{1,2}:[0-9]{2}$",
+          "description": "出発（HH:MM。記入なしは空の文字）"
+        },
+        "handler": {
+          "type": "string",
+          "enum": [
+            "",
+            "運転者",
+            "荷主側"
+          ],
+          "description": "荷役をした人"
+        },
+        "method": {
+          "type": "string",
+          "description": "荷役の方法（手積み など）"
+        },
+        "shipper_fault": {
+          "type": "string",
+          "enum": [
+            "",
+            "はい",
+            "いいえ"
+          ],
+          "description": "荷主等の都合の待機か"
+        },
+        "appointed": {
+          "type": "string",
+          "pattern": "^$|^[0-9]{1,2}:[0-9]{2}$",
+          "description": "指定の到着時刻（HH:MM。記入なしは空の文字）"
+        },
+        "side_work": {
+          "type": "string",
+          "description": "附帯業務の内容"
+        },
+        "side_min": {
+          "type": [
+            "string",
+            "number"
+          ],
+          "description": "附帯業務の分"
+        },
+        "post_wait": {
+          "type": [
+            "string",
+            "boolean"
+          ],
+          "description": "荷役の後の待機があるか"
+        },
+        "wait_min": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "計算結果（任意）: 荷待ちの分。入力では要らない"
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "実測",
+            "推定",
+            "仮定"
+          ],
+          "description": "実測 = 記録から数えた値、推定 = 計算で求めた値、仮定 = 利用者が置いた値"
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
