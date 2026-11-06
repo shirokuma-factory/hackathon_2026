@@ -132,4 +132,4 @@ API 形式の JSON は `workflows/comfyui/` に置きます。デモ動画の制
 
 - ぼかした文字を H3 が読めない字として描き直すことがありました。消したい文字は、ぼかさずに塗りつぶします。
 - C1 は 3.9 秒を過ぎると路面に赤い筋が出たので、0〜3.8 秒を 4 秒に伸ばして使います。
-- 生成物: `outputs/video/comfy/C1_final_4s.mp4`、`C2_final_4s.mp4`。採否は作成者が決めます（未定）。
+- 生成物: `outputs/video/comfy/C1_final_4s.mp4`、`C2_final_4s.mp4`。11/6 夜に作成者が採用しました。
