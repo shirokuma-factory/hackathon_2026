@@ -136,7 +136,17 @@ const WaitingShared = (() => {
       '積んだ人': 'handler', '荷役者': 'handler', '作業者': 'handler', '荷役した人': 'handler', '積んだ人名': 'handler',
       '受付': 'reception', '受付時刻': 'reception', '受付時間': 'reception', '受付日時': 'reception',
       '運送会社': 'partner', '運送事業者': 'partner', '運送業者': 'partner', '施設': 'place', '施設名': 'place', '拠点': 'place',
+      // ドライバーの手書きメモ・荷主の受付記録の言葉（SPEC §42）。driver.html のボタンは「呼ばれた（荷役開始）」
+      '呼ばれ': 'start', '呼ばれた': 'start', '呼出': 'start', '呼出し': 'start', '呼び出し': 'start', '呼出時刻': 'start', '呼出時間': 'start', '呼び出し時刻': 'start',
+      '作業開始': 'start', '作業開始時刻': 'start', '作業終了': 'end', '作業終了時刻': 'end',
+      '行き先': 'place', '行先': 'place', '積地': 'place', '積み地': 'place', '積込地': 'place',
   };
+  // 呼び出しの言葉の列。荷役開始の別の列（作業開始など）が同じ表にあるときは、荷役開始ではなく呼出（call）として読む（荷主の受付記録: 受付 → 呼出 → 作業開始）
+  const CALL_HEADERS = new Set(['呼ばれ', '呼ばれた', '呼出', '呼出し', '呼び出し', '呼出時刻', '呼出時間', '呼び出し時刻']);
+  // これらの列があるときは、運送会社の請求の書面の側の表（荷主の受付記録ではない）
+  const CARRIER_CONTEXT_COLS = ['shipper_fault', 'side_work', 'side_min', 'post_wait', 'handler', 'method', 'work_content', 'appointed'];
+  // 日付の無い時刻が前の時刻より小さいとき翌日と読むが、その差がこれを超えるなら誤りにする（9:00 → 8:30 を 23.5 時間と読まない）
+  const REVERSE_MAX_MIN = 12 * 60;
   const CLASS_ALIASES = {
     '小型': '小型', '小型車': '小型', '中型': '中型', '中型車': '中型', '大型': '大型', '大型車': '大型',
     'トレーラー': 'トレーラー', 'トレーラ': 'トレーラー', 'トレーラ車': 'トレーラー', 'トレーラー車': 'トレーラー',
@@ -279,7 +289,7 @@ const WaitingShared = (() => {
   function parsePasteFull(text) {
     const lines = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((ln) => ln.trim());
     const asks = [];
-    if (!lines.length) return { rows: [], defaulted: [], notes: [], asks: [] };
+    if (!lines.length) return { rows: [], defaulted: [], notes: [], asks: [], shipper_log: false };
     if (nz(text).includes(DRIVER_LABEL) && !lines.some((ln) => ln.includes(String.fromCharCode(9)))) {   // タブのある貼り付けは Excel の表（表題に「荷待ち記録」とあっても表として読む）
       const drows = parseDriverText(text);
       const defaulted = [], notes = [];
@@ -289,7 +299,7 @@ const WaitingShared = (() => {
         drows.forEach((r) => { r.shipper_fault = 'はい'; });
         defaulted.push('shipper_fault');
       }
-      return { rows: drows, defaulted, notes, asks };
+      return { rows: drows, defaulted, notes, asks, shipper_log: false };
     }
     const notes = [];
     let cols = COLUMNS.slice();
@@ -300,6 +310,9 @@ const WaitingShared = (() => {
     if (first.length && (first[0] === '日付' || first[0] === 'date' || known >= 3)) {
       header = true;
       const mapped = first.map((c) => (has(HEADER_ALIASES, c) ? HEADER_ALIASES[c] : null));
+      const startIdx = mapped.map((c, i) => (c === 'start' ? i : -1)).filter((i) => i >= 0);
+      const callIdx = startIdx.filter((i) => CALL_HEADERS.has(first[i]));
+      if (callIdx.length && callIdx.length < startIdx.length) callIdx.forEach((i) => { mapped[i] = 'call'; });   // 作業開始などの別の列があるとき、呼出は荷役開始にしない
       cols = mapped.map((c) => (c && c !== '_ignore' ? c : ''));   // 読まない列・知らない列は '' にして、行に入れない
       if (mapped.some((c, i) => c === 'partner' && ASK_PARTNER_HEADERS.has(first[i]))) asks.push(ASK_PARTNER);
       const seen = new Set();
@@ -323,9 +336,11 @@ const WaitingShared = (() => {
         }
       }
     }
+    // 荷主の自社の受付記録: 受付の列があり、運送会社の書面の側の列（荷主等の都合、荷役をした人、附帯業務など）が無い
+    const shipperLog = !!(header && cols.includes('reception') && !cols.includes('arrive') && !CARRIER_CONTEXT_COLS.some((c) => cols.includes(c)));
     // 到着の列が無く受付の列があるとき（荷主が自社の受付記録を貼る使い方）は、受付の時刻を到着として読む
     if (header && !cols.includes('arrive') && cols.includes('reception')) {
-      for (const r of rows) if (r.reception) { r.arrive = r.reception; delete r.reception; }
+      for (const r of rows) if (r.reception) { r.arrive = r.reception; delete r.reception; r.arrive_src = 'reception'; }   // 到着として読んだ印。早着の文を受付の言葉にする
       notes.push('到着の列が無いので、受付の時刻を到着として読みました（荷主の受付記録の使い方。受付の前に着いて待った時間は入りません）');
     }
     // 荷役をした人の列が無いとき: 荷役作業等の内容があれば運転者（法定の記録は運転者自身の荷役）、無ければ不明
@@ -350,11 +365,16 @@ const WaitingShared = (() => {
       rows.forEach((r) => { r.shipper_fault = 'はい'; });
       defaulted.push('shipper_fault');
     }
-    return { rows, defaulted, notes, asks };
+    return { rows, defaulted, notes, asks, shipper_log: shipperLog };
   }
   const parsePaste = (text) => parsePasteFull(text).rows;
 
   const ceilDiv = (a, b) => (a > 0 ? Math.ceil(a / b) : 0);
+
+  function reverseMsg(label, t, prevLabel, pt, gap) {
+    return `${label}（${fmtTime(t)}）が${prevLabel}（${fmtTime(pt)}）より前です。日付が無いので翌日と読むと ${Math.floor(gap / 60)} 時間 ${gap % 60} 分あいたことになります。` +
+      '日付つきの時刻（10/5 09:00 のように）で入れるか、時刻を確かめてください';
+  }
 
   function calcRow(n, raw, year, tariff, defaults) {
     const errs = [];
@@ -396,6 +416,8 @@ const WaitingShared = (() => {
     const appointed = needTime('appointed', '指定の到着時刻', false);
     const receptionRaw = norm(raw.reception);   // 受付の時刻（記録の一覧に出すだけ。計算には使わない。読めないときは行を落とさず注記する）
     const reception = receptionRaw ? parseTime(receptionRaw) : null;
+    const callRaw = norm(raw.call);   // 呼出の時刻（荷主の受付記録。記録の一覧に出すだけ。計算には使わない）
+    const call = callRaw ? parseTime(callRaw) : null;
     let sideMin = 0;
     if (g.side_min) {
       if (/^[0-9]{1,4}$/.test(nz(g.side_min))) sideMin = Number(nz(g.side_min));
@@ -460,7 +482,10 @@ const WaitingShared = (() => {
       if (sRel < 0) errs.push('荷役開始が到着より前です（日付と時刻を確かめてください）');
     } else {
       sRel = start - arrive;
-      if (sRel < 0) sRel += 1440;
+      if (sRel < 0) {
+        sRel += 1440;
+        if (sRel > REVERSE_MAX_MIN) errs.push(reverseMsg('荷役開始', start, '到着', arrive, sRel));
+      }
     }
     let eRel = null;
     if (end !== null) {
@@ -470,7 +495,10 @@ const WaitingShared = (() => {
         if (eRel < sRel) errs.push('荷役終了が荷役開始より前です（日付と時刻を確かめてください）');
       } else {
         eRel = end - arrive;
-        while (eRel < sRel) eRel += 1440;
+        if (eRel < sRel) {
+          while (eRel < sRel) eRel += 1440;
+          if (eRel - sRel > REVERSE_MAX_MIN) errs.push(reverseMsg('荷役終了', end, '荷役開始', start, eRel - sRel));
+        }
       }
     }
     let postMin = 0;   // 荷役終了 → 出発（荷役のあとの待ち）
@@ -483,7 +511,10 @@ const WaitingShared = (() => {
         if (depRel < floor) errs.push(`出発が${eRel !== null ? '荷役終了' : '荷役開始'}より前です（日付と時刻を確かめてください）`);
       } else {
         depRel = depart - arrive;
-        while (depRel < floor) depRel += 1440;
+        if (depRel < floor) {
+          while (depRel < floor) depRel += 1440;
+          if (depRel - floor > REVERSE_MAX_MIN) errs.push(reverseMsg('出発', depart, eRel !== null ? '荷役終了' : '荷役開始', eRel !== null ? end : start, depRel - floor));
+        }
       }
       if (postOn && eRel !== null) postMin = depRel - eRel;
     }
@@ -539,6 +570,7 @@ const WaitingShared = (() => {
     let early = '';
     if (appointed !== null && base > 0) early = 'designated';
     else if (appointed === null && arrive >= EARLY_FROM_MIN && arrive < EARLY_UNTIL_MIN) early = 'assumed';
+    if (callRaw && call === null) rowNotes.push(`呼出「${callRaw}」を読めなかったので、呼出の時刻は使っていません`);
     if (waitRaw >= 1440) rowNotes.push(LONG_WAIT_NOTE);
     return {
       res: {
@@ -555,6 +587,8 @@ const WaitingShared = (() => {
         over_1h: w >= 60, over_2h_total: (w + driverHandlingMin) >= thr,
         has_side_work: !!g.side_work || sideMin > 0,
         ...(reception !== null ? { reception: fmtTime(reception) } : {}),
+        ...(call !== null ? { call: fmtTime(call) } : {}),
+        ...(norm(raw.arrive_src) === 'reception' ? { arrive_from_reception: true } : {}),
         ...(early ? { early_arrival: early } : {}),
         ...(used.length ? { defaults_used: used } : {}),
         ...(rowNotes.length ? { notes: rowNotes } : {}),
@@ -608,7 +642,162 @@ const WaitingShared = (() => {
   }
 
 
+  /* ---------------------------------------------------------------- 貼り付けを表の後ろに足す（SPEC §42）。同じ行（日付・場所・到着・車番）は 1 つにする */
+  const TIME_KEYS = new Set(['arrive', 'start', 'end', 'depart', 'appointed', 'reception', 'call']);
+  const META_KEYS = new Set(['fault_default', 'arrive_src']);
+  // 日付と到着の両方があるときだけ鍵を返す。どちらかが空の行は、同じ行かどうか言えないので足す（'' を返す）
+  function rowKey(r, year) {
+    const dRaw = nz(r.date), aRaw = nz(r.arrive);
+    if (!dRaw || !aRaw) return '';
+    const dd = parseDate(norm(r.date), year);
+    const t = parseTime(norm(r.arrive));
+    return [dd || dRaw, nz(r.place), t === null ? aRaw : t, nz(r.vehicle_no)].join('|');
+  }
+  const sameValue = (k, a, b) => {
+    if (TIME_KEYS.has(k)) { const x = parseTime(norm(a)), y = parseTime(norm(b)); if (x !== null && y !== null) return x === y; }
+    return nz(a) === nz(b);
+  };
+  // existing に incoming を足す。同じ行は足さず、既にある行の空欄だけを埋める。値が違う欄は既にある値を残し、conflicts に数える
+  function mergeRows(existing, incoming, year) {
+    const out = existing.map((r) => ({ ...r }));
+    const idx = new Map();
+    out.forEach((r, i) => { const k = rowKey(r, year); if (k && !idx.has(k)) idx.set(k, i); });
+    let added = 0, merged = 0, conflicts = 0;
+    for (const r of incoming) {
+      const k = rowKey(r, year);
+      if (k && idx.has(k)) {
+        const t = out[idx.get(k)];
+        let diff = false;
+        for (const [f, v] of Object.entries(r)) {
+          if (META_KEYS.has(f) || v == null || String(v).trim() === '') continue;
+          if (t[f] == null || String(t[f]).trim() === '') t[f] = v;
+          else if (!sameValue(f, t[f], v)) diff = true;
+        }
+        merged += 1; if (diff) conflicts += 1;
+      } else { out.push({ ...r }); if (k) idx.set(k, out.length - 1); added += 1; }
+    }
+    return { rows: out, added, merged, conflicts };
+  }
+
+  /* ---------------------------------------------------------------- 荷主として使う（SPEC §42）。受付記録の施設ごとの時間帯の集中・早い受付・呼出から作業開始まで */
+  const mm = (t) => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+  const fwd = (a, b) => (((b - a) % 1440) + 1440) % 1440;   // a から b まで進んだ分（日付をまたぐ）
+  const avgOf = (xs) => (xs.length ? halfUp(xs.reduce((a, x) => a + x, 0), xs.length) : null);
+  function shipperSummary(rows) {
+    const by = new Map();
+    for (const r of rows) { const k = r.place || NO_PLACE; if (!by.has(k)) by.set(k, []); by.get(k).push(r); }
+    const places = [];
+    for (const [place, rs] of by) {
+      const byHour = new Map();
+      for (const r of rs) {
+        const h = Math.floor(mm(r.arrive) / 60);
+        if (!byHour.has(h)) byHour.set(h, []);
+        byHour.get(h).push(r);
+      }
+      const hours = [...byHour.keys()].sort((a, b) => a - b).map((h) => ({ hour: h, count: byHour.get(h).length, avg_wait: avgOf(byHour.get(h).map((r) => r.report_wait_min)) }));
+      const peak = hours.slice().sort((a, b) => (b.count - a.count) || (a.hour - b.hour))[0];
+      const arr = rs.map((r) => mm(r.arrive));
+      const early = rs.filter((r) => mm(r.arrive) >= EARLY_FROM_MIN && mm(r.arrive) < EARLY_UNTIL_MIN);
+      const callGaps = rs.filter((r) => r.call).map((r) => fwd(mm(r.call), mm(r.start))).filter((x) => x <= 720);
+      const recCall = rs.filter((r) => r.call).map((r) => fwd(mm(r.arrive), mm(r.call))).filter((x) => x <= 720);
+      const ahead = rs.filter((r) => r.reception && !r.arrive_from_reception).map((r) => fwd(mm(r.arrive), mm(r.reception))).filter((x) => x <= 720);
+      places.push({
+        place, count: rs.length, days: new Set(rs.map((r) => r.date)).size, hours, peak_hour: peak.hour, peak_count: peak.count, peak_share: pct(peak.count, rs.length),
+        earliest: fmtTime(Math.min(...arr)), early_count: early.length, early_share: pct(early.length, rs.length),
+        avg_wait: avgOf(rs.map((r) => r.report_wait_min)), over_1h: rs.filter((r) => r.report_wait_min >= 60).length,
+        call_count: callGaps.length, call_avg: avgOf(callGaps), call_max: callGaps.length ? Math.max(...callGaps) : null, call_over15: callGaps.filter((x) => x > 15).length,
+        reccall_avg: avgOf(recCall), ahead_count: ahead.filter((x) => x >= 30).length, ahead_known: ahead.length,
+      });
+    }
+    places.sort((a, b) => (b.count - a.count) || cmp(a.place, b.place));
+    const hourSet = [...new Set(places.flatMap((p) => p.hours.map((h) => h.hour)))].sort((a, b) => a - b);
+    const earlyAll = places.reduce((a, p) => a + p.early_count, 0);
+    return { n: rows.length, places, hours: hourSet, early_count: earlyAll, early_share: pct(earlyAll, rows.length), call_count: places.reduce((a, p) => a + p.call_count, 0) };
+  }
+  const hourLabel = (h) => `${h} 時台`;
+  // 荷主が取れる行動（記録の数字から作る提案。実行するかは荷主が決める）
+  function shipperActions(sum) {
+    const out = [];
+    if (!sum.places.length) return out;
+    const top = sum.places[0];
+    out.push({ id: 'open', title: '受付開始の時刻を決めて知らせる',
+      body: `${top.place}: 記録で最も早い受付は ${top.earliest}、8 時前の受付は ${top.count} 件中 ${top.early_count} 件（${top.early_share}%）です。` +
+        '受付を始める時刻を決めて運送会社に知らせ、それより前に着いた車が待つ場所と順番も決めておきます。8 時前の受付が多いときは、受付を始める時刻を早めることも選べます。' });
+    const days = Math.max(1, top.days);
+    const perDay = Math.ceil((top.peak_count / days) * 10) / 10;
+    const slot = Math.max(1, Math.ceil(top.peak_count / days));
+    out.push({ id: 'slot', title: '予約の枠を決める',
+      body: `${top.place}の ${hourLabel(top.peak_hour)}に ${top.peak_count} 件（全体の ${top.peak_share}%）が集まっています。1 日あたり平均 ${perDay} 件です。` +
+        `この時間帯の予約を 1 時間 ${slot} 件までにして、超える分を ${hourLabel(top.peak_hour - 1)}か ${hourLabel(top.peak_hour + 1)}に振り分けます。` +
+        (top.reccall_avg !== null ? `受付から呼出までの平均は ${top.reccall_avg} 分です。` : '') });
+    if (sum.call_count) {
+      const c = sum.places.filter((p) => p.call_count);
+      const w = c.reduce((a, p) => a + p.call_avg * p.call_count, 0), n = c.reduce((a, p) => a + p.call_count, 0);
+      const over = c.reduce((a, p) => a + p.call_over15, 0), mx = Math.max(...c.map((p) => p.call_max));
+      out.push({ id: 'call', title: '呼出から作業開始までを短くする',
+        body: `呼出から作業開始までは平均 ${halfUp(w, n)} 分、最長 ${mx} 分で、${n} 件中 ${over} 件が 15 分を超えています。この待ちは荷主が減らせます。` +
+          '呼出は、荷役の場所（バース）が空いたのを確かめてから行い、呼出と作業開始の時刻を記録に残します。' });
+    } else {
+      out.push({ id: 'call', title: '呼出の時刻を記録する',
+        body: '呼出の列が無いので、呼出から作業開始までの待ちは出せません。受付・呼出・作業開始の 3 つの時刻を記録すると、荷主が減らせる待ち（呼出から作業開始まで）が分かります。' });
+    }
+    return out;
+  }
+  // 早着の扱いの通知文（雛形）。（　）は荷主が書き入れる
+  function noticeTemplate(places, openTime) {
+    const where = places && places.length ? places.join('・') : '（施設名）';
+    return ['【早着の扱いについてのお願い】', '運送会社の皆様へ', '',
+      `${where}の受付は、${openTime || '（受付開始の時刻）'}からです。`,
+      '受付の開始より前に到着された場合は、（待機する場所）でお待ちください。受付の順番は（到着順 / 予約の時刻順）です。',
+      '予約の時刻が決まっている荷は、予約の時刻の（　）分前から受付します。',
+      '受付・呼出・作業開始の時刻は、当方でも記録しています。荷待ちの記録の照合にご利用いただけます。',
+      '問い合わせ先: （担当者・電話番号）'].join('\n');
+  }
+
+  /* ---------------------------------------------------------------- 運送会社の書面の CSV と自社の受付記録を照らし合わせる（SPEC §42）。日付と車番（数字の下 4 桁）が同じ行を組にして、時刻の差を見る */
+  const vehicleKey = (v) => { const t = nz(v).replace(/[\s\-ー]/g, ''); const d = t.replace(/\D/g, ''); return d.length >= 1 ? d.slice(-4) : t.toLowerCase(); };
+  const sdiff = (a, b) => { const d = fwd(a, b); return d > 720 ? d - 1440 : d; };   // a から見た b の差（−720〜720 分）
+  function crossCheck(carrierRows, shipperRows, thr) {
+    const limit = thr == null ? 15 : thr;
+    const unmatchable = [];
+    const group = (rows, side) => {
+      const g = new Map();
+      for (const r of rows) {
+        const vk = vehicleKey(r.vehicle_no);
+        if (!vk) { unmatchable.push({ side, row: r }); continue; }
+        const k = `${r.date}|${vk}`;
+        if (!g.has(k)) g.set(k, []);
+        g.get(k).push(r);
+      }
+      return g;
+    };
+    const gc = group(carrierRows, 'carrier'), gs = group(shipperRows, 'shipper');
+    const pairs = [], onlyCarrier = [], onlyShipper = [];
+    for (const k of new Set([...gc.keys(), ...gs.keys()])) {
+      const cs = (gc.get(k) || []).slice(), ss = (gs.get(k) || []).slice();
+      const cand = [];
+      cs.forEach((c, i) => ss.forEach((s, j) => cand.push([Math.abs(sdiff(mm(c.arrive), mm(s.arrive))), i, j])));
+      cand.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
+      const uc = new Set(), us = new Set();
+      for (const [, i, j] of cand) {
+        if (uc.has(i) || us.has(j)) continue;
+        uc.add(i); us.add(j);
+        const c = cs[i], s = ss[j];
+        const ad = sdiff(mm(c.arrive), mm(s.arrive)), sd = sdiff(mm(c.start), mm(s.start));
+        pairs.push({ date: c.date, vehicle: c.vehicle_no || s.vehicle_no, carrier: c, shipper: s, arrive_diff: ad, start_diff: sd, differs: Math.abs(ad) > limit || Math.abs(sd) > limit });
+      }
+      cs.forEach((c, i) => { if (!uc.has(i)) onlyCarrier.push(c); });
+      ss.forEach((s, j) => { if (!us.has(j)) onlyShipper.push(s); });
+    }
+    pairs.sort((a, b) => cmp(a.date, b.date) || cmp(String(a.vehicle), String(b.vehicle)));
+    const byDate = (a, b) => cmp(a.date, b.date) || cmp(a.arrive, b.arrive);
+    onlyCarrier.sort(byDate); onlyShipper.sort(byDate);
+    return { limit, pairs, differ: pairs.filter((p) => p.differs), same: pairs.filter((p) => !p.differs).length, only_carrier: onlyCarrier, only_shipper: onlyShipper,
+      unmatchable_carrier: unmatchable.filter((u) => u.side === 'carrier').map((u) => u.row), unmatchable_shipper: unmatchable.filter((u) => u.side === 'shipper').map((u) => u.row) };
+  }
+
   return {
+    rowKey, mergeRows, shipperSummary, shipperActions, noticeTemplate, crossCheck, hourLabel, vehicleKey, REVERSE_MAX_MIN,
     HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
     BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE, CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE,
   };

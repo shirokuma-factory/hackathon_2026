@@ -100,7 +100,8 @@
           "$ref": "#/$defs/datetime"
         },
         "end": {
-          "$ref": "#/$defs/datetime"
+          "$ref": "#/$defs/datetime",
+          "description": "終了。start 以降であること。形では表せないため、Kit.legs は終了が開始より前の区間を描かず、警告に件数を出す"
         },
         "from": {
           "$ref": "#/$defs/place"

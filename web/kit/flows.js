@@ -72,6 +72,7 @@
         const seen = new Map();
         ok.forEach((f) => { [f.from, f.to].forEach((p) => { const k = `${p.lon},${p.lat}`; if (!seen.has(k)) seen.set(k, p); }); });
         tags = [...seen.values()].map((p) => Kit.tag(map, p, esc(p.name), { offset: [0, -6] }));
+        Kit.declutter(map, tags);
       }
 
       const periods = [...new Set(ok.map((f) => f.period).filter(Boolean))];

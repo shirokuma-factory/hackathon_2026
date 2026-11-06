@@ -69,6 +69,7 @@ const Find = (() => {
     if (t.unit_footprint_mm) lines.push(`1 口の底面: ${n0(t.unit_footprint_mm[0])}×${n0(t.unit_footprint_mm[1])}mm`);
     lines.push(`運賃: ${n0(tripPrice(t))} 円（${t.price_unit || '1口'}・税抜。高速代などは別）`);
     lines.push('積めるかどうかは、受付で量って決めます。', '連絡先: （ここに書き入れてください）', '※ 下書きです。日時と連絡先を確かめてから貼ってください。');
+    if (F.edits[t.id]) lines.push('※ 画面の中で変えた値で作った文です（盤には登録していません）。');
     return lines.join('\n');
   }
 
@@ -84,9 +85,12 @@ const Find = (() => {
   const inScope = (t) => !F.pair || isReverse(t);
   const dropCodes = () => [...new Set(F.trips.flatMap((t) => t.drop_points))];
   const hhmm = (s) => `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))} ${s.slice(11, 16)}`;
+  // 運送会社の役が画面の中だけで変えた値（F.edits）は、盤（サーバー）には登録されていない。照合・仮予約・書面は盤の値を使うので、
+  // 荷主のカードは盤の値だけを出し、変えた値は運送会社のカードに「未登録」と分けて出す（SPEC §42）
   const tripPrice = (t) => (F.edits[t.id] && F.edits[t.id].price !== undefined ? F.edits[t.id].price : t.price_ex_tax_yen);
   const regSlack = (t) => (F.edits[t.id] && F.edits[t.id].slack !== undefined ? F.edits[t.id].slack : t.weight_slack_kg);
-  // 画面の中だけで変えた登録値に合わせて、サーバーの残りを足し引きして見せる（サーバーの照合には使われない）
+  const boardPrice = (t) => t.price_ex_tax_yen;
+  // 画面の中だけで変えた登録値に合わせて、サーバーの残りを足し引きして見せる（運送会社のカードだけ。サーバーの照合には使われない）
   const shownRemain = (t) => Math.max(0, t.remaining_slack_kg + (regSlack(t) - t.weight_slack_kg));
   const cargoOf = () => {
     const sh = Work.confirmedShipment();
@@ -385,10 +389,10 @@ const Find = (() => {
   const nowMs = () => Date.now() + (F.skew || 0);
   const cdText = (h) => cdFmt(new Date(h.expires_at).getTime() - nowMs());
 
-  function barHtml(t, cargoKg) {
-    const reg = Math.max(1, regSlack(t)), rem = shownRemain(t);
+  function barHtml(t, cargoKg, edited) {
+    const slack = edited ? regSlack(t) : t.weight_slack_kg, reg = Math.max(1, slack), rem = edited ? shownRemain(t) : t.remaining_slack_kg;
     const fill = Math.min(100, (rem / reg) * 100), need = cargoKg === null ? null : Math.min(100, (cargoKg / reg) * 100);
-    let txt = `<span>重さの余り <b class="num">${kg(rem)}</b> / ${kg(regSlack(t))} kg</span>`;
+    let txt = `<span>重さの余り <b class="num">${kg(rem)}</b> / ${kg(slack)} kg</span>`;
     if (cargoKg !== null) txt += `<span class="num">この荷 ${kg(cargoKg)} kg</span>`;
     const shelf = t.remaining_shelf_kg !== null && t.remaining_shelf_kg !== undefined ? `<div class="f-shelf num">棚の耐荷重の残り ${kg(t.remaining_shelf_kg)} kg</div>` : '';
     // 床の空きは盤の残りと登録値（API が floor_free_m2 を必ず返す）。数が読めないときは行を出さない。棚の形は車の床ではなく 1 口の床
@@ -449,8 +453,8 @@ const Find = (() => {
       `<div class="f-sub">${esc(t.carrier_name)}${scope ? '' : ' ・ <em>別の区間の便</em>'}</div>` +
       `<div class="f-route">${esc(t.route_label)}</div>` + arcNote(t) +
       `<div class="f-when num">${esc(muniName(t.origin_code))} ${hhmm(t.depart_at)} 発 → ${esc(muniName(t.dest_code))} ${hhmm(t.arrive_at)} 着</div>` +
-      barHtml(t, c ? c.w : null) +
-      `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>${esc(t.price_unit || '1口')}・税抜・架空</small>${(t.price_unit || '1口') === '1口' ? tipOnce('1口') : ''}</div>` +
+      barHtml(t, c ? c.w : null, false) +
+      `<div class="f-price"><b class="num">${n0(boardPrice(t))}</b><span>円</span><small>${esc(t.price_unit || '1口')}・税抜・架空</small>${(t.price_unit || '1口') === '1口' ? tipOnce('1口') : ''}</div>` +
       reasons + holdAreaHtml(t, r) + (t.id === F.sel ? detailHtml(t) : '') + '</article>';
   }
 
@@ -472,9 +476,10 @@ const Find = (() => {
       (pending.length ? `<span class="chip check">承諾待ち ${pending.length}</span>` : '') + '</div>' +
       `<div class="f-route">${esc(t.route_label)}</div>` + arcNote(t) +
       `<div class="f-when num">${esc(muniName(t.origin_code))} ${hhmm(t.depart_at)} 発 → ${esc(muniName(t.dest_code))} ${hhmm(t.arrive_at)} 着</div>` +
-      barHtml(t, null) +
+      barHtml(t, null, true) +
       `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>${esc(t.price_unit || '1口')}・税抜・架空</small>` +
-      (ed ? '<em class="f-edited">画面の中だけで変更</em>' : '') + '</div>' +
+      (ed ? '<em class="f-edited">未登録（画面の中だけで変更）</em>' : '') + '</div>' +
+      (ed ? `<div class="f-hold-msg">登録されている値は 重さの余り ${kg(t.weight_slack_kg)} kg・${n0(boardPrice(t))} 円です。荷主の画面・照合・仮予約・書面は、この登録されている値を使います。</div>` : '') +
       (t.registered ? `<div class="f-post"><button type="button" class="btn-ghost sm" data-act="post-text">掲示板・LINE に貼る文</button>${F.postOpen === t.id ? `<textarea class="ctl f-posttext" readonly rows="9" aria-label="掲示板・LINE に貼る文">${esc(postText(t))}</textarea><div class="f-hbtn"><button type="button" class="btn-primary sm" data-act="post-copy">文をコピーする</button><small class="f-postmsg" role="status"></small></div>` : ''}</div>` : '') +
       (holds ? `<div class="f-holds"><div class="f-hh">荷主からの仮予約</div>${holds}</div>` : '<div class="f-hold-msg faint">承諾待ちの仮予約はありません。</div>') +
       (past ? `<div class="f-hhist">${past}</div>` : '') + (t.id === F.sel ? detailHtml(t) : '') + '</article>';
@@ -482,7 +487,7 @@ const Find = (() => {
 
   function sortKey(t) {
     const r = F.results[t.id];
-    return [inScope(t) ? 0 : 1, r && r.ok ? 0 : 1, r && !r.ok ? r.reasons.length : 0, tripPrice(t)];
+    return [inScope(t) ? 0 : 1, r && r.ok ? 0 : 1, r && !r.ok ? r.reasons.length : 0, boardPrice(t)];
   }
 
   /* ------------------------------------------------------------ 0 便の案内（SPEC §30.3） */
@@ -496,7 +501,7 @@ const Find = (() => {
   ];
   // カードの見出しのチップ: 最初の理由の種類を出す。理由が複数あるときは「ほか ○件」を足す（SPEC §38 F04）
   const CHIP_KINDS = [
-    [/箱の高さ|箱の底面/, '寸法が合いません'], [/1個の重さ|合計の重さ/, '重さが合いません'], [/荷の床/, '床が足りません'],
+    [/箱の高さ|箱の底面/, '寸法が合いません'], [/1個の重さ/, '1 個の重さが上限を超えます'], [/合計の重さ/, '合計の重さが合いません'], [/荷の床/, '床が足りません'],
     [/届けばよい日/, '日が合いません'], [/集荷の地点/, '集荷の範囲外'], [/出発済み/, '出発済み'], [/降ろせる地点/, '降ろせる地点が違います'],
     [/^品目/, '受けない品目'], [/容器|RB|直方体の箱|壊れ物/, '受託の条件に合いません'],
   ];

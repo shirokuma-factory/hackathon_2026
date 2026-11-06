@@ -36,6 +36,9 @@ ul.recs li.empty { display: block; color: var(--muted); }
 textarea { min-height: 120px; font-size: 14px; }
 .note { margin: 8px 0; padding: 8px 10px; border-left: 4px solid var(--warn); background: var(--card); font-size: 14px; }
 a { color: var(--accent); }
+a.link { display: inline-block; min-height: 24px; line-height: 24px; }   /* 押せる所は高さ 24px 以上 */
+ol.steps { margin: 6px 0; padding-left: 20px; font-size: 14px; }
+ol.steps li { margin-bottom: 8px; }
 [hidden] { display: none !important; }
 @media (max-width: 380px) { .stamp { grid-template-columns: minmax(0, 1fr) 92px 44px; } button.big { font-size: 15px; } }
 </style>
@@ -77,9 +80,23 @@ a { color: var(--accent); }
     <p class="hint">自動でコピーできませんでした。下の文を選んで、長押しか Ctrl+C でコピーしてください。</p>
     <textarea id="ta" readonly aria-label="コピーする文"></textarea>
   </div>
-  <p class="hint">入力中の 1 回も、着いた時刻が入っていれば含めます。事務の人は、受け取った文をそのまま<a href="waiting.html">荷待ちのページ</a>の「Excel から貼り付ける」に貼ります。</p>
+  <p class="hint">入力中の 1 回も、着いた時刻が入っていれば含めます。事務の人は、受け取った文をそのまま<a class="link" href="waiting.html">荷待ちのページ</a>の「Excel から貼り付ける」に貼ります。</p>
   <button type="button" id="b-clear">今日の記録を消す</button>
   <p class="hint" id="older"></p>
+</section>
+
+<section aria-label="会社から配る手順" id="distribute">
+  <h2>会社から配る手順</h2>
+  <p class="sub">会社の担当者が、ドライバーのスマートフォンにこのページを渡す手順です。QR コードも通信も使いません。</p>
+  <ol class="steps">
+    <li><b>URL を LINE で送る（おすすめ）。</b>このページを置いている場所の URL を、ドライバーの LINE グループに貼ります。いま開いているページの URL は下の欄にあります。</li>
+    <li><b>ファイルを保存して配る。</b>このページをブラウザの「名前を付けて保存」で 1 つのファイル（driver.html）にして、LINE のトークで送ります。端末によっては開けないことがあります。その場合は URL を使います。</li>
+    <li><b>ホーム画面に追加する。</b>ドライバーがページを開いたら、iPhone（Safari）は共有ボタンから「ホーム画面に追加」、Android（Chrome）はメニュー（縦の三つの点）から「ホーム画面に追加」を選びます。次からはアイコンを押すだけで開きます。</li>
+  </ol>
+  <label>いま開いているページの URL<input id="own-url" type="text" readonly aria-label="いま開いているページの URL"></label>
+  <button type="button" id="b-copyurl">URL をコピー</button>
+  <p class="msg" id="urlmsg" role="status"></p>
+  <p class="hint" id="url-warn" hidden>この URL は、この端末の中のファイルを開いているので、ほかの端末では開けません。ページを置いている場所の URL を送るか、保存したファイルを送ってください。</p>
 </section>
 </main>
 
@@ -205,7 +222,21 @@ function clearToday() {
   save(K_REC, S.recs); renderList(); setMsg('今日の記録を消しました。');
 }
 
+function copyUrl() {
+  const el = $('#own-url'), msg = $('#urlmsg');
+  el.focus(); el.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  const manual = 'コピーできませんでした。欄の URL を選んで、長押しか Ctrl+C でコピーしてください。';
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(el.value).then(() => { msg.textContent = 'URL をコピーしました。LINE に貼ってください。'; msg.classList.remove('bad'); }, () => { msg.textContent = ok ? 'URL をコピーしました。LINE に貼ってください。' : manual; }); return; }
+  } catch (e) { /* 下の表示へ */ }
+  msg.textContent = ok ? 'URL をコピーしました。LINE に貼ってください。' : manual;
+}
+
 function init() {
+  $('#own-url').value = location.href.split('#')[0];
+  $('#url-warn').hidden = !/^(file|about|blob|data):/.test(location.protocol + '');
   const set = load(K_SET);
   if (set && typeof set === 'object') {
     SETTING_IDS.forEach((id) => { if (typeof set[id] === 'string') $(`#${id}`).value = set[id]; });
@@ -226,6 +257,7 @@ function init() {
     else if (t.id === 'b-save') saveCurrent();
     else if (t.id === 'b-copy') copyAll();
     else if (t.id === 'b-clear') clearToday();
+    else if (t.id === 'b-copyurl') copyUrl();
   });
   document.addEventListener('input', (e) => {
     const t = e.target;

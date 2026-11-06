@@ -113,8 +113,8 @@ def test_g89_page_makes_no_network_calls():
     html = PAGE.read_text(encoding="utf-8")
     for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts", "import(", "navigator.serviceWorker"):
         assert bad not in html, bad
-    # 契約単価の保存だけ localStorage を使う（このブラウザの中だけ。送信はしない。v4.1）
-    assert set(re.findall(r"localStorage\.(\w+)\(([A-Za-z_]+)", html)) == {("setItem", "CKEY"), ("getItem", "CKEY")}
+    # 契約単価（CKEY）と荷物の表（PKEY）の保存だけ localStorage を使う（このブラウザの中だけ。送信はしない。v4.1・v4.2）
+    assert set(re.findall(r"localStorage\.(\w+)\(([A-Za-z_]+)", html)) == {("setItem", "CKEY"), ("getItem", "CKEY"), ("setItem", "PKEY"), ("getItem", "PKEY")}
     assert not re.search(r"<script[^>]+src\s*=", html, re.I)
     assert not re.search(r"<link(?![^>]*href\s*=\s*.data:)[^>]+href\s*=", html, re.I)
     assert not re.search(r"@import|url\(\s*['\"]?https?:", html, re.I)
@@ -139,7 +139,7 @@ def test_g91_selftest_and_s6_in_headless_edge():
         page.goto(PAGE.as_uri() + "?selftest=1")
         page.wait(lambda: page.js("document.querySelector('#selftest') && document.querySelector('#selftest').textContent.length > 0"), 30, "自己確認")
         text = page.js("document.querySelector('#selftest').textContent")
-        assert text == f"SELFTEST PASS {n + 23}/{n + 23}", text
+        assert text == f"SELFTEST PASS {n + 30}/{n + 30}", text
         page.goto(PAGE.as_uri() + "?example=1")
         page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")
         got = page.js("""(function(){

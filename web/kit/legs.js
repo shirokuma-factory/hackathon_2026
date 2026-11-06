@@ -22,13 +22,16 @@
   const LANE = { loaded: 0, empty: 1, unknown: 2 };
   const STATUS = ['loaded', 'empty', 'unknown'];
 
+  // 終了が開始より前の区間は、形（JSON Schema）では見分けられないので、ここで描かずに数える（SPEC §42）
+  const reversedLeg = (l) => { const a = Date.parse(l.start), b = Date.parse(l.end); return Number.isFinite(a) && Number.isFinite(b) && b < a; };
   function clean(data) {
-    const ok = [], skipped = [];
+    const ok = [], skipped = [], reversed = [];
     ((data && data.legs) || []).forEach((l, i) => {
-      if (l && hasLL(l.from) && hasLL(l.to) && STATUS.includes(l.status)) ok.push(l);
-      else skipped.push(i + 1);
+      if (!(l && hasLL(l.from) && hasLL(l.to) && STATUS.includes(l.status))) skipped.push(i + 1);
+      else if (reversedLeg(l)) reversed.push(i + 1);
+      else ok.push(l);
     });
-    return { ok, skipped };
+    return { ok, skipped, reversed };
   }
 
   // 進む向きの右側へ d 度ずらした線。経度の 1 度は緯度の 1 度より短いので、緯度で補正する
@@ -77,7 +80,7 @@
     const clearTags = () => { tags.forEach((m) => m.remove()); tags = []; };
 
     function draw(d, first) {
-      const { ok, skipped } = clean(d);
+      const { ok, skipped, reversed } = clean(d);
       const groups = new Map();
       ok.forEach((l) => {
         const k = `${l.from.name}|${l.to.name}|${l.status}`;
@@ -114,7 +117,7 @@
       ]);
 
       clearTags();
-      if (cfg.names) tags = [...places.values()].map((p) => Kit.tag(map, p, esc(p.name), { offset: [0, -10] }));
+      if (cfg.names) { tags = [...places.values()].map((p) => Kit.tag(map, p, esc(p.name), { offset: [0, -10] })); Kit.declutter(map, tags); }
 
       const maxN = Math.max(1, ...[...groups.values()].map((g) => g.n));
       dock.set({
@@ -123,7 +126,8 @@
           items: STATUS.map((s) => ({ label: cfg.labels[s], color: cfg.colors[s], kind: s === 'empty' ? 'dash' : 'line' })),
           note: `${cfg.texts.width}（最大 ${maxN} 便）。向きは進行方向の右側に並べ、実車の線の矢じりが進む向きです。${Kit.basisNote}${cfg.legend.note ? ' ' + cfg.legend.note : ''}`,
         } : null,
-        warns: skipped.length ? [`座標か判定が足りない ${skipped.length} 件（${skipped.slice(0, 5).join('、')} 件目など）は描いていません。`] : [],
+        warns: [...(skipped.length ? [`座標か判定が足りない ${skipped.length} 件（${skipped.slice(0, 5).join('、')} 件目など）は描いていません。`] : []),
+          ...(reversed.length ? [`終了が開始より前の ${reversed.length} 件（${reversed.slice(0, 5).join('、')} 件目など）は描いていません。`] : [])],
         table: {
           cols: [{ label: '車両' }, { label: '開始' }, { label: '終了' }, { label: '発地' }, { label: '着地' }, { label: '判定' }, { label: '距離', n: true }, { label: '積んだ重さ', n: true }, { label: '区別' }],
           rows: ok.map((l) => [l.vehicle || '', l.start || '', l.end || '', l.from.name, l.to.name, cfg.labels[l.status], finite(l.distance_km) ? Kit.fmt.km(l.distance_km) : '—', finite(l.weight_kg) ? Kit.fmt.kg(l.weight_kg) : '—', l.basis || '']),

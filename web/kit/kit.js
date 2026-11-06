@@ -90,9 +90,20 @@
 
   // 地図の出典の欄に文を足す（MapLibre の AttributionControl）。destroy で外す
   Kit.attribution = function attribution(map, texts) {
-    const ctl = new maplibregl.AttributionControl({ compact: false, customAttribution: texts });
+    // 狭い地図（幅 480px 以下）では出典を閉じた形（「i」ボタン）にして、地図を覆わない。押すと開く
+    const narrow = map.getContainer().clientWidth > 0 && map.getContainer().clientWidth <= 480;
+    const ctl = new maplibregl.AttributionControl({ compact: narrow ? true : false, customAttribution: texts });
     map.addControl(ctl, 'bottom-right');
+    Kit.collapseAttribution(map);
     return { destroy() { try { map.removeControl(ctl); } catch (e) { /* 地図がもう無い */ } } };
+  };
+  // 狭い地図（幅 480px 以下）の出典を閉じた形にする。MapLibre の閉じられる出典は、最初は開いていて、地図を動かすと閉じるため、読み込みのあとに閉じておく
+  Kit.collapseAttribution = function collapseAttribution(map) {
+    const box = map.getContainer();
+    if (!(box.clientWidth > 0 && box.clientWidth <= 480)) return;
+    const close = () => box.querySelectorAll('.maplibregl-ctrl-attrib.maplibregl-compact').forEach((e) => { e.removeAttribute('open'); e.classList.remove('maplibregl-compact-show'); });
+    close();
+    map.once('idle', close);
   };
 
   Kit.fit = function fit(map, coords, opt = {}) {
@@ -254,6 +265,24 @@
     if (!map || typeof map.getContainer !== 'function') throw new Error(`Kit.${name}.mount の 1 つ目は MapLibre の地図です`);
   };
   // 地図の名前札（HTML）。返り値の remove() で外す
+  // 名札が重なるとき、先に置いたものを残して、重なる後のものを見えなくする（狭い地図で字が重ならないように）。全部の名札は表（「表で見る」）にある
+  Kit.declutter = function declutter(map, tags) {
+    const run = () => {
+      const els = tags.map((m) => m.getElement()).filter((e) => e.isConnected);
+      if (!els.length) { map.off('moveend', later); map.off('resize', later); return; }   // 名札が外されたら自分も外れる
+      els.forEach((e) => { e.style.visibility = ''; });
+      const kept = [];
+      for (const e of els) {
+        const r = e.getBoundingClientRect();
+        if (!(r.width > 0)) continue;
+        if (kept.some((k) => r.left < k.right + 2 && r.right > k.left - 2 && r.top < k.bottom + 1 && r.bottom > k.top - 1)) e.style.visibility = 'hidden';
+        else kept.push(r);
+      }
+    };
+    function later() { requestAnimationFrame(run); }
+    map.on('moveend', later); map.on('resize', later);
+    later();
+  };
   Kit.tag = function tag(map, p, html, opt = {}) {
     const el = document.createElement('div');
     el.className = 'kit-tag';

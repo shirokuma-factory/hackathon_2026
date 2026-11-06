@@ -161,6 +161,7 @@
         const seen = new Map();
         vs.forEach((v) => v.stops.forEach((s) => seen.set(`${s.lon},${s.lat}`, s)));
         st.tags = [...seen.values()].map((s) => Kit.tag(map, s, esc(s.name), { offset: [0, -10] }));
+        Kit.declutter(map, st.tags);
       }
       Kit.deckLayers.set(map, owner, layers());
       drawBand();

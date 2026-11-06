@@ -22,7 +22,6 @@ from conftest import edge_page, fail_with_evidence
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "examples" / "own"
 EX_FILES = [EXAMPLES / "haisha_2026-10.csv", EXAMPLES / "digitaco_1234.csv", EXAMPLES / "digitaco_5678.csv"]
-SHOT_DIR = ROOT / "docs" / "assets"
 
 # 県内の往復: 加古川 ⇄ 姫路（どちらも兵庫県）と 加古川 ⇄ 神戸
 INTRA_HAISHA = ("車番,車種,2026/10/1,2026/10/2,2026/10/3,2026/10/4,2026/10/5,2026/10/6\n"
@@ -87,11 +86,12 @@ def _import_examples(page):
     _import(page, EX_FILES, "自社のファイル: 3 件")
 
 
-def _shot(page, name, quality=60):
+def _shot(page, tmp_path, name, quality=60):
+    """画面の写真は一時フォルダに書く（追跡している docs/assets の画像を書き換えない。残す写真は別の手順で置く）。"""
     import base64
-    SHOT_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_path.mkdir(parents=True, exist_ok=True)
     r = page.send("Page.captureScreenshot", format="jpeg", quality=quality)
-    (SHOT_DIR / name).write_bytes(base64.b64decode(r["data"]))
+    (tmp_path / name).write_bytes(base64.b64decode(r["data"]))
 
 
 # ---------------------------------------------------------------- 標準的運賃の表の照合（Python の式と同じ答え）
@@ -138,7 +138,7 @@ def test_intra_prefecture_round_trip_imports_and_draws_arrows(app, tmp_path):
     assert d["marks"] >= 3 and d["items"] >= 1, d  # 向きの印が出る
     errs = page.js("(window.__errs || []).filter(e => !/favicon|404/.test(String(e)))")
     assert not errs, errs
-    _shot(page, "2026-11-06_v41_own_intra_1920.jpg")
+    _shot(page, tmp_path, "2026-11-06_v41_own_intra_1920.jpg")
     _to_sample(page)
 
 
@@ -152,13 +152,20 @@ def test_return_load_revenue_estimate_is_shown_with_formula_and_matches_the_tari
     cost = page.js("document.querySelector('#own-cost-out').innerText")
     assert "帰り荷を取っても減らない費用" in cost, cost
     rev = page.js("document.querySelector('#own-rev').innerText")
-    assert "帰り荷 1 便の売上の目安" in rev and "目安" in rev and "標準的運賃" in rev and "×" in rev, rev
+    assert "帰り荷 1 便の売上の目安" in rev and "目安" in rev and "標準的運賃" in page.js("document.querySelector('#own-rev').textContent") and "×" in rev, rev
+    assert "全部の帰りに荷が付いた場合の上限" in rev, rev  # 合計は上限と書く
     d = json.loads(page.js("JSON.stringify(OwnMonth.revenue(Own.state.data))"))
-    assert d["cls"] == "10t" and d["trips"] > 0 and d["fare"], d
-    assert d["fare"]["regionKey"] == "kanto"  # 帰りの発地（江東区）の運輸局の表
-    assert d["fare"]["amount"] == _py_fare(d["km"], "10t", "kanto")
-    assert f"{d['fare']['amount']:,} 円" in rev and f"{d['total']:,} 円" in rev, rev
-    assert d["fare"]["formula"] in rev
+    assert d["counted"] > 0 and d["perTrip"], d
+    # 便ごとの車格（2t・4t・10t）と km の運賃。1 つの車格・中央値 1 つに全便を掛けない（P1-1）
+    assert {t["cls"] for t in d["perTrip"]} <= {"2t", "4t", "10t"} and len({t["cls"] for t in d["perTrip"]}) >= 2, d["perTrip"][:3]
+    for t in d["perTrip"]:
+        assert t["fare"]["regionKey"] in ("kanto", "kinki")
+        assert t["amount"] == _py_fare(t["km"], t["cls"], t["fare"]["regionKey"]), t
+    assert d["total"] == sum(t["amount"] for t in d["perTrip"])
+    assert sum(p["subtotal"] for p in d["pairs"]) == d["total"]
+    assert f"{d['total']:,} 円" in rev, rev
+    ex = d["example"]
+    assert ex["fare"]["formula"] in rev  # 例の便の式が画面にある
     page.js("(function(){const e = document.querySelector('#own-perkm'); e.value = ''; e.dispatchEvent(new Event('input', {bubbles: true}));})()")
 
     assert "円" not in page.js("document.querySelector('#own-cost-out').innerText")  # 単価が空のときは、費用の欄に円を出さない
@@ -356,7 +363,7 @@ def test_role_chooser_reruns_with_column_roles_and_remembers_the_choice(app):
 def test_year_assumed_is_shown_with_a_selector(app):
     page = app
     _import_examples(page)
-    page.js("Own.state.data.year_assumed = true; Own.setTab('import')")
+    page.js("Own.state.data.year_assumed = true; Own.state.data.year_choice = Object.assign({}, Own.state.data.year_choice, {ambiguous: false}); Own.setTab('import')")
     t = page.js("document.querySelector('.o-assumed').innerText")
     assert "2026 年としました（変えられます）" in t, t
     assert page.js("document.querySelectorAll('.o-assumed select option').length") >= 3
@@ -365,9 +372,10 @@ def test_year_assumed_is_shown_with_a_selector(app):
 
 # ---------------------------------------------------------------- 7. 説明・24px・用語
 
-def test_explanations_checkbox_size_and_jargon_tips(app):
+def test_explanations_checkbox_size_and_jargon_tips(app, tmp_path):
     page = app
     _import_examples(page)
+    page.js("document.querySelectorAll('#own-right details').forEach(d => d.open = true)")  # 長い注記は閉じた「詳しく」に入っている
     right = page.js("document.querySelector('#own-right').innerText")
     assert "13,500 kg" in right and "仮定" in right, right  # 10 t の仮定と 13,500 kg の違い
     assert "77.6%" in right and "辰巳" in right  # 例のファイルの実車率がサンプルと違う理由
@@ -392,13 +400,13 @@ def test_explanations_checkbox_size_and_jargon_tips(app):
     page.send("Input.dispatchKeyEvent", type="keyDown", key="Enter", code="Enter", windowsVirtualKeyCode=13, text="\r")
     page.send("Input.dispatchKeyEvent", type="keyUp", key="Enter", code="Enter", windowsVirtualKeyCode=13)
     assert page.js("document.querySelector('.o-tip[aria-label=\"積載率とは\"]').parentElement.classList.contains('open')")
-    _shot(page, "2026-11-06_v41_own_1920.jpg")
+    _shot(page, tmp_path, "2026-11-06_v41_own_1920.jpg")
     _to_sample(page)
 
 
 # ---------------------------------------------------------------- 400px の幅（Edge は同時に 1 つだけなので、同じ Edge の表示の幅を変えて見る）
 
-def test_narrow_weekday_table_stays_inside_the_frame_and_costs_go_under_the_row(app):
+def test_narrow_weekday_table_stays_inside_the_frame_and_costs_go_under_the_row(app, tmp_path):
     page = app
     _import_examples(page)
     page.send("Emulation.setDeviceMetricsOverride", width=400, height=860, deviceScaleFactor=1, mobile=False)
@@ -416,10 +424,10 @@ def test_narrow_weekday_table_stays_inside_the_frame_and_costs_go_under_the_row(
     # 説明と保存の欄も横にはみ出さない
     for sel in ("#own-right", "#own-view"):
         assert page.js(f"document.querySelector('{sel}').scrollWidth <= document.querySelector('{sel}').clientWidth + 1"), sel
-    _shot(page, "2026-11-06_v41_own_400.jpg")
+    _shot(page, tmp_path, "2026-11-06_v41_own_400.jpg")
     page.js("document.querySelector('#own-body').scrollTop = 0; Own.setTab('confirm')")
     time.sleep(0.5)
-    _shot(page, "2026-11-06_v41_own_400_left.jpg")
+    _shot(page, tmp_path, "2026-11-06_v41_own_400_left.jpg")
     page.js("Own.setTab('import')")
     page.js("(function(){for (const id of ['own-perkm', 'own-perhour']) { const e = document.querySelector('#' + id); e.value = ''; e.dispatchEvent(new Event('input', {bubbles: true})); }})()")
     page.send("Emulation.setDeviceMetricsOverride", width=1920, height=1080, deviceScaleFactor=1, mobile=False)
@@ -429,7 +437,7 @@ def test_narrow_weekday_table_stays_inside_the_frame_and_costs_go_under_the_row(
 
 # ---------------------------------------------------------------- 読み取り側の新しい項目（own_calc.js）を画面に出す
 
-def test_new_fixture_files_import_and_show_layout_notes_and_role_choices(app):
+def test_new_fixture_files_import_and_show_layout_notes_and_role_choices(app, tmp_path):
     page = app
     page.js("window.__errs = []")
     # 県内の往復の配車表（examples/own/haisha_intra_pref.csv）: 取り込めて、線の向きの印が出る
@@ -443,7 +451,7 @@ def test_new_fixture_files_import_and_show_layout_notes_and_role_choices(app):
     assert page.js("document.querySelector('#own-body').innerText").count("市役所のある区に置きました") >= 1
     page.js("Own.setTab('import')")
     assert "読み方" in page.js("document.querySelector('#own-body').innerText") or page.js("Own.state.data.files.some(f => f.layout_note_ja)") is False
-    _shot(page, "2026-11-06_v41_own_intra_file_1920.jpg")
+    _shot(page, tmp_path, "2026-11-06_v41_own_intra_file_1920.jpg")
     # 列の名前から役割が決まらないデジタコ（digitaco_unknown_cols_9012.csv）: 選ぶ欄が出る
     _import(page, [EXAMPLES / "haisha_2026-10.csv", EXAMPLES / "digitaco_unknown_cols_9012.csv"])
     assert page.js("Own.state.mode") == "import", page.js("Own.state.dropMsg")

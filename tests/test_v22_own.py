@@ -95,7 +95,9 @@ def test_g66_parse_cell():
     assert p["legs"] == [{"frm": "加古川", "to": "辰巳", "empty": False, "arr": "05:30", "weight_kg": 6500.0}]
     assert own.parse_cell("江東 → 加古川（空）")["legs"][0]["empty"] is True
     assert own.parse_cell("加古川 →")["legs"][0]["to"] is None
-    assert own.parse_cell("江東 → 加古川 着8時半ごろ")["errors"] == ["時刻が読めません"]
+    # SPEC §42: 「8時半ごろ着」は時刻だけ捨てて区間は残す（errors ではなく warnings）
+    p8 = own.parse_cell("江東 → 加古川 着8時半ごろ")
+    assert p8["errors"] == [] and p8["warnings"] == ["時刻が読めません"] and p8["legs"][0]["arr"] is None and p8["legs"][0]["to"] == "加古川"
     assert own.parse_cell("整備")["nonleg"] is True
     two = own.parse_cell("加古川 → 大阪／大阪 → 加古川（空）")
     assert [x["empty"] for x in two["legs"]] == [False, True]
@@ -419,7 +421,7 @@ def test_g70_sample_spec_numbers_from_raw(sample):
     assert len(long) == 11 and sum(s["minutes"] for s in long) == 570
     assert {s["plate"] for s in long} == {"1234", "5678"}
     assert len(sample["confirm"]) == 7 and len(sample["unreadable"]) == 3
-    assert {u["reason"] for u in sample["unreadable"]} == {"月が分かりません", "時刻が読めません", "車番がありません"}
+    assert {u["reason"] for u in sample["unreadable"]} == {"月が分かりません", "区間が読めません", "車番がありません"}  # SPEC §42: 時刻だけ読めないセルは区間を残すので、3 つ目は矢印の無いセル
     assert sample["paper"]["text"] == "紙の日報 3 枚（この版では読みません）"
     # 木曜以外に、規則 1 に当たる曜日・向きが無い
     from collections import Counter
