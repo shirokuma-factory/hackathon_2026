@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "outputs" / "video" / "voice"
 API = "https://api.elevenlabs.io/v1"
-MODEL = "eleven_multilingual_v2"
+MODEL = "eleven_v4"  # 2026-11-06 時点の最新（docs: elevenlabs.io/docs/overview/models）
 
 
 def key() -> str:
@@ -60,24 +60,25 @@ def voices() -> None:
         print(v["voice_id"], v.get("name"), v.get("category"), labels.get("gender"), labels.get("accent"), ",".join(l for l in langs if l))
 
 
-def shot(sid: str, voice: str, stability: float, speed: float) -> None:
+def shot(sid: str, voice: str, stability: float, speed: float, model: str = MODEL, text: str | None = None, tag: str = "") -> None:
     shots = json.loads((ROOT / "docs" / "video" / "shots.json").read_text(encoding="utf-8"))["shots"]
     s = next(x for x in shots if x["id"] == sid)
-    text = s["read"]
-    body = {"text": text, "model_id": MODEL, "language_code": "ja",
+    text = text or s["read"]
+    name = sid + (f"_{tag}" if tag else "")
+    body = {"text": text, "model_id": model, "language_code": "ja",
             "voice_settings": {"stability": stability, "similarity_boost": 0.75, "speed": speed}}
     d = call("POST", f"/text-to-speech/{voice}/with-timestamps?output_format=mp3_44100_128", body)
     audio = base64.b64decode(d["audio_base64"])
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / f"{sid}.mp3").write_bytes(audio)
+    (OUT / f"{name}.mp3").write_bytes(audio)
     al = d.get("alignment") or {}
     ends = al.get("character_end_times_seconds") or [0]
-    meta = {"shot": sid, "voice_id": voice, "model": MODEL, "settings": body["voice_settings"],
+    meta = {"shot": sid, "voice_id": voice, "model": model, "settings": body["voice_settings"],
             "text": text, "duration_s": round(ends[-1], 2), "planned_s": s["end"] - s["start"],
             "sha256": hashlib.sha256(audio).hexdigest(), "alignment": al}
-    with open(OUT / f"{sid}.json", "w", encoding="utf-8", newline="\n") as f:
+    with open(OUT / f"{name}.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)
-    print(f"{sid}: {meta['duration_s']} 秒（予定 {meta['planned_s']} 秒） -> {OUT / (sid + '.mp3')}")
+    print(f"{name}: {meta['duration_s']} 秒（予定 {meta['planned_s']} 秒、{model}） -> {OUT / (name + '.mp3')}")
 
 
 if __name__ == "__main__":
@@ -87,10 +88,13 @@ if __name__ == "__main__":
     ap.add_argument("--voice")
     ap.add_argument("--stability", type=float, default=0.5)
     ap.add_argument("--speed", type=float, default=1.0)
+    ap.add_argument("--model", default=MODEL)
+    ap.add_argument("--text", help="shots.json の read の代わりに読む文（読みの比較用）")
+    ap.add_argument("--tag", default="", help="出力名の後ろに付ける印（S2_<tag>.mp3）")
     a = ap.parse_args()
     if a.voices:
         voices()
     elif a.shot and a.voice:
-        shot(a.shot, a.voice, a.stability, a.speed)
+        shot(a.shot, a.voice, a.stability, a.speed, a.model, a.text, a.tag)
     else:
         ap.print_help()
