@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -44,8 +45,11 @@ def call(method: str, path: str, body: dict | None = None) -> dict:
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(API + path, data=data, method=method,
                                  headers={"xi-api-key": key(), "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.loads(r.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        sys.exit(f"ElevenLabs が {e.code} を返しました: {e.read().decode('utf-8', 'replace')[:500]}")
 
 
 def voices() -> None:
