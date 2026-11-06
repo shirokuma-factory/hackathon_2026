@@ -21,6 +21,8 @@ body { font-family: 'Noto Sans JP', sans-serif; font-size: 14px; line-height: 1.
 .mapwrap { position: relative; min-height: 0; }
 #map { position: absolute; inset: 0; }
 .side { overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 16px 20px 24px; }
+.back { margin: 0 0 6px; font-size: 12px; }
+.back a { color: var(--sub); }
 h1 { margin: 0; font-size: 22px; font-weight: 700; }
 .sub { margin: 4px 0 0; color: var(--sub); font-size: 13px; }
 .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
@@ -73,6 +75,7 @@ code { background: var(--bg); padding: 2px 6px; border-radius: 3px; font-size: 1
     <div id="legend"></div>
   </div>
   <main class="side">
+    <p class="back"><a href="./#v=market">地図の画面に戻る</a></p>
     <h1>いまの大型車</h1>
     <p class="sub" id="sub">読み込み中です</p>
     <div id="err" role="alert"></div>
