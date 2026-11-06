@@ -552,6 +552,8 @@ body.view-market .maplibregl-ctrl-attrib { display: none; }
   transition: background .18s, color .18s;
 }
 #views button:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+#views .views-link { flex: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--muted); font-size: 12.5px; white-space: nowrap; padding: 0 4px; text-decoration: none; transition: background .18s, color .18s; }
+#views .views-link:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
 #views button[aria-pressed="true"] { background: var(--accent-soft); color: #fff; font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); }
 #panel { top: 76px; }
 #cargo-editor { max-height: calc(100vh - 340px); }
@@ -1115,7 +1117,7 @@ body.m-right-collapsed .m-rsub { display: none; }
   body.sheet-tabs { --tabs-h: 42px; }
   html body #views { left: 8px; right: 8px; top: 8px; width: auto; height: 40px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; z-index: 40; }
   html body #views::-webkit-scrollbar { display: none; }
-  html body #views button { flex: 0 0 auto; font-size: 11.5px; padding: 0 7px; }
+  html body #views button, html body #views .views-link { flex: 0 0 auto; font-size: 11.5px; padding: 0 7px; }
 
   html body.sheet-mode :is(#m-right, #m-left, #m-summary, #m-credits, #panel, #layers, #legend, #detail, #work, #timebar):not(.sh-on) { display: none !important; }
   html body.sheet-mode :is(#m-right, #m-left, #m-summary, #m-credits, #panel, #layers, #legend, #detail, #work, #timebar).sh-on {
