@@ -69,6 +69,21 @@ const OwnMonth = (() => {
     };
   }
 
+  // 2 か月以上を一緒に落としたとき（d.multi_month）は、月ごとの要約を返す（d.months_detail）。1 か月ならこれまでの summary 1 件
+  function summaries(d, c) {
+    const md = d.multi_month && Array.isArray(d.months_detail) && d.months_detail.length > 1 ? d.months_detail : null;
+    if (!md) return [summary(d, c)];
+    return md.map((m) => {
+      const k = m.kpis || {}, st = (d.stops || []).filter((x) => x.minutes >= 30 && String(x.start).slice(0, 7) === m.month);
+      return {
+        month: m.month, label: m.label || `${m.year} 年 ${m.mon} 月`,
+        actual_rate: k.actual_rate ? k.actual_rate.value : null, load_rate: k.load_rate ? k.load_rate.value : null, load_eff: k.load_efficiency ? k.load_efficiency.value : null,
+        empty_km: round1((k.actual_rate && k.actual_rate.km_empty) || 0), wait_min: st.reduce((a, x) => a + x.minutes, 0), wait_count: st.length,
+        legs: m.counts ? m.counts.legs : 0, vehicles: d.vehicles.length, company: d.company ? d.company.name : '',
+      };
+    });
+  }
+
   const pp = (a, b) => (a == null || b == null ? '—' : `${(b - a) * 100 >= 0 ? '+' : '−'}${Math.abs((b - a) * 100).toFixed(1)} ポイント`);
   const sgn = (a, b, unit, dig = 1) => (a == null || b == null ? '—' : `${b - a >= 0 ? '+' : '−'}${Math.abs(b - a).toLocaleString('ja-JP', { minimumFractionDigits: dig, maximumFractionDigits: dig })} ${unit}`);
   const pct = (v) => (v == null ? '—' : (v * 100).toFixed(1) + '%');
@@ -123,7 +138,13 @@ const OwnMonth = (() => {
 
   const WDN = '月火水木金土日';
   const wdOf = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? (new Date(+m[1], +m[2] - 1, +m[3]).getDay() + 6) % 7 : null; };
-  const placeName = (p) => (p ? `${p.pref || ''}${p.muni || p.label || ''}` : '（地点を入れてください）');
+  // 市の名前だけが書かれて市役所のある区に置いた地点は、その区を書かない（別の区かもしれない）。元の名前に「（区は確認）」を付ける
+  const isHallWard = (p) => !!(p && (p.hall_ward || (p.note && /市役所のある区/.test(p.note))));
+  const placeName = (p) => {
+    if (!p) return '（地点を入れてください）';
+    if (isHallWard(p)) { const l = p.label || p.short || '', pf = p.pref || ''; return `${pf && l.startsWith(pf) ? '' : pf}${l}（区は確認）`; }
+    return `${p.pref || ''}${p.muni || p.label || ''}`;
+  };
   const shortName = (p) => (p ? (p.short || p.muni || p.label || '?') : '?');
 
   // 空車の帰りの便（向きが帰りで、空車と分かった便）。発地ごとに別の区間として扱う
@@ -164,6 +185,25 @@ const OwnMonth = (() => {
     return res;
   }
 
+  /* 自社の成約単価（円/km か 円/便）で出した帰り荷の売上の目安。rate: { kind: 'km' | 'trip', value }。標準的運賃とは別に出す。
+     円/km は距離が分かる便だけ、円/便はすべての空車の帰りの便に掛ける。値が正の数でないときは null */
+  function ownRevenue(d, rate) {
+    const val = rate && Number(String(rate.value == null ? '' : rate.value).normalize('NFKC').replace(/[,\s円]/g, ''));
+    if (!rate || !(val > 0) || !isFinite(val)) return null;
+    const back = emptyBackLegs(d), pairs = new Map();
+    let counted = 0, noKm = 0, total = 0;
+    for (const l of back) {
+      let amt;
+      if (rate.kind === 'km') { if (l.km == null) { noKm++; continue; } amt = Math.round(l.km * val); } else amt = Math.round(val);
+      counted++; total += amt;
+      const k = `${l.frm}|${l.to}`;
+      if (!pairs.has(k)) pairs.set(k, { frm: l.frm, to: l.to, n: 0, subtotal: 0 });
+      const p = pairs.get(k); p.n++; p.subtotal += amt;
+    }
+    return { kind: rate.kind, value: val, trips: back.length, counted, noKm, total, pairs: [...pairs.values()].sort((x, y) => y.n - x.n),
+      unit: rate.kind === 'km' ? '円/km' : '円/便' };
+  }
+
   /* 空車の帰りの区間（発地 → 着地）ごとの集計。求荷求車の文と地図が同じ組を使う。
      own_calc.js が区間の集計（d.pairs）を返すようになったら、その便数・曜日を優先する（無ければ d.legs から数える） */
   function returnPairs(d) {
@@ -171,8 +211,9 @@ const OwnMonth = (() => {
     for (const l of emptyBackLegs(d)) {
       if (!l.frm || !l.to || l.frm === l.to) continue;
       const k = `${l.frm}|${l.to}`;
-      if (!m.has(k)) m.set(k, { frm: l.frm, to: l.to, n: 0, wd: {}, dep: {}, plates: {} });
-      const p = m.get(k), w = wdOf(l.dep || l.date), dep = (l.dep || '').slice(11, 16);
+      if (!m.has(k)) m.set(k, { frm: l.frm, to: l.to, n: 0, wd: {}, dep: {}, plates: {}, dates: [] });
+      const p = m.get(k), w = wdOf(l.dep || l.date), dep = (l.dep || '').slice(11, 16), dt = (l.dep || l.date || '').slice(0, 10);
+      if (dt && !p.dates.includes(dt)) p.dates.push(dt);
       p.n++; if (w != null) p.wd[w] = (p.wd[w] || 0) + 1; if (dep) p.dep[dep] = (p.dep[dep] || 0) + 1; p.plates[l.plate] = (p.plates[l.plate] || 0) + 1;
     }
     // 区間の集計（d.pairs: own_calc.js）があれば、その空車の便数と曜日別の空車の便数を優先する
@@ -184,6 +225,7 @@ const OwnMonth = (() => {
         if (Array.isArray(e.by_weekday)) { const wd = {}; for (const w of e.by_weekday) if (w && w.empty > 0 && w.wd != null) wd[w.wd] = w.empty; if (Object.keys(wd).length) p.wd = wd; }
       }
     }
+    for (const p of m.values()) p.dates.sort();
     return [...m.values()].sort((a, b) => b.n - a.n);
   }
 
@@ -208,14 +250,51 @@ const OwnMonth = (() => {
       `車格: ${cls}`, `空き: ${kg}（積む荷の大きさや形は、ご相談で決めます）`, ...BOARD_TAIL].join('\n');
   }
 
+  // 「毎週○曜」と書くのは、その月に同じ曜日が 3 回以上あるときだけ。月に 1〜2 回の曜日は約束にならないので、日付を並べる
+  const WEEKLY_MIN = 3;
+  const dateWd = (iso) => `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}（${WDN[wdOf(iso)]}）`;
+  function dayText(p) {
+    const weekly = Object.keys(p.wd).map(Number).filter((w) => p.wd[w] >= WEEKLY_MIN).sort((x, y) => p.wd[y] - p.wd[x] || x - y).slice(0, 3).sort((x, y) => x - y);
+    const rest = (p.dates || []).filter((iso) => !weekly.includes(wdOf(iso)));
+    const shown = rest.slice(0, 6).map(dateWd).join('・') + (rest.length > 6 ? `・ほか ${rest.length - 6} 日` : '');
+    const w = weekly.length ? `毎週${weekly.map((x) => WDN[x] + '曜').join('・')}` : '';
+    if (w && shown) return `${w}（ほか ${shown}）`;
+    if (w) return w;
+    if (shown) return `${shown}（同じ曜日が月に 3 回以上ではないので、毎週とは書きません）`;
+    return '（曜日を入れてください）';
+  }
+
+  /* 明日の空きから 1 便ぶんの文を作る（配車担当の毎日の仕事用）。入れ物の初期値は、いちばん多い空車の帰りの区間から取る */
+  function pad(n) { return String(n).padStart(2, '0'); }
+  const isoOf = (dt) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+  function tomorrowIso(now) { const t = new Date((now || new Date()).getTime()); t.setDate(t.getDate() + 1); return isoOf(t); }
+  function boardDefaults(d, now) {
+    const p = returnPairs(d)[0];
+    const base = { date: tomorrowIso(now), frm: '', to: '', cls: '', kg: '', time: '' };
+    if (!p) return base;
+    const top = (o) => Object.keys(o).sort((x, y) => o[y] - o[x] || (x < y ? -1 : 1))[0];
+    const plate = top(p.plates), v = d.vehicles.find((x) => x.plate === plate);
+    let kg = v && v.max_load_kg;
+    if (!kg) { const m = /^(\d+(?:\.\d+)?)\s*t$/i.exec(String((v && v.cls) || '')); if (m) kg = +m[1] * 1000; }
+    return { date: base.date, frm: placeName(d.places[p.frm]), to: placeName(d.places[p.to]), cls: (v && tariffClass(v.cls)) || '', kg: kg ? String(kg / 1000) : '', time: top(p.dep) || '' };
+  }
+  const CLASS_CHOICES = ['2t', '4t', '10t'];
+  // f: { date: 'YYYY-MM-DD', frm, to, cls, kg（t）, time }。足りない欄は「（○○を入れてください）」と書く
+  function boardOne(f) {
+    const ok = /^\d{4}-\d{2}-\d{2}$/.test(f.date || '');
+    const day = ok ? `${dateWd(f.date)}${f.time ? ` ${f.time} ごろ出発` : ''}` : '（日付を入れてください）';
+    const kgv = Number(String(f.kg || '').normalize('NFKC').replace(/[^\d.]/g, ''));
+    return [BOARD_HEAD, `発地: ${f.frm || '（発地を入れてください）'}`, `着地: ${f.to || '（着地を入れてください）'}`, `日時: ${day}`,
+      `車格: ${f.cls || '（車格を入れてください）'}${f.cls ? '車' : ''}`, `空き: ${kgv > 0 ? `最大 ${tonsText(kgv * 1000)} t まで` : '（空きの重さを入れてください）'}（積む荷の大きさや形は、ご相談で決めます）`, ...BOARD_TAIL].join('\n');
+  }
+
   // 空車の帰りの区間（発地 → 着地）ごとに 1 つずつ、求荷求車に貼る文を作る。[{ key, frm, to, label, n, text }]
   // 曜日・便数・車の種類・空きの重さは、その区間の便から数える。連絡先と運賃は空欄
   function boardTexts(d) {
     const out = [];
     for (const p of returnPairs(d)) {
       const a = d.places[p.frm], b = d.places[p.to];
-      const wds = Object.keys(p.wd).map(Number).sort((x, y) => p.wd[y] - p.wd[x] || x - y).slice(0, 3).sort((x, y) => x - y);
-      const day = wds.length ? `毎週${wds.map((w) => WDN[w] + '曜').join('・')}` : '（曜日を入れてください）';
+      const day = dayText(p);
       const wdCount = Object.keys(p.wd).map(Number).sort((x, y) => x - y).map((w) => `${WDN[w]}曜 ${p.wd[w]} 便`).join('・');
       const dep = Object.keys(p.dep).sort((x, y) => p.dep[y] - p.dep[x] || (x < y ? -1 : 1))[0];
       const mon = d.mon ? `${d.mon} 月は` : '';
@@ -246,17 +325,25 @@ const OwnMonth = (() => {
 
   // 30 分以上の停車を、荷待ちの表の行にする。停車の記録に無い欄（契約の相手・荷役開始・荷主等の都合の待機か）は空欄のまま。
   // 車種は、車が配車表の車両に当たるか、車両がすべて同じ車種のときだけ入れる
+  // 車の種類を荷待ちの表の車種（小型・中型・大型）にする。売上の目安と同じ区分（3 t 以下は小型、4〜7 t と増 t は中型、8 t 以上は大型）。分からないとき ''
+  const WAIT_OF = { '2t': '小型', '4t': '中型', '10t': '大型' };
+  function waitClass(cls) {
+    const c = String(cls == null ? '' : cls).normalize('NFKC').trim();
+    if (['小型', '中型', '大型', 'トレーラー'].includes(c)) return c;
+    if (/^増\s*(t|トン)?$/i.test(c) || /^増t/i.test(c)) return '中型';
+    return WAIT_OF[tariffClass(c)] || '';
+  }
   function draftRows(d) {
-    const rows = [], kinds = [...new Set(d.vehicles.map((v) => v.cls).filter((c) => ['小型', '中型', '大型'].includes(c)))];
+    const rows = [], kinds = [...new Set(d.vehicles.map((v) => waitClass(v.cls)).filter((c) => c))];
     for (const s of d.stops.filter((x) => x.minutes >= 30)) {
       const v = d.vehicles.find((x) => x.plate === s.plate);
-      const cls = v && ['小型', '中型', '大型'].includes(v.cls) ? v.cls : (kinds.length === 1 ? kinds[0] : '');
+      const cls = (v && waitClass(v.cls)) || (kinds.length === 1 ? kinds[0] : '');
       rows.push({ date: s.start.slice(0, 10), vehicle_no: s.plate, vehicle_class: cls, partner: '', place: s.name || (d.places[s.place] || {}).label || '',
         arrive: s.start.slice(11, 16), depart: s.end.slice(11, 16), _draft: true });
     }
     return rows;
   }
 
-  return { GLOSS, tipHtml, sig, headSig, list, save, clearAll, rolesGet, rolesSet, summary, compareRows, FARE, fare, tariffClass, revenue, returnPairs, boardText, boardTexts, draftRows, hash };
+  return { GLOSS, tipHtml, sig, headSig, list, save, clearAll, rolesGet, rolesSet, summary, summaries, compareRows, FARE, fare, tariffClass, revenue, returnPairs, boardText, boardTexts, draftRows, waitClass, ownRevenue, boardDefaults, boardOne, CLASS_CHOICES, tomorrowIso, isHallWard, placeName, hash };
 })();
 if (typeof window !== 'undefined') window.OwnMonth = OwnMonth;

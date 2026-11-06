@@ -459,11 +459,12 @@ def test_analyze_overlapping_haisha_files_are_reported_and_the_ui_can_choose(cal
     assert pick["haisha_choice"]["used"] == ["b.csv"] and pick["haisha_choice"]["needs_choice"] is False and {p["label"] for p in pick["pairs"]} == {"大阪 → 加古川", "加古川 → 大阪"}
     # 重なる 2 つを両方選ぶと、先に読んだほうだけを使い、捨てた件数を報告する
     both = _an(calc, [a, b], {"haisha_use": ["a.csv", "b.csv"]})
-    assert both["counts"]["legs"] == 2 and both["counts"]["dropped_overlap"] == 2 and [n["kind"] for n in both["notices"]] == ["haisha_merged", "haisha_dropped"]
+    assert both["counts"]["legs"] == 2 and both["counts"]["dropped_overlap"] == 2 and [n["kind"] for n in both["notices"]] == ["haisha_dropped"]  # SPEC §43: 区間を 1 件も出さなかった配車表（重なりで全部捨てた）は「合わせて読みました」に数えない
 
 
 def test_analyze_reads_every_readable_example_file(calc):
-    files = [{"name": p.name, "text": p.read_text(encoding="utf-8")} for p in sorted(EX.glob("*.csv"))]
+    # r2 の時点の 10 ファイル（r3 で足した書き方の見本 haisha_banshu は tests/test_v43_own_read.py が確かめる）
+    files = [{"name": p.name, "text": p.read_text(encoding="utf-8")} for p in sorted(EX.glob("*.csv")) if not p.name.startswith("haisha_banshu")]
     assert len(files) == 10
     d = _an(calc, files, {"munis": MUNIS})
     kinds = {f["file"]: f["kind"] for f in d["files"]}

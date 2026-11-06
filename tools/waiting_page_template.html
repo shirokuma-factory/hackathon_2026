@@ -457,8 +457,16 @@ function docNotes(p) {
   return out;
 }
 const hasEarly = (p) => p.early_assumed_count > 0 || p.early_designated_count > 0;
+// 受付の時刻がある回は、受付から数えた待機を書面の主な額にする（SPEC §43）。到着から数えた額は並べて出す
+const hasRec = (p) => p.reception_count > 0;
+const mainAmt = (p) => (hasRec(p) ? p.main_amount : p.amount);
+const mainWait = (p) => (hasRec(p) ? p.wait_minutes - p.reception_arrive_wait_minutes + p.reception_wait_minutes : p.wait_minutes);
+// 受付の時刻が無く、早着の疑いになった回だけを別に数える。受付の時刻がある回は受付から数えているので、「除くと 0 円」にはしない
+const noRecEarly = (p) => (hasRec(p) ? { n: p.early_assumed_norec_count, wait: p.early_assumed_norec_wait_minutes, amt: p.early_assumed_norec_amount } : { n: p.early_assumed_count, wait: p.early_assumed_wait_minutes, amt: p.early_assumed_amount });
+const earlyShown = (p) => noRecEarly(p).n > 0;
+const receptionSentence = (p) => `受付の時刻がある ${p.reception_count} 回は、到着から数えると ${yen(p.reception_arrive_amount)}（待機 ${hm(p.reception_arrive_wait_minutes)}）、受付の時刻から数えると ${yen(p.reception_amount)}（待機 ${hm(p.reception_wait_minutes)}）です。この書面の参考額は、受付の時刻がある回は受付から、ほかの回は到着から数えています。受付の前に着いて待った時間は、受付からの数え方には入りません。`;
 // 早着の疑いの回を除いた数字（全体と並べて出す）
-const earlySplit = (p) => ({ n: p.early_assumed_count, waitAll: p.wait_minutes, waitEx: p.wait_minutes - p.early_assumed_wait_minutes, amtAll: p.amount, amtEx: p.amount - p.early_assumed_amount, waitEarly: p.early_assumed_wait_minutes, amtEarly: p.early_assumed_amount });
+const earlySplit = (p) => { const e = noRecEarly(p); return { n: e.n, waitAll: mainWait(p), waitEx: mainWait(p) - e.wait, amtAll: mainAmt(p), amtEx: mainAmt(p) - e.amt, waitEarly: e.wait, amtEarly: e.amt }; };
 const earlySentence = (p) => { const e = earlySplit(p); return `全体 ${yen(e.amtAll)}（待機 ${hm(e.waitAll)}）。うち${earlyWord(p.partner)} ${e.n} 回（待機 ${hm(e.waitEarly)}、${yen(e.amtEarly)}）を除くと ${yen(e.amtEx)}（待機 ${hm(e.waitEx)}）です。`; };
 const arriveCell = (r) => `${esc(r.arrive)}${r.reception ? `<small>受付 ${esc(r.reception)}</small>` : ''}${r.early_arrival === 'assumed' ? `<small>${r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）' : '早着の疑い（指定の到着時刻なし）'}</small>` : ''}${r.early_arrival === 'designated' ? `<small>指定 ${esc(r.appointed)} より前に着</small>` : ''}`;
 const arriveText = (r) => r.arrive + [r.reception ? `受付 ${r.reception}` : '', r.early_arrival === 'assumed' ? (r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）' : '早着の疑い（指定の到着時刻なし）') : '', r.early_arrival === 'designated' ? `指定 ${r.appointed} より前に着` : ''].filter(Boolean).map((x) => `（${x}）`).join('');
@@ -468,7 +476,7 @@ function draftHtml(p) {
   const classes = [...new Set(rows.map((r) => r.vehicle_class))];
   const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
   const rec = rows.map((r) => `<tr><td>${esc(r.date)}</td><td>${esc(r.vehicle_no)}</td><td>${esc(r.vehicle_class)}</td><td>${esc(r.place)}</td><td>${arriveCell(r)}</td><td>${esc(r.start)}</td><td>${esc(r.end)}</td><td>${esc(r.handler)}</td><td>${r.shipper_fault ? 'はい' : 'いいえ'}</td>` +
-    `<td class="num">${r.wait_min}${r.handler === '荷主側' && r.wait_min > 0 && r.end ? '<small>荷主側の荷役を待機に含む</small>' : ''}${r.post_wait_min > 0 ? `<small>荷役のあとの待ち ${r.post_wait_min} 分を含む</small>` : ''}${r.wait_base_min > 0 ? `<small>指定 ${esc(r.appointed)} から</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.amount)}</td></tr>`).join('');
+    `<td class="num">${r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min}${r.reception_wait_min !== undefined ? `<small>受付 ${esc(r.reception)} から。到着から数えると ${r.wait_min} 分</small>` : ''}${r.handler === '荷主側' && r.wait_min > 0 && r.end ? '<small>荷主側の荷役を待機に含む</small>' : ''}${r.post_wait_min > 0 ? `<small>荷役のあとの待ち ${r.post_wait_min} 分を含む</small>` : ''}${r.wait_base_min > 0 ? `<small>指定 ${esc(r.appointed)} から</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.reception_amount !== undefined ? r.reception_amount : r.amount)}${r.reception_amount !== undefined ? `<small>到着から数えると ${n0(r.amount)}</small>` : ''}</td></tr>`).join('');
   const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((m) => `<td class="num">${n0(t.handling[m].normal[c])} / ${n0(t.handling[m].over_2h[c])}</td>`).join('')}</tr>`).join('');
   return `<h3>荷待ち・荷役に関する協議のお願い（下書き）</h3>
     <dl class="dl"><dt>相手</dt><dd>${esc(p.partner)} 御中</dd><dt>期間</dt><dd>${esc(p.date_from)} 〜 ${esc(p.date_to)}（${p.count} 回）</dd>
@@ -476,8 +484,9 @@ function draftHtml(p) {
     <h4>記録の一覧</h4>
     <div class="rec-w"><table class="rec"><thead><tr><th>日付</th><th>車番</th><th>車種</th><th>場所</th><th>到着</th><th>荷役開始</th><th>荷役終了</th><th>荷役をした人</th><th>荷主等の都合</th><th>待機（分）</th><th>荷役（分）</th><th>附帯業務（記録のみ）</th><th>参考額（円）</th></tr></thead><tbody>${rec}</tbody></table></div>
     <h4>参考額と計算の根拠</h4>
-    <p>参考額の合計 <b>${yen(p.amount)}</b>（税抜。待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}）。待機の合計 ${hm(p.wait_minutes)}、運転者の荷役の合計 ${hm(p.handling_minutes)}。</p>
-    ${p.early_assumed_count ? `<p id="doc-early"><b>${earlyWord(p.partner)}を分けた数字:</b> ${esc(earlySentence(p))}</p>` : ''}
+    <p>参考額の合計 <b>${yen(mainAmt(p))}</b>（税抜。${hasRec(p) ? '受付の時刻がある回は受付から数えた額です。内訳は下の記録の一覧にあります' : `待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}`}）。待機の合計 ${hm(mainWait(p))}、運転者の荷役の合計 ${hm(p.handling_minutes)}。</p>
+    ${hasRec(p) ? `<p id="doc-reception"><b>受付から数えた数字:</b> ${esc(receptionSentence(p))}</p>` : ''}
+    ${earlyShown(p) ? `<p id="doc-early"><b>${earlyWord(p.partner)}を分けた数字:</b> ${esc(earlySentence(p))}</p>` : ''}
     ${hasEarly(p) ? `<p class="small">${esc(earlyRule(p.partner))}</p>` : ''}
     ${docNotes(p).map((x) => `<p class="small doc-note"><b>${esc(x)}</b></p>`).join('')}
     <p class="small">${esc(calcNote(t))}</p>
@@ -493,7 +502,8 @@ function draftHtml(p) {
     <p>${esc(MONTH_CLOSE)}</p>` : ''}
     <h4>次の契約の書面（運送引受書）に入れる欄の案</h4>
     <ul class="list">${clauseList(t).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-    <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。${p.early_assumed_count ? `${earlyWord(p.partner)}の ${p.early_assumed_count} 回を除くと ${n0(p.amount - p.early_assumed_amount)} 円（税抜）です。` : ''}</p>
+    <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(mainAmt(p))} 円（税抜）です。${hasRec(p) ? `受付の時刻がある回は受付から数えています（到着から数えると ${n0(p.amount)} 円）。` : ''}${earlyShown(p) ? `${earlyWord(p.partner)}の ${noRecEarly(p).n} 回を除くと ${n0(mainAmt(p) - noRecEarly(p).amt)} 円（税抜）です。` : ''}</p>
+    <p class="small" id="doc-cross-note">この書面を紙や PDF で受け取った荷主の方は、上の記録の一覧の「日付・車番・到着・荷役開始」の列を、このページの「荷主として使う」の照合の欄に貼ると、自社の受付記録と照らし合わせられます。運送会社に「CSV をコピー」した表をもらう方法もあります。</p>
     <p class="printnote">${esc(PROTECT[0])}</p>`;
 }
 
@@ -510,9 +520,10 @@ function draftText(p) {
       (r.side_work || '') + (r.side_min ? ` ${r.side_min} 分` : ''), n0(r.amount)].join('\t'));
   });
   L.push('', '【参考額と計算の根拠】',
-    `参考額の合計 ${yen(p.amount)}（税抜。待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}）。待機の合計 ${hm(p.wait_minutes)}、運転者の荷役の合計 ${hm(p.handling_minutes)}。`,
+    `参考額の合計 ${yen(mainAmt(p))}（税抜。${hasRec(p) ? '受付の時刻がある回は受付から数えた額です。内訳は下の記録の一覧にあります' : `待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}`}）。待機の合計 ${hm(mainWait(p))}、運転者の荷役の合計 ${hm(p.handling_minutes)}。`,
     calcNote(t), BASIS_QUOTE);
-  if (p.early_assumed_count) L.push(`${earlyWord(p.partner)}を分けた数字: ${earlySentence(p)}`);
+  if (hasRec(p)) L.push(`受付から数えた数字: ${receptionSentence(p)}`);
+  if (earlyShown(p)) L.push(`${earlyWord(p.partner)}を分けた数字: ${earlySentence(p)}`);
   if (hasEarly(p)) L.push(earlyRule(p.partner));
   docNotes(p).forEach((x) => L.push(x));
   if (rows.some((r) => r.post_wait)) L.push(POST_WAIT_NOTE);
@@ -525,7 +536,7 @@ function draftText(p) {
       ...monthTable(p.partner).map((m) => [m.place, monthLabel(m.month), m.count, m.avg_minutes, m.over_1h_count].join('	')), MONTH_CLOSE);
   }
   L.push('', '【次の契約の書面（運送引受書）に入れる欄の案】', ...clauseList(t).map((x) => `・${x}`), '',
-    `荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。${p.early_assumed_count ? `${earlyWord(p.partner)}の ${p.early_assumed_count} 回を除くと ${n0(p.amount - p.early_assumed_amount)} 円（税抜）です。` : ''}`, '',
+    `荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(mainAmt(p))} 円（税抜）です。${hasRec(p) ? `受付の時刻がある回は受付から数えています（到着から数えると ${n0(p.amount)} 円）。` : ''}${earlyShown(p) ? `${earlyWord(p.partner)}の ${noRecEarly(p).n} 回を除くと ${n0(mainAmt(p) - noRecEarly(p).amt)} 円（税抜）です。` : ''}`, '',
     PROTECT[0], '', '【根拠】', ...BASIS.map((x) => `・${x}`));
   return L.join('\n');
 }
@@ -570,7 +581,7 @@ function renderResult() {
   S.partner = sel;
   const p = r.by_partner.find((x) => x.partner === sel);
   const tb = r.by_partner.map((x) => `<tr class="${x.partner === sel ? 'on' : ''}" data-pick="${esc(x.partner)}"><td class="c1">${esc(x.partner)}</td><td class="num" data-l="回数">${x.count}</td><td class="num" data-l="待機の合計">${hm(x.wait_minutes)}</td>` +
-    `<td class="num" data-l="運転者の荷役の合計">${hm(x.handling_minutes)}</td><td class="num" data-l="参考額"><b>${n0(x.amount)}</b>${x.early_assumed_count ? `<small class="small">　${earlyWord(x.partner)} ${x.early_assumed_count} 回を除くと ${n0(x.amount - x.early_assumed_amount)}</small>` : ''}</td><td class="num" data-l="1 時間以上">${x.over_1h_count}</td><td class="num" data-l="2 時間以上">${x.over_2h_count}</td></tr>`).join('');
+    `<td class="num" data-l="運転者の荷役の合計">${hm(x.handling_minutes)}</td><td class="num" data-l="参考額"><b>${n0(mainAmt(x))}</b>${hasRec(x) ? `<small class="small">　受付から数えた額（到着から ${n0(x.amount)}）</small>` : ''}${earlyShown(x) ? `<small class="small">　${earlyWord(x.partner)} ${noRecEarly(x).n} 回を除くと ${n0(mainAmt(x) - noRecEarly(x).amt)}</small>` : ''}</td><td class="num" data-l="1 時間以上">${x.over_1h_count}</td><td class="num" data-l="2 時間以上">${x.over_2h_count}</td></tr>`).join('');
   $('#partners').innerHTML = `<h2>契約の相手ごと<span class="small">　参考額は税抜・円。行を押すと相手を切り替えます</span></h2>
     <div class="scroll-x"><table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th>運転者の荷役の合計</th><th>参考額</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">2 時間以上の荷待ち・荷役</th></tr></thead><tbody>${tb}</tbody></table></div>
     <details class="defs" id="head-defs"><summary>表の見出しの意味</summary><ul>
@@ -659,6 +670,8 @@ function crossResultHtml() {
   const noVeh = c.unmatchable_carrier.length + c.unmatchable_shipper.length;
   return `<div id="cross-result">
     <p><b>照らし合わせた結果:</b> 日付と車番が同じ組 ${c.pairs.length} 組のうち、時刻の差が ${lim} 分以内の組 ${c.same} 組、${lim} 分を超える組 ${c.differ.length} 組。運送会社の書面にだけある行 ${c.only_carrier.length} 件、自社の受付記録にだけある行 ${c.only_shipper.length} 件。</p>
+    <p id="cross-amount">参考額の合計の目安: 運送会社の書面は ${yen(c.carrier_amount)}、自社の受付記録（受付の時刻から数えた待機。車種は上の既定の単価）は ${yen(c.shipper_amount)}です。行の範囲と車種の単価が違うときは、差がそのまま食い違いにはなりません。</p>
+    ${c.skipped && c.skipped.length ? `<p class="small" id="cross-skipped">列の数が見出しと違うので読まなかった行が ${c.skipped.length} 行あります（例: ${esc(c.skipped[0])}）。列を空白 2 つ以上かタブで区切って貼り直してください。</p>` : ''}
     ${c.carrier_errors ? `<p class="small">運送会社の書面の ${c.carrier_errors} 行は読めなかったので、照合から外しています。</p>` : ''}
     ${noVeh ? `<p class="small">車番が空で照合できない行が ${noVeh} 件あります（運送会社の書面 ${c.unmatchable_carrier.length} 件、自社の受付記録 ${c.unmatchable_shipper.length} 件）。</p>` : ''}
     ${c.differ.length ? `<h3>時刻が ${lim} 分を超えて違う行（${c.differ.length} 組）</h3><p class="small">差は、自社の受付記録の時刻 − 運送会社の書面の時刻です。プラスは自社の時刻のほうが遅いことを示します。</p>
@@ -667,8 +680,8 @@ function crossResultHtml() {
 }
 function crossHtml() {
   return `<h2>運送会社の書面と照らし合わせる</h2>
-    <p class="small">運送会社から届いた書面の CSV（このページの「計算結果を CSV で書き出す」「CSV をコピー」と同じ形）を貼ると、日付と車番（数字の下 4 桁）が同じ行どうしで、到着と荷役開始の時刻が 15 分を超えて違う行と、片方にしか無い行を並べます。</p>
-    <textarea id="cross-ta" rows="4" placeholder="ここに運送会社の書面の CSV を貼り付け" aria-label="運送会社の書面の CSV を貼り付ける欄">${esc(S.carrierText || '')}</textarea>
+    <p class="small">運送会社から届いた書面の CSV（このページの「計算結果を CSV で書き出す」「CSV をコピー」と同じ形）、または紙や PDF の表をコピーしたもの（1 行目が「日付　車番　到着　荷役開始　荷役終了」のような見出しで、列を空白かタブで区切ったもの）を貼ると、日付と車番（数字の下 4 桁）が同じ行どうしで、到着と荷役開始の時刻が 15 分を超えて違う行と、片方にしか無い行を並べます。</p>
+    <textarea id="cross-ta" rows="4" placeholder="ここに運送会社の書面の CSV か、紙・PDF の表を貼り付け" aria-label="運送会社の書面の CSV を貼り付ける欄">${esc(S.carrierText || '')}</textarea>
     <div class="bar"><button type="button" id="b-cross" class="primary">照らし合わせる</button><label class="small">CSV のファイルから <input type="file" id="crossfile" accept=".csv,text/csv" aria-label="運送会社の書面の CSV のファイルを選ぶ"></label><span class="small" id="cross-msg" role="status"></span></div>
     <div id="cross-out">${crossResultHtml()}</div>`;
 }
@@ -677,14 +690,17 @@ function runCross() {
   const text = S.carrierText || '';
   if (!text.trim()) { S.cross = { error: '運送会社の書面の CSV が空です。貼り付けるか、ファイルを選んでください' }; return; }
   if (!S.res || !S.res.rows.length) { S.cross = { error: '自社の受付記録がまだ表にありません。先に受付記録を入れてください' }; return; }
-  let rows;
-  try { rows = csvToRows(text); } catch (e) { S.cross = { error: e.message }; return; }
+  let rows, skipped;
+  try { ({ rows, skipped } = crossRowsOf(text)); } catch (e) { S.cross = { error: e.message }; return; }
   try {
     const rc = calc(rows, S.year, TARIFF, S.defaults);
     if (!rc.rows.length) { S.cross = { error: `運送会社の書面の ${rows.length} 行は、どれも読めませんでした（${rc.errors[0] ? rc.errors[0].message : ''}）` }; return; }
     if (!S.res.rows.some((x) => x.vehicle_no)) { S.cross = { error: '自社の受付記録に車番の列が無いので、日付と車番での照合ができません。車番の列を足してください' }; return; }
     const cc = WaitingShared.crossCheck(rc.rows, S.res.rows, 15);
     cc.carrier_errors = new Set(rc.errors.map((e) => e.row)).size;
+    cc.skipped = skipped;
+    cc.carrier_amount = rc.rows.reduce((a, x) => a + (x.reception_amount !== undefined ? x.reception_amount : x.amount), 0);
+    cc.shipper_amount = S.res.rows.reduce((a, x) => a + x.amount, 0);
     S.cross = cc;
   } catch (e) { S.cross = { error: e.message }; }
 }
@@ -727,10 +743,10 @@ const calcSoon = () => { clearTimeout(S.tm); S.tm = setTimeout(doCalc, 200); };
 
 function csvTextOf(resRows) {
   const heads = ['日付', '車番', '車種', '契約の相手', '場所', '到着', '荷役開始', '荷役終了', '出発', '荷役をした人', '荷役の方法', '荷主等の都合の待機か', '指定の到着時刻', '附帯業務の内容', '附帯業務の分', '荷役のあとの待ちを荷主等の都合として数える', '待機の数え始め',
-    '待機（分）', '運転者の荷役（分）', '待機時間料 通常（回）', '待機時間料 2時間超（回）', '待機時間料（円）', '積込料・取卸料 通常（回）', '積込料・取卸料 2時間超（回）', '積込料・取卸料（円）', '参考額（円・税抜）'];
+    '待機（分）', '運転者の荷役（分）', '待機時間料 通常（回）', '待機時間料 2時間超（回）', '待機時間料（円）', '積込料・取卸料 通常（回）', '積込料・取卸料 2時間超（回）', '積込料・取卸料（円）', '参考額（円・税抜）', '受付から数えた待機（分）', '受付から数えた参考額（円・税抜）'];
   const cell = (v) => { const t = String(v == null ? '' : v); return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
   const lines = [heads, ...resRows.map((r) => [r.date, r.vehicle_no, r.vehicle_class, r.partner, r.place, r.arrive, r.start, r.end, r.depart, r.handler, r.method, r.shipper_fault ? 'はい' : 'いいえ',
-    r.appointed, r.side_work, r.side_min || '', r.post_wait ? 'はい' : '', r.wait_from, r.wait_min, r.handling_min, r.wait_normal_units, r.wait_over_units, r.wait_fee, r.handling_normal_units, r.handling_over_units, r.handling_fee, r.amount])];
+    r.appointed, r.side_work, r.side_min || '', r.post_wait ? 'はい' : '', r.wait_from, r.wait_min, r.handling_min, r.wait_normal_units, r.wait_over_units, r.wait_fee, r.handling_normal_units, r.handling_over_units, r.handling_fee, r.amount, r.reception_wait_min !== undefined ? r.reception_wait_min : '', r.reception_amount !== undefined ? r.reception_amount : ''])];
   return '\uFEFF' + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 
@@ -752,6 +768,16 @@ function parseCsv(text) {
   }
   if (cur !== '' || row.length) { row.push(cur); out.push(row); }
   return out.filter((r) => r.some((x) => x.trim() !== ''));
+}
+
+// 運送会社の書面の表を行にする。このページが書き出した CSV を先に試し、だめなら紙・PDF からコピーした表（空白かタブ区切り。日付・車番・到着・荷役開始・荷役終了の列）として読む（SPEC §43）
+function crossRowsOf(text) {
+  try { return { rows: csvToRows(text), skipped: [] }; } catch (e0) {
+    const lt = WaitingShared.looseTableToTsv(text);
+    if (!lt) throw new Error('運送会社の書面の表を読めません。このページが書き出した CSV か、1 行目に見出し（日付・車番・到着・荷役開始・荷役終了など）のある表（紙や PDF からコピーした、空白かタブで区切った表も可）を貼ってください');
+    const pf = parsePasteFull(lt.tsv);
+    return { rows: pf.rows.map((r) => ({ ...Object.fromEntries(COLUMNS.map((k) => [k, ''])), ...r, partner: r.partner || '（運送会社の書面）' })), skipped: lt.skipped };
+  }
 }
 
 function csvToRows(text) {
@@ -860,7 +886,7 @@ function pasteIn() {
   const text = $('#paste').value;
   if (!text.trim()) { $('#paste-msg').textContent = '貼り付ける欄が空です'; return; }
   const pf = parsePasteFull(text), inp = pf.rows;
-  if (!inp.length) { $('#paste-msg').textContent = '読める行がありませんでした。表は変えていません'; return; }
+  if (!inp.length) { $('#paste-msg').textContent = '読める行がありませんでした。表は変えていません'; $('#paste-note').innerHTML = pf.notes.map((x) => `<span>${esc(x)}</span>`).join('<br>'); return; }
   const faultDef = pf.defaulted.includes('shipper_fault');
   const incoming = inp.map((r) => ({ ...blankRow(), ...r, ...(faultDef ? { fault_default: '1' } : {}) }));
   const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));

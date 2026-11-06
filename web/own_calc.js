@@ -521,6 +521,8 @@ const OwnCalc = (() => {
       const loadedMark = !empty && LOADED_WORDS.includes(mark.replace(/^[()]+|[()]+$/g, ''));
       if (to && isEmptyWord(to)) to = null;
       if (frm && isEmptyWord(frm)) frm = null;
+      if (to && !prefName(to)) to = prefSplit(to)[1] || to; // 「東京都江東区」「東京 江東区」の都道府県は読み飛ばす
+      if (frm && !prefName(frm)) frm = prefSplit(frm)[1] || frm;
       const errors = [], warnings = [];
       let arr = null;
       const tcell = nfkc(cell(row, c.time)).replace(/着/g, '').trim();
@@ -559,6 +561,9 @@ const OwnCalc = (() => {
   const WEIGHT_RE = /(?<![0-9A-Za-z.])([-−‐‑–+]?)\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?)\s*([kK][gG]|[tT]|トン)(?![a-zA-Z])/g;
   const CLASS_AFTER = /^\s*(?:車|ウイング|ウィング|ワイド|ロング|箱|平|ユニック|クレーン|冷凍|冷蔵|保冷|ダンプ|トレーラー?|バン|アルミ|幌|ゲート|セミ|低床|高床|パッカー|タンク|ミキサー|コンテナ|キャリア|ローリー)/;
   const WEIGHT_SIGN_ERR = '重さが読めません（マイナスやプラスの記号つきは入れられません）';
+  // 「1e3kg」「1e3t」のような指数の書き方。重さとしては読まず、理由を出す（黙って重さ無しの実車にしない。own.py の _SCI_WEIGHT と同じ）
+  const SCI_WEIGHT_RE = /(?<![0-9A-Za-z.])[-−‐‑–+]?\s*[0-9]+(?:\.[0-9]+)?[eE][-+]?[0-9]+\s*(?:[kK][gG]|[tT]|トン)(?![a-zA-Z])/;
+  const WEIGHT_SCI_ERR = '重さが読めません（1e3 のような指数の書き方は入れられません。4600kg や 4.6t のように書いてください）';
   // 戻り値: [{ kg } か { error }]（記号つき）。重さが無ければ []
   function parseWeights(text) {
     const t = nfkc(text);
@@ -569,6 +574,7 @@ const OwnCalc = (() => {
       const v = parseFloat(m[2].replace(/,/g, ''));
       out.push({ kg: m[3].toLowerCase() === 'kg' ? v : v * 1000 });
     }
+    if (SCI_WEIGHT_RE.test(t)) out.push({ error: WEIGHT_SCI_ERR });
     return out;
   }
   // 最初の 1 つ。戻り値: { kg } か { error }。重さが無ければ null
@@ -586,15 +592,16 @@ const OwnCalc = (() => {
   }
 
   // 空車の印（横の形のセルも縦の形の「区分」の列も、同じ表で読む。own.py の EMPTY_WORDS と同じ）。前後が仮名・漢字の中の「空」（空港、空調）は印にしない
+  // 「回送」「空コン」（空のコンテナ。半角カナの「空ｺﾝ回送」は NFKC で直る）は、前後に何があっても空車の印にする
   const EMPTY_WORDS = ['帰り空車', '帰り空', '空車', '空荷', '回送', 'カラ', '空'];
-  const EMPTY_MARK = /(?<![ぁ-んァ-ヶ一-鿿々])(?:帰り空車|帰り空|空車|空荷|回送|カラ|空)(?![ぁ-んァ-ヶ一-鿿々])/;
+  const EMPTY_MARK = /回送|空コン|(?<![ぁ-んァ-ヶ一-鿿々])(?:帰り空車|帰り空|空車|空荷|カラ|空)(?![ぁ-んァ-ヶ一-鿿々])/;
   // 実車の印。車庫へ戻る区間で、重さの代わりに「実車」と書いておけば、実車として数える（印も重さも無いと不明になる）。own.py の LOADED_WORDS と同じ
   const LOADED_WORDS = ['実車', '積載', '積み', '実'];
   const LOADED_MARK = /(?<![ぁ-んァ-ヶ一-鿿々])(?:実車|積載|積み|実)(?![ぁ-んァ-ヶ一-鿿々])/;
   const ROUNDS_RE = /(?<![0-9:：])([2-9])\s*(?:回転|往復|回(?![転数]))/;
   const LOCAL_WORD = /市内|区内|町内|構内|場内|ルート|巡回|地場|集配/;
   const TIME_DROPPED = '時刻が読めません';
-  const isEmptyWord = (s) => EMPTY_WORDS.includes(nfkc(s).trim().replace(/^[()]+|[()]+$/g, '').trim());
+  const isEmptyWord = (s) => { const t = nfkc(s).trim().replace(/^[()]+|[()]+$/g, '').trim(); return EMPTY_WORDS.includes(t) || t.includes('回送') || t.startsWith('空コン'); };
 
   // 「着」の前後の時刻。「着530」「着 5:30」「5:30着」。「着」の後ろが重さ（9.2t）のときは前の時刻を読む。戻り値は [時刻か null, 時刻を捨てたか]
   // 「8時半ごろ着」「頃」のような概算や読めない時刻は、時刻だけ捨てる（区間は残す）
@@ -632,16 +639,48 @@ const OwnCalc = (() => {
     return [leg, bad];
   }
 
-  // 配車表の 1 セルから区間を取り出す（own.py の parse_cell と同じ）。errors は区間を読めない・重さの記号、warnings は時刻だけ読めない（区間は残し、arr を空にする）
+  // 都道府県の名前。「東京 江東区」「東京都江東区」の都道府県は読み飛ばし、市区町村を地点にする（own.py の PREFECTURES と同じ）
+  const PREFECTURES = [
+    '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県', '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '新潟県', '富山県', '石川県', '福井県',
+    '山梨県', '長野県', '岐阜県', '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+    '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県',
+  ];
+  const PREF_SHORT = {};
+  for (const p of PREFECTURES) PREF_SHORT[p === '北海道' ? p : p.slice(0, -1)] = p; // 東京 → 東京都
+  const PREFS_LONGEST_FIRST = PREFECTURES.slice().sort((a, b) => b.length - a.length);
+  // 文字が都道府県の名前（東京・東京都）だけなら、正式な名前（東京都）。そうでなければ null
+  function prefName(tok) {
+    const t = nfkc(tok).trim();
+    if (PREFECTURES.includes(t)) return t;
+    return Object.prototype.hasOwnProperty.call(PREF_SHORT, t) ? PREF_SHORT[t] : null;
+  }
+  // 文字の先頭の都道府県を外す。戻り値は [都道府県の正式な名前か null, 残りの文字]（own.py の pref_split と同じ）。
+  // 「東京都江東区」「兵庫県加古川市」は正式な名前の直後から外す。「東京 江東区」のように短い名前は、後ろが空白で区切られているときだけ外す（「大阪狭山市」「京都市」の先頭を都道府県と読まないため）。残りが空になるとき（「東京」だけ）は外さない
+  function prefSplit(text) {
+    const t = nfkc(text).trim();
+    for (const full of PREFS_LONGEST_FIRST) if (t.startsWith(full) && t.slice(full.length).trim()) return [full, t.slice(full.length).trim()];
+    const m = /^(\S+)\s+(\S[\s\S]*)$/.exec(t);
+    if (m && Object.prototype.hasOwnProperty.call(PREF_SHORT, m[1])) return [PREF_SHORT[m[1]], m[2].trim()];
+    return [null, t];
+  }
+  // 降ろし地が書かれていないセル（「加古川 → 4.6t」「江東 → 着5:30」）の矢印の後ろ。重さ・時刻の形で始まる語は、地名ではない（地名の別名に登録しない。own.py の _NON_PLACE と同じ）
+  const NON_PLACE_RE = /^(?:[-−‐‑–+]?\s*[0-9][0-9,]*(?:\.[0-9]+)?\s*(?:[kK][gG]|[tT]|トン)(?![a-zA-Z])|[0-9]+(?:\.[0-9]+)?[eE][-+]?[0-9]+\s*(?:[kK][gG]|[tT]|トン)|[0-9]{1,2}:[0-9]{2}|[0-9]{1,2}時|[0-9]+(?:\.[0-9]+)?$)/;
+  // 矢印（→ ⇒ => -> ~ 〜 >。全角の「～」は NFKC で「~」になる）と、1 つのセルの中の区間の区切り（／ / 改行、「AM」「PM」「午前」「午後」の前）
+  const ARROW_LEG_RE = /^((?:(?!->|=>)[^→⇒>~〜=\s])*)\s*(?:→|⇒|=>|->|~|〜|>)\s*([^\s（(着]*)\s*([\s\S]*)$/;
+  const LEG_SPLIT_RE = /[／/\r\n]+|\s+(?=(?:AM|PM|午前|午後)(?!\s*[:：]?\s*[0-9:：着]))/i;
+  const PERIOD_HEAD_RE = /^(?:AM|PM|午前|午後)(?!\s*[:：]?\s*[0-9:：着])\s*[:：]?\s*/i;
+
+  // 配車表の 1 セルから区間を取り出す（own.py の parse_cell と同じ）。errors は区間を読めない・重さの記号・指数の重さ、warnings は時刻だけ読めない（区間は残し、arr を空にする）。
+  // 矢印は → ⇒ => -> ～ 〜 >。区間は「／」「/」、セルの中の改行、「AM … PM …」の切れ目で分ける。降ろし地が無いとき（「加古川 → 4.6t」）は to を null にして、後ろの語を重さ・時刻として読む
   function parseCell(text) {
     const t = nfkc(text).trim();
     const res = { legs: [], nonleg: false, errors: [], warnings: [] };
     if (!t) return res;
     if (NONLEG.includes(t)) { res.nonleg = true; return res; }
-    for (let part of t.split(/[／/]/)) {
-      part = part.trim();
+    for (let part of t.split(LEG_SPLIT_RE)) {
+      part = part.trim().replace(PERIOD_HEAD_RE, '').trim();
       if (!part) continue;
-      const m = /^([^→>\s]*)\s*(?:→|->|>)\s*([^\s（(着]*)\s*(.*)$/.exec(part);
+      const m = ARROW_LEG_RE.exec(part);
       if (!m) {
         const lone = loneCell(part);
         if (!lone) { res.errors.push('区間が読めません'); continue; }
@@ -652,8 +691,15 @@ const OwnCalc = (() => {
       let frm = (m[1] || '').trim() || null, to = (m[2] || '').trim() || null, rest = m[3];
       const tm = /^(.*?)(\d{1,2}:\d{2})$/.exec(to || ''); // 「江東5:30着」のように降ろし地に時刻が続いて書かれたとき
       if (tm && tm[1]) { to = tm[1]; rest = tm[2] + rest; }
+      if (to != null && NON_PLACE_RE.test(to)) { rest = (to + ' ' + rest).trim(); to = null; } // 降ろし地が無く、重さか時刻が続いている
+      else if (to != null && prefName(to)) { // 「東京 江東区 9t」: 都道府県のあとに市区町村が続くなら、市区町村を降ろし地にする
+        const nx = /^\s*([^\s（(着]+)/.exec(rest);
+        if (nx && !NON_PLACE_RE.test(nx[1]) && /[市区町村]/.test(nx[1])) { to = nx[1]; rest = rest.slice(nx[0].length); }
+      }
       let empty = EMPTY_MARK.test(rest) || part.includes('(空)');
       if (to != null && isEmptyWord(to)) { to = null; empty = true; }
+      if (to != null && !prefName(to)) to = prefSplit(to)[1] || to; // 「東京都江東区」の都道府県は読み飛ばす
+      if (frm != null && !prefName(frm)) frm = prefSplit(frm)[1] || frm;
       const [arr, bad] = arrival(rest);
       if (bad) res.warnings.push(TIME_DROPPED);
       const ws = parseWeights(rest);
@@ -1158,7 +1204,14 @@ const OwnCalc = (() => {
     const withW = large.filter((l) => l.kind === 'loaded' && l.weight_kg && cls[l.plate].max_load_kg && !overSet.has(l));
     const loadRate = withW.length ? withW.reduce((a, l) => a + l.weight_kg / cls[l.plate].max_load_kg, 0) / withW.length : null;
     const largeRate = rate(largeJudged);
+    // 実車か空車か分からない区間（不明）を空車とした場合の率。不明の区間は km があるものだけが入る（km が無い区間は、どちらにしても率に入らない）
+    const withKm = legs.filter((l) => (l.kind === 'loaded' || l.kind === 'empty' || l.kind === 'unknown') && l.km);
+    const totKm = sum(withKm);
     return {
+      loaded_rate_if_unknown_empty: totKm ? sum(withKm.filter((l) => l.kind === 'loaded')) / totKm : null,
+      empty_rate_if_unknown_empty: totKm ? sum(withKm.filter((l) => l.kind !== 'loaded')) / totKm : null,
+      unknown_as_empty: { legs: withKm.length, unknown_legs: withKm.filter((l) => l.kind === 'unknown').length, unknown_legs_without_km: legs.filter((l) => l.kind === 'unknown' && !l.km).length,
+        formula: '不明の区間を空車として数えた場合の率（km が分かる区間だけ）' },
       actual_rate: {
         value: rate(judged), legs: judged.length, of: n, share: n ? judged.length / n : 0.0,
         km_loaded: pyRound(sum(judged.filter((l) => l.kind === 'loaded')), 1), km_empty: pyRound(sum(judged.filter((l) => l.kind === 'empty')), 1),
@@ -1439,19 +1492,33 @@ const OwnCalc = (() => {
   const WARD_OF_CITY = /市.+区$/;
   const shortOfMuni = (name) => (WARD_OF_CITY.test(name) ? name : name.length >= 3 && SUFFIX.test(name) ? name.slice(0, -1) : name);
   // 戻り値: { m: {code, name, pref, lon, lat, short} } か { reason }
+  // 先頭の都道府県（「東京 江東区」「東京都江東区」）は外して調べる。都道府県が分かれば、同じ名前の市区町村（府中市など）をその都道府県の中から選ぶ。外して当たらなければ、元の文字でも調べる
   function matchMuni(text, munis) {
+    const [pref, rest] = prefSplit(text);
+    if (!pref) return matchMuniCore(text, munis, null);
+    const r = matchMuniCore(rest, munis, pref);
+    if (r.m) return r;
+    const r2 = matchMuniCore(text, munis, null);
+    return r2.m ? r2 : r;
+  }
+  function matchMuniCore(text, munis, pref) {
     const ix = muniIndex(munis);
     const pt = (i) => { const m = munis[i]; return m && m.lon != null && m.lat != null ? m : null; };
+    const inPref = (ids) => (pref ? ids.filter((i) => munis[i].pref === pref) : ids);
     for (let len = Math.min(text.length, 8); len >= 2; len--) {
-      const ids = ix.byName.get(text.slice(0, len));
+      let ids = ix.byName.get(text.slice(0, len));
       if (!ids) continue;
+      if (ids.length > 1) ids = inPref(ids);
+      if (!ids.length) continue;
       if (ids.length > 1) return { reason: `「${text.slice(0, len)}」は同じ名前の市区町村が複数あります` };
       const m = pt(ids[0]);
       if (m) return { m: { ...m, short: shortOfMuni(m.name) } };
     }
     for (const st of ix.stems) { // 「加古川」「江東」のように、市・区の字を略した書き方
       if (!text.startsWith(st)) continue;
-      const ids = ix.byStem.get(st);
+      let ids = ix.byStem.get(st);
+      if (ids.length > 1) ids = inPref(ids);
+      if (!ids.length) continue;
       if (ids.length > 1) return { reason: `「${st}」は同じ名前の市区町村が複数あります` };
       const m = pt(ids[0]);
       if (m) return { m: { ...m, short: WARD_OF_CITY.test(m.name) ? m.name : st } };
@@ -1524,6 +1591,9 @@ const OwnCalc = (() => {
     return best;
   }
 
+  // 重さ・時刻の形の語（「4.6t」「5:30」）か。地名ではないので、地点にも別名にも登録しない
+  const isNonPlace = (name) => NON_PLACE_RE.test(nfkc(name).trim());
+
   // 見出しとして見た行（先頭の 10 行のうち、空でないセルがいちばん多い行。同数なら上の行）。読めなかったファイルの説明と、列の役割の選択に使う
   function judgedRow(rows) {
     let best = -1, bi = 0;
@@ -1563,8 +1633,19 @@ const OwnCalc = (() => {
     try { return analyzeInner(files, o, Object.keys(hRoles).length ? hRoles : null, dRoles); } finally { ROLE_OV = null; }
   }
 
-  function analyzeInner(files, o, hRoles, dRoles) {
+  // 前に落としたときのファイルの順位（options.file_order。先に読んだほうが重なるマスで優先される）を保つ。同じ名前のファイルを落とし直しても、順位は変わらない。前に無かったファイルは、落とした順に後ろへ足す
+  function orderFiles(files, o) {
+    const prev = Array.isArray(o.file_order) ? o.file_order : null;
+    if (!prev || !prev.length) return { files, changed: false };
+    const at = (f) => prev.indexOf(f.name);
+    const known = files.map((f, i) => [f, i]).filter(([f]) => at(f) >= 0).sort((a, b) => at(a[0]) - at(b[0]) || a[1] - b[1]).map((x) => x[0]);
+    const out = known.concat(files.filter((f) => at(f) < 0));
+    return { files: out, changed: out.some((f, i) => f !== files[i]) };
+  }
+
+  function analyzeInner(files0, o, hRoles, dRoles) {
     const monthOpt = o.month != null ? +o.month : o.mon != null ? +o.mon : null;
+    const ord = orderFiles(files0, o), files = ord.files;
     const parsed = files.map((f) => ({ name: f.name, encoding: f.encoding || null, rows: parseCsv(f.text) }));
     for (const f of parsed) {
       f.hlay = detectHaisha(f.rows, hRoles, monthOpt);
@@ -1719,7 +1800,7 @@ const OwnCalc = (() => {
       };
     }
     const resolve = (name, src) => {
-      if (!name) return null;
+      if (!name || isNonPlace(name)) return null; // 重さ・時刻の形の語は、地点にも別名にもしない
       const [pid, isNew] = resolveName(name);
       if (isNew && src) newAlias[src]++;
       if (pid) nameCount.set(pid, (nameCount.get(pid) || 0) + 1);
@@ -1728,6 +1809,7 @@ const OwnCalc = (() => {
 
     // 配車表の区間
     const unreadable = [];
+    let unreadableRows = 0; // 行（セル）ごとに読めなかった件数。ファイルごと読めなかったものは入れない
     const haishaLegs = [];
     let nonlegCells = 0, droppedOverlap = 0;
     const timeDropped = [];
@@ -1735,14 +1817,14 @@ const OwnCalc = (() => {
     let hseq = 0;
     for (const f of used) {
       const vert = f.hlay.kind === 'vertical';
-      for (const u of f.wl.unreadable) unreadable.push({ ...u, file: f.name });
+      for (const u of f.wl.unreadable) { unreadable.push({ ...u, file: f.name }); unreadableRows++; }
       const thisKeys = new Set();
       for (const r of f.wl.rows) {
         const key = `${r.plate}|${r.date}`;
         if (priorKeys.has(key)) { droppedOverlap++; continue; } // 選んだ配車表どうしで重なるセルは、先に読んだほうだけを使う
         thisKeys.add(key);
         const pc = r.parsed || parseCell(r.text);
-        if (pc.errors.length) { unreadable.push({ line: r.line, col: r.col, original: r.text, reason: pc.errors[0], file: f.name, plate: r.plate }); continue; }
+        if (pc.errors.length) { unreadable.push({ line: r.line, col: r.col, original: r.text, reason: pc.errors[0], file: f.name, plate: r.plate }); unreadableRows++; continue; }
         if (pc.nonleg) { nonlegCells++; continue; }
         const where = vert ? `${r.line} 行目` : `${r.line} 行目・${+r.date.slice(5, 7)}/${+r.date.slice(8, 10)} の列`;
         if (pc.warnings && pc.warnings.length) timeDropped.push({ file: f.name, plate: r.plate, date: r.date, where, text: r.text });
@@ -1812,7 +1894,7 @@ const OwnCalc = (() => {
         (x.summary ? summaryRuns : runs).push(x);
       }
       for (const x of p.stops) { sseq++; x.id = `S${pad(sseq, 3)}`; x.ref = { file: p.file, where: `${x.line} 行目`, text: `停車 ${x.start.slice(11, 16)}〜${x.end.slice(11, 16)}（${x.minutes} 分）` }; stops.push(x); }
-      for (const e of p.errors) unreadable.push({ line: e.line, col: null, original: '', reason: e.reason, file: p.file, plate: p.plate, where: `${e.line} 行目` });
+      for (const e of p.errors) { unreadable.push({ line: e.line, col: null, original: '', reason: e.reason, file: p.file, plate: p.plate, where: `${e.line} 行目` }); unreadableRows++; }
       dFiles.push({ file: p.file, plate: p.plate, plates: p.plates, rows: p.recs.length, errors: p.errors.length, columns: p.head.slice(), encoding: p.encoding, kind: p.kind, nruns: p.nruns, nstops: p.nstops, hdr: p.hdr });
     }
     if (summaryRuns.length) {
@@ -1935,7 +2017,7 @@ const OwnCalc = (() => {
           let oo = prev[0];
           for (const x of prev) if (x.date > oo.date) oo = x;
           l.cycle_wd = weekdayOf(oo.date); l.cycle_dep = oo.dep;
-        } else { l.cycle_wd = weekdayOf(addDays(l.date, -1)); l.cycle_dep = null; }
+        } else { l.cycle_wd = weekdayOf(l.date); l.cycle_dep = null; } // 直前の行きが無い帰りは、帰りの便自身の日付の曜日（前の日の曜日にはしない）
       }
       l.color = l.flags.some((fl) => !decOf(`link:${l.id}:${fl.type}`)) ? 'yellow' : l.kind === 'unknown' ? 'gray' : 'green';
     }
@@ -1981,7 +2063,7 @@ const OwnCalc = (() => {
     }
     // 車庫へ戻る区間で、空の印も重さも無いもの: 実車にしないで不明にした。利用者が「空」か「実車」と決めたら、その区間すべてに当てる
     const ruLegs = legs.filter((l) => l.return_unmarked);
-    const RU_KEY = 'return-unmarked', ruDec = decOf(RU_KEY);
+    const RU_KEY = 'return-unmarked', ruDec = decOf(RU_KEY), DEST_KEY = 'dest-missing', UNPLACED_KEY = 'place-unplaced';
     let ruNote = { applied: false, note: '' };
     if (ruLegs.length && ruDec) {
       if (ruDec.act === 'ok' || ruDec.act === 'skip') ruNote.note = '確定しました（実車か空車か分からないまま、実車率には入れません）';
@@ -2055,6 +2137,29 @@ const OwnCalc = (() => {
         original: `${(places[base] || {}).label || '車庫'}へ戻る区間で、空の印（「空」「帰り空」「回送」など）も重さも書かれていないものが ${ruLegs.length} 件あります（${ex}${ruLegs.length > 3 ? ' ほか' : ''}）`,
         proposal: '実車か空車か分からないので、実車率には入れない（空車なら「空」、積んでいたなら「実車」と修正してください）', confidence: null, color: 'yellow',
         formula: '車庫へ戻る区間は空車のことが多いので、印も重さも無いものを実車とは数えません', claude: null, legs: ruLegs.map((l) => l.id), count: ruLegs.length,
+      });
+    }
+    // 積地か降ろし地が書かれていない配車表の区間（「加古川 → 4.6t」）は、実車か空車か分からないので不明にした。実車率には入れない
+    const endsMissing = o.places ? [] : legs.filter((l) => l.hid != null && l.kind === 'unknown' && !l.empty_mark && !l.has_ends && !l.return_unmarked && l.jk == null); // 地点を決めて渡す試験（サンプルの再現）では出さない
+    if (endsMissing.length) {
+      const ex = endsMissing.slice(0, 3).map((l) => `${md(l.date)} 車番 ${l.plate} 「${l.ref ? l.ref.text : ''}」`).join('、');
+      confirm.push({
+        id: '', key: DEST_KEY, effect: 'kpi', kind: 'dest', source: '配車表', title: `降ろし地か積地が書かれていない区間 ${endsMissing.length} 件が、実車か空車か分かりません`,
+        original: `配車表のセルで、矢印の前か後ろの地名が無い区間が ${endsMissing.length} 件あります（${ex}${endsMissing.length > 3 ? ' ほか' : ''}）。矢印の後ろの「4.6t」は重さとして読み、地名にはしていません`,
+        proposal: '荷を積んで行ったか分からないので、実車率には入れない（元の配車表に降ろし地を書き足すと、実車として数えます）', confidence: null, color: 'yellow',
+        formula: '積地と降ろし地の両方がある区間だけを実車として数えます。片方が無い区間は、空の印が無ければ不明にします', claude: null, legs: endsMissing.map((l) => l.id), count: endsMissing.length,
+      });
+    }
+    // 地図に置けない地点（遠い県の名前だけ、など）を通る区間は、距離が分からず実車率に入らない。黙って落とさずに知らせる
+    const unplacedLegs = o.places ? [] : legs.filter((l) => !l.km && [l.frm, l.to].some((id) => id && places[id] && places[id].placed === false));
+    if (unplacedLegs.length) {
+      const names = uniq(unplacedLegs.flatMap((l) => [l.frm, l.to]).filter((id) => id && places[id] && places[id].placed === false).map((id) => places[id].label));
+      const ex = unplacedLegs.slice(0, 3).map((l) => `${md(l.date)} 車番 ${l.plate}`).join('、');
+      confirm.push({
+        id: '', key: UNPLACED_KEY, effect: 'kpi', kind: 'place', source: '配車表', title: `地図に置けない地点を通る区間 ${unplacedLegs.length} 件は、距離が分からず実車率に入っていません`,
+        original: `地点 ${names.slice(0, 5).map((x) => `「${x}」`).join('')}${names.length > 5 ? ' ほか' : ''} を市区町村に置けませんでした（${ex}${unplacedLegs.length > 3 ? ' ほか' : ''}）`,
+        proposal: '「東京都江東区」のように市区町村まで書くか、「地図に置く」で市区町村を選ぶと、距離を見積もって実車率に入れます。置くまでは、これらの区間を率から外したままにします', confidence: null, color: 'yellow',
+        formula: '距離は、両端の市区町村の代表点の直線距離 × 1.25 で見積もります。置けない地点がある区間は見積もれません', claude: null, legs: unplacedLegs.map((l) => l.id), count: unplacedLegs.length,
       });
     }
     confirm.push(...wItems);
@@ -2169,7 +2274,13 @@ const OwnCalc = (() => {
     const hiredCells = hiredAll.reduce((a, h) => a + h.cells, 0), hiredLegs = hiredAll.reduce((a, h) => a + h.legs, 0);
     if (hiredAll.length) notices.push({ kind: 'hired', text_ja: `傭車の行 ${hiredAll.length} 行（${hiredAll.map((h) => `「${h.name}」`).join('')}）の ${hiredCells} 日ぶん（区間 ${hiredLegs} 件）は、自社の車ではないので読まず、傭車として別に数えました。` });
     if (timeDropped.length) notices.push({ kind: 'time_dropped', text_ja: `「8時半ごろ着」のように時刻が読めないセル ${timeDropped.length} 件は、時刻だけ使わず、区間は読みました。` });
-    if (used.length > 1) notices.push({ kind: 'haisha_merged', text_ja: `配車表 ${used.length} 個（${used.map((f) => f.name).join('、')}）は、車番と日付が重ならないので合わせて読みました。` });
+    // 使った配車表のうち、区間を 1 件でも取り出せたものだけを「使った」と数える（見出しだけで区間が 0 件の配車表は、合わせて読んだことにしない）
+    const usedH = used.filter((f) => haishaLegs.some((l) => l.ref.file === f.name));
+    if (usedH.length > 1) notices.push({ kind: 'haisha_merged', text_ja: `配車表 ${usedH.length} 個（${usedH.map((f) => f.name).join('、')}）は、車番と日付が重ならないので合わせて読みました。` });
+    if (ord.changed) notices.push({ kind: 'file_order', text_ja: `前に落としたファイルの順位を保って読みました（${files.map((f) => f.name).join('、')}）。重なるマスは、この順の先のファイルを使います。` });
+    if (Array.isArray(o.prev_haisha_used) && o.prev_haisha_used.length && JSON.stringify(o.prev_haisha_used.slice().sort()) !== JSON.stringify(usedH.map((f) => f.name).sort())) {
+      notices.push({ kind: 'haisha_used_changed', text_ja: `使う配車表が前と変わりました（前: ${o.prev_haisha_used.join('、')}、今: ${usedH.map((f) => f.name).join('、') || 'なし'}）。重なるマスの数字が変わっていることがあります。` });
+    }
     if (excludedH.length) notices.push({ kind: 'haisha_overlap', text_ja: `${excludedH.map((f) => f.name).join('、')} は、先に読んだ配車表と車番・日付が重なるため読んでいません。${haishaChoice.needs_choice ? '使う配車表を選べます。' : '内容が同じなので、選ぶ必要はありません。'}` });
     if (droppedOverlap) notices.push({ kind: 'haisha_dropped', text_ja: `選んだ配車表どうしで車番と日付が重なるセル ${droppedOverlap} 件は、先に読んだ配車表のほうだけを使いました。` });
     const counts = {
@@ -2177,13 +2288,44 @@ const OwnCalc = (() => {
       stops: stops.length, shifts: shifts.length, confirm: confirm.length, unreadable: unreadable.length, digitaco_only: lk.digitaco_only, haisha_only: lk.haisha_only, nonleg_cells: nonlegCells,
       outside_pair: legs.filter((l) => !l.dir).length,
       hired_cells: hiredCells, hired_legs: hiredLegs, time_dropped: timeDropped.length, local_legs: legs.filter((l) => l.local).length, return_unmarked: ruLegs.length, dropped_overlap: droppedOverlap,
+      unreadable_rows: unreadableRows, dest_missing: endsMissing.length, unplaced_legs: unplacedLegs.length,
     };
+    // 使ったファイル（区間・走行・停車を 1 件でも取り出せたもの）。見出しだけの配車表や読めなかったファイルは入れない
+    const filesUsed = usedH.map((f) => ({ file: f.name, kind: '配車表', legs: haishaLegs.filter((l) => l.ref.file === f.name).length }))
+      .concat(dFiles.filter((df) => df.nruns || df.nstops).map((df) => ({ file: df.file, kind: 'デジタコ', legs: df.nruns + df.nstops })));
+    // 月ごとの集計。2 か月以上を一緒に落としたときも、月ごとに数える（月の比べは月どうしでする）。1 か月だけのときは件数と率だけ
+    const monthKeys = uniq(legs.map((l) => l.date.slice(0, 7))).sort();
+    const monthsDetail = monthKeys.map((ym) => {
+      const lm = legs.filter((l) => l.date.slice(0, 7) === ym), yy = +ym.slice(0, 4), mm = +ym.slice(5, 7);
+      const c2 = { loaded: 0, empty: 0, unknown: 0 };
+      for (const l of lm) c2[l.kind]++;
+      const sm = stops.filter((x) => x.start.slice(0, 7) === ym), km2 = shifts.filter((x) => x.start.slice(0, 7) === ym);
+      const item = {
+        month: ym, year: yy, mon: mm, label: `${yy} 年 ${mm} 月`, full: monthKeys.length > 1,
+        period: { from: lm.reduce((a, l) => (l.date < a ? l.date : a), lm[0].date), to: lm.reduce((a, l) => (l.date > a ? l.date : a), lm[0].date) },
+        counts: { legs: lm.length, loaded: c2.loaded, empty: c2.empty, unknown: c2.unknown, unknown_ratio: pyRound(lm.length ? c2.unknown / lm.length : 0.0, 4), stops: sm.length, shifts: km2.length },
+        kpis: kpis(lm, vehicles), leg_ids: lm.map((l) => l.id),
+      };
+      if (monthKeys.length > 1) {
+        const ptm = pairTables(lm, places, vehicles, base, dock);
+        Object.assign(item, {
+          table: weekdayTable(lm, sm, dock), pairs: ptm.pairs, pair_table: ptm.pair_table,
+          insights: insights({ legs: lm, stops: sm, shifts: km2, vehicles, places, base, dock, month: mm, est_label: estLabel, own_names: !o.places }),
+        });
+      }
+      return item;
+    });
+    const monthLabel = !monthsDetail.length ? '' : monthsDetail.length === 1 ? monthsDetail[0].label
+      : `${monthsDetail[0].label}〜${monthsDetail[monthsDetail.length - 1].year === monthsDetail[0].year ? '' : monthsDetail[monthsDetail.length - 1].year + ' 年 '}${monthsDetail[monthsDetail.length - 1].mon} 月（${monthsDetail.length} か月分）`;
     const unplaced = Object.values(places).filter((p) => !p.placed && p.code == null && o.places == null).map((p) => ({ id: p.id, name: p.label, count: nameCount.get(p.id) || 0, reason: p.reason }))
       .concat(Object.values(places).filter((p) => p.placed && p.note && o.places == null).map((p) => ({ id: p.id, name: p.label, count: nameCount.get(p.id) || 0, reason: p.note, hall_ward: true, placed_at: p.muni })));
     const co = o.company || {};
     return {
       version: 1, fiction: false, month: legs.length ? `${pad(year, 4)}-${pad(mon)}` : '', year, mon, year_choice: yearChoice, year_choices: hfsAll.map((f) => ({ file: f.name, ...f.yearChoice })),
       months: uniq(haishaLegs.map((l) => l.date.slice(0, 7))).sort(),
+      // SPEC §43: 2 か月以上を一緒に落としたとき。month・mon は多いほうの月のまま、month_label が期間の言い方、months_detail が月ごとの集計
+      multi_month: monthsDetail.length > 1, month_label: monthLabel, months_detail: monthsDetail,
+      files_used: filesUsed, file_order: files.map((f) => f.name),
       period: legs.length ? { from: legs.reduce((a, l) => (l.date < a ? l.date : a), legs[0].date), to: legs.reduce((a, l) => (l.date > a ? l.date : a), legs[0].date) } : null,
       failed: legs.length ? null : '区間を 1 件も読めませんでした' + (unreadable.length ? '（' + unreadable.slice(0, 3).map((u) => `${u.file}: ${u.reason}`).join('、') + '）' : ''),
       company: { name: co.name || '自社のファイル', city: co.city || '', code: co.code || '', vehicles: vehicles.length },
@@ -2380,7 +2522,7 @@ const OwnCalc = (() => {
   return {
     analyze, decode, parseCsv, wideToLong, parseCell, parseTime, parseDigitaco, normalizePlate, link, classifyLegs, confidence, confidenceColor, shapeRatio, bestRoleFor,
     kousokuHours, buildShifts, kpis, weekdayTable, insights, matchMuni, legsCsv, costs, summaryText, pyRound,
-    toKitLegs, resolveRole, hallWard, CITY_HALL_WARD, HALL_WARD_NOTE, inferYear, assignHeadYears, parseKm, parseWeight, parseWeights, parseDT, overMaxLegs, parseUnit,
+    isNonPlace, prefSplit, prefName, toKitLegs, resolveRole, hallWard, CITY_HALL_WARD, HALL_WARD_NOTE, inferYear, assignHeadYears, parseKm, parseWeight, parseWeights, parseDT, overMaxLegs, parseUnit,
     detectHaisha, readHaisha, haishaRole, headKey, plateIdentity, detectDigitaco, parseDigitacoSummary, dedupeDigitaco, parseDateOnly, parseHm, tonsPair,
     roleOptions, needingRoles, shapeSignature, columnReasonJa, judgedRow, ROLE_LABEL_JA, weightConfirmItems, pairTables, legPair, applyMaxPayload, roleOf, yearsInText, nearestYear, classOf, isEmptyWord, plateAttrConflicts, EMPTY_WORDS, YEAR_RANGE: [YEAR_MIN, YEAR_MAX], DIGITACO_DICT, HAISHA_DICT, ROLE_LABEL, NATIONAL,
   };

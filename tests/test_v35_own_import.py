@@ -121,7 +121,8 @@ def _strip(d: dict) -> dict:
     # SPEC §41 で JS だけが足した項目（列の役割の選択、ファイルの形の目印、重複、県内の往復の情報）も比べない
     for k in ("claude", "route", "paper", "company", "fiction", "unplaced", "encodings", "version", "month", "year_choice", "period", "failed", "files_read", "files_unread",
               "column_roles_needed", "shape_signatures", "layouts", "needs_month", "month_choice", "digitaco_duplicates", "notices", "geo",
-              "year_choices", "months", "hired", "time_dropped", "haisha_choice"):  # SPEC §42 で JS だけが足した項目
+              "year_choices", "months", "hired", "time_dropped", "haisha_choice",  # SPEC §42 で JS だけが足した項目
+              "multi_month", "month_label", "months_detail", "files_used", "file_order"):  # SPEC §43 で JS だけが足した項目
         d.pop(k, None)
     for c in d["columns"]:
         c.pop("claude_note", None)
@@ -133,7 +134,7 @@ def _strip(d: dict) -> dict:
         for k in ("encoding", "layout_note_ja", "shape_signature", "duplicates", "year", "reason", "excluded"):
             f.pop(k, None)
     d["counts"].pop("outside_pair", None)
-    for k in ("hired_cells", "hired_legs", "time_dropped", "local_legs", "return_unmarked", "dropped_overlap"):  # SPEC §42 で JS だけが足した件数
+    for k in ("hired_cells", "hired_legs", "time_dropped", "local_legs", "return_unmarked", "dropped_overlap", "unreadable_rows", "dest_missing", "unplaced_legs"):  # SPEC §42・§43 で JS だけが足した件数
         d["counts"].pop(k, None)
     for c in d["confirm"]:
         c.pop("file", None)  # JS は「デジタコの CSV」と書く（Python は digitaco_*.csv）

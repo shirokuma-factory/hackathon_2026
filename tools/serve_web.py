@@ -710,7 +710,12 @@ def api_b_price_formula(body: Any) -> dict[str, Any]:
         trip = _board().trip(body.get("trip_id"))  # 登録した便も含む（来訪者ごとの盤）
     except spaceb.BoardError as e:
         raise BadRequest(f"便 {body.get('trip_id')!r} が見つかりません") from e
-    s = _b_shipment({**body, "dest_code": body.get("dest_code") or trip["dest_code"]})
+    # 届け先は /api/b/match と同じく、本文の一番上か shipment の中から読む。どちらにも無いときは便の終点にせず断る（照合と額が違う区間にならないように。SPEC §43）
+    raw_ship = body.get("shipment")
+    dest = body.get("dest_code") or (raw_ship.get("dest_code") if isinstance(raw_ship, dict) else None)
+    if not dest:
+        raise BadRequest("届け先（dest_code）を入れてください。本文の一番上か shipment の中に、市区町村コードを書きます")
+    s = _b_shipment({**body, "dest_code": dest})
     carrier = next((c for c in spaceb.load_demo()["carriers"] if c["id"] == trip["carrier_id"]), {})
     try:
         ref = spaceb.per_unit_reference(trip, s, body.get("base_load_rate", spaceb.DEFAULT_BASE_LOAD_RATE),
