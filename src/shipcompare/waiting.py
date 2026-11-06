@@ -13,8 +13,10 @@
   (出発 − 荷役終了) を待機の分に足す。30 分の差し引きは 1 か所ごとに 1 回、2 時間の境は待機の始まりから。
 - 読み取り（SPEC §25）: 全角・半角、前後と途中の空白は NFKC で正規化してから読む。日付は 2026/10/05・10月5日・R8.10.5・令和8年10月5日 など、
   時刻は 9:00:00・9時00分・0900 など、車種は 4t車・4トン・中型車 など、はい/いいえ は ○・有・荷主都合 / ×・無・渋滞 などを受ける。
-- 積込料・取卸料: 運転者が荷役をした行だけ。荷役の時間を到着 + 120 分の前後に分け、30 分までごとに額を付ける。
-  最初の 30 分は差し引かない（告示の文言からの読み取り。Q&A の例で確かめたのは待機時間料だけ）。
+- 積込料・取卸料: 運転者が荷役をした行だけ。荷役の時間全体を荷役開始から 30 分までごとに区切って数え（端数は 1 回、回数は
+  ceil(荷役の分 ÷ 30) を超えない）、区切りの始まりが到着 + 120 分より後のものだけ 2 時間超の額にする（SPEC §39 #5。境の前後で
+  別々に切り上げると 30 分の荷役が 2 回になるため、控えめな読み方を取った）。最初の 30 分は差し引かない
+  （告示の文言からの読み取り。Q&A の例で確かめたのは待機時間料だけ）。
 """
 
 from __future__ import annotations
@@ -457,7 +459,11 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         driver_handling_min = handling_min
         before = max(0, min(e_rel, boundary) - min(s_rel, boundary))
         after = max(0, e_rel - max(s_rel, boundary))
-        hn_units, ho_units = _ceil_div(before, unit), _ceil_div(after, unit)
+        # SPEC §39 #5: 荷役の時間全体を荷役開始から 30 分ごとに区切って数え（端数は 1 回）、2 時間の境より後に始まる区切りだけを
+        # 2 時間超の額にする。境の前後で別々に切り上げない（30 分の荷役が 2 回にならない）。回数は ceil(荷役の分 ÷ 30) を超えない
+        total_units = _ceil_div(before + after, unit)
+        hn_units = min(total_units, _ceil_div(before, unit))
+        ho_units = total_units - hn_units
         hn_rate = tariff["handling"][method]["normal"][vclass]
         ho_rate = tariff["handling"][method]["over_2h"][vclass]
     handling_fee = hn_units * hn_rate + ho_units * ho_rate
