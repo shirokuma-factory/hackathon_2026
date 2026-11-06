@@ -344,6 +344,18 @@ CASES: list[dict] = [
      "rows": [row(arrive="08:00", start="09:00", end="09:30", depart="09:10", handler="荷主側")]},
     {"name": "undated_overnight_wait_under_12h_is_kept", "year": 2026,
      "rows": [row(arrive="23:00", start="02:00", end="02:30", depart="02:40", handler="荷主側")]},
+    # SPEC §43: 受付の時刻があるときは受付から数えた待機も出す（書面の主な額）。荷主の受付記録の見出し（受付日・受付時刻・入場・退場）。スマホのメモ
+    {"name": "reception_wait_main_figure", "year": 2026,
+     "rows": [row(arrive="06:10", reception="06:20", start="08:45"), row(date="2026-10-06", arrive="07:50", reception="08:05", start="09:40", end="10:30", handler="荷主側"),
+              row(date="2026-10-07", arrive="09:00", reception="09:00", start="10:00"), row(date="2026-10-08", arrive="09:30", reception="09:00", start="10:30"),
+              row(date="2026-10-09", arrive="06:00", reception="11:00", start="10:30"), row(date="2026-10-10", arrive="2026-10-10 06:00", reception="06:30", start="2026-10-10 09:00"),
+              row(date="2026-10-11", arrive="07:00", reception="9時", start="10:00", appointed="08:00"), row(date="2026-10-12", arrive="07:00", reception="あ", start="10:00")]},
+    {"name": "paste_shipper_reception_header_ukeke_nyujo_taijo", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "受付日\t運送会社\t施設\t車番\t受付時刻\t入場\t退場\n10/5\tA運輸\t江東区 第1倉庫\t1234\t7:50\t8:30\t10:40\n10/6\tB急送\t江東区 第1倉庫\t5678\t8:10\t9:00\t10:10\n"},
+    {"name": "paste_phone_memo_without_label", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "11/10 江東 着7:50 呼ばれ9:40 終わり10:30\n10/5 尼崎 ○○物流DC 着6:10 受付6:20 呼ばれ8:45 相手 ○○\nあいう\n11/12 船橋 着8:00\n13/45 x 着8:00 呼ばれ9:00\n11/13(木) 東京 着5時半 積み始め9時半 出発11:00 車番1234\n"},
+    {"name": "paste_phone_memo_all_unreadable_falls_to_positional", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "あいう\nえお\n"},
     {"name": "times_with_han", "year": 2026,
      "rows": [row(arrive="5時半", start="10時半"), row(arrive="9時半", start="2026/10/5 10時半"), row(arrive="9時 半", start="10時半"), row(arrive="9時半30", start="10時")]},
 ]

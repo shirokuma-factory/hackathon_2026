@@ -723,6 +723,10 @@ def _read_vertical(rows: list[list[str]], body: list[tuple[int, list[str]]], lay
             to = None
         if frm and is_empty_word(frm):
             frm = None
+        if to and not pref_name(to):
+            to = pref_split(to)[1] or to  # 「東京都江東区」「東京 江東区」の都道府県は読み飛ばす
+        if frm and not pref_name(frm):
+            frm = pref_split(frm)[1] or frm
         errors: list[str] = []
         warnings: list[str] = []
         arr = None
@@ -778,6 +782,9 @@ _NONLEG = ("休", "整備", "休み", "車検", "待機")
 _WEIGHT = re.compile(r"(?<![0-9A-Za-z.])([-−‐‑–+]?)\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?)\s*([kK][gG]|[tT]|トン)(?![a-zA-Z])")
 _CLASS_AFTER = re.compile(r"^\s*(?:車|ウイング|ウィング|ワイド|ロング|箱|平|ユニック|クレーン|冷凍|冷蔵|保冷|ダンプ|トレーラー?|バン|アルミ|幌|ゲート|セミ|低床|高床|パッカー|タンク|ミキサー|コンテナ|キャリア|ローリー)")
 WEIGHT_SIGN_ERR = "重さが読めません（マイナスやプラスの記号つきは入れられません）"
+# 「1e3kg」「1e3t」のような指数の書き方。重さとしては読まず、理由を出す（黙って重さ無しの実車にしない）
+_SCI_WEIGHT = re.compile(r"(?<![0-9A-Za-z.])[-−‐‑–+]?\s*[0-9]+(?:\.[0-9]+)?[eE][-+]?[0-9]+\s*(?:[kK][gG]|[tT]|トン)(?![a-zA-Z])")
+WEIGHT_SCI_ERR = "重さが読めません（1e3 のような指数の書き方は入れられません。4600kg や 4.6t のように書いてください）"
 
 
 def parse_weights(text: str) -> list[dict[str, Any]]:
@@ -793,6 +800,8 @@ def parse_weights(text: str) -> list[dict[str, Any]]:
             continue
         v = float(m.group(2).replace(",", ""))
         out.append({"kg": v if m.group(3).lower() == "kg" else v * 1000})
+    if _SCI_WEIGHT.search(t):
+        out.append({"error": WEIGHT_SCI_ERR})
     return out
 
 
@@ -819,8 +828,9 @@ def parse_time(tok: str) -> str | None:
 
 
 # 空車の印（横の形のセルも縦の形の「区分」の列も、同じ表で読む。web/own_calc.js の EMPTY_WORDS と同じ）。前後が仮名・漢字の中の「空」（空港、空調）は印にしない
+# 「回送」「空コン」（空のコンテナ。半角カナの「空ｺﾝ回送」は NFKC で直る）は、前後に何があっても空車の印にする
 EMPTY_WORDS = ("帰り空車", "帰り空", "空車", "空荷", "回送", "カラ", "空")
-_EMPTY_MARK = re.compile(r"(?<![ぁ-んァ-ヶ一-鿿々])(?:帰り空車|帰り空|空車|空荷|回送|カラ|空)(?![ぁ-んァ-ヶ一-鿿々])")
+_EMPTY_MARK = re.compile(r"回送|空コン|(?<![ぁ-んァ-ヶ一-鿿々])(?:帰り空車|帰り空|空車|空荷|カラ|空)(?![ぁ-んァ-ヶ一-鿿々])")
 # 実車の印。車庫へ戻る区間で、重さの代わりに「実車」と書いておけば、実車として数える（印も重さも無いと不明になる）
 LOADED_WORDS = ("実車", "積載", "積み", "実")
 _LOADED_MARK = re.compile(r"(?<![ぁ-んァ-ヶ一-鿿々])(?:実車|積載|積み|実)(?![ぁ-んァ-ヶ一-鿿々])")
@@ -852,7 +862,7 @@ def _arrival(rest: str) -> tuple[str | None, bool]:
 def is_empty_word(s: str) -> bool:
     """区分や印の文字が空車の印か（「（空）」の括弧は外して見る）。"""
     t = unicodedata.normalize("NFKC", s or "").strip().strip("()").strip()
-    return t in EMPTY_WORDS
+    return t in EMPTY_WORDS or "回送" in t or t.startswith("空コン")
 
 
 def _local_place(t: str) -> str | None:
@@ -864,13 +874,59 @@ def _local_place(t: str) -> str | None:
     return m.group(1) if m else None
 
 
-def parse_cell(text: str) -> dict[str, Any]:
-    """配車表の 1 セルから区間を取り出す。「積地 → 降ろし地 着530 6.5t（空）」「積地 → 降ろし地 5:30着 9.2t」。区間は「／」で 2 つまで続けられる。
+# 都道府県の名前。「東京 江東区」「東京都江東区」の都道府県は読み飛ばし、市区町村を地点にする（web/own_calc.js の PREFECTURES と同じ）
+PREFECTURES = (
+    "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県",
+    "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+    "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
+)
+_PREF_SHORT = {p[:-1] if p != "北海道" else p: p for p in PREFECTURES}  # 東京 → 東京都
 
+
+def pref_name(tok: str) -> str | None:
+    """文字が都道府県の名前（東京・東京都）だけなら、正式な名前（東京都）。そうでなければ None。"""
+    t = unicodedata.normalize("NFKC", tok or "").strip()
+    return t if t in PREFECTURES else _PREF_SHORT.get(t)
+
+
+def pref_split(text: str) -> tuple[str | None, str]:
+    """文字の先頭の都道府県を外す。戻り値は (都道府県の正式な名前か None, 残りの文字)。
+    「東京都江東区」「兵庫県加古川市」は正式な名前の直後から外す。「東京 江東区」のように短い名前は、後ろが空白で区切られているときだけ外す
+    （「大阪狭山市」「京都市」の先頭を都道府県と読まないため）。残りが空になるとき（「東京」だけ）は外さない。"""
+    t = unicodedata.normalize("NFKC", text or "").strip()
+    for full in sorted(PREFECTURES, key=len, reverse=True):
+        if t.startswith(full) and t[len(full):].strip():
+            return full, t[len(full):].strip()
+    m = re.match(r"^(\S+)\s+(\S.*)$", t)
+    if m and m.group(1) in _PREF_SHORT:
+        return _PREF_SHORT[m.group(1)], m.group(2).strip()
+    return None, t
+
+
+# 降ろし地が書かれていないセル（「加古川 → 4.6t」「江東 → 着5:30」）の矢印の後ろ。重さ・時刻の形で始まる語は、地名ではない（地名の別名に登録しない）
+_NON_PLACE = re.compile(r"(?:[-−‐‑–+]?\s*[0-9][0-9,]*(?:\.[0-9]+)?\s*(?:[kK][gG]|[tT]|トン)(?![a-zA-Z])|[0-9]+(?:\.[0-9]+)?[eE][-+]?[0-9]+\s*(?:[kK][gG]|[tT]|トン)"
+                        r"|[0-9]{1,2}:[0-9]{2}|[0-9]{1,2}時|[0-9]+(?:\.[0-9]+)?$)")
+def is_non_place(name: str) -> bool:
+    """重さ・時刻の形の語（「4.6t」「5:30」）か。地名ではないので、地点にも別名にもしない。"""
+    return bool(_NON_PLACE.match(unicodedata.normalize("NFKC", name or "").strip()))
+
+
+# 矢印（→ ⇒ => -> ~ 〜 >。全角の「～」は NFKC で「~」になる）と、1 つのセルの中の区間の区切り（／ / 改行、「AM」「PM」「午前」「午後」の前）
+_ARROW_LEG = re.compile(r"^((?:(?!->|=>)[^→⇒>~〜=\s])*)\s*(?:→|⇒|=>|->|~|〜|>)\s*([^\s（(着]*)\s*(.*)$", re.S)
+_LEG_SPLIT = re.compile(r"[／/\r\n]+|\s+(?=(?:AM|PM|午前|午後)(?!\s*[:：]?\s*[0-9:：着]))", re.I)
+_PERIOD_HEAD = re.compile(r"^(?:AM|PM|午前|午後)(?!\s*[:：]?\s*[0-9:：着])\s*[:：]?\s*", re.I)
+
+
+def parse_cell(text: str) -> dict[str, Any]:
+    """配車表の 1 セルから区間を取り出す。「積地 → 降ろし地 着530 6.5t（空）」「積地 → 降ろし地 5:30着 9.2t」。
+
+    矢印は → ⇒ => -> ～ 〜 >。1 つのセルの区間は「／」「/」、セルの中の改行、「AM … PM …」の切れ目で分ける（何区間でも）。
     返す dict: legs=[{frm, to, empty, arr, weight_kg}]（frm・to は名前のまま。空なら None。重さが 2 つ以上あるセルは weight_kg を None にして weights に kg の一覧を足す。
     「2回転」は rounds、「加古川市内 ルート配送」のような地場の配送は local=True で、積地と降ろし地を同じ地名にした実車）、
-    nonleg（休みなど）、errors=[理由]（区間を読めない・重さの記号）、warnings=[理由]（時刻だけ読めない。区間は残し、arr を空にする）
-    空車の印は EMPTY_WORDS（空・帰り空・回送・空荷・カラ・空車・（空））。
+    nonleg（休みなど）、errors=[理由]（区間を読めない・重さの記号・指数の重さ）、warnings=[理由]（時刻だけ読めない。区間は残し、arr を空にする）
+    空車の印は EMPTY_WORDS（空・帰り空・回送・空荷・カラ・空車・（空））と、どこにあっても「回送」「空コン」。
+    降ろし地が無いとき（「加古川 → 4.6t」）は to を None にして、後ろの語を重さ・時刻として読む（実車か空車か分からない区間になる）。
+    矢印の後ろが「東京 江東区」のように都道府県の名前のあとに市区町村が続くときは、市区町村を降ろし地にする（都道府県だけなら、そのまま「東京」）。
     """
     t = unicodedata.normalize("NFKC", text or "").strip()
     res: dict[str, Any] = {"legs": [], "nonleg": False, "errors": [], "warnings": []}
@@ -879,11 +935,11 @@ def parse_cell(text: str) -> dict[str, Any]:
     if t in _NONLEG:
         res["nonleg"] = True
         return res
-    for part in re.split(r"[／/]", t):
-        part = part.strip()
+    for part in _LEG_SPLIT.split(t):
+        part = _PERIOD_HEAD.sub("", part.strip(), count=1).strip()
         if not part:
             continue
-        m = re.match(r"^([^→>\s]*)\s*(?:→|->|>)\s*([^\s（(着]*)\s*(.*)$", part)
+        m = _ARROW_LEG.match(part)
         if not m:
             lone = _lone_cell(part)
             if lone is None:
@@ -898,9 +954,19 @@ def parse_cell(text: str) -> dict[str, Any]:
         tm = re.match(r"^(.*?)(\d{1,2}:\d{2})$", to or "")  # 「江東5:30着」のように降ろし地に時刻が続いて書かれたとき
         if tm and tm.group(1):
             to, rest = tm.group(1), tm.group(2) + rest
+        if to is not None and _NON_PLACE.match(to):  # 降ろし地が無く、重さか時刻が続いている
+            to, rest = None, (to + " " + rest).strip()
+        elif to is not None and pref_name(to):  # 「東京 江東区 9t」: 都道府県のあとに市区町村が続くなら、市区町村を降ろし地にする
+            nx = re.match(r"^\s*([^\s（(着]+)", rest)
+            if nx and not _NON_PLACE.match(nx.group(1)) and re.search(r"[市区町村]", nx.group(1)):
+                to, rest = nx.group(1), rest[nx.end():]
         empty = bool(_EMPTY_MARK.search(rest)) or "(空)" in part
         if to is not None and is_empty_word(to):
             to, empty = None, True
+        if to is not None and not pref_name(to):
+            to = pref_split(to)[1] or to  # 「東京都江東区」の都道府県は読み飛ばす
+        if frm is not None and not pref_name(frm):
+            frm = pref_split(frm)[1] or frm
         arr, bad = _arrival(rest)
         if bad:
             res["warnings"].append(TIME_DROPPED)
@@ -1678,7 +1744,15 @@ def kpis(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> dict[str
     with_w = [l for l in large if l["kind"] == "loaded" and l.get("weight_kg") and cls[l["plate"]].get("max_load_kg") and id(l) not in over_ids]
     load_rate = (sum(l["weight_kg"] / cls[l["plate"]]["max_load_kg"] for l in with_w) / len(with_w)) if with_w else None
     large_rate = rate(large_judged)
+    # 実車か空車か分からない区間（不明）を空車とした場合の率。不明の区間は km があるものだけが入る（km が無い区間は、どちらにしても率に入らない）
+    with_km = [l for l in legs if l["kind"] in ("loaded", "empty", "unknown") and l.get("km")]
+    tot_km = sum(l["km"] for l in with_km)
+    unknown_km = [l for l in with_km if l["kind"] == "unknown"]
     return {
+        "loaded_rate_if_unknown_empty": (sum(l["km"] for l in with_km if l["kind"] == "loaded") / tot_km) if tot_km else None,
+        "empty_rate_if_unknown_empty": (sum(l["km"] for l in with_km if l["kind"] != "loaded") / tot_km) if tot_km else None,
+        "unknown_as_empty": {"legs": len(with_km), "unknown_legs": len(unknown_km), "unknown_legs_without_km": sum(1 for l in legs if l["kind"] == "unknown" and not l.get("km")),
+                             "formula": "不明の区間を空車として数えた場合の率（km が分かる区間だけ）"},
         "actual_rate": {"value": rate(judged), "legs": len(judged), "of": n, "share": (len(judged) / n) if n else 0.0,
                         "km_loaded": round(sum(l["km"] for l in judged if l["kind"] == "loaded"), 1), "km_empty": round(sum(l["km"] for l in judged if l["kind"] == "empty"), 1),
                         "formula": "実車の km ÷ 走った km（実車か空車かが判定できた区間だけ）"},
@@ -1692,7 +1766,8 @@ def kpis(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> dict[str
 
 
 def weekday_table(legs: list[dict[str, Any]], stops: list[dict[str, Any]], dock: str | None = None) -> list[dict[str, Any]]:
-    """区間 × 向き × 曜日の表。曜日は行きを出た日の曜日（帰りも同じ運行の行きの曜日）。
+    """区間 × 向き × 曜日の表。曜日（wd）は、行きは出た日の曜日、帰りは直前の行き（2 日以内）を出た日の曜日。
+    直前の行きが配車表に無い帰りは、その帰りの便自身の日付の曜日で数える（前の日の曜日にはしない。cycle_wd の決め方は web/own_calc.js の analyze と同じ）。
 
     各行: dir, wd, trips, empty, unknown, empty_km, long_stops（30 分以上の停車。行きの到着先の地点 `dock` のもの）。
     """

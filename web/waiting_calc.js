@@ -140,9 +140,13 @@ const WaitingShared = (() => {
       '呼ばれ': 'start', '呼ばれた': 'start', '呼出': 'start', '呼出し': 'start', '呼び出し': 'start', '呼出時刻': 'start', '呼出時間': 'start', '呼び出し時刻': 'start',
       '作業開始': 'start', '作業開始時刻': 'start', '作業終了': 'end', '作業終了時刻': 'end',
       '行き先': 'place', '行先': 'place', '積地': 'place', '積み地': 'place', '積込地': 'place',
+      // 荷主の受付記録の言葉（SPEC §43）。入場は呼ばれて構内に入った時刻（呼出と同じ扱い）、退場は出発
+      '受付日': 'date', '入場日': 'date', '到着日': 'date', '日にち': 'date', '来場日': 'date',
+      '入場': 'start', '入場時刻': 'start', '入場時間': 'start', '入構': 'start', '入構時刻': 'start',
+      '退場': 'depart', '退場時刻': 'depart', '退場時間': 'depart', '退構': 'depart', '退構時刻': 'depart',
   };
   // 呼び出しの言葉の列。荷役開始の別の列（作業開始など）が同じ表にあるときは、荷役開始ではなく呼出（call）として読む（荷主の受付記録: 受付 → 呼出 → 作業開始）
-  const CALL_HEADERS = new Set(['呼ばれ', '呼ばれた', '呼出', '呼出し', '呼び出し', '呼出時刻', '呼出時間', '呼び出し時刻']);
+  const CALL_HEADERS = new Set(['呼ばれ', '呼ばれた', '呼出', '呼出し', '呼び出し', '呼出時刻', '呼出時間', '呼び出し時刻', '入場', '入場時刻', '入場時間', '入構', '入構時刻']);
   // これらの列があるときは、運送会社の請求の書面の側の表（荷主の受付記録ではない）
   const CARRIER_CONTEXT_COLS = ['shipper_fault', 'side_work', 'side_min', 'post_wait', 'handler', 'method', 'work_content', 'appointed'];
   // 日付の無い時刻が前の時刻より小さいとき翌日と読むが、その差がこれを超えるなら誤りにする（9:00 → 8:30 を 23.5 時間と読まない）
@@ -286,6 +290,51 @@ const WaitingShared = (() => {
   }
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
+  // ---- 「荷待ち記録」で始まらないスマホのメモ（SPEC §43。waiting.py の parse_memo_text と同じ）。1 行 = 1 件: 「11/10 江東 着7:50 呼ばれ9:40 終わり10:30」
+  const MEMO_NO_PARTNER = '（相手未記入）';
+  const MEMO_UNREADABLE = '読める形ではありませんでした（{shown}）。次のどれかの形で貼ってください: Excel の表（1 行目が見出し、列はタブ区切り）、'
+    + 'ドライバーの 1 枚（driver.html）の文（荷待ち記録 11/10 …）、1 行 1 件のメモ（11/10 江東 着7:50 呼ばれ9:40 終わり10:30）';
+  const MEMO_KEYS = { '到着': 'arrive', '着': 'arrive', '受付': 'reception', '呼ばれた': 'call', '呼ばれ': 'call', '呼び出し': 'call', '呼出し': 'call', '呼出': 'call',
+    '荷役開始': 'start', '積込開始': 'start', '積み始め': 'start', '積始め': 'start', '開始': 'start',
+    '荷役終了': 'end', '積込終了': 'end', '積み終わり': 'end', '積み終り': 'end', '積終わり': 'end', '終わり': 'end', '終了': 'end',
+    '出発': 'depart', '発': 'depart', '指定': 'appointed' };
+  const MEMO_TIME = '(?:[0-9]{1,2}:[0-9]{2}|[0-9]{1,2}時(?:[0-9]{1,2}分?|半)?)';
+  const memoRe = () => new RegExp('(' + Object.keys(MEMO_KEYS).sort((a, b) => b.length - a.length).join('|') + ')[ :]?(' + MEMO_TIME + ')', 'g');
+  const memoTextRe = () => /(車番|相手|荷主|車種) ?([^ ]+)/g;
+  const MEMO_DATE_RE = /^((?:[0-9]{4}[/.-])?[0-9]{1,2}[/\-月][0-9]{1,2}日?(?:\([月火水木金土日祝]+\))?)(?= |$)/;
+  const MEMO_TEXT_COLS = { '車番': 'vehicle_no', '相手': 'partner', '荷主': 'partner', '車種': 'vehicle_class' };
+  const memoClip = (line) => { const a = Array.from(line); return a.length <= 36 ? line : a.slice(0, 36).join('') + '…'; };
+
+  function parseMemoText(text) {
+    const lines = nzLines(text);
+    const isMemo = lines.some((ln) => { const m = MEMO_DATE_RE.exec(ln); return m && memoRe().test(ln.slice(m[0].length)); });
+    if (!isMemo) return null;
+    const rows = [], bad = [];
+    for (const ln of lines) {
+      const m = MEMO_DATE_RE.exec(ln);
+      if (!m) { bad.push([ln, '日付（11/10 のような形）で始まっていません']); continue; }
+      const dateS = m[1].replace(/\([月火水木金土日祝]+\)$/, '');
+      if (parseDate(dateS, 2000) === null) { bad.push([ln, `日付「${dateS}」を読めません`]); continue; }
+      const rest = ln.slice(m[0].length);
+      const found = {};
+      for (const k of rest.matchAll(memoRe())) { const col = MEMO_KEYS[k[1]]; if (!has(found, col)) found[col] = k[2]; }
+      const rest2 = rest.replace(memoRe(), ' ');
+      const r = { date: dateS };
+      for (const k of rest2.matchAll(memoTextRe())) { const col = MEMO_TEXT_COLS[k[1]]; if (!has(r, col)) r[col] = k[2]; }
+      const place = rest2.replace(memoTextRe(), ' ').replace(/\s+/g, ' ').trim();
+      if (place) r.place = place;
+      if (!has(found, 'arrive')) { bad.push([ln, '着（到着）の時刻がありません']); continue; }
+      if (!has(found, 'start') && !has(found, 'call')) { bad.push([ln, '呼ばれ（荷役開始・積み始め）の時刻がありません']); continue; }
+      r.arrive = found.arrive;
+      if (has(found, 'reception')) r.reception = found.reception;
+      if (has(found, 'start')) { r.start = found.start; if (has(found, 'call')) r.call = found.call; } else r.start = found.call;
+      for (const col of ['end', 'depart', 'appointed']) if (has(found, col)) r[col] = found[col];
+      if (r.end) r.handler = UNKNOWN_HANDLER;
+      rows.push(r);
+    }
+    return { rows, bad };
+  }
+
   function parsePasteFull(text) {
     const lines = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((ln) => ln.trim());
     const asks = [];
@@ -300,6 +349,29 @@ const WaitingShared = (() => {
         defaulted.push('shipper_fault');
       }
       return { rows: drows, defaulted, notes, asks, shipper_log: false };
+    }
+    if (!lines.some((ln) => ln.includes(String.fromCharCode(9)))) {   // タブが無く、日付で始まるメモの行（「11/10 江東 着7:50 呼ばれ9:40 終わり10:30」）
+      const memo = parseMemoText(text);
+      if (memo !== null) {
+        const mrows = memo.rows, mnotes = [], mdefaulted = [];
+        if (mrows.length) {
+          mnotes.push(`スマホのメモの書き方で読みました（${mrows.length} 件）。『着』『受付』『呼ばれ』『積み始め』『終わり』『出発』の言葉の次の時刻を読んでいます`);
+          if (mrows.some((r) => !r.partner)) {
+            mrows.forEach((r) => { if (!r.partner) r.partner = MEMO_NO_PARTNER; });
+            mnotes.push(`契約の相手が書かれていない行は『${MEMO_NO_PARTNER}』としました。表の『契約の相手』を書き換えてください（メモに『相手 ○○』と書き足しても読みます）`);
+          }
+          if (mrows.some((r) => r.partner !== MEMO_NO_PARTNER)) asks.push(ASK_PARTNER);
+          mrows.forEach((r) => { r.shipper_fault = 'はい'; });
+          mdefaulted.push('shipper_fault');
+        }
+        if (memo.bad.length) {
+          const items = memo.bad.map(([ln, why]) => `「${memoClip(ln)}」は${why}`).join('、');
+          mnotes.push(`読めなかった行は表に入れていません（${memo.bad.length} 行）: ${items}。1 行に『日付 場所 着7:50 呼ばれ9:40 終わり10:30』の形で書くか、ドライバーの 1 枚（driver.html）の文を使ってください`);
+        }
+        return { rows: mrows, defaulted: mdefaulted, notes: mnotes, asks, shipper_log: false };
+      }
+      const shown = nzLines(text).slice(0, 3).map((ln) => `「${memoClip(ln)}」`).join('、');
+      return { rows: [], defaulted: [], notes: [MEMO_UNREADABLE.replace('{shown}', shown)], asks, shipper_log: false };
     }
     const notes = [];
     let cols = COLUMNS.slice();
@@ -368,6 +440,25 @@ const WaitingShared = (() => {
     return { rows, defaulted, notes, asks, shipper_log: shipperLog };
   }
   const parsePaste = (text) => parsePasteFull(text).rows;
+
+  // 紙・PDF からコピーした表（列を空白で区切ったもの）やタブ区切りの表を、parsePasteFull に渡せるタブ区切りにする（SPEC §43）。
+  // 1 行目が見出し（日付・車番・到着・荷役開始・荷役終了など 3 つ以上が分かる言葉）のときだけ読む。空白 2 つ以上で区切った表を先に試し、だめなら空白 1 つで区切る。
+  // 列の数が見出しと違う行は読まず skipped に返す。表ではないときは null
+  function looseTableToTsv(text) {
+    const lines = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((ln) => ln.trim());
+    if (lines.length < 2) return null;
+    const known = (cells) => cells.filter((c) => has(HEADER_ALIASES, headerKey(c))).length;
+    if (lines.some((ln) => ln.includes('\t'))) return known(lines[0].split('\t')) >= 3 ? { tsv: lines.join('\n'), skipped: [] } : null;
+    const splitters = [(ln) => ln.normalize('NFKC').trim().split(/ {2,}/), (ln) => nz(ln).split(' ')];
+    for (const sp of splitters) {
+      const head = sp(lines[0]);
+      if (known(head) < 3) continue;
+      const out = [head.join('\t')], skipped = [];
+      for (const ln of lines.slice(1)) { const c = sp(ln); if (c.length === head.length) out.push(c.join('\t')); else skipped.push(nz(ln)); }
+      return { tsv: out.join('\n'), skipped };
+    }
+    return null;
+  }
 
   const ceilDiv = (a, b) => (a > 0 ? Math.ceil(a / b) : 0);
 
@@ -572,8 +663,7 @@ const WaitingShared = (() => {
     else if (appointed === null && arrive >= EARLY_FROM_MIN && arrive < EARLY_UNTIL_MIN) early = 'assumed';
     if (callRaw && call === null) rowNotes.push(`呼出「${callRaw}」を読めなかったので、呼出の時刻は使っていません`);
     if (waitRaw >= 1440) rowNotes.push(LONG_WAIT_NOTE);
-    return {
-      res: {
+    const res = {
         row: n, date: d, month: d.slice(0, 7), vehicle_no: g.vehicle_no, vehicle_class: vclass, partner, place: nz(g.place),
         arrive: fmtTime(arrive), start: fmtTime(start), end: end !== null ? fmtTime(end) : '', depart: depart !== null ? fmtTime(depart) : '',
         appointed: appointed !== null ? fmtTime(appointed) : '', wait_from: base > 0 ? '指定の到着時刻' : '到着', wait_base_min: base,
@@ -592,9 +682,16 @@ const WaitingShared = (() => {
         ...(early ? { early_arrival: early } : {}),
         ...(used.length ? { defaults_used: used } : {}),
         ...(rowNotes.length ? { notes: rowNotes } : {}),
-      },
-      errs: [],
     };
+    // 受付の時刻があるとき: 受付から数えた待機も出す（SPEC §43）。到着が受付より前でも、荷主の受付から数える額が書面の主な額
+    if (reception !== null && norm(raw.arrive_src) !== 'reception' && reception - arrive >= 0 && reception - arrive <= REVERSE_MAX_MIN) {
+      const part = g.arrive ? datePart(g.arrive) : '';
+      const v = { ...raw, arrive: (part ? part + ' ' : '') + fmtTime(reception), reception: '' };
+      delete v.arrive_src;
+      const r2 = calcRow(n, v, year, tariff, defaults);
+      if (r2.res !== null) { res.reception_wait_min = r2.res.wait_min; res.reception_amount = r2.res.amount; }
+    }
+    return { res, errs: [] };
   }
 
   function sumRows(rows) {
@@ -615,8 +712,22 @@ const WaitingShared = (() => {
       const months = [...new Set(rs.map((r) => r.month))].sort(cmp).map((m) => ({ month: m, ...sumRows(rs.filter((r) => r.month === m)) }));
       const dates = rs.map((r) => r.date).sort(cmp);
       const early = rs.filter((r) => r.early_arrival === 'assumed');
-      out.push({ partner: name, ...sumRows(rs), early_assumed_count: early.length, early_assumed_wait_minutes: early.reduce((a, r) => a + r.wait_min, 0),
-        early_assumed_amount: early.reduce((a, r) => a + r.amount, 0), early_designated_count: rs.filter((r) => r.early_arrival === 'designated').length, over_1h_share: pct(rs.filter((r) => r.over_1h).length, rs.length), date_from: dates[0], date_to: dates[dates.length - 1], months });
+      const rec = rs.filter((r) => has(r, 'reception_amount'));   // 受付の時刻があって、受付から数えた額を出せた行
+      const earlyNorec = early.filter((r) => !has(r, 'reception_amount'));
+      const item = { partner: name, ...sumRows(rs), early_assumed_count: early.length, early_assumed_wait_minutes: early.reduce((a, r) => a + r.wait_min, 0),
+        early_assumed_amount: early.reduce((a, r) => a + r.amount, 0), early_designated_count: rs.filter((r) => r.early_arrival === 'designated').length, over_1h_share: pct(rs.filter((r) => r.over_1h).length, rs.length), date_from: dates[0], date_to: dates[dates.length - 1], months };
+      if (rec.length) {
+        item.reception_count = rec.length;
+        item.reception_wait_minutes = rec.reduce((a, r) => a + r.reception_wait_min, 0);
+        item.reception_amount = rec.reduce((a, r) => a + r.reception_amount, 0);
+        item.reception_arrive_wait_minutes = rec.reduce((a, r) => a + r.wait_min, 0);
+        item.reception_arrive_amount = rec.reduce((a, r) => a + r.amount, 0);
+        item.main_amount = item.amount - item.reception_arrive_amount + item.reception_amount;
+        item.early_assumed_norec_count = earlyNorec.length;
+        item.early_assumed_norec_wait_minutes = earlyNorec.reduce((a, r) => a + r.wait_min, 0);
+        item.early_assumed_norec_amount = earlyNorec.reduce((a, r) => a + r.amount, 0);
+      }
+      out.push(item);
     }
     out.sort((a, b) => (b.amount - a.amount) || cmp(a.partner, b.partner));
     return out;
@@ -798,7 +909,7 @@ const WaitingShared = (() => {
 
   return {
     rowKey, mergeRows, shipperSummary, shipperActions, noticeTemplate, crossCheck, hourLabel, vehicleKey, REVERSE_MAX_MIN,
-    HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
+    HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, parseMemoText, looseTableToTsv, MEMO_NO_PARTNER, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
     BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE, CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE,
   };
 })();

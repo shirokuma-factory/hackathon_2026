@@ -148,10 +148,39 @@ function darkStyle(style) {
 
 /* ------------------------------------------------------------ データ */
 
+/* データの読み込み。通信が一瞬途切れたり、サーバーが忙しいときに 1 回の失敗で画面が止まらないよう、3 回まで間をあけて読み直す（500ms、1,000ms）。
+   それでも読めないときは、英語の「Failed to fetch」を見せず、日本語の文と「読み直す」ボタンを出す（SPEC §43）。見つからない（404）ときは読み直さない */
+class LoadError extends Error {}
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function getJSON(u) {
-  const r = await fetch(u);
-  if (!r.ok) throw new Error(u + ' ' + r.status);
-  return r.json();
+  let status = '';
+  for (let i = 0; i < 3; i++) {
+    if (i > 0) await wait(500 * 2 ** (i - 1));
+    try {
+      const r = await fetch(u);
+      if (r.ok) return await r.json();
+      status = `（${r.status}）`;
+      if (r.status === 404) break;
+    } catch (e) { status = ''; }
+  }
+  throw new LoadError(`データ「${u}」を読み込めませんでした${status}。通信が途切れたか、サーバーが止まっている可能性があります。`);
+}
+// 読み込みの失敗を、利用者に見せる日本語の文にする。日本語を含まない英語の文（Failed to fetch など）はそのまま見せない
+function jpLoadMessage(e) {
+  const m = String((e && e.message) || e || '');
+  if (e instanceof LoadError || /[぀-ヿ一-鿿]/.test(m)) return m;
+  if (/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return 'データを読み込めませんでした。通信が途切れたか、サーバーが止まっている可能性があります。';
+  return '画面の準備に失敗しました。';
+}
+// 読み直しの案内。retry があればその処理をもう一度やり、なければページを読み込み直す
+function showLoadNotice(text, retry) {
+  let el = document.querySelector('#load-notice');
+  if (!el) { el = document.createElement('div'); el.id = 'load-notice'; el.className = 'load-fail'; el.setAttribute('role', 'alert'); document.body.appendChild(el); }
+  el.innerHTML = '';
+  const p = document.createElement('p'); p.textContent = text;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'retry'; b.textContent = '読み直す';
+  b.addEventListener('click', () => { if (retry) { el.remove(); retry(); } else location.reload(); });
+  el.append(p, b);
 }
 async function loadOrigin(code) {
   if (!S.od[code]) S.od[code] = await getJSON(`data/origin_${code}.json`);
@@ -850,7 +879,12 @@ function setLayer(l) {
   writeHash();
 }
 async function setOrigin(code) {
-  await loadOrigin(code);
+  try { await loadOrigin(code); } catch (e) {   // この出発地のデータだけ読めなかった。ほかの出発地と見方は使える
+    console.error(e);
+    $('#origin').value = S.origin;
+    showLoadNotice(`出発地のデータを読み込めませんでした。${jpLoadMessage(e)} 前の出発地のままです。`, () => setOrigin(code));
+    return;
+  }
   S.origin = code;
   $('#origin').value = code;
   S.version++;
@@ -984,8 +1018,19 @@ function showViewMissing(view) {
   const host = document.querySelector(VIEW_MODULES[view].host);
   if (!host) { toast(info.text); return; }
   let el = host.querySelector(':scope > .view-missing');
-  if (!el) { el = document.createElement('p'); el.className = 'view-missing'; el.setAttribute('role', 'alert'); host.prepend(el); }
-  el.textContent = info.text;
+  if (!el) {
+    el = document.createElement('p'); el.className = 'view-missing'; el.setAttribute('role', 'alert'); host.prepend(el);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'retry'; b.textContent = '読み直す'; b.addEventListener('click', () => location.reload());
+    el.append(document.createElement('span'), b);
+  }
+  el.firstChild.textContent = info.text + ' ';
+}
+// 見方に必要なデータが読めなかったとき、その見方だけを「使えない」にして、ほかの見方は起動する
+function softFail(view, e) {
+  console.error(e);
+  S.missingViews = S.missingViews || {};
+  S.missingViews[view] = { mods: [], text: `「${VIEW_MODULES[view].label}」のデータを読み込めませんでした。${jpLoadMessage(e)} ほかの見方は使えます。` };
+  return null;
 }
 const STUBS = {};
 const viewStub = (view) => STUBS[view] || (STUBS[view] = new Proxy({}, { get: (_, key) => (key === 'then' ? undefined : (...a) => { if (key === 'enter' || (key === 'setActive' && a[0])) showViewMissing(view); return ['flowLayers', 'layers', 'compareFac'].includes(key) ? [] : undefined; }) }));
@@ -1012,7 +1057,8 @@ async function main() {
   PERF.init();
   const [meta, idx, muni, pref, routes, style] = await Promise.all([
     getJSON('data/meta.json'), getJSON('data/index.json'), getJSON('data/muni.geojson'), getJSON('data/pref.geojson'),
-    getJSON('data/routes.json'), getJSON(STYLE_URL), Hubs.load(), Rt.loadMeta().then(() => Promise.all([Rt.loadPairs(), Rt.loadTrips()])), V.Market.load(), V.Muni.load(),
+    getJSON('data/routes.json'), getJSON(STYLE_URL), Hubs.load(), Rt.loadMeta().then(() => Promise.all([Rt.loadPairs(), Rt.loadTrips()])),
+    Promise.resolve().then(() => V.Market.load()).catch((e) => softFail('market', e)), Promise.resolve().then(() => V.Muni.load()).catch((e) => softFail('market', e)),
   ]);
   Object.assign(S, { meta, idx, muni, pref, routes });
   for (const f of muni.features) S.byIndex.set(f.properties.i, f);
@@ -1169,5 +1215,9 @@ async function main() {
 
 main().catch((e) => {
   console.error(e);
-  $('#loading').textContent = '読み込みに失敗しました: ' + e.message;
+  // 地図そのものに要るデータが読めなかった。英語の誤りは出さず、日本語の文と「読み直す」を出す
+  const l = $('#loading');
+  if (l) { l.classList.remove('done'); l.textContent = ''; }
+  showLoadNotice(`読み込みに失敗しました。${jpLoadMessage(e)}`, null);
+  if (l) l.appendChild(document.querySelector('#load-notice'));
 });

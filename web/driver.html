@@ -68,11 +68,12 @@ ol.steps li { margin-bottom: 8px; }
   <label>日付（月/日）<input id="date" type="text" inputmode="numeric" autocomplete="off" placeholder="例 11/10"></label>
   <div id="stamps"></div>
   <p class="hint">押した時刻が入ります。もう一度押しても書き換えません。直すときは右の時刻の欄を変え、消すときは × を押します。</p>
-  <button type="button" class="primary" id="b-save">この 1 回を今日の一覧に入れる</button>
+  <button type="button" class="primary" id="b-save">この 1 回を一覧に入れる</button>
 </section>
 
 <section aria-label="今日の記録">
   <h2 id="list-title">今日の記録</h2>
+  <label>日を選ぶ（前の日や、夜中をまたいだ回の記録もコピーできます）<select id="day" aria-label="記録を見る日、コピーする日"></select></label>
   <ul class="recs" id="recs"></ul>
   <button type="button" class="primary" id="b-copy">LINE に貼る文をコピー</button>
   <p class="msg" id="msg" role="status"></p>
@@ -112,7 +113,8 @@ const K_SET = 'driver_settings_v1', K_CUR = 'driver_current_v1', K_REC = 'driver
 const SETTING_IDS = ['place', 'partner', 'vno', 'vclass', 'handler'];
 const $ = (s) => document.querySelector(s);
 const pad = (n) => String(n).padStart(2, '0');
-const S = { cur: null, recs: [], broken: false, clearArmed: false };
+const S = { cur: null, recs: [], broken: false, clearArmed: false, day: '' };
+const ALL_DAYS = '__all';
 
 function load(key) {
   try {
@@ -149,7 +151,20 @@ function recordLine(r) {
   return p.join(' ');
 }
 
-const todays = () => S.recs.filter((r) => r.date === today());
+// 見ている日。夜中をまたいで入力中の回があるときは、その回の日付（着いた日）を初めに選ぶ。記録の日付は着いた日なので、日をまたいだ回も同じ日にまとまる
+const defaultDay = () => (S.cur && S.cur.arrive && S.cur.date && S.cur.date.trim() ? S.cur.date.trim() : today());
+const dayList = () => {   // 今日、入力中の回の日、保存した順に新しい日から（年をまたぐ 12/31 と 1/1 でも順が崩れない）
+  const out = [today()];
+  const add = (d) => { if (d && !out.includes(d)) out.push(d); };
+  if (S.cur && S.cur.arrive) add(S.cur.date.trim());
+  for (let i = S.recs.length - 1; i >= 0; i--) add(S.recs[i].date);
+  return out;
+};
+const todays = () => S.recs.filter((r) => r.date === today());   // 今日の分（試験が使う）。画面は日を選んで見る
+const viewDay = () => S.day || defaultDay();
+const dayRecs = () => (viewDay() === ALL_DAYS ? S.recs.slice() : S.recs.filter((r) => r.date === viewDay()));
+const dayWord = (d) => (d === ALL_DAYS ? '全部の日' : d === today() ? `今日（${d}）` : d);
+const curInView = () => !!S.cur.arrive && (viewDay() === ALL_DAYS || S.cur.date.trim() === viewDay());
 const curRecord = () => ({ ...settings(), ...S.cur });
 
 function persistCur() { save(K_CUR, S.cur); }
@@ -162,14 +177,22 @@ function renderStamps() {
     `<button type="button" class="x" data-clear="${k}" aria-label="${label}の時刻を消す">×</button></div>`).join('');
 }
 
+function renderDays() {
+  const sel = $('#day'), cur = viewDay();
+  sel.innerHTML = dayList().map((d) => `<option value="${d}"${d === cur ? ' selected' : ''}>${dayWord(d)}（${S.recs.filter((r) => r.date === d).length} 件）</option>`).join('') +
+    `<option value="${ALL_DAYS}"${cur === ALL_DAYS ? ' selected' : ''}>全部の日（${S.recs.length} 件）</option>`;
+}
+
 function renderList() {
-  const list = todays();
-  $('#list-title').textContent = `今日の記録（${list.length} 件）`;
-  const inProgress = S.cur.arrive ? `<li><span>入力中: ${recordLine(curRecord())}</span><span></span></li>` : '';
+  const list = dayRecs();
+  $('#list-title').textContent = `${viewDay() === today() ? '今日' : dayWord(viewDay())}の記録（${list.length} 件）`;
+  const inProgress = curInView() ? `<li><span>入力中: ${recordLine(curRecord())}</span><span></span></li>` : '';
   $('#recs').innerHTML = list.map((r) => `<li><span>${recordLine(r)}</span><button type="button" class="x" data-del="${r.id}" aria-label="この記録を消す">×</button></li>`).join('') + inProgress ||
     '<li class="empty">まだ記録がありません。着いたら「着いた」を押してください。</li>';
   const older = S.recs.length - list.length;
-  $('#older').textContent = older > 0 ? `ほかの日の記録 ${older} 件は、この端末に残っています（今日の分だけ表示しています）。` : '';
+  $('#older').textContent = older > 0 ? `ほかの日の記録 ${older} 件は、この端末に残っています（上の「日を選ぶ」で切り替えられます）。` : '';
+  renderDays();
+  $('#b-clear').textContent = viewDay() === ALL_DAYS ? '全部の記録を消す' : '選んだ日の記録を消す';
 }
 
 function setMsg(t, bad) { const el = $('#msg'); el.textContent = t; el.classList.toggle('bad', !!bad); }
@@ -187,14 +210,14 @@ function saveCurrent() {
   S.recs.push(rec);
   S.recs = S.recs.slice(-300);
   save(K_REC, S.recs);
-  S.cur = blankCur(); persistCur(); renderStamps(); renderList();
+  S.cur = blankCur(); persistCur(); renderStamps(); S.day = rec.date; renderList();
   $('#date').value = S.cur.date;
   setMsg('一覧に入れました。');
 }
 
 function copyAll() {
-  const lines = todays().map(recordLine);
-  if (S.cur.arrive) lines.push(recordLine(curRecord()));
+  const lines = dayRecs().map(recordLine);
+  if (curInView()) lines.push(recordLine(curRecord()));
   if (!lines.length) { setMsg('コピーする記録がありません。', true); return; }
   const text = lines.join('\n');
   const fallback = () => {
@@ -212,14 +235,16 @@ function copyAll() {
 
 function clearToday() {
   const btn = $('#b-clear');
+  const all = viewDay() === ALL_DAYS, word = all ? '全部の記録' : '選んだ日の記録';
   if (!S.clearArmed) {
-    S.clearArmed = true; btn.textContent = 'もう一度押すと、今日の記録を消します';
-    setTimeout(() => { S.clearArmed = false; btn.textContent = '今日の記録を消す'; }, 5000);
+    S.clearArmed = true; btn.textContent = `もう一度押すと、${word}を消します`;
+    setTimeout(() => { S.clearArmed = false; renderList(); }, 5000);
     return;
   }
-  S.clearArmed = false; btn.textContent = '今日の記録を消す';
-  S.recs = S.recs.filter((r) => r.date !== today());
-  save(K_REC, S.recs); renderList(); setMsg('今日の記録を消しました。');
+  S.clearArmed = false;
+  S.recs = all ? [] : S.recs.filter((r) => r.date !== viewDay());
+  S.day = '';
+  save(K_REC, S.recs); renderList(); setMsg(`${word}を消しました。`);
 }
 
 function copyUrl() {
@@ -262,6 +287,7 @@ function init() {
   document.addEventListener('input', (e) => {
     const t = e.target;
     if (t.dataset && t.dataset.time) { S.cur[t.dataset.time] = t.value; persistCur(); t.closest('.stamp').classList.toggle('done', !!t.value); renderList(); }
+    else if (t.id === 'day') { S.day = t.value; S.clearArmed = false; renderList(); setMsg(''); }
     else if (t.id === 'date') { S.cur.date = t.value; persistCur(); renderList(); }
     else if (SETTING_IDS.includes(t.id)) { persistSettings(); renderList(); }
     else if (t.id === 'appointed') renderList();

@@ -339,7 +339,7 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
     legs.sort(key=lambda l: (l["date"], l["plate"], 0 if l["dir"] == "out" else 1))
     for i, l in enumerate(legs, 1):
         l["id"] = f"L{i:03d}"
-    # 行きを出た日の曜日（帰りは、直前の行きと同じ運行）
+    # 行きを出た日の曜日（帰りは、直前の行きと同じ運行。直前の行きが無い帰りは、帰りの便自身の日付の曜日）
     for l in legs:
         if l["dir"] == "out":
             l["cycle_wd"], l["cycle_dep"] = date.fromisoformat(l["date"]).weekday(), l["dep"]
@@ -349,7 +349,7 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
                 o = max(prev, key=lambda x: x["date"])
                 l["cycle_wd"], l["cycle_dep"] = date.fromisoformat(o["date"]).weekday(), o["dep"]
             else:
-                l["cycle_wd"], l["cycle_dep"] = (date.fromisoformat(l["date"]) - timedelta(days=1)).weekday(), None
+                l["cycle_wd"], l["cycle_dep"] = date.fromisoformat(l["date"]).weekday(), None  # 直前の行きが無い帰りは、帰りの便自身の日付の曜日（SPEC §43）
         l["color"] = "yellow" if l["flags"] else ("gray" if l["kind"] == "unknown" else "green")
     # 停車に、行きを出た日の曜日を付ける
     run_by_id = {r["id"]: r for r in runs}

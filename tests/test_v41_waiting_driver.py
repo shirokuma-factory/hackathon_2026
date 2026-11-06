@@ -237,11 +237,13 @@ def test_document_for_the_receiving_shipper_shows_fault_column_early_split_and_n
         assert "荷主等の都合" in doc["head"]
         t = doc["text"]
         assert "荷主等の都合の欄が貼り付けの記録に無かったため" in t and "該当 3 行" in t
-        assert "早着の疑いを分けた数字" in t and "うち早着の疑い 2 回" in t and "早着の疑い（指定の到着時刻なし）" in t
+        # 受付の時刻がある回は受付から数えた額が主な額（SPEC §43）。受付があるので「早着の疑いを除くと」は出さない
+        assert "受付から数えた数字" in t and "受付の時刻がある 3 回" in t and "早着の疑い（指定の到着時刻なし）" in t
+        assert "早着の疑いを分けた数字" not in t and "を除くと 0 円" not in t
         assert "指定の到着時刻が無く、到着が 05:00 から 07:59 までの回" in t
         assert "車種が記入されていない 3 行は『中型』の単価で計算しています" in t
         assert "運転者が荷役をして荷役の方法が記入されていない 1 行は『手積み』の単価" in t
-        assert "を除くと" in doc["sum"]
+        assert "受付から数えた額" in doc["sum"] and "を除くと" not in doc["sum"]
         assert "車種が空欄の 3 行は『中型』" in doc["defaults"] and "荷役の方法が空欄の 1 行" in doc["defaults"]
         assert "契約の相手として読みました" in doc["ask"] and doc["askDoc"]
         assert doc["process"].index("正式名") < doc["process"].index("取適法では、相手")

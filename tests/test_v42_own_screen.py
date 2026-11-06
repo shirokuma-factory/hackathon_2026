@@ -172,9 +172,9 @@ def test_board_texts_are_one_per_pair_with_the_right_header(app, tmp_path):
         for k in ("発地:", "着地:", "曜日・時刻:", "車格:", "空き:", "連絡先: （"):
             assert k in it["text"], it
         assert it["text"].count("【求荷】空車情報") == 1
-        assert re.search(r"毎週.曜", it["text"]) and "便" in it["text"]
+        assert re.search(r"毎週.曜|\d+/\d+（.）", it["text"]) and "便" in it["text"]  # 同じ曜日が月に 3 回以上なら毎週、そうでなければ日付（SPEC §43）
     nagoya = next(i for i in items if "名古屋" in i["label"])
-    assert "愛知県名古屋市" in nagoya["text"] and "兵庫県加古川市" in nagoya["text"] and "4t車" in nagoya["text"] and "10t" in nagoya["text"], nagoya["text"]
+    assert "名古屋（区は確認）" in nagoya["text"] and "中区" not in nagoya["text"] and "兵庫県加古川市" in nagoya["text"] and "4t車" in nagoya["text"] and "10t" in nagoya["text"], nagoya["text"]
     # 区間ごとにコピーするボタンがある
     assert page.js("document.querySelectorAll('[data-act=board-copy-one]').length") == len(items)
     page.js("document.querySelector('[data-act=board-copy-one]').click()")
@@ -308,7 +308,7 @@ def test_right_panel_puts_notes_under_details_and_explains_jargon(app):
     right = page.js("document.querySelector('#own-right').innerText")
     for k in ("実車 km ÷ 走った km", "積んだ重さ ÷ 最大積載量", "積載率 × 大型の実車率", "全国 62.15%"):
         assert k in right, (k, right)
-    assert "13,500 kg" not in right and "辰巳" not in right  # 長い注記は閉じた「詳しく」の中
+    assert "13,500 kg" not in right and "「辰巳 → 江東区」" not in right  # 長い注記は閉じた「詳しく」の中（区間の表には、地図に置けない地点の名前として辰巳が出てよい）
     assert page.js("document.querySelector('#own-more').open") is False
     assert page.js("[...document.querySelectorAll('#own-right .o-tmore')].every(d => !d.open)")
     page.js("document.querySelectorAll('#own-right details').forEach(d => d.open = true)")
@@ -382,8 +382,7 @@ RETURN_HAISHA = NL.join(["車番,車種,2026/10/1,2026/10/2,2026/10/3,2026/10/4"
 def test_hired_rows_are_reported_in_one_line_with_a_closed_list(app, tmp_path):
     page = app
     _import(page, [_write(tmp_path, "haisha_hired.csv", HIRED_HAISHA)])
-    if not page.js("(Own.state.data.hired || []).length"):
-        pytest.skip("own_calc が傭車の行を返さない")
+    assert page.js("(Own.state.data.hired || []).length") >= 1, "傭車の行の入った配車表で own_calc が傭車の行を返さない"
     t = page.js("document.querySelector('#own-hired').innerText")
     assert "傭車の行" in t and "日分は自社の車として数えていません" in t, t
     assert page.js("document.querySelector('#own-hired details').open") is False
@@ -396,8 +395,7 @@ def test_overlapping_haisha_files_can_be_chosen(app):
     page = app
     _import(page, [EXAMPLES / "haisha_2026-10.csv", EXAMPLES / "haisha_excel_2026-10.csv"], "自社のファイル")
     hc = json.loads(page.js("JSON.stringify(Own.state.data.haisha_choice || null)"))
-    if not hc or not hc.get("overlaps"):
-        pytest.skip("この 2 つの配車表は重ならない")
+    assert hc and hc.get("overlaps"), "同じ車番・日付を持つ 2 つの例の配車表で、重なりが出ない"
     assert page.js("!!document.querySelector('#own-hchoice')")
     boxes = page.js("document.querySelectorAll('#own-hchoice input[data-hf]').length")
     assert boxes == len(hc["files"]) and "使っていません" in page.js("document.querySelector('#own-hchoice').innerText")
@@ -416,8 +414,7 @@ def test_return_unmarked_card_has_three_buttons_and_recomputes(app, tmp_path):
     _import(page, [_write(tmp_path, "haisha_ret.csv", RETURN_HAISHA)])
     page.js("Own.setTab('confirm')")
     sel = '#own-body .o-card[data-key="return-unmarked"]'
-    if not page.js(f"!!document.querySelector('{sel}')"):
-        pytest.skip("印の無い帰りの区間が無い")
+    assert page.js(f"!!document.querySelector('{sel}')"), "印の無い帰りの区間を含む配車表で、確認のカードが出ない"
     t = page.js(f"document.querySelector('{sel}').innerText")
     assert "に空・実車の印がありません" in t and "全部 空" in t and "全部 実車" in t and "不明のまま" in t, t
     before = page.js("Own.state.data.kpis.actual_rate.value")

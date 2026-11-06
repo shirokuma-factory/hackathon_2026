@@ -209,7 +209,7 @@ def test_n6_compare_lite_4t_has_tariff_note_and_check_over_2700():
     assert loadplan.TARIFF_4T_NOTE in html
     assert "DECKS.tariff_4t_note" in html and "RULES.t4.payloadKg" in html
     tpl = (ROOT / "tools" / "compare_lite_template.html").read_text(encoding="utf-8")
-    assert "cls === '4t' && t.kg > RULES.t4.payloadKg" in tpl
+    assert "cls === '4t' && overKg(t, RULES.t4.payloadKg)" in tpl  # 重さは整数で比べる（SPEC §43）
 
 
 def test_n7_one_source_for_2t_deck():

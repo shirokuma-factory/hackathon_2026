@@ -139,7 +139,7 @@ def test_g91_selftest_and_s6_in_headless_edge():
         page.goto(PAGE.as_uri() + "?selftest=1")
         page.wait(lambda: page.js("document.querySelector('#selftest') && document.querySelector('#selftest').textContent.length > 0"), 30, "自己確認")
         text = page.js("document.querySelector('#selftest').textContent")
-        assert text == f"SELFTEST PASS {n + 30}/{n + 30}", text
+        assert text == f"SELFTEST PASS {n + 42}/{n + 42}", text
         page.goto(PAGE.as_uri() + "?example=1")
         page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")
         got = page.js("""(function(){
@@ -148,7 +148,7 @@ def test_g91_selftest_and_s6_in_headless_edge():
                   sum: document.querySelector('#sum').textContent, k4: document.querySelector('tr[data-opt=kashikiri_4t] .amount').textContent};
         })()""")
     assert got["o"] == {"takuhai": "o-ng", "kazai": "o-check", "akabane": "o-ng", "kei": "o-ng", "jitbox": "o-ng", "rosen": "o-check",
-                        "kashikiri_2t": "o-ok", "kashikiri_4t": "o-ok", "home": "o-check"}
+                        "kashikiri_2t": "o-check", "kashikiri_4t": "o-ok", "home": "o-check"}   # 2t は高さ 200cm の荷がショートに入らず、ロングなら入る（地図の積付けと同じ。SPEC §43）
     assert got["home"] and "126,060" in got["k4"]
     assert "合計: 4 個" in got["sum"] and "400" in got["sum"]
     q = got["quote"]

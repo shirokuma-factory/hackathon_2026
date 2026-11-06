@@ -30,3 +30,20 @@ html body.sheet-mode #cards { display: contents; }
 html body.sheet-mode #cards > * { order: 4; margin: 0 16px 8px; }
 html body.sheet-mode #cards > .cc { order: 1; margin-top: 12px; }
 html body.sheet-mode #rt-modes { order: 3; }
+
+/* 比べの要約（手段ごとの目安額）を経路のカードより上に置く。1920 でも画面の下端で切れない（SPEC §43、P2-9）。狭い画面の上のルールと同じ並び */
+html body #d-scroll { display: flex; flex-direction: column; }
+html body #cards { display: contents; }
+html body #cards > * { order: 4; margin: 0 16px 8px; }
+html body #cards > .cc { order: 1; margin-top: 12px; }
+html body #rt-modes { order: 3; }
+/* 「参考の最安」「要確認」の印は、棒と額の右に収まらないとき次の行へ折り返す。日数の文字に重ねない・右端で切らない（SPEC §43、P2-2・P2-3） */
+.cc-track { flex-wrap: wrap; row-gap: 3px; }
+.cc-mark { margin-top: 1px; }
+
+/* データを読み込めなかったときの案内と「読み直す」ボタン（SPEC §43） */
+.load-fail { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; max-width: min(560px, calc(100vw - 32px)); padding: 12px 16px; border: 1px solid var(--line-strong); border-radius: 12px; background: rgba(16, 24, 38, 0.97); color: var(--text); font-size: 13px; line-height: 1.5; }
+.load-fail p { margin: 0; flex: 1 1 18em; }
+body > #load-notice { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; }
+button.retry { min-height: 36px; padding: 6px 16px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--accent, #2d7fb0); color: #fff; font: inherit; cursor: pointer; }
+.view-missing { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }

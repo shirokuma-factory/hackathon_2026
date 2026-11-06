@@ -445,3 +445,30 @@ body.view-own #own-right .f-chk { display: flex; align-items: center; gap: 8px; 
 .o-hired { margin: 4px 0; } .o-more2 summary { cursor: pointer; font-size: 11px; color: var(--accent); }
 .o-hf { list-style: none; margin: 4px 0; padding: 0; font-size: 12px; } .o-hf li { margin: 3px 0; } .o-hf small { display: block; color: var(--faint); font-size: 10.5px; margin-left: 24px; }
 .o-hf input { width: 20px; height: 20px; vertical-align: middle; }
+
+/* SPEC §43: 件数の表示、別の数え方の実車率、成約単価、明日の空き、ファイルを外す */
+.o-tc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.o-few { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px; background: rgba(240,182,78,.18); color: var(--warn); font-size: 10.5px; font-weight: 700; }
+.o-talt { margin-top: 3px; font-size: 11px; line-height: 1.45; color: var(--text); }
+.o-talt small { color: var(--muted); font-size: 10.5px; }
+.o-fx { margin-left: 8px; font-size: 11px; }
+.o-std { margin: 4px 0 6px; font-size: 11.5px; line-height: 1.55; color: var(--warn); }
+.o-rate { grid-template-columns: 1fr; }
+.o-rate label span { flex-wrap: wrap; }
+.o-rate input { width: 110px; }
+.o-rev3 b { color: var(--accent); }
+.o-tab tr.grp td small { margin-left: 8px; font-weight: 400; color: var(--muted); font-size: 11px; }
+.o-pairrest { margin-top: 6px; }
+.o-tmr { margin: 0 0 12px; padding: 8px 10px 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: rgba(255,255,255,.04); }
+.o-tmrg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; margin: 4px 0 8px; }
+.o-tmrg label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); min-width: 0; }
+.o-tmrg input, .o-tmrg select { width: 100%; min-width: 0; height: 28px; padding: 0 6px; }
+@media (max-width: 600px) {
+  .o-tmrg { grid-template-columns: 1fr; }
+  .o-fx { display: inline-block; }
+}
+@media (max-width: 600px) {
+  .o-un .o-r { white-space: normal; overflow-wrap: anywhere; }
+  .o-un { table-layout: fixed; width: 100%; }
+  .o-un td { overflow-wrap: anywhere; }
+}
