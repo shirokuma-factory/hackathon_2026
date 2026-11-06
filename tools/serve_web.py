@@ -746,7 +746,7 @@ def api_b_register_defaults(body: Any) -> dict[str, Any]:
             cargo = _register_cargo(body)
         except ValueError as e:
             raise BadRequest(str(e)) from e
-        out["price"] = spaceb.default_register_price(trip, cargo) if cargo else             {"price_ex_tax_yen": None, "basis": "荷物が確定していないため、値段の既定値を出せません", "reference": None}
+        out["price"] = spaceb.default_register_price(trip, cargo) if cargo else {"price_ex_tax_yen": None, "basis": "荷物が確定していないため、値段の既定値を出せません", "reference": None}
     return out
 
 
@@ -848,6 +848,7 @@ def _static_bytes(path: Path, st, ext: str, accept_gzip: bool) -> tuple[bytes, b
 
 class Handler(SimpleHTTPRequestHandler):
     server_version = "Backfull"  # 応答の Server に Python の版を出さない
+    timeout = 20  # 秒。本文を送らずに待たせる接続でスレッドを占有されないように（ソケットの読み書きの上限）
     sys_version = ""
     extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".js": "text/javascript", ".json": "application/json",
                       ".geojson": "application/geo+json", ".css": "text/css", ".html": "text/html",
@@ -1016,14 +1017,21 @@ class Handler(SimpleHTTPRequestHandler):
         if length < 0 or length > MAX_BODY:
             self.close_connection = True
             remaining = min(max(length, 0), 8 * MAX_BODY)
-            while remaining > 0:  # 相手が送り終わる前に閉じると、相手側で通信エラーになるので読み捨てる
-                chunk = self.rfile.read(min(65536, remaining))
-                if not chunk:
-                    break
-                remaining -= len(chunk)
+            try:
+                while remaining > 0:  # 相手が送り終わる前に閉じると、相手側で通信エラーになるので読み捨てる
+                    chunk = self.rfile.read(min(65536, remaining))
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+            except OSError:  # 送ってこない相手は timeout で打ち切る
+                return
             self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": f"本文が大きすぎます（{MAX_BODY:,} バイトまで）"})
             return
-        raw = self.rfile.read(length)
+        try:
+            raw = self.rfile.read(length)
+        except OSError:  # timeout（本文が届かない）
+            self.close_connection = True
+            return
         try:
             body = json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as e:

@@ -113,3 +113,28 @@ def test_security_headers_and_server_banner(srv):
     assert h.get("x-content-type-options") == "nosniff"
     assert h.get("x-frame-options") == "SAMEORIGIN"
     assert "python" not in h.get("server", "").lower()
+
+
+
+def test_handler_has_a_socket_timeout(mod):
+    assert 0 < mod.Handler.timeout <= 60
+
+
+def test_oversized_body_without_payload_does_not_hang_forever(mod, monkeypatch):
+    import socket
+    import time
+    monkeypatch.setattr(mod.Handler, "timeout", 2)
+    httpd = mod.make_server(0, public=True)
+    t = threading.Thread(target=httpd.serve_forever, daemon=True)
+    t.start()
+    try:
+        s = socket.create_connection(("127.0.0.1", httpd.server_address[1]), timeout=10)
+        s.sendall(b"POST /api/b/hold HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n"
+                  b"Content-Length: 99999999\r\n\r\n")
+        t0 = time.monotonic()
+        s.recv(4096)  # サーバーが timeout で切れば戻る
+        assert time.monotonic() - t0 < 8
+        s.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
