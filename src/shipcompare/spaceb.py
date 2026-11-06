@@ -30,6 +30,7 @@ HEIGHT_MARGIN_MM = Decimal(50)  # 箱の高さは空きの高さ − 50mm まで
 DEFAULT_HOLD_MINUTES = 30
 DEFAULT_PICKUP_RADIUS_KM = 20  # 便に pickup_radius_km が無いときの集荷の上限（SPEC §21.2）
 MAX_HOLD_MINUTES = 72 * 60  # 仮予約の期限（締切）の上限。SPEC §21.2
+MAX_HOLDS = 100  # 1 つの盤（公開版では来訪者 1 人）が持てる仮予約の数。期限切れも数える。「最初の状態に戻す」で消える
 FICTION_NOTICE = "架空の運送会社と便です。"
 BOOKING_NOTICE = "積むかどうか、どこにどう積むかは運送会社が決めます。受付で量って条件に合わないときは受け付けません。"
 
@@ -488,6 +489,8 @@ class Board:
             raise BoardError(f"仮予約の期限（hold_minutes）は 0 より大きく {MAX_HOLD_MINUTES} 分以下で入れてください")
         with self._lock:
             self._sweep()
+            if len(self._holds) >= MAX_HOLDS:
+                raise BoardError(f"仮予約は 1 人 {MAX_HOLDS} 件までです。「最初の状態に戻す」で消せます")
             trip = self._trip(trip_id)
             now = self._clock()
             expires = self._parse_until(hold_until, now) if hold_until is not None \

@@ -30,11 +30,17 @@ result = _parse(data.get("tool_response"))
 if isinstance(result, dict):
     result.pop("response", None)  # long LLM text is not needed in the log
 
+# 入力の prompt は記録しない（外に出せないデータを要約させたときに中身が残らないように）。長さだけ残す。
+tool_input = dict(data.get("tool_input") or {})
+for key in ("prompt", "system"):
+    if isinstance(tool_input.get(key), str):
+        tool_input[key] = f"<{len(tool_input[key])} 文字、記録しない>"
+
 entry = {
     "ts": datetime.datetime.now().isoformat(timespec="seconds"),
     "session": data.get("session_id"),
     "tool": data.get("tool_name", "").removeprefix("mcp__local-ai__"),
-    "input": data.get("tool_input"),
+    "input": tool_input,
     "result": result,
 }
 log = root / "docs" / "generation_log.jsonl"

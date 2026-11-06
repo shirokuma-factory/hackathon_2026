@@ -85,12 +85,15 @@ def test_g75_shipper_handling_counts_as_waiting_and_has_no_handling_fee():
 
 
 def test_g75_driver_handling_fee_changes_at_two_hour_boundary_from_arrival():
-    # 到着 09:00、荷役 10:50〜11:20。2 時間の境は 11:00
+    # 到着 09:00、2 時間の境は 11:00。SPEC §39 #5: 荷役開始から 30 分ごとに区切り、境より後に始まる区切りだけ 2 時間超の額
     r = one(start="10:50", end="11:20", handler="運転者", method="フォークリフト等")
-    assert (r["handling_normal_units"], r["handling_over_units"]) == (1, 1)
-    assert r["handling_fee"] == 2080 + 2490
+    assert (r["handling_normal_units"], r["handling_over_units"]) == (1, 0)  # 30 分の荷役は 1 回（境の前後で別々に切り上げない）
+    assert r["handling_fee"] == 2080
     assert r["wait_fee"] == 3 * 1680  # 110 分 − 30 分 = 80 分 → 3 回
     assert r["amount"] == r["wait_fee"] + r["handling_fee"]
+    r = one(start="10:50", end="11:40", handler="運転者", method="フォークリフト等")
+    assert (r["handling_normal_units"], r["handling_over_units"]) == (1, 1)  # 2 つ目の区切り（11:20〜）は境の後
+    assert r["handling_fee"] == 2080 + 2490
 
 
 def test_g75_driver_handling_by_hand_and_not_fault_still_charges_handling():

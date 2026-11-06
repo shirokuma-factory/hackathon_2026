@@ -120,7 +120,7 @@ def _edge():
     import capture_screens as cs
     try:
         cs.find_edge()
-    except Exception:
+    except (Exception, SystemExit):  # 見つからないと SystemExit
         pytest.skip("Edge がありません")
     return cs
 

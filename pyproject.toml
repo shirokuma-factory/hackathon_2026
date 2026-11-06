@@ -1,7 +1,7 @@
 [project]
 name = "shipcompare"
 version = "0.1.0"
-description = "Backfull: 中小荷主のスポット出荷 比較・依頼ツール"
+description = "Backfull: 中小の運送会社と荷主のための物流ツール（荷待ちの協議の書面、帰り便の偏りとつなぎ、送り方の比較）"
 requires-python = ">=3.13"
 dependencies = [
     "streamlit>=1.40",
