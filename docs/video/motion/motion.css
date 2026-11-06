@@ -1,0 +1,21 @@
+/* 動く図の共通の見た目（docs/video/graphics/common.css の色の変数を使う）。背景は透明。下の 300px は字幕のために空ける */
+html,body{background:transparent;overflow:hidden}
+body{padding:0;font-size:32px;line-height:1.4}
+#panel{position:absolute;top:40px;left:50%;width:1040px;margin-left:-520px;padding:36px 52px 40px;
+  background:rgba(18,26,35,.92);border:2px solid var(--line);border-radius:12px;opacity:0}
+#panel.wide{width:1120px;margin-left:-560px}
+h1{font-size:38px;font-weight:700;line-height:1.35;margin-bottom:28px}
+.row{margin-bottom:26px}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:24px;font-size:34px;margin-bottom:8px}
+.lab b{font-size:52px;font-weight:700;font-variant-numeric:tabular-nums}
+.sub{font-size:26px;color:var(--muted);font-weight:500}
+.track{position:relative;height:44px;background:rgba(255,255,255,.06);border-radius:6px}
+.fill{position:absolute;left:0;top:0;bottom:0;border-radius:6px;transform-origin:left;transform:scaleX(0)}
+.gray{background:#8d99a6}.blue{background:var(--hl)}.yellow{background:var(--warn)}
+.note{font-size:26px;color:var(--muted);margin-top:22px;line-height:1.5;text-wrap:balance}
+.u{position:relative;display:inline-block}
+.ul{position:absolute;left:0;right:0;bottom:-4px;height:6px;border-radius:3px;background:var(--warn);transform-origin:left;transform:scaleX(0)}
+.warnc{color:var(--warn);font-weight:700}
+.brk{position:absolute;height:22px;border:5px solid var(--warn);border-top:0;border-radius:0 0 4px 4px}
+.brk-l{position:absolute;white-space:nowrap;font-size:38px;font-weight:700;color:var(--warn)}
+[data-at]{opacity:0}
