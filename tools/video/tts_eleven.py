@@ -60,8 +60,8 @@ def voices() -> None:
         print(v["voice_id"], v.get("name"), v.get("category"), labels.get("gender"), labels.get("accent"), ",".join(l for l in langs if l))
 
 
-def shot(sid: str, voice: str, stability: float, speed: float, model: str = MODEL, text: str | None = None, tag: str = "") -> None:
-    shots = json.loads((ROOT / "docs" / "video" / "shots.json").read_text(encoding="utf-8"))["shots"]
+def shot(sid: str, voice: str, stability: float, speed: float, model: str = MODEL, text: str | None = None, tag: str = "", shots_file: str = "docs/video/shots.json") -> None:
+    shots = json.loads((ROOT / shots_file).read_text(encoding="utf-8"))["shots"]
     s = next(x for x in shots if x["id"] == sid)
     text = text or s["read"]
     name = sid + (f"_{tag}" if tag else "")
@@ -74,7 +74,7 @@ def shot(sid: str, voice: str, stability: float, speed: float, model: str = MODE
     al = d.get("alignment") or {}
     ends = al.get("character_end_times_seconds") or [0]
     meta = {"shot": sid, "voice_id": voice, "model": model, "settings": body["voice_settings"],
-            "text": text, "duration_s": round(ends[-1], 2), "planned_s": s["end"] - s["start"],
+            "text": text, "duration_s": round(ends[-1], 2), "planned_s": float(s["end"]) - float(s["start"]),
             "sha256": hashlib.sha256(audio).hexdigest(), "alignment": al}
     with open(OUT / f"{name}.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)
@@ -91,10 +91,11 @@ if __name__ == "__main__":
     ap.add_argument("--model", default=MODEL)
     ap.add_argument("--text", help="shots.json の read の代わりに読む文（読みの比較用）")
     ap.add_argument("--tag", default="", help="出力名の後ろに付ける印（S2_<tag>.mp3）")
+    ap.add_argument("--shots", default="docs/video/shots.json", help="台本の JSON（リポジトリからの相対パス）")
     a = ap.parse_args()
     if a.voices:
         voices()
     elif a.shot and a.voice:
-        shot(a.shot, a.voice, a.stability, a.speed, a.model, a.text, a.tag)
+        shot(a.shot, a.voice, a.stability, a.speed, a.model, a.text, a.tag, a.shots)
     else:
         ap.print_help()
