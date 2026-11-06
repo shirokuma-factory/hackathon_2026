@@ -78,12 +78,12 @@ def wrap(s: str) -> list[str]:
     return [s[:cut], s[cut:]]
 
 
-def cards_for(shot: dict, offset: float) -> list[dict]:
-    meta = json.loads((VOICE / f"{shot['id']}_v4.json").read_text(encoding="utf-8"))
+def cards_for(shot: dict, offset: float, tag: str = "v4") -> list[dict]:
+    meta = json.loads((VOICE / f"{shot['id']}_{tag}.json").read_text(encoding="utf-8"))
     al = meta["alignment"]
     chars, t0s, t1s = al["characters"], al["character_start_times_seconds"], al["character_end_times_seconds"]
     read = "".join(chars)
-    sil = silences(VOICE / f"{shot['id']}_v4.mp3")
+    sil = silences(VOICE / f"{shot['id']}_{tag}.mp3")
     nar, rd = sentences(shot["narration"]), sentences(read)
     if len(nar) != len(rd):
         raise SystemExit(f"{shot['id']}: 字幕の文の数 {len(nar)} と読みの文の数 {len(rd)} が違います")
@@ -112,8 +112,8 @@ def srt_time(t: float) -> str:
 
 # 強調する言葉（数字と単位、要点の言葉）。色は黄（common.css の --warn）
 EMPH = re.compile(
-    r"(約?\d[\d,.]*(?:万\d*千?|千)?(?:%|トン|便|回|件|円|m\d*cm|cm|台|年\d*月|月|分|日間)"
-    r"|空で帰る|帰りが空|空でした|入れません|社長が一人|理由が出ます|義務|承諾します|Claude Code)")
+    r"(約?\d[\d,.]*(?:万\d*千?|千)?(?:%|割|分の\d+|トン|便|回|件|円|m\d*cm|cm|台|年度?\d*月?|月|分|日間)"
+    r"|空で帰る|帰りが空|空でした|入れません|社長が一人|理由が出ます|義務|承諾します|Claude Code|片道|空気を運ぶ|荷物を運ぶ|Backfull)")
 WHITE, YELLOW = (255, 255, 255), (240, 192, 74)
 FADE = 4  # 出入りのコマ数（4 コマ = 0.13 秒）
 
@@ -198,12 +198,17 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--offsets", required=True, help="S1〜S8 の声の位置（秒、カンマ区切り）")
     ap.add_argument("--total", type=float, required=True)
+    ap.add_argument("--shots", default="docs/video/shots.json")
+    ap.add_argument("--tag", default="v4", help="声のファイルの印（<S>_<tag>.json）")
+    ap.add_argument("--out", default="outputs/video/subs")
     a = ap.parse_args()
     offs = [float(x) for x in a.offsets.split(",")]
-    shots = json.loads((ROOT / "docs" / "video" / "shots.json").read_text(encoding="utf-8"))["shots"]
+    global OUT
+    OUT = ROOT / a.out
+    shots = json.loads((ROOT / a.shots).read_text(encoding="utf-8"))["shots"]
     cards = []
     for s, o in zip(shots, offs):
-        cards += cards_for(s, o)
+        cards += cards_for(s, o, a.tag)
     OUT.mkdir(parents=True, exist_ok=True)
     with open(OUT / "cards.json", "w", encoding="utf-8", newline="\n") as fh:
         json.dump(cards, fh, ensure_ascii=False, indent=1)
