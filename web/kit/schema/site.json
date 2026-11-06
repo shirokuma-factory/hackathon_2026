@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kit/schema/site.json",
+  "title": "拠点（営業所・荷主の所在地・貨物駅・港）",
+  "description": "荷待ちの場所や運行の発着の地点。web/data/own_sample.json の places と同じ欄（id・name（label）・lon・lat・muni・code・aliases）に、種類（kind）と出所を足したもの。",
+  "type": "object",
+  "required": [
+    "sites"
+  ],
+  "properties": {
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "sites": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/site"
+      }
+    }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "description": "ファイルの説明（任意）。架空のデータには fiction: true を付ける",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "fiction": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "basis": {
+      "type": "string",
+      "enum": [
+        "実測",
+        "推定",
+        "仮定"
+      ],
+      "description": "実測 = 記録から数えた値、推定 = 計算で求めた値、仮定 = 利用者が置いた値"
+    },
+    "site": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "lon",
+        "lat",
+        "kind",
+        "basis"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "表示の名前（例: 加古川営業所（自社））"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "自社の拠点",
+            "荷主",
+            "荷受け",
+            "貨物駅",
+            "港",
+            "その他"
+          ]
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "経度（度）"
+        },
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "緯度（度）"
+        },
+        "muni": {
+          "type": "string",
+          "description": "市区町村の名前"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[0-9]{5}$",
+          "description": "市区町村コード（5 桁）。地図の画面の着地の指定に使う"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "荷待ちの記録の「場所」の欄に現れる別の書き方。同じ拠点として数える"
+        },
+        "source": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "実測",
+            "推定",
+            "仮定"
+          ],
+          "description": "実測 = 記録から数えた値、推定 = 計算で求めた値、仮定 = 利用者が置いた値"
+        }
+      }
+    }
+  }
+}

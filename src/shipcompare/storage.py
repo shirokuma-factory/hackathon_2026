@@ -299,8 +299,14 @@ def save_case(path: str | Path, case: Case, now: datetime | None = None) -> Case
 
 
 def load_case(path: str | Path) -> Case:
-    with open(path, encoding="utf-8") as f:
-        return case_from_dict(json.load(f))
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise ValueError("保存ファイルが読めません（空か壊れています）") from None
+    if not isinstance(raw, dict):
+        raise ValueError("保存ファイルが読めません（空か壊れています）")
+    return case_from_dict(raw)
 
 
 # ---------------------------------------------------------------- 場面データ

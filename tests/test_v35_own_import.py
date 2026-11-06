@@ -118,7 +118,7 @@ def _close(a, b, path, out, ignore):
 def _strip(d: dict) -> dict:
     """比べない項目を外す。Claude の欄、道路の形、JS だけが足した項目。"""
     d = json.loads(json.dumps(d))
-    for k in ("claude", "route", "paper", "company", "fiction", "unplaced", "encodings", "version", "month", "year_choice", "period", "failed"):
+    for k in ("claude", "route", "paper", "company", "fiction", "unplaced", "encodings", "version", "month", "year_choice", "period", "failed", "files_read", "files_unread"):
         d.pop(k, None)
     for c in d["columns"]:
         c.pop("claude_note", None)
@@ -323,7 +323,7 @@ def test_g146_shift_jis_file_and_unreadable_files_are_reported_in_the_page(app, 
     xlsx = tmp_path / "x.xlsx"
     xlsx.write_bytes(b"PK\x03\x04")
     _set_files(page, [*sj, bad, xlsx])
-    page.wait(lambda: "自社のファイル: 4 件" in _src_text(page), 120, "取り込み")
+    page.wait(lambda: "自社のファイル: 3 件（読めなかった 1 件）" in _src_text(page), 120, "取り込み")  # memo.csv は読めなかったファイル（SPEC §40）
     d = page.js("Own.state.data")
     enc = {f["file"]: f["encoding"] for f in d["files"]}
     assert enc["haisha_2026-10.csv"] == "Shift_JIS" and enc["digitaco_1234.csv"] == "Shift_JIS"

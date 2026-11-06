@@ -376,6 +376,8 @@ def plan_load(items: list[LoadItem], container: Container) -> dict[str, Any]:
                                                   placed_seq=placed_seq, over_kg=float(max(Decimal(0), over)))
     elif container.basis != "公表例" or volume_pct >= 90:
         verdict = "△"  # 載るが、数値が目安・推定の荷室か、容積の余裕が小さい
+        if volume_pct >= 90:
+            verdict_reason = f"容積の余裕が小さい（容積の{volume_pct:g}%を使います）"
     else:
         verdict = "○"
     summary = {

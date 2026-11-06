@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "title": "荷の例（架空）",
+    "fiction": true,
+    "note": "架空の例です。実在の会社・統計の数字ではありません。"
+  },
+  "items": [
+    {
+      "label": "段ボール箱",
+      "count": 12,
+      "length_cm": 60,
+      "width_cm": 40,
+      "height_cm": 40,
+      "weight_kg": 15,
+      "source": "架空の例（実在の統計ではありません）",
+      "basis": "仮定"
+    },
+    {
+      "label": "パレット積みの箱",
+      "count": 4,
+      "length_cm": 110,
+      "width_cm": 110,
+      "height_cm": 120,
+      "weight_kg": 280,
+      "source": "架空の例（実在の統計ではありません）",
+      "basis": "仮定"
+    },
+    {
+      "label": "重さの分からない荷",
+      "count": 2,
+      "length_cm": 80,
+      "width_cm": 50,
+      "height_cm": 50,
+      "weight_kg": null,
+      "source": "架空の例（実在の統計ではありません）",
+      "basis": "仮定"
+    }
+  ]
+}

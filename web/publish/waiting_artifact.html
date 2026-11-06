@@ -35,11 +35,16 @@ table.in td.n { color: var(--faint); text-align: right; padding: 0 6px; font-siz
 table.in tr.bad td { background: var(--warn-bg); }
 table.in input, table.in select { width: 100%; height: 26px; padding: 0 4px; }
 table.in input[data-k=date] { min-width: 11ch; }   /* 2026-10-15 が欠けずに見える幅 */
-.del { border: 0; background: none; color: var(--faint); padding: 0 6px; }
+.del { border: 0; background: none; color: var(--faint); padding: 0 6px; min-width: 24px; min-height: 24px; }
 .errs { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--warn); border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: 12.5px; }
 .errs b { display: block; }
 details { margin-top: 8px; }
 details summary { cursor: pointer; font-weight: 700; font-size: 13px; }
+/* 押せる所は高さ 24px 以上（採点 r2） */
+select, summary { min-height: 24px; box-sizing: border-box; }
+summary { padding-block: 3px; }
+.ask-co a, #backmap a, #maplink a, #process a { display: inline-block; min-height: 24px; line-height: 24px; }
+
 textarea { width: 100%; padding: 6px 8px; resize: vertical; }
 table.par, table.rec { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 6px 0; }
 table.par th, table.rec th { text-align: right; font-weight: 500; color: var(--muted); font-size: 11.5px; padding: 4px 6px; border-bottom: 1px solid var(--line); line-height: 1.35; }

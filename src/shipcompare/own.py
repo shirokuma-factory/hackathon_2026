@@ -112,7 +112,8 @@ def infer_year(head: list[str]) -> dict[str, Any]:
     """配車表の見出しの曜日（「10/1(木)」の木）と合う年を探す。時計は使わない。
 
     返す dict: year（使う年）, candidates（合う年の一覧）, ambiguous（利用者に選ばせるか）, source（'weekday' 曜日で決めた / 'explicit' 年つきの見出しだけ /
-    'none' 曜日が無い / 'mismatch' 曜日がどの年にも合わない）。合う年が複数あるときは、その中でいちばん新しい年を初期値にして ambiguous を真にする。
+    'none' 曜日が無い / 'mismatch' 曜日がどの年にも合わない）。合う年が複数あるときは year を None にして ambiguous を真にする
+    （いちばん新しい年を黙って使わない。利用者が年を選ぶまで計算しない）。
     """
     heads = [(h or "").strip() for h in head]
     parsed = {i: _date_head(h) for i, h in enumerate(heads)}
@@ -142,7 +143,7 @@ def infer_year(head: list[str]) -> dict[str, Any]:
             cands.append(y)
     if not cands:
         return {"year": DEFAULT_YEAR, "candidates": list(NO_HINT_YEARS), "ambiguous": True, "source": "mismatch"}
-    return {"year": max(cands), "candidates": cands, "ambiguous": len(cands) > 1, "source": "weekday"}
+    return {"year": cands[0] if len(cands) == 1 else None, "candidates": cands, "ambiguous": len(cands) > 1, "source": "weekday"}
 
 
 def _blank(row: list[str]) -> bool:
@@ -238,7 +239,20 @@ def wide_to_long(rows: list[list[str]], year: int = 2026) -> dict[str, Any]:
 
 _NONLEG = ("休", "整備", "休み", "車検", "待機")
 _ARR = re.compile(r"着\s*([^\s（(]+)")
-_WEIGHT = re.compile(r"(\d+(?:\.\d+)?)\s*[tｔ](?![a-zA-Z])")
+_WEIGHT = re.compile(r"(?<![0-9A-Za-z.])([-−‐‑–+]?)\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?)\s*([kK][gG]|t)(?![a-zA-Z])")
+WEIGHT_SIGN_ERR = "重さが読めません（マイナスやプラスの記号つきは入れられません）"
+
+
+def parse_weight(text: str) -> dict[str, Any] | None:
+    """文の中から重さを 1 つ取り出す。「6.5t」「4600kg」「4,600kg」を kg にする。
+    返す dict: {kg} か {error}（記号つきの重さ）。重さが無ければ None。"""
+    m = _WEIGHT.search(unicodedata.normalize("NFKC", text or ""))
+    if not m:
+        return None
+    if m.group(1):
+        return {"error": WEIGHT_SIGN_ERR}
+    v = float(m.group(2).replace(",", ""))
+    return {"kg": v if m.group(3).lower() == "kg" else v * 1000}
 
 
 def parse_time(tok: str) -> str | None:
@@ -281,10 +295,12 @@ def parse_cell(text: str) -> dict[str, Any]:
             arr = parse_time(am.group(1))
             if arr is None:
                 res["errors"].append("時刻が読めません")
-        wm = _WEIGHT.search(rest)
+        wt = parse_weight(rest)
+        if wt and "error" in wt:
+            res["errors"].append(wt["error"])
         res["legs"].append({
             "frm": frm, "to": to, "empty": ("（空）" in part or "(空)" in part or "空車" in part),
-            "arr": arr, "weight_kg": float(wm.group(1)) * 1000 if wm else None,
+            "arr": arr, "weight_kg": wt["kg"] if wt and "kg" in wt else None,
         })
     return res
 
@@ -292,14 +308,56 @@ def parse_cell(text: str) -> dict[str, Any]:
 # ---------------------------------------------------------------- デジタコ
 
 
-DIGITACO_DICT = {  # 列名の辞書（大文字にそろえて引く）
+DIGITACO_DICT = {  # 列名の辞書（全角を直し、大文字にそろえて引く）
     "KBN": "kind", "ST_TIME": "start_time", "ED_TIME": "end_time", "ODO_KM": "distance_km",
     "JK_FLG": "loaded_flag", "POS_NAME": "place_name", "DRV_CD": "driver_code",
 }
+DIGITACO_EXTRA = {  # よくある別の書き方（日本語の列名）。web/own_calc.js の DIGITACO_EXTRA と同じ
+    "区分": "kind", "開始日時": "start_time", "開始時刻": "start_time", "終了日時": "end_time", "終了時刻": "end_time",
+    "走行距離": "distance_km", "走行距離(KM)": "distance_km", "実空区分": "loaded_flag", "実車空車": "loaded_flag", "実空": "loaded_flag",
+    "地点名": "place_name", "停車地": "place_name", "停車場所": "place_name", "乗務員コード": "driver_code", "運転者コード": "driver_code",
+}
 HAISHA_DICT = {"車番": "plate", "車種": "vehicle_type"}
+KIND_RUN, KIND_STOP = ("1", "走行"), ("2", "停車")  # 区分の値（全角は NFKC で直してから比べる）
+JK_LOADED, JK_EMPTY = ("1", "実", "実車"), ("0", "空", "空車")
+
+
+def col_key(name: Any) -> str:
+    """列名を辞書や利用者の指定と比べる形にする（NFKC・前後の空白を除く・大文字）。"""
+    return unicodedata.normalize("NFKC", "" if name is None else str(name)).strip().upper()
+
+
+def role_of(name: Any, roles: dict[str, str | None] | None = None) -> str | None:
+    """列名 → 役割。利用者が決めた役割（roles）を、辞書より先に使う。"""
+    k = col_key(name)
+    if roles and k in roles:
+        return roles[k]
+    return DIGITACO_DICT.get(k) or DIGITACO_EXTRA.get(k)
+
+
+def column_signature(columns: list[str], roles: dict[str, str | None] | None = None) -> str:
+    """列の対応（列名 → 役割）。同じ名前の列が同じ役割に当たるときだけ、2 つのファイルの列の対応が同じ。web/own_calc.js の columnSignature と同じ。"""
+    return "|".join(sorted(f"{col_key(c)}={role_of(c, roles) or ''}" for c in columns))
 
 
 END_BEFORE_START = "終了が開始より前（または同じ）です"
+
+_DT = re.compile(r"^([0-9]{4})[-/]([0-9]{1,2})[-/]([0-9]{1,2})(?:[ T]+([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?)?$")
+
+
+def parse_dt(s: Any) -> datetime | None:
+    """日時の文字を分までの datetime にする。「2026-10-01 05:00」「2026/10/6 20:10」「２０２６/１０/１ ５:００」（全角は NFKC で直す）。
+    秒は捨てる。時差つき（+09:00、Z）や 20261001T0500 のような区切りの無い形は読まない（None）。web/own_calc.js の parseDT と同じ。"""
+    m = _DT.match(unicodedata.normalize("NFKC", "" if s is None else str(s)).strip())
+    if not m:
+        return None
+    y, mo, d, h, mi = int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4) or 0), int(m.group(5) or 0)
+    if y < 1900 or h > 23 or mi > 59:
+        return None
+    try:
+        return datetime(y, mo, d, h, mi)
+    except ValueError:
+        return None
 
 
 def parse_km(s: str) -> float | None:
@@ -314,35 +372,40 @@ def parse_digitaco(rows: list[dict[str, str]], resolve: Callable[[str], str | No
 
     rows は csv.DictReader の行。resolve は地点名 → 地点 ID。run の frm は直前の停車の地点、to は次の停車の地点。
     各要素の `line` は CSV の行番号（見出しが 1）。roles は利用者が決めた列の役割 {大文字にした列名: 役割か None（読まない）} で、辞書より先に使う。
+    区分は 1・2 のほか「走行」「停車」、実空は 1・0 のほか「実」「実車」「空」「空車」も読む（web/own_calc.js と同じ）。
     読めない行は errors に理由を入れて飛ばす（終了が開始以前の行、時刻・区分が読めない行）。距離が読めない行は距離を空にして続ける。
     """
     col: dict[str, str] = {}
     if rows:
         for name in rows[0]:
-            key = (name or "").strip().upper()
-            role = roles[key] if roles and key in roles else DIGITACO_DICT.get(key)
+            role = role_of(name, roles)
             if role:
                 col[role] = name
+
+    def get(r: dict[str, str], role: str) -> str:
+        return ((r.get(col[role]) if role in col else "") or "").strip()
+
     runs: list[dict[str, Any]] = []
     stops: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
     prev_stop: dict[str, Any] | None = None
     open_run: dict[str, Any] | None = None
     for i, r in enumerate(rows, start=2):
-        try:
-            st = datetime.fromisoformat(r[col["start_time"]].strip())
-            ed = datetime.fromisoformat(r[col["end_time"]].strip())
-        except (KeyError, ValueError):
+        if not any((v or "").strip() for v in r.values() if isinstance(v, str)):
+            continue
+        st, ed = parse_dt(get(r, "start_time")), parse_dt(get(r, "end_time"))
+        if st is None or ed is None:
             errors.append({"line": i, "reason": "時刻が読めません"})
             continue
         if ed <= st:
             errors.append({"line": i, "reason": END_BEFORE_START})
             continue
-        kind = (r.get(col.get("kind", ""), "") or "").strip()
-        driver = (r.get(col.get("driver_code", ""), "") or "").strip() or None
+        kind_raw = unicodedata.normalize("NFKC", get(r, "kind"))
+        kind = "1" if kind_raw in KIND_RUN else "2" if kind_raw in KIND_STOP else kind_raw
+        driver = get(r, "driver_code") or None
         if kind == "1":
-            km_s = (r.get(col.get("distance_km", ""), "") or "").strip()
-            jk_s = (r.get(col.get("loaded_flag", ""), "") or "").strip()
+            km_s = get(r, "distance_km")
+            jk_s = unicodedata.normalize("NFKC", get(r, "loaded_flag"))
             km = None
             if km_s:
                 km = parse_km(km_s)
@@ -350,13 +413,13 @@ def parse_digitaco(rows: list[dict[str, str]], resolve: Callable[[str], str | No
                     errors.append({"line": i, "reason": "距離が読めません"})
             run = {
                 "plate": plate, "start": st.isoformat(timespec="minutes"), "end": ed.isoformat(timespec="minutes"),
-                "km": km, "jk": int(jk_s) if jk_s in ("0", "1") else None,
+                "km": km, "jk": 1 if jk_s in JK_LOADED else 0 if jk_s in JK_EMPTY else None,
                 "frm": prev_stop["place"] if prev_stop else None, "to": None, "driver": driver, "line": i,
             }
             runs.append(run)
             open_run = run
         elif kind == "2":
-            name = (r.get(col.get("place_name", ""), "") or "").strip()
+            name = get(r, "place_name")
             place = resolve(name) if name else None
             stop = {
                 "plate": plate, "place": place, "name": name, "start": st.isoformat(timespec="minutes"), "end": ed.isoformat(timespec="minutes"),
@@ -504,15 +567,16 @@ def confidence_color(c: float) -> str:
 
 
 _KANA_KANJI = re.compile(r"^[぀-ヿ一-鿿々]+$")
-VALUE_SHAPES: dict[str, tuple[str, Callable[[str], bool]]] = {
-    "datetime": ("YYYY-MM-DD HH:MM の日時", lambda v: bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}", v))),
-    "date_header": ("月/日 の日付の見出し", lambda v: bool(re.fullmatch(r"\d{1,2}/\d{1,2}(\(.\))?", v))),
-    "flag01": ("0 か 1", lambda v: v in ("0", "1")),
-    "code12": ("1 か 2", lambda v: v in ("1", "2")),
-    "driver_code": ("英大文字 1 字と数字 2 桁", lambda v: bool(re.fullmatch(r"[A-Z]\d{2}", v))),
+VALUE_SHAPES: dict[str, tuple[str, Callable[[str], bool]]] = {  # 日時・数・区分などは NFKC で全角を直してから当てる（NFKC_SHAPES。web/own_calc.js の VALUE_SHAPES と同じ）
+    "datetime": ("YYYY-MM-DD HH:MM の日時", lambda v: bool(re.fullmatch(r"[0-9]{4}[-/][0-9]{1,2}[-/][0-9]{1,2}[ T][0-9]{1,2}:[0-9]{2}(:[0-9]{2})?", v))),
+    "date_header": ("月/日 の日付の見出し", lambda v: bool(re.fullmatch(r"[0-9]{1,2}/[0-9]{1,2}(\(.\))?", v) or re.fullmatch(r"[0-9]{1,2}月[0-9]{1,2}日(\(.\))?", v)
+                                                          or re.fullmatch(r"[0-9]{4}[-/][0-9]{1,2}[-/][0-9]{1,2}(\(.\))?", v))),
+    "flag01": ("0 か 1", lambda v: v in ("0", "1") + JK_LOADED + JK_EMPTY),
+    "code12": ("1 か 2", lambda v: v in ("1", "2") + KIND_RUN + KIND_STOP),
+    "driver_code": ("英大文字 1 字と数字 2 桁", lambda v: bool(re.fullmatch(r"[A-Z][0-9]{2}", v))),
     "plate": ("4 桁の番号をふくむ車番", lambda v: normalize_plate(v) is not None),
-    "vehicle_type": ("「大型」か「数字 + t」", lambda v: bool(re.fullmatch(r"大型|\d+t", v))),
-    "decimal": ("小数まじりの数字", lambda v: bool(re.fullmatch(r"\d+(\.\d+)?", v))),
+    "vehicle_type": ("「大型」か「数字 + t」", lambda v: bool(re.fullmatch(r"大型|[0-9]+t", v))),
+    "decimal": ("小数まじりの数字", lambda v: bool(re.fullmatch(r"[0-9]+(\.[0-9]+)?", v))),
     "place_kanji": ("漢字・かなだけの名称", lambda v: bool(_KANA_KANJI.match(v))),
 }
 ROLE_SHAPE = {  # 役割 → 期待する値の形
@@ -526,8 +590,16 @@ ROLE_LABEL = {
 }
 
 
+NFKC_SHAPES = ("datetime", "date_header", "flag01", "code12", "decimal", "driver_code")  # 全角を直してから当てる形（車種と地点名は、サンプルの黄色の例のため元の文字のまま）
+
+
+def _norm_vals(values: list[str], shape_key: str | None = None) -> list[str]:
+    vs = [(unicodedata.normalize("NFKC", v or "") if shape_key in NFKC_SHAPES else (v or "")).strip() for v in values]
+    return [v for v in vs if v]
+
+
 def shape_ratio(values: list[str], shape_key: str) -> float:
-    vs = [(v or "").strip() for v in values if (v or "").strip()]
+    vs = _norm_vals(values, shape_key)
     if not vs:
         return 0.0
     ok = VALUE_SHAPES[shape_key][1]
@@ -536,7 +608,7 @@ def shape_ratio(values: list[str], shape_key: str) -> float:
 
 def shape_summary(values: list[str]) -> dict[str, float]:
     """値そのものを含まない、形の説明の割合（Claude に送ってよい形）。"""
-    vs = [(v or "").strip() for v in values if (v or "").strip()]
+    vs = _norm_vals(values)
     out: dict[str, int] = {}
     for v in vs:
         label = None
@@ -607,9 +679,36 @@ def build_shifts(events: list[dict[str, Any]], gap_min: int = SHIFT_GAP_MIN) -> 
 # ---------------------------------------------------------------- 数字と表
 
 
+def over_max_legs(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """積んだ重さが、その車の最大積載量を超える区間。積載率・積載効率の平均には入れず、確認のカードと気づきに出す。"""
+    cap = {v["plate"]: v.get("max_load_kg") for v in vehicles}
+    return [l for l in legs if l.get("weight_kg") and cap.get(l["plate"]) and l["weight_kg"] > cap[l["plate"]]]
+
+
+def _tons(kg: float) -> str:
+    return f"{round(kg / 1000, 1):.1f}"
+
+
+def weight_confirm_items(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """最大積載量を超える重さの区間ごとの確認のカード（id は呼び出し側が付ける）。"""
+    cap = {v["plate"]: v.get("max_load_kg") for v in vehicles}
+    out = []
+    for l in over_max_legs(legs, vehicles):
+        out.append({
+            "id": "", "kind": "weight", "source": "配車表", "title": f"{_md(l['date'])} 車番 {l['plate']} の積んだ重さ",
+            "original": f"配車表の重さ {_tons(l['weight_kg'])}t が、最大積載量 {_tons(cap[l['plate']])}t を超えています",
+            "proposal": "積載率・積載効率に入れない（t と kg の取り違えや、桁の間違いかもしれません）", "confidence": None, "color": "yellow", "leg": l["id"],
+            "formula": "積んだ重さが最大積載量を超える区間は、率に入れません", "claude": None,
+        })
+    return out
+
+
 def kpis(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> dict[str, Any]:
-    """実車率、大型の積載率、大型の積載効率。割合には、計算できた区間の割合を添える。legs は classify_legs の結果。"""
+    """実車率、大型の積載率、大型の積載効率。割合には、計算できた区間の割合を添える。legs は classify_legs の結果。
+
+    積んだ重さが最大積載量を超える区間は積載率に入れない（over_max にその件数）。"""
     cls = {v["plate"]: v for v in vehicles}
+    over_ids = {id(l) for l in over_max_legs(legs, vehicles)}
     n = len(legs)
     judged = [l for l in legs if l["kind"] in ("loaded", "empty") and l.get("km")]
 
@@ -619,7 +718,7 @@ def kpis(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> dict[str
 
     large = [l for l in legs if cls.get(l["plate"], {}).get("cls") == "大型"]
     large_judged = [l for l in large if l["kind"] in ("loaded", "empty") and l.get("km")]
-    with_w = [l for l in large if l["kind"] == "loaded" and l.get("weight_kg") and cls[l["plate"]].get("max_load_kg")]
+    with_w = [l for l in large if l["kind"] == "loaded" and l.get("weight_kg") and cls[l["plate"]].get("max_load_kg") and id(l) not in over_ids]
     load_rate = (sum(l["weight_kg"] / cls[l["plate"]]["max_load_kg"] for l in with_w) / len(with_w)) if with_w else None
     large_rate = rate(large_judged)
     return {
@@ -627,7 +726,8 @@ def kpis(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> dict[str
                         "km_loaded": round(sum(l["km"] for l in judged if l["kind"] == "loaded"), 1), "km_empty": round(sum(l["km"] for l in judged if l["kind"] == "empty"), 1),
                         "formula": "実車の km ÷ 走った km（実車か空車かが判定できた区間だけ）"},
         "load_rate": {"value": load_rate, "legs": len(with_w), "of_large": len(large), "of": n, "share": (len(with_w) / n) if n else 0.0,
-                      "formula": "積んだ重さ ÷ 最大積載量（大型の実車の区間のうち、重さが分かる区間の平均）"},
+                      "over_max": len(over_ids),
+                      "formula": "積んだ重さ ÷ 最大積載量（大型の実車の区間のうち、重さが分かる区間の平均。最大積載量を超える重さの区間は入れません）"},
         "large_actual_rate": {"value": large_rate, "legs": len(large_judged), "of_large": len(large)},
         "load_efficiency": {"value": (load_rate * large_rate) if (load_rate is not None and large_rate is not None) else None,
                             "formula": "大型の積載率 × 大型の実車率"},
@@ -779,4 +879,14 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
             [{"k": "不明の区間", "v": f"{len(unk)} / {len(legs)} 区間"}],
             {"label": "配車表を取り込む", "action": "import", "payload": {}},
             [_ev_leg(l) for l in sorted(unk, key=lambda x: (x["date"], x["plate"]))])
+
+    # 規則 7: 積んだ重さが最大積載量を超える記録（積載率に入れていない。無いときは出さない）
+    over = over_max_legs(legs, vehicles)
+    if over:
+        cap = {v["plate"]: v.get("max_load_kg") for v in vehicles}
+        add(7, f"積んだ重さが最大積載量を超えている記録が {len(over)} 件ありました。積載率と積載効率の平均には入れていません。"
+               "重さの単位（t と kg）や桁を、元の配車表で確かめてください。",
+            [{"k": "最大積載量を超える記録", "v": f"{len(over)} 件"}],
+            {"label": "元の行を見る", "action": "show_evidence", "payload": {}},
+            [{**_ev_leg(l), "text": f"重さ {_tons(l['weight_kg'])}t > 最大積載量 {_tons(cap[l['plate']])}t"} for l in sorted(over, key=lambda x: (x["date"], x["plate"]))][:40])
     return out

@@ -1038,6 +1038,19 @@ async function main() {
   if (S.view === 'own') Own.enter();
   setHubLegend();
   document.querySelectorAll('#views button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  // 閉じているパネルの中のボタンに Tab が入らないようにする（aria-hidden の値に合わせて inert を付け外しする）
+  for (const id of ['detail', 'work']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const sync = () => { el.inert = el.getAttribute('aria-hidden') !== 'false'; };
+    new MutationObserver(sync).observe(el, { attributes: true, attributeFilter: ['aria-hidden'] });
+    sync();
+  }
+  // アドレスの #v=... だけを書き換えたとき、開いたまま画面を切り替える。writeHash などは replaceState で書くので、この通知は出ない（ループしない）
+  window.addEventListener('hashchange', () => {
+    const q = new URLSearchParams(location.hash.slice(1)), v = q.get('v');
+    if (['market', 'find', 'compare', 'own'].includes(v) && v !== S.view) setView(v);
+  });
   document.querySelector('.tgl[data-toggle="hubs"]').addEventListener('click', () => setHubs(!Hubs.on));
   document.querySelector('.tgl[data-toggle="jartic"]').addEventListener('click', (e) => {
     const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
