@@ -47,12 +47,13 @@ def test_dated_cells_use_the_actual_difference_and_multi_day_waits_are_counted()
     assert r2["wait_min"] == 1439 and "notes" not in r2
 
 
-def test_same_day_start_before_arrival_is_an_input_error_but_undated_times_still_roll_over():
+def test_same_day_start_before_arrival_is_an_input_error_but_undated_times_still_roll_over_within_12h():
     err = _one(arrive="2026/10/05 9:00", start="2026/10/05 8:00")
     assert isinstance(err, list) and "荷役開始が到着より前です" in err[0]["message"]
     assert isinstance(_one(arrive="9:00", start="10/5 8:00"), list)   # 到着の日付は日付の欄
     assert _one(arrive="23:30", start="00:40")["wait_min"] == 70   # 日付の無い欄は従来どおり翌日
-    assert _one(arrive="09:00", start="08:00")["wait_min"] == 1380
+    over = _one(arrive="09:00", start="08:00")   # 翌日と読むと 23 時間になる逆転は誤りの行にする（SPEC §42）
+    assert isinstance(over, list) and "日付が無いので翌日と読むと 23 時間 0 分あいた" in over[0]["message"]
     assert isinstance(_one(arrive="2026/10/05 9:00", start="2026/10/05 10:00", end="2026/10/05 9:30", handler="荷主側"), list)
 
 

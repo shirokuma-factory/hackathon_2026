@@ -274,7 +274,7 @@ CASES: list[dict] = [
               row(arrive="2026/10/05 9:00", start="2026/10/05 10:00", end="2026/10/05 9:30", handler="荷主側"),
               row(arrive="2026/10/05 9:00", start="2026/10/05 10:00", end="2026/10/05 10:30", depart="2026/10/05 10:10", handler="荷主側", post_wait="はい"),
               row(arrive="2026/10/05 9:00", start="2026/10/05 10:00", depart="2026/10/05 9:50")]},
-    {"name": "undated_start_before_arrival_still_means_next_day", "year": 2026,
+    {"name": "undated_start_before_arrival_overnight_kept_but_over_12h_is_error", "year": 2026,
      "rows": [row(arrive="09:00", start="08:00"), row(arrive="23:30", start="00:40")]},
     {"name": "dated_appointed_uses_actual_difference", "year": 2026,
      "rows": [row(arrive="2026/10/05 8:00", appointed="2026/10/05 8:30", start="2026/10/05 10:00"),
@@ -325,6 +325,25 @@ CASES: list[dict] = [
               "10/5\tX運輸\tA工場\t8:10\t9:00\n10/6\tY運送\tA工場\t8:20\t9:30\n11/2\tX運輸\tB倉庫\t13:00\t13:20\n")},
     {"name": "reception_column_with_arrival_is_kept_for_the_record_list", "year": 2026, "paste": True, "defaults": DEFAULTS,
      "text": "日付\t契約の相手\t着\t受付\t荷役開始\n10/5\tA運輸\t7:50\t8:05\t9:00\n10/6\tA運輸\t9:00\t9時10分\t10:00\n10/7\tA運輸\t9:00\tabc\t10:00\n"},
+    # SPEC §42: ドライバーの手書きメモの見出し（呼ばれ・行き先）、荷主の受付記録（受付・呼出・作業開始）、日付の無い逆転の時刻
+    {"name": "paste_memo_headings_yobare_ikisaki", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "日付\t行き先\t荷主\t着\t受付\t呼ばれ\t積み終わり\n11/10\t江東区 ○○倉庫\t○○\t5時10分\t6時\t8時15分\t9時半\n"},
+    {"name": "paste_destination_aliases", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "日付\t納品先\t荷主\t着\t荷役開始\n11/10\t船橋\t□□\t9:00\t10:00\n11/11\t加古川\t□□\t9:00\t10:00\n"},
+    {"name": "paste_destination_alias_tsumichi", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "日付\t積地\t荷主\t着\t荷役開始\n11/12\t姫路\t□□\t9:00\t10:00\n"},
+    {"name": "paste_shipper_reception_log", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "日付\t運送会社\t施設\t車番\t受付\t呼出\t作業開始\n10/5\tA運輸\t江東区 第1倉庫\t1234\t7:50\t8:30\t8:50\n10/5\tB急送\t江東区 第1倉庫\t5678\t8:10\t9:00\t9:40\n"},
+    {"name": "paste_call_is_start_without_other_start_column", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "日付\t運送会社\t施設\t受付\t呼出\n10/5\tA運輸\t江東区\t7:50\t8:30\n"},
+    {"name": "undated_reverse_start_over_12h_is_error", "year": 2026,
+     "rows": [row(arrive="10:00", start="09:00", end="10:00", handler="荷主側")]},
+    {"name": "undated_reverse_end_over_12h_is_error", "year": 2026,
+     "rows": [row(arrive="08:00", start="09:00", end="08:30", handler="運転者", method="手積み")]},
+    {"name": "undated_reverse_depart_over_12h_is_error", "year": 2026,
+     "rows": [row(arrive="08:00", start="09:00", end="09:30", depart="09:10", handler="荷主側")]},
+    {"name": "undated_overnight_wait_under_12h_is_kept", "year": 2026,
+     "rows": [row(arrive="23:00", start="02:00", end="02:30", depart="02:40", handler="荷主側")]},
     {"name": "times_with_han", "year": 2026,
      "rows": [row(arrive="5時半", start="10時半"), row(arrive="9時半", start="2026/10/5 10時半"), row(arrive="9時 半", start="10時半"), row(arrive="9時半30", start="10時")]},
 ]
@@ -349,6 +368,7 @@ def build() -> dict:
             exp["defaulted"] = defaulted
             exp["notes"] = notes
             exp["asks"] = det["asks"]
+            exp["shipper_log"] = det["shipper_log"]
         c["expect"] = exp
         cases.append(c)
     return {"note": "tools/build_waiting_vectors.py が waiting.py の出力から作る。手で直さない（SPEC §23.7 G82）", "cases": cases}

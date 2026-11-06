@@ -227,13 +227,13 @@ body.has-route #timebar { transform: none; opacity: 1; pointer-events: auto; }
 .tb-top .now { font-weight: 700; font-size: 13px; }
 .tb-top .now em { font-style: normal; color: var(--accent); margin-left: 8px; font-weight: 500; }
 .tb-top .end { color: var(--muted); }
-#track { position: relative; height: 22px; cursor: pointer; touch-action: none; outline: none; }
-#track .rail { position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); }
-#track .fill { position: absolute; left: 0; top: 9px; height: 4px; border-radius: 4px; width: 0; background: linear-gradient(90deg, #2d7fb0, var(--accent)); box-shadow: 0 0 12px rgba(92,200,255,.55); }
-#track .tick { position: absolute; top: 4px; width: 1px; height: 14px; background: rgba(255, 255, 255, 0.35); }
-#track .arrive { position: absolute; top: 5px; width: 2px; height: 12px; background: var(--ok); border-radius: 2px; }
+#track { position: relative; height: 26px; min-height: 24px; cursor: pointer; touch-action: none; outline: none; }
+#track .rail { position: absolute; left: 0; right: 0; top: 11px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); }
+#track .fill { position: absolute; left: 0; top: 11px; height: 4px; border-radius: 4px; width: 0; background: linear-gradient(90deg, #2d7fb0, var(--accent)); box-shadow: 0 0 12px rgba(92,200,255,.55); }
+#track .tick { position: absolute; top: 6px; width: 1px; height: 14px; background: rgba(255, 255, 255, 0.35); }
+#track .arrive { position: absolute; top: 7px; width: 2px; height: 12px; background: var(--ok); border-radius: 2px; }
 #track .handle {
-  position: absolute; top: 3px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: #fff;
+  position: absolute; top: 5px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: #fff;
   box-shadow: 0 0 0 4px rgba(92, 200, 255, 0.28), 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 #track:focus-visible .handle { box-shadow: 0 0 0 5px rgba(92, 200, 255, 0.55), 0 2px 8px rgba(0,0,0,.5); }
@@ -335,6 +335,8 @@ select.ctl.sm { padding-right: 28px; background-position: right 10px center; }
 
 .cards-note { margin: 0 2px 2px; font-size: 11.5px; color: var(--muted); }
 .cards-note.err { color: var(--error); }
+.cards-note.charter-only { margin: 6px 2px 8px; padding: 6px 8px; border-left: 3px solid var(--accent); color: var(--text); line-height: 1.6; }
+.cards-note.charter-only.excessive { border-left-color: var(--warn, #f0b429); }
 
 /* ---------- 左上: 荷物の欄 ---------- */
 .cargo { display: block; }
@@ -911,7 +913,7 @@ button.rt-card:hover { background: rgba(255, 255, 255, 0.075); }
 .rt-legend-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px 12px; border: 0; margin: 0; padding: 0; }
 .rt-legend-row .rt-lg-row { flex-direction: row; gap: 6px; font-size: 12px; }
 .f-lg-modes { align-items: center; margin-top: 4px; }
-#track .gapband { position: absolute; top: 8px; height: 6px; border-radius: 3px; background: repeating-linear-gradient(135deg, var(--c) 0 3px, transparent 3px 6px); opacity: .85; }
+#track .gapband { position: absolute; top: 10px; height: 6px; border-radius: 3px; background: repeating-linear-gradient(135deg, var(--c) 0 3px, transparent 3px 6px); opacity: .85; }
 .daylabels span.gl { transform: translateX(2px); font-size: 10.5px; }
 #m-credits .rt-attr { color: var(--muted); }
 
@@ -1190,3 +1192,5 @@ summary { padding-block: 3px; }
 .f-chk { min-height: 24px; }
 @media (min-width: 601px) { .f-chk input { width: 18px; height: 18px; } }
 .maplibregl-ctrl-attrib a { display: inline-block; min-height: 24px; line-height: 24px; }
+/* 部品が読み込めなかった見方に出す理由（app.js の showViewMissing。SPEC §42） */
+.view-missing { margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--bad, #ff8a80); border-left-width: 4px; border-radius: 8px; font-size: 12.5px; line-height: 1.6; background: rgba(255, 138, 128, 0.12); }

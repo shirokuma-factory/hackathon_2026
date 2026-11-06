@@ -62,8 +62,11 @@ const newQForm = () => {
   const t = new Date(), v = new Date(t.getTime() + 14 * 86400000);
   const lines = {};
   for (const [k] of COSTS) lines[k] = { kind: 'unknown', amount: '' };
-  return { carrier: '', product: '', tax: '税抜', received_on: isoLocal(t), valid_until: isoLocal(v), is_demo: false, lines, error: '' };
+  return { carrier: '', product: '', total: '', tax: '税抜', received_on: isoLocal(t), valid_until: isoLocal(v), is_demo: false, lines, error: '' };
 };
+// 合計だけの回答（内訳が分からない）の見分け方: 「その他」に合計、ほかの項目はすべて「含む」。画面が作る形で、保存した回答でもこの形で見分ける（SPEC §42）
+const isTotalOnly = (q) => !!(q && q.lines && q.lines.other && q.lines.other.kind === 'amount' && COSTS.every(([k]) => k === 'other' || (q.lines[k] && q.lines[k].kind === 'included')));
+const totalOnlyMark = (q) => (isTotalOnly(q) ? '<span class="demo">（内訳不明）</span>' : '');
 const versionSig = () => JSON.stringify([confirmedShipment(), curVer() && curVer().scenario, W.place]);
 
 function scenarioOfVersion() {
@@ -179,6 +182,7 @@ function bindCargo() {
       W.scenarioSel = t.value;
       const sc = W.scenarios.find((s) => s.id === t.value);
       if (sc) { W.draft = wclone(sc.shipment); if (!W.draft.items.length) W.draft.items = blankShipment().items; }
+      else if (t.value === '') W.draft = blankShipment(); // 「新しく入力」: 荷物の行・品目・日付を空にする（前の場面の値を残さない。SPEC §42）
       renderCargoEditor();
     } else if (t.dataset.f && t.tagName === 'SELECT') {
       W.draft[t.dataset.f] = t.dataset.tri !== undefined ? (t.value === '' ? null : t.value === 'true') : (t.value || null);
@@ -379,7 +383,7 @@ function quoteListHtml() {
   if (!evs.length) return '<p class="hint pad">見積回答はまだありません。</p>';
   return evs.map((e) => {
     const q = e.quote;
-    return `<article class="q-card ${e.state}"><div class="q-top"><b>${wesc(q.carrier)}${q.is_demo ? '<span class="demo">（架空）</span>' : ''}</b>
+    return `<article class="q-card ${e.state}"><div class="q-top"><b>${wesc(q.carrier)}${q.is_demo ? '<span class="demo">（架空）</span>' : ''}${totalOnlyMark(q)}</b>
       <small>${wesc(q.product)}${q.product ? ' ・ ' : ''}${wesc(q.tax)} ・ 版${q.version} ・ 有効期限 ${wesc(q.valid_until || '未入力')}</small>
       <span class="chip ${STATE_CHIP[e.state]}">${STATE_LABEL[e.state]}</span><button type="button" class="q-del" data-id="${wesc(q.id)}" aria-label="${wesc(q.carrier)}の回答を消す">消す</button></div>
       <div class="q-sum num">${wesc(e.summary)}</div></article>`;
@@ -401,7 +405,8 @@ function renderQuotes() {
         <label><span class="lbl">有効期限</span><input class="ctl sm" type="date" name="valid_until" value="${wesc(q.valid_until)}"></label>
       </div>
       <div class="qf-tax"><span class="lbl">税区分</span><div class="seg" role="group" data-tax>${['税抜', '税込'].map((t) => `<button type="button" data-tax="${t}" aria-pressed="${q.tax === t}">${t}</button>`).join('')}</div></div>
-      <div class="lbl cl-head">費用の内訳（金額、含む、不明から選びます）</div>
+      <label class="qf-total"><span class="lbl">合計（円）— 内訳が分からないときは、合計だけ入れます</span><input class="ctl sm num" type="number" min="1" step="100" inputmode="numeric" name="total" value="${wesc(q.total)}" placeholder="例: 120000"></label>
+      <div class="lbl cl-head">費用の内訳（任意。金額、含む、不明から選びます。合計だけ入れたときは、内訳を触らないでください）</div>
       <div class="cl-grid">${costRowsHtml()}</div>
       <div class="qf-foot"><label class="chk"><input type="checkbox" name="is_demo"${q.is_demo ? ' checked' : ''}> 架空の回答（デモ用）</label>
         <span class="qf-err" id="qf-err" role="alert">${wesc(q.error)}</span>
@@ -438,7 +443,13 @@ function bindQuotes() {
     const err = (m) => { q.error = m; $w('#qf-err').textContent = m; };
     if (!q.carrier.trim()) return err('会社名を入れてください');
     const lines = {};
-    for (const [k, name] of COSTS) {
+    const anyLine = COSTS.some(([k]) => q.lines[k].kind !== 'unknown');
+    const totalTxt = String(q.total == null ? '' : q.total).trim();
+    if (totalTxt !== '' && anyLine) return err('合計と内訳は、どちらか一方だけ入れてください（合計だけの回答は、内訳を「不明」のままにします）');
+    if (totalTxt !== '') {
+      if (!Number.isInteger(Number(totalTxt)) || Number(totalTxt) <= 0) return err('合計は 1 以上の整数（円）で入れてください');
+      for (const [k] of COSTS) lines[k] = k === 'other' ? { kind: 'amount', amount: Number(totalTxt) } : { kind: 'included', amount: null };   // 合計だけ。ほかの項目は合計に含む（内訳不明の印は isTotalOnly で付く）
+    } else for (const [k, name] of COSTS) {
       const l = q.lines[k];
       if (l.kind === 'amount') {
         if (l.amount === '' || !Number.isInteger(Number(l.amount)) || Number(l.amount) < 0) return err(`${name}の金額を 0 以上の整数で入れてください`);
@@ -489,6 +500,7 @@ function stackHtml(e, scale) {
     return `<i class="seg-b" style="width:${w.toFixed(2)}%;background:${COST_COLOR[k]}" title="${label(k)} ${wyen(amts[k])}円（税抜）">${w >= 8 ? `<span>${label(k)}</span>` : ''}</i>`;
   }).join('');
   const unk = e.unknown_keys.length ? `<i class="seg-u" title="不明: ${e.unknown_keys.map(label).join('・')}"><span>不明</span></i>` : '';
+  if (isTotalOnly(e.quote)) return `<div class="stack"><i class="seg-b" style="width:${((e.total_ex_tax || e.partial_ex_tax || 0) / scale * 100).toFixed(2)}%;background:#8b95a5" title="内訳不明（合計のみ）"><span>内訳不明</span></i></div>`;
   return `<div class="stack">${segs}${unk}</div>`;
 }
 function renderCompare() {
@@ -503,17 +515,17 @@ function renderCompare() {
     return `<div class="cmp-row ${e.state}${e.rank === 1 ? ' first' : ''}">
       <div class="cmp-rank num">${e.rank ? `<b>${e.rank}</b>位` : '<span>順位なし</span>'}</div>
       <div class="cmp-main">
-        <div class="cmp-top"><span class="nm"><b>${wesc(q.carrier)}${q.is_demo ? '<span class="demo">（架空）</span>' : ''}</b><small>${wesc(q.product)}</small></span>
+        <div class="cmp-top"><span class="nm"><b>${wesc(q.carrier)}${q.is_demo ? '<span class="demo">（架空）</span>' : ''}${totalOnlyMark(q)}</b><small>${wesc(q.product)}</small></span>
           <span class="tot num">${done ? `<b>${wyen(e.total_ex_tax)}</b>円` : `部分合計 <b>${wyen(e.partial_ex_tax)}</b>円`}<small>税抜</small></span></div>
         ${stackHtml(e, scale)}
         <div class="cmp-sub num">${done
           ? (c.ranking_shown ? (e.diff_from_lowest === 0 ? '最安' : `最安との差額 <b>+${wyen(e.diff_from_lowest)}円</b>`) : '比べる相手がいません')
           : `不明: ${e.unknown_keys.map((k) => COSTS.find((x) => x[0] === k)[1]).join('・') || 'なし'}${e.reasons.length ? `（${wesc(e.reasons.join('、'))}）` : ''}`}
-          ${incl.length ? `<span class="incl">含む: ${incl.join('・')}</span>` : ''}</div>
+          ${isTotalOnly(q) ? '<span class="incl">内訳不明（合計だけの回答。順位には入ります）</span>' : incl.length ? `<span class="incl">含む: ${incl.join('・')}</span>` : ''}</div>
       </div></div>`;
   }).join('');
   const head = COSTS.map((x) => `<th>${x[1]}</th>`).join('');
-  const body = cur.map((e) => `<tr class="${e.state}"><td class="nw">${wesc(e.quote.carrier)}${e.quote.is_demo ? '（架空）' : ''}</td>${COSTS.map(([k]) => {
+  const body = cur.map((e) => `<tr class="${e.state}"><td class="nw">${wesc(e.quote.carrier)}${e.quote.is_demo ? '（架空）' : ''}${isTotalOnly(e.quote) ? '（内訳不明）' : ''}</td>${isTotalOnly(e.quote) ? `<td class="muted" colspan="${COSTS.length}">内訳不明（合計だけの回答）</td>` : COSTS.map(([k]) => {
     if (e.unknown_keys.includes(k)) return '<td class="unknown">不明</td>';
     if (k in e.line_amounts_ex_tax) return `<td class="num">${wyen(e.line_amounts_ex_tax[k])}</td>`;
     return '<td class="muted">含む</td>';
@@ -546,7 +558,7 @@ function renderJudgment() {
   }
   const opts = [`<label class="opt"><input type="radio" name="choice" value=""${ch ? '' : ' checked'}><span class="o-t">選ばない</span></label>`].concat(done.map((e) =>
     `<label class="opt"><input type="radio" name="choice" value="${wesc(e.quote.id)}"${ch === e.quote.id ? ' checked' : ''}>
-      <span class="o-t">${wesc(e.quote.carrier)}${e.quote.is_demo ? '（架空）' : ''} <small>${wesc(e.quote.product)}</small></span>
+      <span class="o-t">${wesc(e.quote.carrier)}${e.quote.is_demo ? '（架空）' : ''}${isTotalOnly(e.quote) ? '（内訳不明）' : ''} <small>${wesc(e.quote.product)}</small></span>
       <span class="o-v num">${wyen(e.total_ex_tax)}円${e.rank && c.ranking_shown ? ` ・ ${e.rank}位${e.diff_from_lowest ? `（+${wyen(e.diff_from_lowest)}円）` : ''}` : ''}</span></label>`));
   if (ch && chosenEv && chosenEv.state !== 'complete') {
     opts.push(`<label class="opt"><input type="radio" name="choice" value="${wesc(ch)}" checked><span class="o-t">${wesc(chosenEv.quote.carrier)} <small>選択済み（いまは完全な回答ではありません）</small></span></label>`);

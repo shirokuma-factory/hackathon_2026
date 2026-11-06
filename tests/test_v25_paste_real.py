@@ -141,7 +141,7 @@ def test_g96_page_paste_in_headless_edge_has_zero_errors_and_shows_the_note():
                   classes: sel('vehicle_class'), partners: [...document.querySelectorAll('#partners table.par:not(#hotspots):not(#placemonth) tbody tr td:first-child')].map((t) => t.textContent)};
         })()""")
     assert got["rows"] == 6 and got["errs"] == "" and got["note"] == NOTE and got["noteVisible"]
-    assert "6 行を表に入れました" in got["msg"]
+    assert "6 行を表の後ろに足しました" in got["msg"]  # 貼り付けは表の後ろに足す（SPEC §42）
     assert got["classes"][0] == "4t車" and got["classes"][1] == "中型車"   # 選べる語に無い書き方も、入れた文字のまま表に出す
     assert sorted(got["partners"]) == ["A運輸", "B商事"]
 
@@ -234,7 +234,7 @@ def test_g99_lite_page_has_texts_and_contact_links_from_contacts_json():
     for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon"):
         assert bad not in html, bad
     # 保存は自社の契約単価（CKEY）だけ。端末の中に置き、外へは送らない（SPEC §41）
-    assert set(re.findall(r"localStorage\.(\w+)\(([A-Za-z_]+)", html)) == {("setItem", "CKEY"), ("getItem", "CKEY")}
+    assert set(re.findall(r"localStorage\.(\w+)\(([A-Za-z_]+)", html)) == {("setItem", "CKEY"), ("getItem", "CKEY"), ("setItem", "PKEY"), ("getItem", "PKEY")}
     assert not re.search(r"<script[^>]+src\s*=", html, re.I) and not re.search(r"<link(?![^>]*href\s*=\s*.data:)[^>]+href\s*=", html, re.I)
     assert not re.search(r"<(img|iframe|form)\b", html, re.I)
     # 窓口の記録が無い手段に、URL を作り出していない（軽貨物のハコベル・PickGo など）

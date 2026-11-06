@@ -77,6 +77,7 @@
       center: [138.5, 36], zoom: 5, minZoom: 3, maxZoom: 11, dragRotate: false, pitchWithRotate: false, touchPitch: false, fadeDuration: 0,
     });
     m.touchZoomRotate.disableRotation();
+    Kit.collapseAttribution(m); // 400px では出典を閉じた形にする（押すと開く）
     return m;
   }
 

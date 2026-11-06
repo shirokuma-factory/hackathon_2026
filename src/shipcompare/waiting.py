@@ -63,7 +63,17 @@ _HEADER_ALIASES = {
     "積んだ人": "handler", "荷役者": "handler", "作業者": "handler", "荷役した人": "handler", "積んだ人名": "handler",
     "受付": "reception", "受付時刻": "reception", "受付時間": "reception", "受付日時": "reception",
     "運送会社": "partner", "運送事業者": "partner", "運送業者": "partner", "施設": "place", "施設名": "place", "拠点": "place",
+    # ドライバーの手書きメモ・荷主の受付記録の言葉（SPEC §42）。driver.html のボタンは「呼ばれた（荷役開始）」
+    "呼ばれ": "start", "呼ばれた": "start", "呼出": "start", "呼出し": "start", "呼び出し": "start", "呼出時刻": "start", "呼出時間": "start", "呼び出し時刻": "start",
+    "作業開始": "start", "作業開始時刻": "start", "作業終了": "end", "作業終了時刻": "end",
+    "行き先": "place", "行先": "place", "積地": "place", "積み地": "place", "積込地": "place",
 }
+# 呼び出しの言葉の列。荷役開始の別の列（作業開始など）が同じ表にあるときは、荷役開始ではなく呼出（call）として読む（荷主の受付記録: 受付 → 呼出 → 作業開始）
+_CALL_HEADERS = {"呼ばれ", "呼ばれた", "呼出", "呼出し", "呼び出し", "呼出時刻", "呼出時間", "呼び出し時刻"}
+# これらの列があるときは、運送会社の請求の書面の側の表（荷主の受付記録ではない）
+_CARRIER_CONTEXT_COLS = {"shipper_fault", "side_work", "side_min", "post_wait", "handler", "method", "work_content", "appointed"}
+# 日付の無い時刻が前の時刻より小さいとき翌日と読むが、その差がこれを超えるなら誤りにする（9:00 → 8:30 を 23.5 時間と読まない）
+REVERSE_MAX_MIN = 12 * 60
 # 契約の相手の列として黙って読んではいけない見出し（荷主は着荷主のことがある）。読んだときは asks に入れて、画面で確かめる
 _ASK_PARTNER_HEADERS = {"荷主", "荷主名"}
 ASK_PARTNER = "partner_from_shipper"
@@ -249,7 +259,7 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
     asks: list[str] = []
     lines = [ln for ln in (text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n") if ln.strip()]
     if not lines:
-        return {"rows": [], "defaulted": [], "notes": [], "asks": []}
+        return {"rows": [], "defaulted": [], "notes": [], "asks": [], "shipper_log": False}
     if DRIVER_LABEL in _nz(text) and not any(chr(9) in ln for ln in lines):   # タブのある貼り付けは Excel の表（表題に「荷待ち記録」とあっても表として読む）
         rows = parse_driver_text(text)
         notes = [f"{_ASK_NOTE_DRIVER}（{len(rows)} 件）。『相手』を契約の相手として読んでいます" if rows else ""]
@@ -261,7 +271,7 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
             for r in rows:
                 r["shipper_fault"] = "はい"
             defaulted.append("shipper_fault")
-        return {"rows": rows, "defaulted": defaulted, "notes": notes, "asks": asks}
+        return {"rows": rows, "defaulted": defaulted, "notes": notes, "asks": asks, "shipper_log": False}
     notes: list[str] = []
     cols = list(COLUMNS)
     header = False
@@ -269,6 +279,11 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
     if first and (first[0] in ("日付", "date") or sum(1 for c in first if c in _HEADER_ALIASES) >= 3):
         header = True
         mapped = [_HEADER_ALIASES.get(c) for c in first]
+        start_idx = [i for i, c in enumerate(mapped) if c == "start"]
+        call_idx = [i for i in start_idx if first[i] in _CALL_HEADERS]
+        if call_idx and len(call_idx) < len(start_idx):   # 作業開始などの別の列があるとき、呼出は荷役開始にしない
+            for i in call_idx:
+                mapped[i] = "call"
         cols = [c if c and c != "_ignore" else "" for c in mapped]   # 読まない列・知らない列は "" にして、行に入れない（乗務員氏名などを残さない）
         if any(c == "partner" and h in _ASK_PARTNER_HEADERS for c, h in zip(mapped, first)):
             asks.append(ASK_PARTNER)
@@ -293,11 +308,14 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
                 if d:
                     r["date"] = d
                     break
+    # 荷主の自社の受付記録: 受付の列があり、運送会社の書面の側の列（荷主等の都合、荷役をした人、附帯業務など）が無い
+    shipper_log = bool(header and "reception" in cols and "arrive" not in cols and not (_CARRIER_CONTEXT_COLS & set(cols)))
     # 到着の列が無く受付の列があるとき（荷主が自社の受付記録を貼る使い方）は、受付の時刻を到着として読む
     if header and "arrive" not in cols and "reception" in cols:
         for r in rows:
             if r.get("reception"):
                 r["arrive"] = r.pop("reception")
+                r["arrive_src"] = "reception"   # 到着として読んだ印。早着の文を受付の言葉にする
         notes.append("到着の列が無いので、受付の時刻を到着として読みました（荷主の受付記録の使い方。受付の前に着いて待った時間は入りません）")
     # 荷役をした人の列が無いとき: 荷役作業等の内容があれば運転者（法定の記録は運転者自身の荷役）、無ければ不明
     if header and "handler" not in cols:
@@ -320,7 +338,7 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
         for r in rows:
             r["shipper_fault"] = "はい"
         defaulted.append("shipper_fault")
-    return {"rows": rows, "defaulted": defaulted, "notes": notes, "asks": asks}
+    return {"rows": rows, "defaulted": defaulted, "notes": notes, "asks": asks, "shipper_log": shipper_log}
 
 
 def parse_paste_ex(text: str) -> tuple[list[dict[str, str]], list[str], list[str]]:
@@ -339,6 +357,12 @@ def parse_paste(text: str) -> list[dict[str, str]]:
 
 def _ceil_div(a: int, b: int) -> int:
     return -(-a // b) if a > 0 else 0
+
+
+def _reverse_msg(label: str, t: int, prev_label: str, pt: int, gap: int) -> str:
+    """日付の無い時刻が前の時刻より小さく、翌日と読むと 12 時間を超えてあく場合の誤り（SPEC §42）。"""
+    return (f"{label}（{fmt_time(t)}）が{prev_label}（{fmt_time(pt)}）より前です。日付が無いので翌日と読むと {gap // 60} 時間 {gap % 60} 分あいたことになります。"
+            "日付つきの時刻（10/5 09:00 のように）で入れるか、時刻を確かめてください")
 
 
 def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, Any], defaults: dict[str, str] | None = None) -> tuple[dict[str, Any] | None, list[str]]:
@@ -393,6 +417,10 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     reception_raw = _norm(raw.get("reception"))
     if reception_raw:
         reception = parse_time(reception_raw)
+    call = None   # 呼出の時刻（荷主の受付記録。記録の一覧に出すだけ。計算には使わない）
+    call_raw = _norm(raw.get("call"))
+    if call_raw:
+        call = parse_time(call_raw)
     side_min = 0
     if g["side_min"]:
         if re.fullmatch(r"[0-9]{1,4}", _nz(g["side_min"])):
@@ -480,6 +508,8 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         s_rel = start - arrive
         if s_rel < 0:
             s_rel += 1440
+            if s_rel > REVERSE_MAX_MIN:
+                errs.append(_reverse_msg("荷役開始", start, "到着", arrive, s_rel))
     e_rel = None
     if end is not None:
         e_day = field_day("end", a_day)
@@ -489,8 +519,11 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
                 errs.append("荷役終了が荷役開始より前です（日付と時刻を確かめてください）")
         else:
             e_rel = end - arrive
-            while e_rel < s_rel:
-                e_rel += 1440
+            if e_rel < s_rel:
+                while e_rel < s_rel:
+                    e_rel += 1440
+                if e_rel - s_rel > REVERSE_MAX_MIN:
+                    errs.append(_reverse_msg("荷役終了", end, "荷役開始", start, e_rel - s_rel))
     post_min = 0   # 荷役終了 → 出発（荷役のあとの待ち）
     dep_rel = None
     if depart is not None:
@@ -502,8 +535,11 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
                 errs.append("出発が" + ("荷役終了" if e_rel is not None else "荷役開始") + "より前です（日付と時刻を確かめてください）")
         else:
             dep_rel = depart - arrive
-            while dep_rel < floor:
-                dep_rel += 1440
+            if dep_rel < floor:
+                while dep_rel < floor:
+                    dep_rel += 1440
+                if dep_rel - floor > REVERSE_MAX_MIN:
+                    errs.append(_reverse_msg("出発", depart, "荷役終了" if e_rel is not None else "荷役開始", end if e_rel is not None else start, dep_rel - floor))
         if post_on and e_rel is not None:
             post_min = dep_rel - e_rel
     if errs:
@@ -571,6 +607,8 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         early = "designated"
     elif appointed is None and EARLY_FROM_MIN <= arrive < EARLY_UNTIL_MIN:
         early = "assumed"
+    if call_raw and call is None:
+        row_notes.append(f"呼出「{call_raw}」を読めなかったので、呼出の時刻は使っていません")
     if wait_raw >= 1440:
         row_notes.append(LONG_WAIT_NOTE)
     out = {
@@ -613,6 +651,10 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     }
     if reception is not None:
         out["reception"] = fmt_time(reception)
+    if call is not None:
+        out["call"] = fmt_time(call)
+    if _norm(raw.get("arrive_src")) == "reception":
+        out["arrive_from_reception"] = True
     if early:
         out["early_arrival"] = early
     if used:

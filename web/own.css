@@ -358,7 +358,7 @@ td.o-hint { padding: 4px; }
 
 /* 列の役割を選ぶ */
 .o-roles { margin: 8px 0; padding: 6px 10px 8px; border: 1px solid rgba(240,182,78,.45); border-radius: 10px; background: rgba(240,182,78,.08); }
-.o-rl { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 6px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.o-rl { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 6px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line); }
 .o-rn b { display: block; font-weight: 500; word-break: break-all; }
 .o-rn small { display: block; color: var(--faint); font-size: 10.5px; }
 .o-assumed label { color: var(--warn); }
@@ -414,3 +414,34 @@ body.view-own #own-right .f-chk { display: flex; align-items: center; gap: 8px; 
 .o-how { color: var(--warn); }
 .o-notices .o-hint { color: var(--warn); }
 
+
+/* SPEC §42 の直し: 数字の下の注記は閉じた「詳しく」に入れる、役割の選ぶ欄は文字が欠けない、売上の目安は 1 便ごとと区間の小計 */
+.o-tf { font-size: 10.5px; color: var(--muted); line-height: 1.45; }
+.o-tmore { margin-top: 4px; }
+.o-tmore summary, .o-more summary { cursor: pointer; font-size: 11px; color: var(--accent); }
+.o-tmore .o-ts { margin-top: 3px; word-break: break-all; }
+.o-more { margin: 4px 18px 8px; }
+.o-more .o-unk { margin: 4px 0; }
+.o-rsel { width: 100%; min-width: 0; }
+.o-rev1 b { font-size: 16px; }
+.o-revt { margin: 6px 0; }
+.o-revt th small { display: block; color: var(--faint); font-size: 10.5px; font-weight: 400; }
+.o-revt th { text-align: left; font-weight: 500; }
+.o-revt thead th { text-align: right; } .o-revt thead th:first-child { text-align: left; }
+.o-upper { font-size: 12.5px !important; font-weight: 500 !important; color: var(--muted); }
+.o-tw2 { overflow-x: auto; margin: 4px 0; }
+.o-mpw { margin-top: 6px; }
+.o-mp { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-top: 6px; }
+.o-mp input { width: 70px; }
+.o-mp small, .o-mpnow { flex: 1 1 100%; color: var(--faint); font-size: 10.5px; }
+.o-pend .o-hint { margin: 4px 0; }
+.o-revt td.num { white-space: nowrap; font-size: 11.5px; }
+.o-rev2 > span { font-size: 11.5px; }
+.o-sub { display: block; color: var(--faint); font-size: 10.5px; font-weight: 400; }
+@media (max-width: 600px) {
+  .o-revt td.num { white-space: normal; font-size: 11px; }
+  .o-revt th, .o-revt td { padding-left: 2px; padding-right: 2px; }
+}
+.o-hired { margin: 4px 0; } .o-more2 summary { cursor: pointer; font-size: 11px; color: var(--accent); }
+.o-hf { list-style: none; margin: 4px 0; padding: 0; font-size: 12px; } .o-hf li { margin: 3px 0; } .o-hf small { display: block; color: var(--faint); font-size: 10.5px; margin-left: 24px; }
+.o-hf input { width: 20px; height: 20px; vertical-align: middle; }

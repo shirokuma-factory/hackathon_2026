@@ -139,7 +139,7 @@ def make_cycles() -> list[dict]:
     # デジタコの無い車の区間のうち、4 区間に 1 つを「積地か降ろし地が空欄」にする
     legs_other = [(c["D"], c["plate"], d) for c in cyc if not c["digi"] for d in ("out", "back")]
     legs_other.sort(key=lambda t: (t[0], t[1], 0 if t[2] == "out" else 1))
-    unreadable_leg = ("7788", 13, "back")  # 時刻が読めない 1 区間（7788 の 13 日発の帰り。不明の数には入れない）
+    unreadable_leg = ("7788", 13, "back")  # 区間が読めない 1 セル（7788 の 13 日発の帰り。不明の数には入れない）
     unknown: set[tuple[str, int, str]] = set()
     for i, (D, plate, d) in enumerate(legs_other):
         if i % UNKNOWN_EVERY == (UNKNOWN_OFFSET if (i // 8) % 2 == 0 else UNKNOWN_OFFSET + 1):  # 行きと帰りの両方に散らす
@@ -173,6 +173,8 @@ def leg_text(c: dict, d: str, i: int) -> tuple[str, str]:
     txt = f"江東 → 加古川 着{end}"
     if large and i % 5 != 2:
         txt += f" {OUT_LOAD_T[(i + 3) % 8]}t"
+    else:
+        txt += "（実車）"  # 帰りで重さが無いときは、実車の印を書く（印も重さも無い帰りは、実車か空車か分からない区間になる。SPEC §42）
     return txt, SHIPPERS_BACK[i % len(SHIPPERS_BACK)]
 
 
@@ -182,8 +184,8 @@ def write_haisha(cycles: list[dict]) -> None:
         cells[c["plate"]][c["D"]] = leg_text(c, "out", i)
         if c["D"] + 1 <= 31:
             cells[c["plate"]][c["D"] + 1] = leg_text(c, "back", i)
-    # 時刻が読めない 1 セル（7788 の 10/14 の帰り）
-    cells["7788"][14] = ("江東 → 加古川 着8時半ごろ", "")
+    # 区間が読めない 1 セル（7788 の 10/14 の帰り。矢印が無い）。「8時半ごろ着」のような時刻だけが読めないセルは、時刻を捨てて区間を読む（SPEC §42）ので、ここには使わない
+    cells["7788"][14] = ("江東 加古川 戻り", "")
     for (plate, d), t in FREE_NOTES.items():
         cells[plate].setdefault(d, (t, ""))
     head = ["車番", "車種"] + [f"{MON}/{d}({own.WEEKDAYS[wd_of(d)]})" for d in range(1, 32)] + ["13日"]
@@ -290,11 +292,14 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
                 ids.append(pid)
                 if new:
                     new_alias_hits["haisha"] += 1
-            haisha_legs.append({
-                "id": f"H{hseq:03d}", "plate": r["plate"], "date": r["date"], "idx": idx, "frm": ids[0], "to": ids[1],
-                "empty": lg["empty"], "arr": lg["arr"], "weight_kg": lg["weight_kg"],
-                "ref": {"file": HAISHA, "where": f"{r['line']} 行目・{int(r['date'][5:7])}/{int(r['date'][8:10])} の列", "text": r["text"]},
-            })
+            for rd in range(1, (lg.get("rounds") or 1) + 1):  # 「2回転」は区間を回数ぶん数える
+                if rd > 1:
+                    hseq += 1
+                haisha_legs.append({
+                    "id": f"H{hseq:03d}", "plate": r["plate"], "date": r["date"], "idx": idx, "frm": ids[0], "to": ids[1],
+                    "empty": lg["empty"], "arr": lg["arr"], "weight_kg": lg["weight_kg"], "local": bool(lg.get("local")), "loaded_mark": bool(lg.get("loaded_mark")), "round": rd, "rounds": lg.get("rounds") or 1,
+                    "ref": {"file": HAISHA, "where": f"{r['line']} 行目・{int(r['date'][5:7])}/{int(r['date'][8:10])} の列", "text": r["text"]},
+                })
     # --- デジタコ
     runs, stops, d_files, dseq, sseq = [], [], [], 0, 0
     def resolver(name: str) -> str | None:
@@ -327,7 +332,7 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
 
     # --- 結び付けと実車・空車
     lk = own.link(haisha_legs, runs, est)
-    cl = own.classify_legs(lk["legs"])
+    cl = own.classify_legs(lk["legs"], base)
     legs = cl["legs"]
     for l in legs:
         l["dir"] = ("out" if (l["to"] == dock or l["frm"] == base) else "back" if (l["to"] == base or l["frm"] == dock) else None)
@@ -374,6 +379,7 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
                  "tachograph_label": TACHO_LABEL[tg], "driver": DRIVER_LABEL.get(dr)} for p, raw, vt, cls, gvw, ml, tg, dr in VEHICLES]
     kp = own.kpis(legs, vehicles)
     table = own.weekday_table(legs, stops, dock)
+    pt = own.pair_tables(legs, places, vehicles, base, dock)  # SPEC §42: 実際の発地と着地の組ごとの集計
     ins = own.insights({"legs": legs, "stops": stops, "shifts": shifts, "vehicles": vehicles, "places": places, "base": base, "dock": dock, "month": MON})
 
     # --- 列の対応づけ（mapping.json）と確認待ち
@@ -449,7 +455,7 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
         "claude": {"present": claude_present, "model": mapping.get("claude_model"), "created_at": mapping.get("claude_created_at"),
                    "label": "Claude の提案: 未作成" if not claude_present else "Claude の提案: あり"},
         "confirm": confirm, "legs": [leg_json(l) for l in legs], "stops": [stop_json(s) for s in stops], "shifts": shifts,
-        "kpis": kp, "table": table, "insights": ins, "counts": counts,
+        "kpis": kp, "table": table, "pairs": pt["pairs"], "pair_table": pt["pair_table"], "insights": ins, "counts": counts,
         "national": {"actual_rate_pct": 62.15, "load_efficiency_pct": 39.08,
                      "source": "自動車輸送統計年報 2025 年度（付表）原単位、e-Stat 統計表 ID 000040511074（営業用普通車）。積載効率は表 3-1 の輸送トンキロ ÷ 能力トンキロ（ID 000040511073）と一致",
                      "caution": "全国の積載効率はトンキロの比で、自社の値と同じ式ではありません。比べられるのは実車率だけです"},
@@ -458,7 +464,7 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
 
 
 def leg_json(l: dict) -> dict:
-    keep = ("id", "plate", "date", "dir", "cycle_wd", "cycle_dep", "dep", "arr", "arr_hint", "frm", "to", "km", "kind", "kind_src", "weight_kg", "flags", "color", "ref", "dref", "driver")
+    keep = ("id", "plate", "date", "dir", "cycle_wd", "cycle_dep", "dep", "arr", "arr_hint", "frm", "to", "km", "kind", "kind_src", "weight_kg", "flags", "color", "ref", "dref", "driver", "local", "round", "rounds", "return_unmarked")
     d = {k: l.get(k) for k in keep}
     d["km_src"] = (l.get("sources") or {}).get("km")
     d["time_src"] = (l.get("sources") or {}).get("time")

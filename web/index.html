@@ -327,6 +327,26 @@
 <button id="attr-toggle" type="button" aria-expanded="false" aria-label="地図の出典を表示する">出典</button>
 <script>(function(){var b=document.getElementById("attr-toggle");b.addEventListener("click",function(){var o=document.body.classList.toggle("attr-open");b.setAttribute("aria-expanded",String(o));b.setAttribute("aria-label",o?"地図の出典を閉じる":"地図の出典を表示する");});})();</script>
 
+<script>
+/* スクリプトの読み込みに失敗したとき、1 回だけ読み直す（負荷が高いときに own_calc.js などが読めず、画面全体が止まったため。SPEC §42）。
+   読み直しが終わるまで app.js の起動を待たせる（window.__scriptRetry.settled()）。読み直しても読めなかった部品は failed に残り、app.js がその見方だけを止める */
+(function () {
+  var R = window.__scriptRetry = { pending: 0, waiters: [], failed: [], retried: [], settled: function () { return new Promise(function (res) { if (R.pending <= 0) res(); else R.waiters.push(res); }); } };
+  function done() { R.pending -= 1; if (R.pending <= 0) R.waiters.splice(0).forEach(function (f) { f(); }); }
+  window.addEventListener('error', function (e) {
+    var t = e.target;
+    if (!t || t.tagName !== 'SCRIPT' || !t.src) return;
+    if (t.getAttribute('data-retry')) { R.failed.push(t.getAttribute('data-retry')); done(); return; }
+    var base = t.getAttribute('src');
+    var s = document.createElement('script');
+    s.setAttribute('data-retry', base);
+    s.src = base + (base.indexOf('?') < 0 ? '?' : '&') + 'retry=' + Date.now();
+    s.onload = function () { R.retried.push(base); done(); };
+    R.pending += 1;
+    document.head.appendChild(s);
+  }, true);
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
 <script src="kit/kit.js"></script>

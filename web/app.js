@@ -397,10 +397,10 @@ function frame(now) {
   if (cm && (!S.staticLayers || S.staticKey !== sk)) { S.staticLayers = staticLayers(cm.items, cp.items); S.staticKey = sk; }
   let layers;
   const tl0 = performance.now();
-  if (S.view === 'market') layers = Market.layers(now, zoom);
-  else if (S.view === 'find') layers = [S.staticLayers[1], ...Market.flowLayers(now, 0.3), ...Find.layers(now)]; // 県境、帰りの空きやすさ（うすく）、架空の便
-  else if (S.view === 'own') layers = [S.staticLayers[1], ...(Own.market() ? Market.flowLayers(now, 0.55) : []), ...Own.layers()]; // 県境、市場の矢印（切り替え）、自社の区間（SPEC §22）
-  else layers = [...S.staticLayers, ...Hubs.layers(zoom, { line: currentHubLine() }), ...Muni.compareFac(zoom), ...dynamicLayers(now)];
+  if (S.view === 'market') layers = V.Market.layers(now, zoom);
+  else if (S.view === 'find') layers = [S.staticLayers[1], ...V.Market.flowLayers(now, 0.3), ...V.Find.layers(now)]; // 県境、帰りの空きやすさ（うすく）、架空の便
+  else if (S.view === 'own') layers = [S.staticLayers[1], ...(V.Own.market() ? V.Market.flowLayers(now, 0.55) : []), ...V.Own.layers()]; // 県境、市場の矢印（切り替え）、自社の区間（SPEC §22）
+  else layers = [...S.staticLayers, ...Hubs.layers(zoom, { line: currentHubLine() }), ...V.Muni.compareFac(zoom), ...dynamicLayers(now)];
   if (WARM.running) layers.push(...WARM.layers(now)); // 起動時のシェーダーの先読み（warmup.js）。読み込み画面の裏で、種類ごとに 1 個ずつ描く
   PERF.mark('layers', tl0);
   const ts0 = performance.now();
@@ -604,9 +604,27 @@ function hubHtml(h) {
     `<div class="hub-note">直線距離で、${h.kind === 'rail' ? '線路' : '航路'}や道路の長さではありません。点線は経路の形ではなく、つなぎ方の目安です。OSM に登録された${h.kind === 'rail' ? '主な貨物駅' : '100km 以上のフェリー航路の端にある港'}の中から選んでいます。</div></div>`;
 }
 
+// 額が出ているのが貸切だけのとき、荷の重さ・床が車のどれだけかを出す。小さな荷は「この荷に貸切は過大」（比べるページと同じ基準: 重さも床も 25% 未満）。
+// 車の値は data/vehicle_decks.json の料金の区分（2t・4t は表の上限、10t）と荷台（2t ショート・4t ウイング・10t ウイング）と同じ。試験 test_v42 が合っていることを確かめる
+const CHARTER_CLASS = { '2t': { kg: 2000, floor: 5.1 }, '4t': { kg: 4000, floor: 13.64 }, '10t': { kg: 10000, floor: 23.04 } };
+function charterOnlyNote(cards) {
+  const priced = cards.filter((c) => c.amount !== null && c.amount !== undefined);
+  if (!priced.length || !priced.every((c) => c.label === '貸切')) return '';
+  const cls = CHARTER_CLASS[String(priced[0].sub || '').replace('車', '')], sh = Work.confirmedShipment();
+  if (!cls || !sh || !sh.items || !sh.items.length) return '';
+  let kg = 0, floor = 0;
+  for (const it of sh.items) { kg += Number(it.count) * Number(it.weight_kg); floor += Number(it.count) * Number(it.length_cm) * Number(it.width_cm) / 1e4; }
+  if (!(kg > 0)) return '';
+  const pc = (v) => Math.max(1, Math.round(v * 100));
+  const kgUse = kg / cls.kg, floorUse = floor / cls.floor, over = kgUse < 0.25 && floorUse < 0.25;
+  return `<div class="cards-note charter-only${over ? ' excessive' : ''}" role="note"><b>${over ? 'この荷に貸切は過大です。' : '額が出ているのは貸切だけです。'}</b> ` +
+    `荷は ${fmt(Math.round(kg))}kg・床 ${(Math.round(floor * 10) / 10).toLocaleString('ja-JP')}m² で、${priced[0].sub}の最大積載の約 ${pc(kgUse)}%・床の約 ${pc(floorUse)}% です。` +
+    `${over ? '貸切は荷の量に関わらず 1 台分の運賃がかかります。' : ''}宅配・路線便は公開の料金表がなく額が出ません。荷主向けの比べるページ（compare_lite.html）で自社の契約単価を入れて比べるか、見積依頼文で各社に聞いてください。</div>`;
+}
+
 function renderCards(cards) {
   const max = Math.max(0, ...cards.map((c) => c.amount || 0));
-  $('#cards').innerHTML = (typeof CompareChart !== 'undefined' ? CompareChart.html(cards) : '') + '<p class="cards-note">公開条件に合っても、その会社がこの出荷を受けるかは見積で確かめます。金額は税抜です。</p>' + cards.map((c, n) => {
+  $('#cards').innerHTML = (typeof CompareChart !== 'undefined' ? CompareChart.html(cards) : '') + '<p class="cards-note">公開条件に合っても、その会社がこの出荷を受けるかは見積で確かめます。金額は税抜です。</p>' + charterOnlyNote(cards) + cards.map((c, n) => {
     const amt = c.amount !== null && c.amount !== undefined
       ? `<div class="amt"><b class="num" data-to="${c.amount}">${fmt(c.amount)}</b><span>円（税抜${c.est ? '・試算' : ''}）</span>` +
         (c.low && c.high ? `<span class="range num">${fmt(c.low)}〜${fmt(c.high)}円の幅</span>` : '') + '</div>' +
@@ -810,11 +828,11 @@ function bindSearch() {
 /* ------------------------------------------------------------ 状態の URL */
 
 function writeHash() {
-  if (S.view === 'market') { Market.syncHash(); return; }
+  if (S.view === 'market') { V.Market.syncHash(); return; }
   const p = new URLSearchParams();
   p.set('v', S.view);
-  if (S.view === 'find') Find.hashParams(p);
-  if (S.view === 'own') Own.hashParams(p);
+  if (S.view === 'find') V.Find.hashParams(p);
+  if (S.view === 'own') V.Own.hashParams(p);
   if (S.view !== 'compare') { history.replaceState(null, '', '#' + p.toString()); return; }
   p.set('o', S.origin);
   p.set('l', S.layer);
@@ -879,9 +897,9 @@ function setView(v) {
     setPlaying(false);
     $('#truck-tag').classList.remove('on');
   }
-  if (prev === 'market') Market.setActive(false);
-  if (prev === 'find') Find.leave();
-  if (prev === 'own') Own.leave();
+  if (prev === 'market') V.Market.setActive(false);
+  if (prev === 'find') V.Find.leave();
+  if (prev === 'own') V.Own.leave();
   $('#hover-tag').classList.remove('on');
   S.view = v;
   applyViewClasses();
@@ -890,14 +908,14 @@ function setView(v) {
     Rt.resume();
     if (S.sel >= 0 && S.route) { if (Rt.hasSets()) Rt.fit(); else fitRoute(); } else fitJapan(true);
   } else if (v === 'market') {
-    Market.setActive(true);
-    const r = Market.selected();
-    if (r) Market.select(r.k, { fly: true }); else fitJapan(true);
+    V.Market.setActive(true);
+    const r = V.Market.selected();
+    if (r) V.Market.select(r.k, { fly: true }); else fitJapan(true);
   } else if (v === 'own') {
-    Own.enter();
+    V.Own.enter();
   } else {
     fitJapan(true);
-    Find.enter(prev === 'market' ? Market.pairNames() : null);
+    V.Find.enter(prev === 'market' ? V.Market.pairNames() : null);
   }
   writeHash();
   setHubLegend();
@@ -952,11 +970,49 @@ function applyQuality() {
   if (overlay) overlay.setProps({ useDevicePixels: r });
 }
 
+/* 部品（スクリプト）の読み込みに失敗したとき。読み直し（index.html）でも読めなかった部品がある見方だけを止め、ほかの見方は起動する（SPEC §42）。
+   見方の部品が無いときは、その見方の名前に代わりの空の部品を置き、その見方を開いたときだけ理由を出す */
+const CORE_MODULES = { PERF: () => typeof PERF, Hubs: () => typeof Hubs, Rt: () => typeof Rt, Work: () => typeof Work, Sheet: () => typeof Sheet, WARM: () => typeof WARM, M3D: () => typeof M3D };
+const VIEW_MODULES = {
+  market: { label: '全国の物流傾向', host: '#m-left', mods: { Market: () => typeof Market, Muni: () => typeof Muni } },
+  find: { label: '空きを探す・つなぐ', host: '#find-view', mods: { Find: () => typeof Find } },
+  own: { label: '自社の運行', host: '#own-view', mods: { Own: () => typeof Own, OwnCalc: () => typeof OwnCalc, OwnMonth: () => typeof OwnMonth } },
+};
+function showViewMissing(view) {
+  const info = S.missingViews && S.missingViews[view];
+  if (!info) return;
+  const host = document.querySelector(VIEW_MODULES[view].host);
+  if (!host) { toast(info.text); return; }
+  let el = host.querySelector(':scope > .view-missing');
+  if (!el) { el = document.createElement('p'); el.className = 'view-missing'; el.setAttribute('role', 'alert'); host.prepend(el); }
+  el.textContent = info.text;
+}
+const STUBS = {};
+const viewStub = (view) => STUBS[view] || (STUBS[view] = new Proxy({}, { get: (_, key) => (key === 'then' ? undefined : (...a) => { if (key === 'enter' || (key === 'setActive' && a[0])) showViewMissing(view); return ['flowLayers', 'layers', 'compareFac'].includes(key) ? [] : undefined; }) }));
+// 見方の部品への入口。部品が揃っていればその部品そのもの、足りなければ何もしない代わりの部品を返す（呼び出しはすべて V.Market.xxx() の形）
+const V = {};
+for (const [name, view, real] of [['Market', 'market', () => Market], ['Muni', 'market', () => Muni], ['Find', 'find', () => Find], ['Own', 'own', () => Own]]) {
+  Object.defineProperty(V, name, { get: () => (S.missingViews && S.missingViews[view] ? viewStub(view) : real()) });
+}
+const modType = (f) => { try { return f(); } catch (e) { return 'undefined'; } };   // 途中で失敗した部品は const が未初期化のままで、typeof でも例外になる
+function guardModules() {
+  const R = window.__scriptRetry, failedSrc = R && R.failed.length ? R.failed.join('、') : '';
+  const coreMissing = Object.keys(CORE_MODULES).filter((k) => modType(CORE_MODULES[k]) === 'undefined');
+  if (coreMissing.length) throw new Error(`部品 ${coreMissing.join('・')} が読み込めませんでした（読み直しても読めません）。ページを読み込み直してください`);
+  S.missingViews = {};
+  for (const [view, v] of Object.entries(VIEW_MODULES)) {
+    const miss = Object.keys(v.mods).filter((k) => modType(v.mods[k]) === 'undefined');
+    if (miss.length) S.missingViews[view] = { mods: miss, text: `「${v.label}」の部品（${miss.join('・')}）を読み込めませんでした${failedSrc ? `（${failedSrc}）` : ''}。ほかの見方は使えます。この見方を使うには、ページを読み込み直してください` };
+  }
+}
+
 async function main() {
+  if (window.__scriptRetry) await window.__scriptRetry.settled();
+  guardModules();
   PERF.init();
   const [meta, idx, muni, pref, routes, style] = await Promise.all([
     getJSON('data/meta.json'), getJSON('data/index.json'), getJSON('data/muni.geojson'), getJSON('data/pref.geojson'),
-    getJSON('data/routes.json'), getJSON(STYLE_URL), Hubs.load(), Rt.loadMeta().then(() => Promise.all([Rt.loadPairs(), Rt.loadTrips()])), Market.load(), Muni.load(),
+    getJSON('data/routes.json'), getJSON(STYLE_URL), Hubs.load(), Rt.loadMeta().then(() => Promise.all([Rt.loadPairs(), Rt.loadTrips()])), V.Market.load(), V.Muni.load(),
   ]);
   Object.assign(S, { meta, idx, muni, pref, routes });
   for (const f of muni.features) S.byIndex.set(f.properties.i, f);
@@ -966,8 +1022,8 @@ async function main() {
     '36201', '37201', '38201', '39201', '40131', '41201', '42201', '43101', '44201', '45201', '46201', '47201', '27140', '14100', '23101'];
   const p = new URLSearchParams(location.hash.slice(1));
   S.view = ['market', 'find', 'compare', 'own'].includes(p.get('v')) ? p.get('v') : (p.get('o') || p.get('l') || p.get('d')) ? 'compare' : 'market';
-  Market.readHash(p);
-  Muni.readHash(p);
+  V.Market.readHash(p);
+  V.Muni.readHash(p);
   if (p.get('o') && meta.origins.some((o) => o.code === p.get('o'))) S.origin = p.get('o');
   if (['km', 'days', 'fare'].includes(p.get('l'))) S.layer = p.get('l');
   await loadOrigin(S.origin);
@@ -975,7 +1031,7 @@ async function main() {
   $('#origin').innerHTML = meta.origins.map((o) => `<option value="${o.code}">${o.name}</option>`).join('');
   $('#origin').value = S.origin;
   await Work.init({
-    onCargoChange: () => { onCargoChange(); Find.onCargo(); },
+    onCargoChange: () => { onCargoChange(); V.Find.onCargo(); },
     onWorkToggle: () => {},
     routeLabel: () => S.workLabel || '',
   });
@@ -1004,9 +1060,9 @@ async function main() {
   overlay = new deck.MapboxOverlay({
     interleaved: new URLSearchParams(location.search).get('il') !== '0', layers: [], // ?il=0 は計測の比較用（地図の上に別に重ねる）
     getCursor: ({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab'),
-    onHover: (info) => { if (S.view === 'market') Market.hover(info); else if (S.view === 'compare') hoverTag(info); },
+    onHover: (info) => { if (S.view === 'market') V.Market.hover(info); else if (S.view === 'compare') hoverTag(info); },
     pickingRadius: 6,
-    onClick: (info) => { if (S.view === 'market') { Market.click(info); return; } if (S.view === 'find') { Find.click(info); return; } if (S.view !== 'compare') return; if (Work.isOpen()) Work.closeWork(); if (info.object && info.layer && info.layer.id === 'muni' && info.object.properties.i >= 0) select(info.object.properties.i); },
+    onClick: (info) => { if (S.view === 'market') { V.Market.click(info); return; } if (S.view === 'find') { V.Find.click(info); return; } if (S.view !== 'compare') return; if (Work.isOpen()) Work.closeWork(); if (info.object && info.layer && info.layer.id === 'muni' && info.object.properties.i >= 0) select(info.object.properties.i); },
   });
   map.addControl(overlay);
   PERF.onChange(applyQuality);
@@ -1025,17 +1081,17 @@ async function main() {
   renderLegend();
   bindSearch();
   bindTimebar();
-  Market.setActive(S.view === 'market');
-  Market.init();
-  Market.afterStart();
-  Muni.init();
-  Muni.afterStart();
-  Find.readHash(p);
-  await Find.init();
-  if (S.view === 'find') Find.enter(null);
-  Own.readHash(p);
-  await Own.init();
-  if (S.view === 'own') Own.enter();
+  V.Market.setActive(S.view === 'market');
+  V.Market.init();
+  V.Market.afterStart();
+  V.Muni.init();
+  V.Muni.afterStart();
+  V.Find.readHash(p);
+  await V.Find.init();
+  if (S.view === 'find') V.Find.enter(null);
+  V.Own.readHash(p);
+  await V.Own.init();
+  if (S.view === 'own') V.Own.enter();
   setHubLegend();
   document.querySelectorAll('#views button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
   // 閉じているパネルの中のボタンに Tab が入らないようにする（aria-hidden の値に合わせて inert を付け外しする）
@@ -1055,10 +1111,10 @@ async function main() {
   document.querySelector('.tgl[data-toggle="jartic"]').addEventListener('click', (e) => {
     const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
     e.currentTarget.setAttribute('aria-pressed', String(on));
-    Market.setJartic(on);
+    V.Market.setJartic(on);
   });
-  document.querySelector('.tgl[data-toggle="conc"]').addEventListener('click', (e) => Muni.setConc(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
-  document.querySelector('.tgl[data-toggle="fac"]').addEventListener('click', (e) => Muni.setFac(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
+  document.querySelector('.tgl[data-toggle="conc"]').addEventListener('click', (e) => V.Muni.setConc(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
+  document.querySelector('.tgl[data-toggle="fac"]').addEventListener('click', (e) => V.Muni.setFac(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
   if (p.get('hubs') === '1') setHubs(true);
   $('#cards').addEventListener('click', (e) => {
     const b = e.target.closest('.hub-btn'); if (b) setHubSel(b.dataset.hub);
@@ -1070,7 +1126,7 @@ async function main() {
   document.querySelectorAll('.lyr[data-layer]').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.layer)));
   $('#close').addEventListener('click', () => { deselect(); fitJapan(true); });
   $('#home').addEventListener('click', () => {
-    if (S.view === 'market') Market.deselect(false);
+    if (S.view === 'market') V.Market.deselect(false);
     else if (S.sel >= 0) deselect();
     fitJapan(true);
   });
@@ -1108,7 +1164,7 @@ async function main() {
     if (qs.get('perf') || qs.get('check')) { const sc = document.createElement('script'); sc.src = 'perfprobe.js'; document.head.appendChild(sc); }
     if (qs.get('check')) { const sc = document.createElement('script'); sc.src = 'check.js'; document.head.appendChild(sc); }
   }
-  window.__app = { WARM, S, Market, Muni, Hubs, Find, Own, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
+  window.__app = { WARM, S, Market: V.Market, Muni: V.Muni, Hubs, Find: V.Find, Own: V.Own, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }
 
 main().catch((e) => {

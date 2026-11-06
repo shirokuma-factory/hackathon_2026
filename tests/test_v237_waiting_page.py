@@ -51,7 +51,7 @@ def test_g82_python_matches_the_vectors_file():
         asks: list = []
         if c.get("paste"):
             det = waiting.parse_paste_detail(c["text"])
-            rows, defaulted, notes, asks = det["rows"], det["defaulted"], det["notes"], det["asks"]
+            rows, defaulted, notes, asks, shipper_log = det["rows"], det["defaulted"], det["notes"], det["asks"], det["shipper_log"]
         else:
             rows = c["rows"]
         res = waiting.calc(rows, c["year"], defaults=c.get("defaults"))
@@ -61,6 +61,7 @@ def test_g82_python_matches_the_vectors_file():
             got["defaulted"] = defaulted
             got["notes"] = notes
             got["asks"] = asks
+            got["shipper_log"] = shipper_log
         assert json.loads(json.dumps(got, ensure_ascii=False)) == c["expect"], c["name"]
 
 

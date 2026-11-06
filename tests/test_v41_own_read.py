@@ -56,7 +56,7 @@ CELL_VECTORS = [
     ("加古川→江東 着5:30 3t 4t", [("加古川", "江東", False, "05:30", None)], [], [3000.0, 4000.0]),  # 2 つ → 確認
     ("加古川→江東 着5:30 3t 3t", [("加古川", "江東", False, "05:30", 3000.0)], [], None),  # 同じ値は 1 つ
     ("加古川→江東 着5:30 0t", [("加古川", "江東", False, "05:30", 0.0)], [], None),
-    ("江東→加古川 着8時半ごろ", [("江東", "加古川", False, None, None)], ["時刻が読めません"], None),
+    ("江東→加古川 着8時半ごろ", [("江東", "加古川", False, None, None)], [], None),  # SPEC §42: 時刻だけ捨てて区間は残す（warnings に出る）
     ("江東→加古川 空車", [("江東", "加古川", True, None, None)], [], None),
     ("加古川→江東 -1t", [("加古川", "江東", False, None, None)], [own.WEIGHT_SIGN_ERR], None),
     ("加古川→江東 6.5ton", [("加古川", "江東", False, None, None)], [], None),
@@ -148,7 +148,7 @@ def test_vertical_shape_one_row_one_trip():
     r = own.read_haisha(rows, 2026)
     assert len(r["rows"]) == 10 and r["unreadable"] == [] and [p["plate"] for p in r["plates"]] == ["9001", "1234"]
     first = r["rows"][0]
-    assert first["date"] == "2026-10-05" and first["parsed"]["legs"] == [{"frm": "加古川", "to": "江東区", "empty": False, "arr": "05:30", "weight_kg": 9200.0}]
+    assert first["date"] == "2026-10-05" and first["parsed"]["legs"] == [{"frm": "加古川", "to": "江東区", "empty": False, "arr": "05:30", "weight_kg": 9200.0, "loaded_mark": True}]  # 区分の「実車」は実車の印
     assert r["rows"][1]["parsed"]["legs"][0]["empty"] is True  # 区分の列が「空車」
     last_out = [x for x in r["rows"] if x["plate"] == "1234"][0]
     assert last_out["parsed"]["legs"][0]["weight_kg"] == 1800.0  # 1800kg
