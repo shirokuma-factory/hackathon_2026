@@ -25,3 +25,15 @@
 }
 /* カードのチップが長くなっても折り返してはみ出さない */
 .f-top .chip.no { white-space: normal; text-align: left; }
+/* チェック欄は 24px 以上（採点 r3 P2-6）。style.css のあとに読むので、ここが優先される */
+.f-chk { min-height: 28px; }
+.f-chk input { width: 24px; height: 24px; }
+.f-chk input:checked::after { width: 12px; height: 6px; }
+/* 用語の説明（? ボタンで開く）と、荷を入れ替えた旨、貼る文 */
+.f-tip { min-width: 24px; min-height: 24px; margin-left: 4px; padding: 0; border: 1px solid var(--line-strong, var(--line)); border-radius: 50%; background: transparent; color: var(--muted, inherit); font-size: 12px; line-height: 1; cursor: pointer; vertical-align: middle; }
+.f-tip[aria-expanded="true"] { background: var(--accent); color: #04131c; border-color: var(--accent); }
+.f-tipbox { display: block; margin: 4px 0; padding: 6px 10px; border-left: 3px solid var(--accent); background: rgba(255, 255, 255, .06); font-size: 12px; line-height: 1.6; font-weight: 400; white-space: normal; }
+.f-tipbox[hidden] { display: none; }
+.f-autonote { margin: 0 0 8px; padding: 6px 10px; border-left: 3px solid var(--accent); background: rgba(255, 255, 255, .06); font-size: 12px; line-height: 1.6; }
+.f-post { margin-top: 6px; }
+.f-posttext { width: 100%; box-sizing: border-box; font-size: 12px; line-height: 1.5; resize: vertical; }

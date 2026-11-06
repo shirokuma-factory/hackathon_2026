@@ -155,7 +155,7 @@
 .kit-lg-dash{width:26px;height:0;border-top:4px dashed}
 .kit-lg-ramp{width:100%;max-width:200px;height:10px;border-radius:5px}
 .kit-lg-ends{display:flex;justify-content:space-between;gap:16px;font-size:12px}
-.kit-det{margin-top:8px}.kit-det summary{cursor:pointer}
+.kit-det{margin-top:8px}.kit-det summary{cursor:pointer;min-height:24px;box-sizing:border-box;padding:3px 0;display:list-item}
 .kit-tw{overflow:auto;max-height:240px;margin-top:4px}
 .kit-tab{border-collapse:collapse;width:100%;font-size:12px}
 .kit-tab th,.kit-tab td{border-bottom:1px solid rgba(128,140,160,.35);padding:3px 6px;text-align:left;white-space:nowrap}
@@ -172,7 +172,7 @@
 .kit-btn{font:inherit;color:inherit;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:5px 12px;cursor:pointer;min-height:32px}
 .kit-btn:focus-visible,.kit-sel:focus-visible,.kit-rng:focus-visible,.kit-pt:focus-visible{outline:3px solid #8cd7ff;outline-offset:2px}
 .kit-sel{font:inherit;color:inherit;background:#16202e;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:4px 8px;min-height:32px}
-.kit-rng{flex:1 1 160px;min-width:120px}
+.kit-rng{flex:1 1 160px;min-width:120px;min-height:24px;height:24px;margin:0}
 .kit-clock{font-variant-numeric:tabular-nums;min-width:4.5em}
 .kit-band{margin-top:8px}
 .kit-band-row{display:grid;grid-template-columns:7em 1fr;align-items:center;gap:8px;margin:3px 0}

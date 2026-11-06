@@ -383,7 +383,7 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
     confirm.append({
         "id": "C1", "kind": "alias", "source": "配車表・デジタコ", "title": "地点の別名「辰巳」",
         "original": f"「辰巳」（配車表 {new_alias_hits['haisha']} か所、デジタコ {new_alias_hits['digitaco']} か所）", "proposal": f"{places['p07']['pseudo']}（{places['p07']['label']}）の別名にする",
-        "confidence": 0.7, "color": "yellow", "formula": "辞書に無い別名です。地点 07 の住所「江東区辰巳」に含まれるため、ローカルの規則で候補にしました（AI は使っていません）",
+        "confidence": 0.7, "color": "yellow", "formula": "登録済みの別名にありません。地点 07 の住所「江東区辰巳」に含まれるため、ローカルの規則で候補にしました（AI は使っていません）",
         "claude": None, "count": alias_total})
     for it in col_items:
         if it["color"] == "yellow":
@@ -424,7 +424,7 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
         same = next((e for e in d_files[:d_files.index(df)] if own.column_signature(e["columns"]) == own.column_signature(df["columns"])), None)  # 列の対応が同じ前のファイル
         files.append({
             "file": df["file"], "kind": "デジタコ", "shape": "1 行 = 1 回の走行か停車の縦の形",
-            "verdict": f"1 行 = 1 回の走行か停車の縦の形です。列 {len(df['columns'])} 個のうち {mapped} 個を辞書で対応づけました。{len(miss)} 個は分かりません（列名: {'、'.join(miss)}）。読まずに進めます。",
+            "verdict": f"1 行 = 1 回の走行か停車の縦の形です。列 {len(df['columns'])} 個のうち {mapped} 個は列名から役割が分かりました。{len(miss)} 個は分かりません（列名: {'、'.join(miss)}）。読まずに進めます。",
             "cells": df["rows"], "ok": df["rows"] - df["errors"], "pending": pend_d if first else 0, "unreadable": df["errors"],
             "note": f"列の対応は {same['file']} と同じです" if same else None,
         })
@@ -529,10 +529,11 @@ def build_mapping(hrows: list[list[str]], dig_values: dict[str, list[str]], wl: 
         color = own.confidence_color(c)
         entry = {
             "source": source, "column": col, "dict_hit": hit, "dict_role": role if hit else None, "dict_label": role_label,
+            "role_label_ja": own.ROLE_LABEL.get(role or "") or None, "reason_ja": own.column_reason_ja(source, col, role, hit, ratio, exp),
             "shape_expected": exp, "shape_ratio": round(ratio, 4), "shape_best_role": None if hit else role,
             "claude_proposal": prop, "claude_note": prev.get("claude_note") if prop else "未作成（本線が作る）",
             "claude_agrees": agrees, "confidence": c, "color": color,
-            "formula": f"0.5 × max(辞書 {1 if hit else 0}, Claude {1 if agrees else 0}) + 0.5 × 値の形 {ratio:.3f} = {c:.3f}",
+            "formula": f"列名で分かれば 1（今回 {1 if hit else 0}）、値の形が合う割合 {round(ratio * 100)}% → 確かさ {c:.2f}",
             "claude_input": {
                 "source": source, "column": col, "row_count": len([v for v in vals]), "non_blank_ratio": round(len([v for v in vals if (v or '').strip()]) / max(1, len(vals)), 4),
                 "shape_summary": own.shape_summary(vals),
@@ -544,6 +545,7 @@ def build_mapping(hrows: list[list[str]], dig_values: dict[str, list[str]], wl: 
                 "id": "", "kind": "column", "source": source, "file": HAISHA if source == "配車表" else "digitaco_*.csv", "title": f"列「{col}」の対応づけ",
                 "original": f"列名「{col}」。値の形は「{exp}」に {round(ratio * 100)}% 一致", "proposal": f"{role_label or '不明'}として読む",
                 "confidence": c, "color": color, "formula": entry["formula"], "claude": prop, "column": col,
+                "role_label_ja": entry["role_label_ja"], "reason_ja": entry["reason_ja"],
             })
     mapping = {
         "schema": {

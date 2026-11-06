@@ -45,6 +45,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
+<script src="data/data.js"></script>
 <script src="../../web/kit/kit.js"></script>
 <script src="../../web/kit/flows.js"></script>
 <script src="../../web/kit/legs.js"></script>
@@ -62,6 +63,9 @@
   window.__kit = kit;
 
   async function getJSON(url) {
+    // ファイルを直接開いた（file://）ときは fetch が使えないので、data/data.js（window.KIT_DATA）から読む
+    const m = /^data\/(\w+)\.json$/.exec(url);
+    if (m && window.KIT_DATA && window.KIT_DATA[m[1]]) return window.KIT_DATA[m[1]];
     const r = await fetch(url);
     if (!r.ok) throw new Error(`${url} を読めません（${r.status}）`);
     return r.json();

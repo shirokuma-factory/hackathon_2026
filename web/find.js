@@ -10,7 +10,7 @@ const Find = (() => {
     sel: null, pair: null, onlyPair: false, carrier: 'C1', edits: {}, mine: new Set(), busy: false,
     ver: 0, active: false, geo: {}, markers: new Map(), matchTok: 0, lastCargo: '', timer: null, poll: 0,
     fm: { rate: 70, disc: 0, minFee: '', region: null, key: '', data: null, err: '', built: false, tok: 0 }, scBack: {}, scLoaded: false, bhSid: null, ct: {}, ctOpen: null, ctData: null, confirmed: new Set(), // SPEC §21
-    scList: [], ex: { key: '', id: null, busy: false }, dir: null, // SPEC §30.3（0 便の案内の例の荷、運送会社の役で登録する向き）
+    autoDone: false, autoNote: '', tipN: 0, postOpen: null, scList: [], ex: { key: '', id: null, busy: false }, dir: null, // SPEC §30.3（0 便の案内の例の荷、運送会社の役で登録する向き）
   };
   const PERIOD = 14;
   const SPACE = {
@@ -29,6 +29,48 @@ const Find = (() => {
   const kg = (v) => (Math.round(v * 100) / 100).toLocaleString('ja-JP');
   const q = (s) => document.querySelector(s);
   const byId = (id) => F.trips.find((t) => t.id === id);
+
+  /* ------------------------------------------------------------ 用語の説明（タップ・キーボードで開く） */
+  const TIPS = {
+    '1口': '1口は、運送会社が荷を受ける 1 まとまりの単位です。車の荷台に置く箱 1 つ分（底面の大きさと重さの上限が決まっています）で、値段も 1 口ごとに決まります。',
+    '基準積載率': '基準積載率は、その車が空きなく積めたとしたら何割まで荷が入る前提で運賃を割り戻すかの率です。70% なら、車の運賃の 1/0.7 倍を荷の割合に応じて分けます。低いほど 1 口あたりの額が高くなります。',
+    'リードタイムの割引': 'リードタイムの割引は、出発の何日も前に頼むと運送会社が運賃から引ける率です。国の個建運賃の考え方で、0〜50% を 10% 刻みで選びます。',
+  };
+  // 用語のあとに置く ? ボタン。押す（Enter・Space）と説明が開き、もう一度押すか Esc で閉じる
+  const tip = (term) => `<button type="button" class="f-tip" data-tip="${esc(term)}" aria-expanded="false" aria-label="${esc(term)}の説明">?</button>` +
+    `<span class="f-tipbox" role="note" hidden>${esc(TIPS[term])}</span>`;
+  // 一覧の中では最初の 1 件にだけ付ける（毎回の描画で数え直す）
+  const tipOnce = (term) => (F.tipN++ === 0 ? tip(term) : '');
+  function closeTips(except) {
+    document.querySelectorAll('.f-tip[aria-expanded="true"]').forEach((b) => {
+      if (b === except) return;
+      b.setAttribute('aria-expanded', 'false');
+      const box = b.nextElementSibling;
+      if (box) box.hidden = true;
+    });
+  }
+  function toggleTip(btn) {
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    closeTips(btn);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    const box = btn.nextElementSibling;
+    if (box) box.hidden = !open;
+  }
+
+  // 運送会社が登録した空きの便を、求荷求車の掲示板や LINE に貼る文にする
+  function postText(t) {
+    const rem = shownRemain(t);
+    const lines = ['【空車（帰り便）のご案内】',
+      `区間: ${muniFull(t.origin_code)} → ${muniFull(t.dest_code)}`,
+      `出発: ${hhmm(t.depart_at)}　到着: ${hhmm(t.arrive_at)}`,
+      `車: ${t.vehicle}`,
+      `空き: 重さ ${kg(rem)}kg まで${t.remaining_floor_m2 != null ? `、床 ${kg(t.remaining_floor_m2)}m²` : ''}`];
+    if (t.max_piece_kg != null) lines.push(`1 個の重さ: ${kg(t.max_piece_kg)}kg まで`);
+    if (t.unit_footprint_mm) lines.push(`1 口の底面: ${n0(t.unit_footprint_mm[0])}×${n0(t.unit_footprint_mm[1])}mm`);
+    lines.push(`運賃: ${n0(tripPrice(t))} 円（${t.price_unit || '1口'}・税抜。高速代などは別）`);
+    lines.push('積めるかどうかは、受付で量って決めます。', '連絡先: （ここに書き入れてください）', '※ 下書きです。日時と連絡先を確かめてから貼ってください。');
+    return lines.join('\n');
+  }
 
   /* ------------------------------------------------------------ 場所と向き */
 
@@ -106,6 +148,34 @@ const Find = (() => {
     } catch (e) { if (tok === F.matchTok) { F.results = {}; F.err = e.message; } }
     F.ver++;
     render();
+    if (!F.autoDone && !F.err && F.loaded && Work.version() === 1 && Work.scenarioId() === 'S1' && F.trips.length && !F.trips.some((t) => F.results[t.id] && F.results[t.id].ok)) autoExample();
+  }
+
+  // 最初の荷（場面 S1）はどの便にも載らない。そのままだと「0 便が載ります」から始まるので、載る例の荷を一度だけ入れる（荷主が触る前だけ）
+  async function autoExample() {
+    F.autoDone = true;
+    let found = null;
+    try {
+      for (const sc of [...F.scList.filter((x) => x.backhaul), ...F.scList.filter((x) => !x.backhaul)]) {
+        const b = sc.backhaul;
+        const r = await Work.api('/api/b/match', {
+          shipment: { items: sc.shipment.items }, dest_code: b ? b.dest_code : F.dest, category: null, in_container: false, fragile: false,
+          is_box: b ? b.is_box : true, origin_code: b ? b.origin_code : S.origin, ...(b ? { window_from: b.window_from, window_to: b.window_to } : {}),
+        });
+        if (r.results.some((x) => x.ok)) { found = sc; break; }
+      }
+    } catch (e) { found = null; }
+    if (!found || Work.version() !== 1) return;
+    const sel = document.querySelector('#sc-select'), ok = document.querySelector('#ed-confirm');
+    if (!sel || !ok) return;
+    sel.value = found.id;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    document.querySelector('#ed-confirm').click(); // 場面を選ぶと欄が描き直されるので、押す直前に探し直す
+    for (let i = 0; i < 80 && Work.scenarioId() !== found.id; i++) await new Promise((r) => setTimeout(r, 100));
+    if (Work.scenarioId() !== found.id) return;
+    F.bhSid = null;
+    F.autoNote = `最初の荷（場面 S1）に載る便がなかったため、載る例の荷（場面 ${found.id} ${fict(found.name)}）を入れてあります。荷物の欄の「荷物を変える」から自分の荷に変えられます。`;
+    await runMatch();
   }
 
   async function refresh() {
@@ -380,7 +450,7 @@ const Find = (() => {
       `<div class="f-route">${esc(t.route_label)}</div>` + arcNote(t) +
       `<div class="f-when num">${esc(muniName(t.origin_code))} ${hhmm(t.depart_at)} 発 → ${esc(muniName(t.dest_code))} ${hhmm(t.arrive_at)} 着</div>` +
       barHtml(t, c ? c.w : null) +
-      `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>${esc(t.price_unit || '1口')}・税抜・架空</small></div>` +
+      `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>${esc(t.price_unit || '1口')}・税抜・架空</small>${(t.price_unit || '1口') === '1口' ? tipOnce('1口') : ''}</div>` +
       reasons + holdAreaHtml(t, r) + (t.id === F.sel ? detailHtml(t) : '') + '</article>';
   }
 
@@ -405,6 +475,7 @@ const Find = (() => {
       barHtml(t, null) +
       `<div class="f-price"><b class="num">${n0(tripPrice(t))}</b><span>円</span><small>${esc(t.price_unit || '1口')}・税抜・架空</small>` +
       (ed ? '<em class="f-edited">画面の中だけで変更</em>' : '') + '</div>' +
+      (t.registered ? `<div class="f-post"><button type="button" class="btn-ghost sm" data-act="post-text">掲示板・LINE に貼る文</button>${F.postOpen === t.id ? `<textarea class="ctl f-posttext" readonly rows="9" aria-label="掲示板・LINE に貼る文">${esc(postText(t))}</textarea><div class="f-hbtn"><button type="button" class="btn-primary sm" data-act="post-copy">文をコピーする</button><small class="f-postmsg" role="status"></small></div>` : ''}</div>` : '') +
       (holds ? `<div class="f-holds"><div class="f-hh">荷主からの仮予約</div>${holds}</div>` : '<div class="f-hold-msg faint">承諾待ちの仮予約はありません。</div>') +
       (past ? `<div class="f-hhist">${past}</div>` : '') + (t.id === F.sel ? detailHtml(t) : '') + '</article>';
   }
@@ -504,6 +575,7 @@ const Find = (() => {
     if (!box) return;
     const keep = box.scrollTop;
     let html = '';
+    F.tipN = 0;
     if (F.err) html += `<p class="f-err">${esc(F.err)}</p>`;
     if (!F.loaded) { box.innerHTML = html || '<p class="f-empty">便を読み込んでいます</p>'; return; }
     if (F.role === 'shipper') {
@@ -513,7 +585,7 @@ const Find = (() => {
       const okN = ts.filter((t) => F.results[t.id] && F.results[t.id].ok).length;
       q('#f-rsub').textContent = `${ts.length} 便中 ${okN} 便が載ります`;
       q('#f-rtitle').textContent = 'いまの荷に合う便';
-      html = zeroHtml() + html;
+      html = (F.autoNote ? `<p class="f-autonote" role="status">${esc(F.autoNote)}</p>` : '') + zeroHtml() + html;
       html += ts.map((t) => shipperCard(t, c)).join('');
       if (F.pair && F.onlyPair && !ts.length) html += '<p class="f-empty">この区間の逆向きの架空の便はありません。</p>';
     } else {
@@ -764,8 +836,8 @@ const Find = (() => {
     if (!F.fm.built) {
       el.innerHTML = '<div class="m-h f-sub-h">値段の式<span class="m-tag">運送会社の役だけ</span></div>' +
         `<p class="fm-line">${FORMULA_LINE}</p>` +
-        '<div class="f-grid3"><label><span class="lbl">基準積載率（%）</span><input id="fm-rate" class="ctl sm num" type="number" min="10" max="100" step="5"></label>' +
-        `<label><span class="lbl">リードタイムの割引</span><select id="fm-disc" class="ctl sm">${[0, 10, 20, 30, 40, 50].map((v) => `<option value="${v}">${v}%</option>`).join('')}</select></label>` +
+        `<div class="f-grid3"><label><span class="lbl">基準積載率（%）${tip('基準積載率')}</span><input id="fm-rate" class="ctl sm num" type="number" min="10" max="100" step="5"></label>` +
+        `<label><span class="lbl">リードタイムの割引${tip('リードタイムの割引')}</span><select id="fm-disc" class="ctl sm">${[0, 10, 20, 30, 40, 50].map((v) => `<option value="${v}">${v}%</option>`).join('')}</select></label>` +
         '<label><span class="lbl">地域の表</span><select id="fm-region" class="ctl sm"><option value="近畿">近畿運輸局</option><option value="関東">関東運輸局</option></select></label>' +
         '<label><span class="lbl">最低保証料（円）</span><input id="fm-min" class="ctl sm num" type="number" min="0" step="1000" placeholder="空欄"></label></div>' +
         '<p class="fm-note">最低保証料を下回るときは最低保証料。</p>' +
@@ -996,6 +1068,7 @@ const Find = (() => {
       toast('仮予約・登録した便・重さの余りを最初の架空データに戻しました');
     }));
     q('#find-right').addEventListener('click', (e) => {
+      if (e.target.closest('.f-tip, .f-tipbox')) return; // 用語の説明を開くだけ。便の選択や描き直しはしない
       const btn = e.target.closest('[data-act]'), card = e.target.closest('.f-card');
       if (btn) {
         const a = btn.dataset.act, id = card && card.dataset.t;
@@ -1015,6 +1088,14 @@ const Find = (() => {
         } else if (a === 'to-compare') {
           App.setView('compare');
           Work.openWork(1);
+        } else if (a === 'post-text') { F.postOpen = F.postOpen === id ? null : id; renderList();
+        } else if (a === 'post-copy') {
+          const t = byId(id), ta = card.querySelector('.f-posttext'), msg = card.querySelector('.f-postmsg');
+          const manual = () => { ta.focus(); ta.select(); if (msg) msg.textContent = '自動でコピーできませんでした。枠の文を選んであります。Ctrl+C でコピーしてください'; };
+          try {
+            if (!navigator.clipboard || !navigator.clipboard.writeText || !t) throw new Error('no clipboard');
+            navigator.clipboard.writeText(ta.value).then(() => { if (msg) msg.textContent = 'コピーしました'; }, manual);
+          } catch (err) { manual(); }
         } else if (a === 'try-ex') { tryExample();
         } else if (a === 'to-compare-now') { compareNow();
         } else if (a === 'clear-pair') { F.pair = null; F.onlyPair = false; F.ver++; render(); }
@@ -1022,6 +1103,12 @@ const Find = (() => {
       }
       if (card) select(card.dataset.t, { fly: true });
     });
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('.f-tip');
+      if (b && b.closest('#find-view, #find-right')) { toggleTip(b); return; }
+      if (!(e.target.closest && e.target.closest('.f-tipbox'))) closeTips(null);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTips(null); });
     q('#find-right').addEventListener('change', (e) => { if (e.target.id === 'f-onlypair') { F.onlyPair = e.target.checked; F.ver++; render(); } });
     q('#find-right').addEventListener('keydown', (e) => {
       const card = e.target.closest && e.target.closest('.f-card');

@@ -30,26 +30,34 @@ TAX_EX = "税抜"
 TAX_IN = "税込"
 
 
+MAX_NUMBER = Decimal(10) ** 15  # これ以上の絶対値は数として受けない（1e400 や 400 桁の数を、計算にも文にも通さない）
+
+
 def to_decimal(value: Any) -> Decimal | None:
     """数値を Decimal にする。None・真偽値・数値以外は None。float は文字列経由で変換する。"""
     if value is None or isinstance(value, bool):
         return None
     if isinstance(value, Decimal):
-        return value if value.is_finite() else None
+        return value if value.is_finite() and abs(value) < MAX_NUMBER else None
+    if isinstance(value, int) and value.bit_length() > 60:
+        return None  # 桁数の多い整数は文字列にせず断る（Python の整数→文字列の桁数の上限にも当たらないように）
     if isinstance(value, (int, float)):
         d = Decimal(str(value))
-        return d if d.is_finite() else None  # Infinity・NaN は数として受けない（r1b #11）
+        return d if d.is_finite() and abs(d) < MAX_NUMBER else None  # Infinity・NaN・巨大な数は数として受けない（r1b #11、r3b P1-3）
     return None
 
 
 def parse_number_text(value: Any) -> Decimal | None:
     """数か、数の文字列（全角の数字・空白も NFKC で半角にして読む）を有限の Decimal にする。読めなければ None（r1a F11）。"""
     if isinstance(value, str):
+        t = unicodedata.normalize("NFKC", value).strip()
+        if len(t) > 40 or "e" in t.lower():
+            return None  # 「1e400」のような指数の書き方と、桁の多すぎる文字列は数として受けない
         try:
-            d = Decimal(unicodedata.normalize("NFKC", value).strip())
+            d = Decimal(t)
         except ArithmeticError:
             return None
-        return d if d.is_finite() else None
+        return d if d.is_finite() and abs(d) < MAX_NUMBER else None
     return to_decimal(value)
 
 

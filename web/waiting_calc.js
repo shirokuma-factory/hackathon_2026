@@ -131,6 +131,11 @@ const WaitingShared = (() => {
       '荷主の確認の有無': '_ignore', '荷主の確認': '_ignore', '確認の有無': '_ignore', '備考': '_ignore',
       '附帯業務開始日時': '_ignore', '附帯業務終了日時': '_ignore', '附帯業務の開始日時': '_ignore', '附帯業務の終了日時': '_ignore',
       '荷役のあとの待ちを荷主等の都合として数える': 'post_wait', '荷役のあとの待ちを数える': 'post_wait', '荷役のあとの待ち': 'post_wait', '荷役後の待ち': 'post_wait',
+      // 現場のメモの言葉（SPEC §41）。積み始め・積み終わり・積んだ人、受付の時刻、荷主が自社の受付記録を貼るときの運送会社・施設
+      '積み始め': 'start', '積始め': 'start', '積み始め時刻': 'start', '積み終わり': 'end', '積み終り': 'end', '積終わり': 'end', '積み終わり時刻': 'end',
+      '積んだ人': 'handler', '荷役者': 'handler', '作業者': 'handler', '荷役した人': 'handler', '積んだ人名': 'handler',
+      '受付': 'reception', '受付時刻': 'reception', '受付時間': 'reception', '受付日時': 'reception',
+      '運送会社': 'partner', '運送事業者': 'partner', '運送業者': 'partner', '施設': 'place', '施設名': 'place', '拠点': 'place',
   };
   const CLASS_ALIASES = {
     '小型': '小型', '小型車': '小型', '中型': '中型', '中型車': '中型', '大型': '大型', '大型車': '大型',
@@ -148,10 +153,21 @@ const WaitingShared = (() => {
   const MAX_ROWS = 5000;
   // 日時の欄（「2026/10/05 9:00」「10/5 9:00」「R8.10.5 9時00分」）の、時刻の前の日付の部分
   const DT_PREFIX = '(?:[0-9令和平成昭和元RHSrhs/\\-年月日.]+(?: ?\\([月火水木金土日祝]+\\))? )?';
-  const DT_SPLIT = new RegExp('^([0-9令和平成昭和元RHSrhs/\\-年月日.]+(?: ?\\([月火水木金土日祝]+\\))?) ((?:[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?)|(?:[0-9]{1,2}時(?:[0-9]{1,2}分?)?))$');
+  const DT_SPLIT = new RegExp('^([0-9令和平成昭和元RHSrhs/\\-年月日.]+(?: ?\\([月火水木金土日祝]+\\))?) ((?:[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?)|(?:[0-9]{1,2}時(?:[0-9]{1,2}分?|半)?))$');
   const POS_NOTE = '見出しの行が無いので、列の順（日付、車番、車種、契約の相手、場所、到着、荷役開始、荷役終了、出発、荷役をした人、荷役の方法、荷主等の都合）で読みました';
   const UNKNOWN_HANDLER = '不明';
   const UNKNOWN_HANDLER_NOTE = '荷役をした人が分からないので、荷役の時間は待機にも積込料にも入れていません';
+  // 契約の相手の列として黙って読んではいけない見出し（荷主は着荷主のことがある）。読んだときは asks に入れて、画面で確かめる
+  const ASK_PARTNER_HEADERS = new Set(['荷主', '荷主名']);
+  const ASK_PARTNER = 'partner_from_shipper';
+  // 早着: 指定の到着時刻が無く、到着がこの範囲（5:00〜7:59）のとき「早着の疑い」。指定があって実際の到着が指定より前のときは、指定の時刻から数える
+  const EARLY_FROM_MIN = 5 * 60, EARLY_UNTIL_MIN = 8 * 60;
+  const DRIVER_LABEL = '荷待ち記録';
+  // ドライバーの 1 枚（web/driver.html）が LINE に貼る文の言葉 → 入力の列
+  const DRIVER_KEYS = { '着': 'arrive', '到着': 'arrive', '受付': 'reception', '荷役開始': 'start', '積込開始': 'start', '開始': 'start',
+    '終了': 'end', '荷役終了': 'end', '積込終了': 'end', '出発': 'depart', '車番': 'vehicle_no', '相手': 'partner', '荷主': 'partner',
+    '車種': 'vehicle_class', '指定': 'appointed', '指定時刻': 'appointed', '荷役': 'handler' };
+  const DRIVER_DATE = /^(?:[0-9]{4}[/.\-])?[0-9]{1,2}(?:\/|月)[0-9]{1,2}日?(?:\([月火水木金土日祝]+\))?$/;
 
   /* ---------------------------------------------------------------- 計算（waiting.py と同じ） */
   const norm = (s) => String(s == null ? '' : s).trim();
@@ -173,7 +189,7 @@ const WaitingShared = (() => {
     let h, mi, sec;
     let m = new RegExp(`^${DT_PREFIX}([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?$`).exec(t);
     if (m) { h = Number(m[1]); mi = Number(m[2]); sec = Number(m[3] || 0); }
-    else if ((m = new RegExp(`^${DT_PREFIX}([0-9]{1,2})時(?:([0-9]{1,2})分?)?$`).exec(t))) { h = Number(m[1]); mi = Number(m[2] || 0); sec = 0; }
+    else if ((m = new RegExp(`^${DT_PREFIX}([0-9]{1,2})時(?:([0-9]{1,2})分?|半)?$`).exec(t))) { h = Number(m[1]); mi = t.endsWith('半') ? 30 : Number(m[2] || 0); sec = 0; }
     else if ((m = /^([0-9]{1,2})([0-9]{2})$/.exec(t))) { h = Number(m[1]); mi = Number(m[2]); sec = 0; }
     else return null;
     if (h > 23 || mi > 59 || sec > 59) return null;
@@ -228,10 +244,53 @@ const WaitingShared = (() => {
   // Excel から貼り付けたタブ区切りを行にする（waiting.py の parse_paste_ex と同じ）。
   // 見出しがあれば見出しの名前で読み、読まなかった見出しは notes に名前を書く。見出しの行が無いときだけ列の順で読み、notes に書く。
   // 見出しがあって「荷主等の都合」の欄が無い、または見出しが無くてどの行にも欄が無いときは、全部の行を はい にして defaulted に印を付ける
+  const nzLines = (text) => String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((ln) => ln.trim()).map(nz);
+
+  // ドライバーの 1 枚（web/driver.html）が LINE に貼る文を行にする（SPEC §41。waiting.py の parse_driver_text と同じ）。
+  // 1 件 =「荷待ち記録 11/10 江東区 ○○倉庫 着 7:50 受付 8:05 荷役開始 9:40 終了 10:30 出発 10:40 車番 1234 相手 ○○」の形（1 行）。
+  // 日付の次から最初の言葉までが場所。言葉の順は問わない。1 件は行の終わりか次の「荷待ち記録」で終わる
+  function parseDriverText(text) {
+    const rows = [];
+    for (const line of nzLines(text)) {
+      for (const seg of line.split(DRIVER_LABEL).slice(1)) {
+        const toks = seg.split(' ').filter(Boolean);
+        if (!toks.length) continue;
+        const r = {};
+        let i = 0;
+        if (DRIVER_DATE.test(toks[0])) { r.date = toks[0].replace(/\([月火水木金土日祝]+\)$/, ''); i = 1; }
+        const place = [];
+        while (i < toks.length && !has(DRIVER_KEYS, toks[i])) place.push(toks[i++]);
+        if (place.length) r.place = place.join(' ');
+        while (i < toks.length) {
+          const key = DRIVER_KEYS[toks[i++]];
+          const val = [];
+          while (i < toks.length && !has(DRIVER_KEYS, toks[i])) val.push(toks[i++]);
+          const v = val.join(' ');
+          if (v && !['-', 'ー', 'なし'].includes(v)) r[key] = v;
+        }
+        if (r.end && !r.handler) r.handler = UNKNOWN_HANDLER;
+        rows.push(r);
+      }
+    }
+    return rows;
+  }
+  const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+
   function parsePasteFull(text) {
     const lines = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((ln) => ln.trim());
-    if (!lines.length) return { rows: [], defaulted: [], notes: [] };
-    const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+    const asks = [];
+    if (!lines.length) return { rows: [], defaulted: [], notes: [], asks: [] };
+    if (nz(text).includes(DRIVER_LABEL) && !lines.some((ln) => ln.includes(String.fromCharCode(9)))) {   // タブのある貼り付けは Excel の表（表題に「荷待ち記録」とあっても表として読む）
+      const drows = parseDriverText(text);
+      const defaulted = [], notes = [];
+      if (drows.length) {
+        notes.push(`ドライバーの記録（荷待ち記録）を読みました（${drows.length} 件）。『相手』を契約の相手として読んでいます`);
+        if (drows.some((r) => r.partner)) asks.push(ASK_PARTNER);
+        drows.forEach((r) => { r.shipper_fault = 'はい'; });
+        defaulted.push('shipper_fault');
+      }
+      return { rows: drows, defaulted, notes, asks };
+    }
     const notes = [];
     let cols = COLUMNS.slice();
     let body = lines, header = false;
@@ -242,6 +301,7 @@ const WaitingShared = (() => {
       header = true;
       const mapped = first.map((c) => (has(HEADER_ALIASES, c) ? HEADER_ALIASES[c] : null));
       cols = mapped.map((c) => (c && c !== '_ignore' ? c : ''));   // 読まない列・知らない列は '' にして、行に入れない
+      if (mapped.some((c, i) => c === 'partner' && ASK_PARTNER_HEADERS.has(first[i]))) asks.push(ASK_PARTNER);
       const seen = new Set();
       rawFirst.forEach((raw, i) => {
         const name = nz(raw);
@@ -262,6 +322,11 @@ const WaitingShared = (() => {
           if (d) { r.date = d; break; }
         }
       }
+    }
+    // 到着の列が無く受付の列があるとき（荷主が自社の受付記録を貼る使い方）は、受付の時刻を到着として読む
+    if (header && !cols.includes('arrive') && cols.includes('reception')) {
+      for (const r of rows) if (r.reception) { r.arrive = r.reception; delete r.reception; }
+      notes.push('到着の列が無いので、受付の時刻を到着として読みました（荷主の受付記録の使い方。受付の前に着いて待った時間は入りません）');
     }
     // 荷役をした人の列が無いとき: 荷役作業等の内容があれば運転者（法定の記録は運転者自身の荷役）、無ければ不明
     if (header && !cols.includes('handler')) {
@@ -285,16 +350,18 @@ const WaitingShared = (() => {
       rows.forEach((r) => { r.shipper_fault = 'はい'; });
       defaulted.push('shipper_fault');
     }
-    return { rows, defaulted, notes };
+    return { rows, defaulted, notes, asks };
   }
   const parsePaste = (text) => parsePasteFull(text).rows;
 
   const ceilDiv = (a, b) => (a > 0 ? Math.ceil(a / b) : 0);
 
-  function calcRow(n, raw, year, tariff) {
+  function calcRow(n, raw, year, tariff, defaults) {
     const errs = [];
     const g = {};
     for (const k of COLUMNS) g[k] = norm(raw[k]);
+    defaults = defaults || {};
+    const used = [];   // 空欄を既定の値で計算した欄（SPEC §41）
 
     let d = null;
     if (!g.date) errs.push('日付がありません');
@@ -307,7 +374,8 @@ const WaitingShared = (() => {
     }
 
     let vclass = null;
-    if (!g.vehicle_class) errs.push('車種がありません');
+    if (!g.vehicle_class && defaults.vehicle_class) { vclass = defaults.vehicle_class; used.push('vehicle_class'); }
+    else if (!g.vehicle_class) errs.push('車種がありません');
     else {
       vclass = normalizeClass(g.vehicle_class);
       if (vclass === null) errs.push(`車種「${g.vehicle_class}」を読めません（小型（2t）/ 中型（4t）/ 大型（10t）/ トレーラー）`);
@@ -326,6 +394,8 @@ const WaitingShared = (() => {
     const end = needTime('end', '荷役終了', false);
     const depart = needTime('depart', '出発', false);
     const appointed = needTime('appointed', '指定の到着時刻', false);
+    const receptionRaw = norm(raw.reception);   // 受付の時刻（記録の一覧に出すだけ。計算には使わない。読めないときは行を落とさず注記する）
+    const reception = receptionRaw ? parseTime(receptionRaw) : null;
     let sideMin = 0;
     if (g.side_min) {
       if (/^[0-9]{1,4}$/.test(nz(g.side_min))) sideMin = Number(nz(g.side_min));
@@ -333,8 +403,8 @@ const WaitingShared = (() => {
     }
 
     let handler = nz(g.handler);
-    if (handler === '荷主' || handler === '荷主側') handler = '荷主側';
-    else if (handler === '運転者' || handler === 'ドライバー' || handler === '運転手') handler = '運転者';
+    if (['荷主', '荷主側', '先方', '客先', '倉庫側'].includes(handler)) handler = '荷主側';
+    else if (['運転者', 'ドライバー', '運転手', '自分', '自社'].includes(handler)) handler = '運転者';
     else if (handler === UNKNOWN_HANDLER) { /* 荷役をした人の列が無い貼り付け。行は残し、荷役の時間は数えない（下で注記） */ }
     else if (handler) { errs.push(`荷役をした人「${handler}」を読めません（運転者 / 荷主側）`); handler = ''; }
     const hasHandling = !!g.end;
@@ -347,7 +417,8 @@ const WaitingShared = (() => {
     if (['フォークリフト', 'フォークリフト等', 'フォーク', '機械'].includes(method)) method = 'フォークリフト等';
     const hasMethod = (m) => Object.prototype.hasOwnProperty.call(tariff.handling, m);
     if (handler === '運転者') {
-      if (!method) errs.push('運転者が荷役をしたときは、荷役の方法（手積み / フォークリフト等）が必要です');
+      if (!method && defaults.method) { method = defaults.method; used.push('method'); }
+      else if (!method) errs.push('運転者が荷役をしたときは、荷役の方法（手積み / フォークリフト等）が必要です');
       else if (!hasMethod(method)) { errs.push(`荷役の方法「${g.method}」を読めません（手積み / フォークリフト等）`); method = ''; }
     } else if (method && !hasMethod(method)) method = '';
 
@@ -463,6 +534,11 @@ const WaitingShared = (() => {
     const handlingFee = hnUnits * hnRate + hoUnits * hoRate;
 
     const rowNotes = handler === UNKNOWN_HANDLER && end !== null ? [UNKNOWN_HANDLER_NOTE] : [];
+    if (receptionRaw && reception === null) rowNotes.push(`受付「${receptionRaw}」を読めなかったので、受付の時刻は書面に出していません`);
+    // 早着（SPEC §41）。指定の到着時刻があって到着が指定より前: 指定の時刻から数えている。指定が無く 5:00〜7:59 の到着: 早着の疑い（別に数える）
+    let early = '';
+    if (appointed !== null && base > 0) early = 'designated';
+    else if (appointed === null && arrive >= EARLY_FROM_MIN && arrive < EARLY_UNTIL_MIN) early = 'assumed';
     if (waitRaw >= 1440) rowNotes.push(LONG_WAIT_NOTE);
     return {
       res: {
@@ -478,6 +554,9 @@ const WaitingShared = (() => {
         amount: waitFee + handlingFee,
         over_1h: w >= 60, over_2h_total: (w + driverHandlingMin) >= thr,
         has_side_work: !!g.side_work || sideMin > 0,
+        ...(reception !== null ? { reception: fmtTime(reception) } : {}),
+        ...(early ? { early_arrival: early } : {}),
+        ...(used.length ? { defaults_used: used } : {}),
         ...(rowNotes.length ? { notes: rowNotes } : {}),
       },
       errs: [],
@@ -501,19 +580,28 @@ const WaitingShared = (() => {
     for (const [name, rs] of by) {
       const months = [...new Set(rs.map((r) => r.month))].sort(cmp).map((m) => ({ month: m, ...sumRows(rs.filter((r) => r.month === m)) }));
       const dates = rs.map((r) => r.date).sort(cmp);
-      out.push({ partner: name, ...sumRows(rs), over_1h_share: pct(rs.filter((r) => r.over_1h).length, rs.length), date_from: dates[0], date_to: dates[dates.length - 1], months });
+      const early = rs.filter((r) => r.early_arrival === 'assumed');
+      out.push({ partner: name, ...sumRows(rs), early_assumed_count: early.length, early_assumed_wait_minutes: early.reduce((a, r) => a + r.wait_min, 0),
+        early_assumed_amount: early.reduce((a, r) => a + r.amount, 0), early_designated_count: rs.filter((r) => r.early_arrival === 'designated').length, over_1h_share: pct(rs.filter((r) => r.over_1h).length, rs.length), date_from: dates[0], date_to: dates[dates.length - 1], months });
     }
     out.sort((a, b) => (b.amount - a.amount) || cmp(a.partner, b.partner));
     return out;
   }
 
-  function calc(rows, year, tariff) {
+  // defaults（任意）: { vehicle_class: '中型', method: '手積み' }。車種が空欄の行、運転者が荷役をして荷役の方法が空欄の行を、行を落とさずこの値で計算し、
+  // 行に defaults_used を付ける。渡さないときは、空欄の行は誤りになる（waiting.py の calc と同じ）
+  function calc(rows, year, tariff, defaults) {
+    const dfl = {};
+    if (defaults) {
+      if (has(tariff.waiting.normal, defaults.vehicle_class)) dfl.vehicle_class = defaults.vehicle_class;
+      if (has(tariff.handling, defaults.method)) dfl.method = defaults.method;
+    }
     if (rows.length > MAX_ROWS) throw new Error(`行が多すぎます（${MAX_ROWS.toLocaleString('ja-JP')} 行まで）`);
     const done = [], errors = [];
     rows.forEach((raw, i) => {
       const n = i + 1;
       if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) { errors.push({ row: n, message: '行の形が正しくありません' }); return; }
-      const { res, errs } = calcRow(n, raw, year, tariff);
+      const { res, errs } = calcRow(n, raw, year, tariff, dfl);
       if (res === null) errs.forEach((e) => errors.push({ row: n, message: e })); else done.push(res);
     });
     return { rows: done, by_partner: aggregate(done), hotspots: hotspots(done), by_place_month: byPlaceMonth(done), errors };
@@ -521,7 +609,7 @@ const WaitingShared = (() => {
 
 
   return {
-    HEADER_ALIASES, headerKey, COLUMNS, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
+    HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
     BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE, CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE,
   };
 })();
