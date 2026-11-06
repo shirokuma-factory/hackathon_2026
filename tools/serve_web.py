@@ -875,6 +875,10 @@ class Handler(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         self.send_header("Cache-Control", self._cc or "no-store")
         self._cc = None
+        # ブラウザ向けの保護の見出し（SPEC §44）: 種類の推測をさせない、ほかのサイトの枠に入れさせない、行き先に URL を渡さない
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         super().end_headers()
 
     def _enter(self) -> None:

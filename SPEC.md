@@ -1661,3 +1661,9 @@ Blender で作った glTF（`web/models/*.glb`）を、拡大したときだけ 
 | G188 | 矢印・AM/PM・改行・空コン・降ろし地の欠け・指数の重さ・都道府県つきの地名・月ごとの集計が Python と JS で同じ（`tests/test_v43_own_read.py`） |
 | G189 | 組ごとの曜日の表、毎週の書き分け、明日の空き、成約単価、件数と参考、ファイルを外す、最大積載量が開き直しても残る（`tests/test_v43_own_screen.py`） |
 | G190 | 受付から数えた額、メモと紙の表の読み取り、日を選ぶコピー、重さの整数の合計、2t の高さ、3 社の契約単価、読み直し（`tests/test_v43_waiting_compare.py`） |
+
+## 44 公開版（Cloud Run、2026-11-06）
+
+- 作成者の判断で、地図の画面を Cloud Run に公開した（`docs/DEPLOY.md` の設定。同時に 1 台まで、使われていない間は 0 台）。URL: https://backfull-demo-720575644376.asia-northeast1.run.app/ 。同じ URL の下に `own_lite.html`（自社の運行の 1 枚）、`driver.html`、`waiting.html`、`compare_lite.html` がある。
+- 予算の通知（1,000 円の 50%・90%・100%）を作成者が設定した。
+- サーバーは、すべての応答に `X-Content-Type-Options: nosniff`、`X-Frame-Options: SAMEORIGIN`、`Referrer-Policy: strict-origin-when-cross-origin` を付ける。
