@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>いまの大型車</title>
+<meta name="description" content="国土交通省の交通量 API をもとに、全国の直轄国道で大型車がどこをどれだけ通っているかを、およそ20分遅れで見る試作です。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root {
+  --bg: #f6f7f8; --panel: #ffffff; --ink: #1f2933; --sub: #5f6b76; --line: #d9dee3;
+  --hue: #1d5e8c; --hue-light: #dbe9f3; --warn: #b4540a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font-family: 'Noto Sans JP', sans-serif; font-size: 14px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+.app { display: grid; grid-template-columns: minmax(0, 65fr) minmax(360px, 35fr); height: 100vh; }
+.mapwrap { position: relative; min-height: 0; }
+#map { position: absolute; inset: 0; }
+.side { overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 16px 20px 24px; }
+h1 { margin: 0; font-size: 22px; font-weight: 700; }
+.sub { margin: 4px 0 0; color: var(--sub); font-size: 13px; }
+.nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+.num { border-top: 2px solid var(--ink); padding-top: 6px; }
+.num .v { font-size: 26px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num .v small { font-size: 12px; font-weight: 400; color: var(--sub); }
+.num .l { font-size: 12px; color: var(--sub); }
+h2 { margin: 18px 0 6px; font-size: 14px; font-weight: 700; }
+#chart { width: 100%; height: 190px; display: block; }
+#chart text { font-size: 10px; fill: var(--sub); font-family: inherit; }
+.legend-row { display: flex; gap: 14px; font-size: 12px; color: var(--sub); margin-top: 2px; flex-wrap: wrap; }
+.legend-row i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 4px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: right; font-weight: 400; }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 12px; color: var(--sub); position: sticky; top: 0; background: var(--panel); }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--hue-light); }
+tbody tr.sel { background: var(--hue-light); font-weight: 700; }
+tbody tr:focus-visible { outline: 2px solid var(--hue); outline-offset: -2px; }
+.tablewrap { max-height: 360px; overflow-y: auto; border-top: 1px solid var(--line); }
+footer { margin-top: 18px; font-size: 12px; color: var(--sub); }
+footer p { margin: 0 0 4px; }
+details { margin-top: 8px; }
+summary { cursor: pointer; }
+details ul { margin: 6px 0 0; padding-left: 18px; }
+code { background: var(--bg); padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+#tip { position: absolute; z-index: 5; pointer-events: none; background: rgba(255,255,255,0.97); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 12px; line-height: 1.5; box-shadow: 0 1px 4px rgba(0,0,0,0.15); display: none; max-width: 260px; font-variant-numeric: tabular-nums; }
+#legend { position: absolute; left: 12px; bottom: 28px; z-index: 4; background: rgba(255,255,255,0.95); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 11px; color: var(--sub); }
+#legend .bar { width: 160px; height: 8px; margin: 3px 0; background: linear-gradient(to right, #e3eef6, #1d5e8c); }
+#legend .ends { display: flex; justify-content: space-between; }
+#legend .dots { margin-top: 4px; }
+#legend .dots i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+#err { display: none; margin: 12px 0; padding: 8px 10px; border: 1px solid var(--warn); color: var(--warn); border-radius: 4px; }
+@media (max-width: 800px) {
+  .app { display: block; height: auto; }
+  .mapwrap { height: 60vh; }
+  .side { border-left: 0; border-top: 1px solid var(--line); overflow: visible; padding: 14px 16px 24px; }
+  .nums { gap: 8px; }
+  #legend { left: auto; right: 8px; bottom: auto; top: 8px; }
+  .num .v { font-size: 21px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="mapwrap">
+    <div id="map"></div>
+    <div id="tip"></div>
+    <div id="legend"></div>
+  </div>
+  <main class="side">
+    <h1>いまの大型車</h1>
+    <p class="sub" id="sub">読み込み中です</p>
+    <div id="err" role="alert"></div>
+    <div class="nums">
+      <div class="num"><div class="v" id="n-obs">-</div><div class="l">観測できた地点</div></div>
+      <div class="num"><div class="v" id="n-avg">-</div><div class="l">全国の1地点あたり大型車</div></div>
+      <div class="num"><div class="v" id="n-week">-</div><div class="l">先週の同じ時刻との比</div></div>
+    </div>
+    <h2>大型車の台数の推移（1地点あたり、台/時）</h2>
+    <svg id="chart" role="img" aria-label="24時間の大型車の台数の推移"></svg>
+    <div class="legend-row" id="chart-legend"></div>
+    <h2>都道府県別（1地点あたりの大型車が多い順）</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>都道府県</th><th>1地点あたり 台/時</th><th>地点数</th><th>先週比</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <footer>
+      <p id="attr1"></p>
+      <p id="attr2"></p>
+      <details><summary>数字の読み方と注意</summary><ul id="notes"></ul></details>
+      <details><summary>更新のしかた</summary>
+        <p>データは次のコマンドで更新します。20分以上の間隔であけて繰り返します。</p>
+        <p><code>uv run python tools/fetch_trucks_now.py --loop 20</code></p>
+      </details>
+    </footer>
+  </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
+<script src="trucks_now.js"></script>
+</body>
+</html>
