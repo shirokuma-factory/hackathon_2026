@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -167,19 +165,13 @@ def test_spec18_ui_p31_output_path_is_gitignored():
 
 
 def build_path_is_ignored(rel: str) -> bool:
-    git = shutil.which("git")
-    if not git:
-        pytest.skip("git がありません")
-    r = subprocess.run([git, "check-ignore", "-q", "--no-index", rel], cwd=ROOT, capture_output=True)
-    return r.returncode == 0
+    from conftest import git_run
+    return git_run("check-ignore", "-q", "--no-index", rel, ok_codes=(0, 1)).returncode == 0
 
 
 def test_spec18_ui_no_p31_file_is_tracked():
-    git = shutil.which("git")
-    if not git:
-        pytest.skip("git がありません")
-    r = subprocess.run([git, "ls-files"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
-    assert r.returncode == 0
+    from conftest import git_run
+    r = git_run("ls-files")
     bad = [f for f in r.stdout.splitlines() if "p31" in f.lower() and f != "tools/fetch_p31.py"]
     assert bad == [], bad
     assert not [f for f in r.stdout.splitlines() if f.startswith("web/data/local/")]

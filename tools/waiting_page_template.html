@@ -7,9 +7,9 @@
 <title>荷待ち・荷役の記録から協議の書面を作る</title>
 <!-- このファイルは tools/build_waiting_page.py が tools/waiting_page_template.html から作ります。直すときはテンプレートを直してください。 -->
 <style>
-:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #7a8393; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --warn-bg: #fdecea; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #8791a3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a90; --warn-bg: #3a1f1d; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; color-scheme: dark; } }
-:root[data-theme="dark"] { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #8791a3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a90; --warn-bg: #3a1f1d; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; color-scheme: dark; }
+:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #626b7c; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --warn-bg: #fdecea; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #97a1b3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a90; --warn-bg: #3a1f1d; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #97a1b3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a90; --warn-bg: #3a1f1d; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; color-scheme: dark; }
 * { box-sizing: border-box; }
 body { margin: 0; padding-block: 0 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--bg); color: var(--text); font: 14px/1.65 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; overflow-wrap: anywhere; }
 [hidden] { display: none !important; }
@@ -119,7 +119,7 @@ body.selftest #selftest { display: block; }
 /*PRINT-START*/
 @page { size: A4 portrait; margin: 12mm; }
 @media print {
-  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #7a8393; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --warn-bg: #fdecea; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; color-scheme: light; }
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #626b7c; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --warn-bg: #fdecea; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; color-scheme: light; }
   /* 書面だけを A4 縦に流す。隠すものは display:none にして、余白の白紙ページが出ないようにする */
   html, body { background: #fff; margin: 0; padding: 0; }
   header.top, .protect, #selftest, .col-in, #partners, #draft-area > h2, #draft-area > .bar, aside#process { display: none !important; }

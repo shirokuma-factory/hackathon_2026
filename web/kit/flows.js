@@ -7,7 +7,7 @@
   const { esc, merge, hasLL, finite, lerp, uid } = Kit.util;
 
   const DEFAULTS = {
-    colors: { base: [92, 200, 255], bright: [255, 214, 102] },
+    colors: Kit.palette.flows,
     width: { min: 2, max: 16 },
     names: true,
     fit: true,

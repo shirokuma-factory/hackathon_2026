@@ -7,8 +7,8 @@
   const { esc, merge, hasLL, finite, uid } = Kit.util;
 
   const DEFAULTS = {
-    colors: { loaded: [92, 200, 255, 240], empty: [244, 150, 70, 245], unknown: [150, 162, 180, 215] },
-    labels: { loaded: '実車', empty: '空車', unknown: '不明' },
+    colors: Kit.palette.legs.colors,
+    labels: Kit.palette.legs.labels,
     width: { base: 1.8, perTrip: 0.16, max: 9 },
     names: true,
     fit: true,

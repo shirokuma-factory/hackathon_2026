@@ -17,12 +17,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import geo
-from .tariffs import deck_2t
-
-_DECK_2T = deck_2t()
+from .tariffs import deck_view, load_vehicle_decks
 from .estimate import kashikiri_fares, round_yen
-from .models import to_decimal
+from .models import parse_number_text, to_decimal
 from .tariffs import KASHIKIRI_REGION_FILES, data_dir, load_kashikiri
+
+DECK_IDS = dict(load_vehicle_decks()["tariff_class_deck"])  # 車格 → 荷台の ID（data/vehicle_decks.json）
 
 SPACE_TYPES = ("free_bed", "inside_rb_upper", "above_rb_rear", "shelf_container")
 SHELF_TYPES = ("above_rb_rear", "shelf_container")  # 棚の耐荷重を持つ形（形 2・3）
@@ -145,8 +145,10 @@ def parse_shipment(body: dict[str, Any]) -> BShipment:
             raise ValueError(f"荷物{n}行目の個数は1以上の整数で入れてください")
         vals = {}
         for key, label in (("length_cm", "縦"), ("width_cm", "横"), ("height_cm", "高さ"), ("weight_kg", "1個の重さ")):
-            d = to_decimal(it.get(key))
-            if d is None or d <= 0:
+            d = parse_number_text(it.get(key))
+            if d is None:
+                raise ValueError(f"荷物{n}行目の{label}は数で入れてください（数字だけ。全角の数字は半角に直して読みます）")
+            if d <= 0:
                 raise ValueError(f"荷物{n}行目の{label}は0より大きい数で入れてください")
             vals[key] = d
         pieces.append(Piece(count, vals["length_cm"] * 10, vals["width_cm"] * 10, vals["height_cm"] * 10,
@@ -218,15 +220,17 @@ def _depart_dt(trip: dict[str, Any]) -> datetime | None:
 def _trip_floor(trip: dict[str, Any]) -> Any:
     """便の床の空き m²（登録値）。floor_free_m2 があればそれ。
 
-    SPEC §34.1・SPEC §38 S1: 棚の形（SHELF_TYPES）と RB の中の上段は、車全体の床ではなく 1 口の底面（unit_footprint_mm の積）
-    × 口の数（units、無ければ 1）が上限。それ以外の形は車の床の総面積 floor_total_m2。どちらも無ければ None。
+    SPEC §34.1・SPEC §38 S1・r1b #4: floor_free_m2 が無い便は、車全体の床ではなく 1 口の底面（unit_footprint_mm の積）
+    × 口の数（units、無ければ 1）が上限（車の床の総面積 floor_total_m2 を超えない）。
+    底面も無ければ車の床の総面積。どちらも無ければ None。
     """
     if trip.get("floor_free_m2") is not None:
         return trip["floor_free_m2"]
-    if trip.get("space_type") in SHELF_TYPES + ("inside_rb_upper",) and trip.get("unit_footprint_mm"):
+    if trip.get("unit_footprint_mm"):
         fw, fd = (_dec(x) for x in trip["unit_footprint_mm"])
-        units = _dec(trip.get("units") or 1)
-        return fw * fd * units / Decimal(1_000_000)
+        area = fw * fd * _dec(trip.get("units") or 1) / Decimal(1_000_000)
+        total = trip.get("floor_total_m2")
+        return min(area, _dec(total)) if total is not None else area
     return trip.get("floor_total_m2")
 
 
@@ -423,7 +427,7 @@ class Board:
         d["remaining_floor_m2"] = float(cap.floor) if cap.floor is not None else None
         fl = _trip_floor(t)
         d["floor_free_m2"] = float(_dec(fl)) if fl is not None else None  # 床の空きの登録値（棚の形は 1 口の底面）。画面の分母
-        d["floor_is_unit"] = t.get("space_type") in SHELF_TYPES + ("inside_rb_upper",) and t.get("floor_free_m2") is None
+        d["floor_is_unit"] = bool(t.get("unit_footprint_mm")) and t.get("floor_free_m2") is None
         return d
 
     # --- 公開
@@ -652,14 +656,8 @@ LEAD_DISCOUNTS = tuple(Decimal(i) / 10 for i in range(0, 6))  # 0〜50% を 10% 
 
 
 def _num(v: Any) -> Decimal | None:
-    """数か、数の文字列を Decimal にする。読めなければ None。"""
-    if isinstance(v, str):
-        try:
-            d = Decimal(v.strip())
-        except ArithmeticError:
-            return None
-        return d if d.is_finite() else None
-    return to_decimal(v)
+    """数か、数の文字列（全角の数字も可）を Decimal にする。読めなければ None。"""
+    return parse_number_text(v)
 
 
 def trip_road_km(trip: dict[str, Any]) -> tuple[Decimal, str | None]:
@@ -752,16 +750,19 @@ MAX_REGISTERED = 10
 SELF_CARRIER_ID = "C9"
 SELF_CARRIER = {"id": SELF_CARRIER_ID, "name": "架空 自社", "note": "運送会社の役で登録した便の運送会社です（この来訪者の画面だけ）",
                 "tariff_region": "関東"}
+def _register_vehicle(deck_id: str, label: str, clear_height_mm: int, max_piece_kg: int, weight_slack_kg: int) -> dict[str, Any]:
+    """登録できる車の値。荷台の寸法・最大積載量・床の面積は data/vehicle_decks.json の公表例から作る（r1a F2。唯一の出どころ）。"""
+    d = deck_view(deck_id)
+    return {"label": label, "deck": deck_id, "max_load_kg": d["payload_kg"], "floor_total_m2": d["floor_m2"],
+            "footprint_mm": list(d["footprint_mm"]), "clear_height_mm": min(clear_height_mm, d["height_mm"]),
+            "max_piece_kg": max_piece_kg, "weight_slack_kg": weight_slack_kg}
+
+
 REGISTER_VEHICLES: dict[str, dict[str, Any]] = {
-    # floor_total_m2 は footprint_mm の積（SPEC §38 N3）。積付け（loadplan.py）の公表例の荷台（2t ≈ 5.5m²、10t ≈ 23.0m²）にそろえる
-    # 2t の荷台は data/vehicle_decks.json の 2t ショートの公表例にそろえる（洗い出し r1 N7。比べるページ・積付けと同じ値）
-    "2t": {"label": "架空 2t 箱車", "max_load_kg": 2000, "floor_total_m2": _DECK_2T["floor_m2"],
-           "footprint_mm": list(_DECK_2T["footprint_mm"]),
-           "clear_height_mm": min(1800, _DECK_2T["height_mm"]), "max_piece_kg": 150, "weight_slack_kg": 1000},
-    "4t": {"label": "架空 4t ウイング", "max_load_kg": 3500, "floor_total_m2": 12.0, "footprint_mm": [6000, 2000],
-           "clear_height_mm": 2100, "max_piece_kg": 300, "weight_slack_kg": 2000},
-    "10t": {"label": "架空 10t ウイング", "max_load_kg": 9000, "floor_total_m2": 23.04, "footprint_mm": [9600, 2400],
-            "clear_height_mm": 2300, "max_piece_kg": 500, "weight_slack_kg": 4500},
+    # floor_total_m2・footprint_mm・max_load_kg は data/vehicle_decks.json から（比べるページ・積付け・地図のデモの便 T7 と同じ値。SPEC §38 N3・§39）
+    "2t": _register_vehicle(DECK_IDS["2t"], "架空 2t 箱車", 1800, 150, 1000),
+    "4t": _register_vehicle(DECK_IDS["4t"], "架空 4t ウイング", 2100, 300, 2000),
+    "10t": _register_vehicle(DECK_IDS["10t"], "架空 10t ウイング", 2300, 500, 4500),
 }
 KINKI_PREFS = ("福井県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県")
 REGISTER_PRICE_BASIS = ("国の個建運賃の式の既定値（基準積載率 70%、リードタイムの割引 0%）で、いまの荷を載せたときの参考額です。"
@@ -824,6 +825,14 @@ def build_registered_trip(body: dict[str, Any], now: datetime | None = None) -> 
     if not ((fw <= vl and fd <= vw) or (fd <= vl and fw <= vw)):
         raise ValueError(f"この車種の荷台は {veh['footprint_mm'][0]}×{veh['footprint_mm'][1]}mm・高さ {veh['clear_height_mm']}mm です。"
                          f"1口の底面 {_fmt(fw)}×{_fmt(fd)}mm は収まりません")
+    # r1b #4: 床の空きは、入れた値（床の空き m²）か、1口の底面 × 口の数（units、既定 1）。車の床全体は使わない
+    if body.get("floor_free_m2") not in (None, ""):
+        floor_free = _num_in(body.get("floor_free_m2"), "床の空き（m²）", 0.01, veh["floor_total_m2"])
+    else:
+        units = _num_in(body.get("units", 1), "口の数", 1, 100)
+        if units != units.to_integral_value():
+            raise ValueError("口の数は整数で入れてください")
+        floor_free = min(fw * fd * units / Decimal(1_000_000), Decimal(str(veh["floor_total_m2"])))
     height = _num_in(body.get("clear_height_mm"), "空きの高さ（mm）", 100, 4000)
     if height > Decimal(veh["clear_height_mm"]):
         raise ValueError(f"この車種の荷台は {veh['footprint_mm'][0]}×{veh['footprint_mm'][1]}mm・高さ {veh['clear_height_mm']}mm です。"
@@ -839,7 +848,7 @@ def build_registered_trip(body: dict[str, Any], now: datetime | None = None) -> 
         "origin_code": o, "dest_code": d, "depart_at": dep.strftime("%Y-%m-%dT%H:%M"), "arrive_at": arr.strftime("%Y-%m-%dT%H:%M"),
         "space_type": "free_bed", "clear_height_mm": int(height), "unit_footprint_mm": [int(fw), int(fd)],
         "max_load_kg": veh["max_load_kg"], "floor_total_m2": veh["floor_total_m2"],
-        "floor_free_m2": veh["floor_total_m2"],
+        "floor_free_m2": float(round(floor_free, 4)),
         "max_piece_kg": float(piece), "weight_slack_kg": float(slack), "drop_points": drops,
         "container_required": False, "rb_owner_consent": False, "max_upper_per_rb_kg": None,
         "shelf_fixed": False, "shelf_rated_kg": None, "price_unit": "1件", "refused_categories": [],

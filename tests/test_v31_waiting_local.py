@@ -9,15 +9,11 @@
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 import sys
-import tempfile
 import time
-import urllib.request
 from pathlib import Path
 
-import pytest
+from conftest import edge_page, fail_with_evidence, open_app
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -64,102 +60,25 @@ def test_point_average_uses_the_report_definition_in_the_script():
     assert "国への定期報告と同じ数え方" in MAP_JS
 
 
-def _edge_or_skip():
-    import capture_screens as cs
-    try:
-        return cs, cs.find_edge()
-    except Exception:  # noqa: BLE001
-        pytest.skip("Microsoft Edge が見つかりません")
-
-
-def _session(cs, edge, w, h):
-    profile = tempfile.mkdtemp(prefix="edge_profile_")
-    dbg = cs.free_port()
-    proc = subprocess.Popen(
-        [edge, "--headless=new", f"--remote-debugging-port={dbg}", f"--window-size={w},{h}", f"--user-data-dir={profile}", "--hide-scrollbars",
-         "--force-device-scale-factor=1", "--no-first-run", "--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader",
-         *cs.EDGE_CLEAN_FLAGS, "about:blank"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return proc, profile, dbg
-
-
-def _connect(cs, dbg):
-    targets = []
-    for _ in range(60):
-        try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{dbg}/json/list", timeout=2) as r:
-                targets = cs.blank_targets(json.load(r))
-            if targets:
-                break
-        except Exception:  # noqa: BLE001
-            pass
-        time.sleep(0.5)
-    if not targets:
-        pytest.fail("Edge のページ（about:blank）に接続できませんでした")
-    return cs.Page(targets[0]["webSocketDebuggerUrl"])
-
-
-def _wait_server(port, timeout=60):
-    """index.html が 200 を返すまで待つ。返らなければ失敗（飛ばさない）。"""
-    end = time.time() + timeout
-    err = None
-    while time.time() < end:
-        try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}/index.html", timeout=3) as r:
-                if r.status == 200:
-                    return
-        except Exception as e:  # noqa: BLE001
-            err = e
-        time.sleep(0.5)
-    pytest.fail(f"サーバーが {timeout} 秒以内に index.html を返しません: {err}")
-
-
-def _fail_with_evidence(page, what, exc):
-    """時間切れのとき、画面写真と window.__errs を残して失敗にする。"""
-    import base64
-    shot, errs = "", ""
-    try:
-        data = page.send("Page.captureScreenshot", format="png").get("data", "")
-        out = Path(tempfile.gettempdir()) / f"waiting_local_fail_{int(time.time())}.png"
-        out.write_bytes(base64.b64decode(data))
-        shot = str(out)
-    except Exception as e:  # noqa: BLE001
-        shot = f"(画面写真を取れません: {e})"
-    try:
-        errs = json.dumps(page.js("window.__errs || []"), ensure_ascii=False)
-    except Exception as e:  # noqa: BLE001
-        errs = f"(window.__errs を読めません: {e})"
-    pytest.fail(f"{what}: {exc} / 画面写真 {shot} / window.__errs {errs}")
-
-
 def _open_wait(page, port, w, h):
-    import capture_web as cw
-    page.send("Page.addScriptToEvaluateOnNewDocument", source=cw.ERR_HOOK)
-    page.send("Page.addScriptToEvaluateOnNewDocument", source=NET_HOOK)
-    page.send("Emulation.setDeviceMetricsOverride", width=w, height=h, deviceScaleFactor=1, mobile=False)
-    page.goto(f"http://localhost:{port}/index.html#v=own&ot=wait")
+    open_app(page, f"http://localhost:{port}/index.html#v=own&ot=wait", start_timeout=120, load_timeout=120, tag="waiting_local_fail")
     try:
-        page.wait(lambda: page.js("!!window.__app"), 60, "アプリの起動")
-        page.wait(lambda: page.js("!document.querySelector('#loading') || document.querySelector('#loading').classList.contains('done')"), 60, "読み込み")
         page.wait(lambda: page.js("!!document.querySelector('[data-w=example]')"), 60, "例を入れるボタン")
         page.js("document.querySelector('[data-w=example]').click()")
         page.wait(lambda: page.js("!!document.querySelector('#hotspots') && document.querySelectorAll('.wm-pt').length > 0"), 60, "表と点")
     except Exception as e:  # noqa: BLE001
-        _fail_with_evidence(page, "地図の画面が起動しません", e)
+        fail_with_evidence(page, "地図の画面の表と点が出ません", e, "waiting_local_fail")
     time.sleep(3.0)  # 地図の移動が終わるまで
 
 
-def test_g137_map_wait_tab_sends_nothing_to_the_waiting_api_and_numbers_match_g132():
-    cs, edge = _edge_or_skip()
+def _hooks():
     import capture_web as cw
+    return (cw.ERR_HOOK, NET_HOOK)
 
-    port = cs.free_port()
-    server = cw.serve(port)
-    _wait_server(port)
-    proc, profile, dbg = _session(cs, edge, 1920, 1080)
-    try:
-        time.sleep(1.5)
-        page = _connect(cs, dbg)
+
+def test_g137_map_wait_tab_sends_nothing_to_the_waiting_api_and_numbers_match_g132(local_server):
+    port = local_server
+    with edge_page(1920, 1080, hooks=_hooks()) as page:
         _open_wait(page, port, 1920, 1080)
         # 貼り付けも外に送らない
         page.js(PASTE_JS)
@@ -185,24 +104,11 @@ def test_g137_map_wait_tab_sends_nothing_to_the_waiting_api_and_numbers_match_g1
         assert {k: v for k, v in pts} == table
         assert "国への定期報告と同じ数え方" in page.js("document.querySelector('.wm-lg').textContent")
         assert not [u for u in page.js("window.__reqs") if "/api/waiting" in u]
-    finally:
-        cs.stop_tree(proc)
-        cs.stop_edge_profile(profile)
-        cs.stop_tree(server)
-        shutil.rmtree(profile, ignore_errors=True)
 
 
-def test_g141_15_points_stay_inside_the_map_and_clear_of_the_attribution_at_400px():
-    cs, edge = _edge_or_skip()
-    import capture_web as cw
-
-    port = cs.free_port()
-    server = cw.serve(port)
-    _wait_server(port)
-    proc, profile, dbg = _session(cs, edge, 400, 800)
-    try:
-        time.sleep(1.5)
-        page = _connect(cs, dbg)
+def test_g141_15_points_stay_inside_the_map_and_clear_of_the_attribution_at_400px(local_server):
+    port = local_server
+    with edge_page(400, 800, hooks=_hooks()) as page:
         _open_wait(page, port, 400, 800)
         info = page.js("""(function(){
           const at = document.querySelector('.maplibregl-ctrl-attrib').getBoundingClientRect();
@@ -215,8 +121,3 @@ def test_g141_15_points_stay_inside_the_map_and_clear_of_the_attribution_at_400p
             assert t >= 8, (name, t)
             overlap = not (r <= al or l >= ar or b <= at_ or t >= ab)
             assert not overlap, (name, [l, t, r, b], info["at"])  # 出典の文字に重ならない
-    finally:
-        cs.stop_tree(proc)
-        cs.stop_edge_profile(profile)
-        cs.stop_tree(server)
-        shutil.rmtree(profile, ignore_errors=True)

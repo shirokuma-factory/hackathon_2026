@@ -100,13 +100,18 @@ def deck_of(deck_id: str, base: Path | None = None) -> dict[str, Any]:
     raise KeyError(f"荷台 {deck_id!r} は data/vehicle_decks.json にありません")
 
 
-def deck_2t(base: Path | None = None) -> dict[str, Any]:
-    """2t ショートの荷台（洗い出し N7 の唯一の値）。length_mm・width_mm・height_mm・payload_kg に加え、
-    footprint_mm（長さ, 幅）と floor_m2（床の面積。m²）を添える。空きを探す（spaceb.py）はこれを読む。"""
-    d = dict(deck_of(load_vehicle_decks(base)["tariff_class_deck"]["2t"], base))
+def deck_view(deck_id: str, base: Path | None = None) -> dict[str, Any]:
+    """荷台の ID の寸法に、footprint_mm（長さ, 幅）と floor_m2（床の面積。長さ × 幅、m²、小数 2 桁）を添える。
+    床の面積は必ず寸法の積（別の値を持たない。SPEC §39）。"""
+    d = dict(deck_of(deck_id, base))
     d["footprint_mm"] = [d["length_mm"], d["width_mm"]]
     d["floor_m2"] = round(d["length_mm"] * d["width_mm"] / 1_000_000, 2)
     return d
+
+
+def deck_2t(base: Path | None = None) -> dict[str, Any]:
+    """2t ショートの荷台（洗い出し N7 の唯一の値）。deck_view に同じ。"""
+    return deck_view(load_vehicle_decks(base)["tariff_class_deck"]["2t"], base)
 
 
 FERRY_ONLY_FILE = "ferry_only_destinations.json"

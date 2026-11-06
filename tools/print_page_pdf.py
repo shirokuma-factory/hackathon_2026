@@ -38,18 +38,42 @@ print(json.dumps(info))
 """
 
 
-def print_to_pdf(url: str, pdf: Path) -> None:
-    edge = cs.find_edge()
-    pdf.unlink(missing_ok=True)
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as prof:
-        subprocess.run([edge, "--headless=new", "--disable-gpu", f"--user-data-dir={prof}", "--no-pdf-header-footer",
-                        f"--print-to-pdf={pdf}", url], check=True, timeout=90, capture_output=True)
-    for _ in range(40):  # Edge は終了してからファイルを書き終えることがある
-        if pdf.exists() and pdf.stat().st_size > 0:
-            break
-        time.sleep(0.25)
-    if not pdf.exists() or pdf.stat().st_size == 0:
+def _print_once(edge: str, url: str, pdf: Path, timeout: float) -> None:
+    """Edge を 1 回起動して印刷する。時間切れのときは、プロファイルの Edge ごと止めてから例外を上げる。"""
+    prof = cs.new_profile("edge_print_")
+    proc = subprocess.Popen([edge, "--headless=new", "--disable-gpu", f"--user-data-dir={prof}", "--no-first-run", *cs.EDGE_CLEAN_FLAGS,
+                             "--no-pdf-header-footer", f"--print-to-pdf={pdf}", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        try:
+            proc.wait(timeout)
+        except subprocess.TimeoutExpired as e:
+            raise RuntimeError(f"Edge の印刷が {timeout:.0f} 秒で終わりませんでした") from e
+        for _ in range(40):  # Edge は終了してからファイルを書き終えることがある
+            if pdf.exists() and pdf.stat().st_size > 0:
+                return
+            time.sleep(0.25)
         raise RuntimeError("PDF ができませんでした")
+    finally:
+        try:
+            cs.stop_tree(proc)
+        finally:
+            cs.release_profile(prof)
+
+
+def print_to_pdf(url: str, pdf: Path, retries: int = 3, timeout: float = 90) -> None:
+    """ページを PDF に印刷する。拡張機能と同期を切った Edge で、失敗や時間切れのときは取り直す（retries 回まで）。"""
+    edge = cs.find_edge()
+    last: Exception | None = None
+    for n in range(retries):
+        pdf.unlink(missing_ok=True)
+        try:
+            _print_once(edge, url, pdf, timeout)
+            return
+        except Exception as e:  # noqa: BLE001
+            last = e
+            print(f"印刷の試行 {n + 1}/{retries} が失敗: {e}", file=sys.stderr)
+            time.sleep(2.0)
+    raise RuntimeError(f"PDF を {retries} 回試しても作れませんでした: {last}")
 
 
 def pdf_page_count(pdf: Path) -> int:

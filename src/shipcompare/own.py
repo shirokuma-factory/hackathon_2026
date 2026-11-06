@@ -60,7 +60,89 @@ def normalize_plate(s: Any) -> str | None:
 
 
 _DATE_HEAD = re.compile(r"^\s*(\d{1,2})\s*/\s*(\d{1,2})")
+_DATE_FULL = re.compile(r"^\s*(\d{4})\s*[-/]\s*(\d{1,2})\s*[-/]\s*(\d{1,2})")
+_DATE_JA = re.compile(r"^\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日")
 _DAY_ONLY = re.compile(r"^\s*(\d{1,2})\s*日\s*$")
+_WD_PAREN = re.compile(r"\(\s*([月火水木金土日])\s*\)")
+
+# 曜日の見出し（「10/1(木)」）から年を探す範囲。時計（今日の日付）は使わない（SPEC §39）
+YEAR_MIN, YEAR_MAX = 2020, 2036
+NO_HINT_YEARS = tuple(range(2024, 2031))  # 曜日も年も手掛かりが無いときの、年を選ぶ欄の候補
+DEFAULT_YEAR = 2026  # 同じく、選ぶ欄の初期値（作成時の年。手掛かりが無いときだけ使う）
+
+
+def _date_head(h: str) -> tuple[int | None, int, int] | None:
+    """見出しの文字から (年か None, 月, 日)。「10/1(木)」「10月1日」「2026/10/1」を読む。"""
+    t = unicodedata.normalize("NFKC", h or "").strip()
+    m = _DATE_FULL.match(t)
+    if m:
+        return int(m.group(1)), int(m.group(2)), int(m.group(3))
+    m = _DATE_HEAD.match(t) or _DATE_JA.match(t)
+    return (None, int(m.group(1)), int(m.group(2))) if m else None
+
+
+def assign_head_years(heads: list[str], start_year: int) -> dict[int, tuple[int, int, int]]:
+    """見出しの列ごとに (年, 月, 日) を決める。年の無い見出しは start_year から始め、月が前の列より小さくなったら翌年にする（12/11〜1/10）。
+
+    年つきの見出し（2026/10/1）が来たら、その年に合わせる。
+    """
+    out: dict[int, tuple[int, int, int]] = {}
+    cur, prev = start_year, None
+    for i, h in enumerate(heads):
+        p = _date_head(h)
+        if p is None:
+            continue
+        y, mo, d = p
+        if y is not None:
+            cur = y
+        elif prev is not None and 1 <= mo <= 12 and mo < prev:
+            cur += 1
+        if 1 <= mo <= 12:
+            prev = mo
+        out[i] = (cur, mo, d)
+    return out
+
+
+def _weekday_of_head(h: str) -> int | None:
+    m = _WD_PAREN.search(unicodedata.normalize("NFKC", h or ""))
+    return WEEKDAYS.index(m.group(1)) if m else None
+
+
+def infer_year(head: list[str]) -> dict[str, Any]:
+    """配車表の見出しの曜日（「10/1(木)」の木）と合う年を探す。時計は使わない。
+
+    返す dict: year（使う年）, candidates（合う年の一覧）, ambiguous（利用者に選ばせるか）, source（'weekday' 曜日で決めた / 'explicit' 年つきの見出しだけ /
+    'none' 曜日が無い / 'mismatch' 曜日がどの年にも合わない）。合う年が複数あるときは、その中でいちばん新しい年を初期値にして ambiguous を真にする。
+    """
+    heads = [(h or "").strip() for h in head]
+    parsed = {i: _date_head(h) for i, h in enumerate(heads)}
+    implicit = [i for i, p in parsed.items() if p is not None and p[0] is None]
+    if not any(p is not None for p in parsed.values()):
+        return {"year": DEFAULT_YEAR, "candidates": list(NO_HINT_YEARS), "ambiguous": True, "source": "none"}
+    if not implicit:
+        first = next(p for p in parsed.values() if p is not None)
+        return {"year": first[0], "candidates": [first[0]], "ambiguous": False, "source": "explicit"}
+    wd_cols = {i: _weekday_of_head(heads[i]) for i in implicit if _weekday_of_head(heads[i]) is not None}
+    if not wd_cols:
+        return {"year": DEFAULT_YEAR, "candidates": list(NO_HINT_YEARS), "ambiguous": True, "source": "none"}
+    cands: list[int] = []
+    for y in range(YEAR_MIN, YEAR_MAX + 1):
+        got = assign_head_years(heads, y)
+        ok = True
+        for i, wd in wd_cols.items():
+            yy, mo, d = got[i]
+            try:
+                if date(yy, mo, d).weekday() != wd:
+                    ok = False
+                    break
+            except ValueError:
+                ok = False
+                break
+        if ok:
+            cands.append(y)
+    if not cands:
+        return {"year": DEFAULT_YEAR, "candidates": list(NO_HINT_YEARS), "ambiguous": True, "source": "mismatch"}
+    return {"year": max(cands), "candidates": cands, "ambiguous": len(cands) > 1, "source": "weekday"}
 
 
 def _blank(row: list[str]) -> bool:
@@ -68,7 +150,7 @@ def _blank(row: list[str]) -> bool:
 
 
 def wide_to_long(rows: list[list[str]], year: int = 2026) -> dict[str, Any]:
-    """日付が列に並ぶ横の形を、1 行 = 1 車両 × 1 日に直す。
+    """日付が列に並ぶ横の形を、1 行 = 1 車両 × 1 日に直す。年の無い見出しは year から始め、月が前の列より小さくなったら翌年にする。
 
     rows は CSV を読んだ行の一覧（先頭が見出し）。見出しは「車番」「車種」と、「10/1(木)」のような日付の列。
     車番が空欄の行は、上の行の車番で埋める（結合セルの代わりの行）。空行が来たら、その先は上の車番を引き継がない。
@@ -88,16 +170,17 @@ def wide_to_long(rows: list[list[str]], year: int = 2026) -> dict[str, Any]:
     type_col = next((i for i, h in enumerate(head) if "車種" in h), None)
     date_cols: dict[int, str] = {}
     bad_cols: dict[int, str] = {}
+    ymd = assign_head_years([h if i not in (plate_col, type_col) else "" for i, h in enumerate(head)], year)
     for i, h in enumerate(head):
         if i == plate_col or i == type_col or not h:
             continue
-        m = _DATE_HEAD.match(h)
-        if m:
+        if i in ymd:
+            yy, mo, dd = ymd[i]
             try:
-                date_cols[i] = date(year, int(m.group(1)), int(m.group(2))).isoformat()
+                date_cols[i] = date(yy, mo, dd).isoformat()
             except ValueError:
                 bad_cols[i] = "日付が読めません"
-        elif _DAY_ONLY.match(h):
+        elif _DAY_ONLY.match(unicodedata.normalize("NFKC", h)):
             bad_cols[i] = "月が分かりません"
         else:
             bad_cols[i] = "日付が読めません"
@@ -216,16 +299,28 @@ DIGITACO_DICT = {  # 列名の辞書（大文字にそろえて引く）
 HAISHA_DICT = {"車番": "plate", "車種": "vehicle_type"}
 
 
-def parse_digitaco(rows: list[dict[str, str]], resolve: Callable[[str], str | None], plate: str | None = None) -> dict[str, Any]:
+END_BEFORE_START = "終了が開始より前（または同じ）です"
+
+
+def parse_km(s: str) -> float | None:
+    """走行距離の文字を km の数にする。全角・カンマ・末尾の km を直し、数字と小数点だけなら数、そうでなければ None（読めない）。"""
+    t = re.sub(r"(?i)km$", "", unicodedata.normalize("NFKC", s or "").replace(",", "")).strip()
+    return float(t) if re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", t) else None
+
+
+def parse_digitaco(rows: list[dict[str, str]], resolve: Callable[[str], str | None], plate: str | None = None,
+                   roles: dict[str, str | None] | None = None) -> dict[str, Any]:
     """デジタコの CSV（列名は辞書で役割に直す）から、走行（run）と停車（stop）を取り出す。
 
     rows は csv.DictReader の行。resolve は地点名 → 地点 ID。run の frm は直前の停車の地点、to は次の停車の地点。
-    各要素の `line` は CSV の行番号（見出しが 1）。
+    各要素の `line` は CSV の行番号（見出しが 1）。roles は利用者が決めた列の役割 {大文字にした列名: 役割か None（読まない）} で、辞書より先に使う。
+    読めない行は errors に理由を入れて飛ばす（終了が開始以前の行、時刻・区分が読めない行）。距離が読めない行は距離を空にして続ける。
     """
     col: dict[str, str] = {}
     if rows:
         for name in rows[0]:
-            role = DIGITACO_DICT.get((name or "").strip().upper())
+            key = (name or "").strip().upper()
+            role = roles[key] if roles and key in roles else DIGITACO_DICT.get(key)
             if role:
                 col[role] = name
     runs: list[dict[str, Any]] = []
@@ -240,14 +335,22 @@ def parse_digitaco(rows: list[dict[str, str]], resolve: Callable[[str], str | No
         except (KeyError, ValueError):
             errors.append({"line": i, "reason": "時刻が読めません"})
             continue
+        if ed <= st:
+            errors.append({"line": i, "reason": END_BEFORE_START})
+            continue
         kind = (r.get(col.get("kind", ""), "") or "").strip()
         driver = (r.get(col.get("driver_code", ""), "") or "").strip() or None
         if kind == "1":
             km_s = (r.get(col.get("distance_km", ""), "") or "").strip()
             jk_s = (r.get(col.get("loaded_flag", ""), "") or "").strip()
+            km = None
+            if km_s:
+                km = parse_km(km_s)
+                if km is None:
+                    errors.append({"line": i, "reason": "距離が読めません"})
             run = {
                 "plate": plate, "start": st.isoformat(timespec="minutes"), "end": ed.isoformat(timespec="minutes"),
-                "km": float(km_s) if km_s else None, "jk": int(jk_s) if jk_s in ("0", "1") else None,
+                "km": km, "jk": int(jk_s) if jk_s in ("0", "1") else None,
                 "frm": prev_stop["place"] if prev_stop else None, "to": None, "driver": driver, "line": i,
             }
             runs.append(run)

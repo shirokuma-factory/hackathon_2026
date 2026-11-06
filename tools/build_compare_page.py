@@ -23,6 +23,7 @@ KANTO = ROOT / "data" / "tariffs" / "mlit_standard_fare_kanto.json"
 KINKI = ROOT / "data" / "tariffs" / "mlit_standard_fare_kinki.json"
 CONTACTS = ROOT / "data" / "contacts.json"
 DECKS = ROOT / "data" / "vehicle_decks.json"
+CARRIERS = ROOT / "data" / "demo" / "carriers.json"
 VECTORS = ROOT / "tests" / "data" / "compare_lite_vectors.json"
 OUT_ARTIFACT = ROOT / "web" / "publish" / "compare_lite_artifact.html"
 TITLE = "荷物の送り方比べ"
@@ -51,7 +52,10 @@ def _filled() -> str:
     for d in decks.get("decks", []):
         d.pop("basis", None)
     decks["tariff_4t_note"] = TARIFF_4T_NOTE
-    for key, val in (("/*__DECKS__*/null", _js(decks)), ("/*__TARIFFS__*/null", _js(tariffs)), ("/*__VECTORS__*/null", _js(vectors)), ("/*__CONTACTS__*/null", _js(contacts))):
+    # 帰り便の目安は、地図の画面のデモの便 T7 の「空き」で判定する（/api/b/match と同じ。SPEC §39）
+    t7 = next(t for t in json.loads(CARRIERS.read_text(encoding="utf-8"))["trips"] if t["id"] == "T7")
+    home = {k: t7[k] for k in ("weight_slack_kg", "floor_free_m2", "max_piece_kg", "clear_height_mm", "unit_footprint_mm")}
+    for key, val in (("/*__HOME__*/null", _js(home)), ("/*__DECKS__*/null", _js(decks)), ("/*__TARIFFS__*/null", _js(tariffs)), ("/*__VECTORS__*/null", _js(vectors)), ("/*__CONTACTS__*/null", _js(contacts))):
         if html.count(key) != 1:
             raise SystemExit(f"テンプレートに {key} が 1 つありません")
         html = html.replace(key, val)

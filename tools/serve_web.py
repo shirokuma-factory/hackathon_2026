@@ -841,6 +841,14 @@ def _static_bytes(path: Path, st, ext: str, accept_gzip: bool) -> tuple[bytes, b
     return data, True
 
 
+class _NonFiniteNumber(ValueError):
+    """本文に Infinity・NaN があった（JSON の標準にない値。数として受けない）。"""
+
+
+def _reject_constant(name: str) -> Any:
+    raise _NonFiniteNumber(name)
+
+
 class Handler(SimpleHTTPRequestHandler):
     extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".js": "text/javascript", ".json": "application/json",
                       ".geojson": "application/geo+json", ".css": "text/css", ".html": "text/html",
@@ -1012,7 +1020,10 @@ class Handler(SimpleHTTPRequestHandler):
             return
         raw = self.rfile.read(length)
         try:
-            body = json.loads(raw.decode("utf-8"))
+            body = json.loads(raw.decode("utf-8"), parse_constant=_reject_constant)
+        except _NonFiniteNumber as e:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": f"数に {e} は使えません。有限の数で入れてください"})
+            return
         except (UnicodeDecodeError, json.JSONDecodeError) as e:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": f"本文が JSON として読めません（{type(e).__name__}）"})
             return
@@ -1033,10 +1044,16 @@ class Handler(SimpleHTTPRequestHandler):
         self._send_json(HTTPStatus.OK, result)
 
 
+class _Server(ThreadingHTTPServer):
+    # 標準の待ち行列 5 では、ブラウザが JS を一斉に取りに来たときに Windows が接続を切る（10054）。
+    # routes.js が読めずに app.js が「Rt is not defined」で止まる原因だった（試験の信頼性 r1）。
+    request_queue_size = 128
+
+
 def make_server(port: int = DEFAULT_PORT, verbose: bool = False, public: bool = False,
                 host: str | None = None) -> ThreadingHTTPServer:
     """サーバーを作る（port=0 なら空いているポート）。手元の版は 127.0.0.1 だけ、公開版は 0.0.0.0 で待ち受ける。"""
-    httpd = ThreadingHTTPServer((host or ("0.0.0.0" if public else "127.0.0.1"), port), Handler)
+    httpd = _Server((host or ("0.0.0.0" if public else "127.0.0.1"), port), Handler)
     httpd.daemon_threads = True
     httpd.verbose = verbose  # type: ignore[attr-defined]
     httpd.public = public  # type: ignore[attr-defined]

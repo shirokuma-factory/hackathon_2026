@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -34,10 +35,22 @@ def to_decimal(value: Any) -> Decimal | None:
     if value is None or isinstance(value, bool):
         return None
     if isinstance(value, Decimal):
-        return value
+        return value if value.is_finite() else None
     if isinstance(value, (int, float)):
-        return Decimal(str(value))
+        d = Decimal(str(value))
+        return d if d.is_finite() else None  # Infinity・NaN は数として受けない（r1b #11）
     return None
+
+
+def parse_number_text(value: Any) -> Decimal | None:
+    """数か、数の文字列（全角の数字・空白も NFKC で半角にして読む）を有限の Decimal にする。読めなければ None（r1a F11）。"""
+    if isinstance(value, str):
+        try:
+            d = Decimal(unicodedata.normalize("NFKC", value).strip())
+        except ArithmeticError:
+            return None
+        return d if d.is_finite() else None
+    return to_decimal(value)
 
 
 @dataclass

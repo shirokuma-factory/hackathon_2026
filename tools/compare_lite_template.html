@@ -7,9 +7,9 @@
 <title>送り方を比べる（荷主向け・ページ 1 枚）</title>
 <!-- このファイルは tools/build_compare_page.py が tools/compare_lite_template.html から作ります。直すときはテンプレートを直してください。 -->
 <style>
-:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #7a8393; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; --ok: #1a7a3c; --ok-bg: #e8f5ec; --chk: #8a5a00; --chk-bg: #fff4d6; --ng: #b3261e; --ng-bg: #fdecea; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #8791a3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; --ok: #6fd08c; --ok-bg: #17301f; --chk: #f0c060; --chk-bg: #3a2e10; --ng: #ff9a90; --ng-bg: #3a1f1d; color-scheme: dark; } }
-:root[data-theme="dark"] { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #8791a3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; --ok: #6fd08c; --ok-bg: #17301f; --chk: #f0c060; --chk-bg: #3a2e10; --ng: #ff9a90; --ng-bg: #3a1f1d; color-scheme: dark; }
+:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #626b7c; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; --ok: #1a7a3c; --ok-bg: #e8f5ec; --chk: #8a5a00; --chk-bg: #fff4d6; --ng: #b3261e; --ng-bg: #fdecea; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #97a1b3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; --ok: #6fd08c; --ok-bg: #17301f; --chk: #f0c060; --chk-bg: #3a2e10; --ng: #ff9a90; --ng-bg: #3a1f1d; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #97a1b3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; --ok: #6fd08c; --ok-bg: #17301f; --chk: #f0c060; --chk-bg: #3a2e10; --ng: #ff9a90; --ng-bg: #3a1f1d; color-scheme: dark; }
 * { box-sizing: border-box; }
 body { margin: 0; padding-block: 0 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--bg); color: var(--text); font: 14px/1.6 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; overflow-wrap: anywhere; }
 [hidden] { display: none !important; }
@@ -118,6 +118,7 @@ const TARIFFS = /*__TARIFFS__*/null;
 const VECTORS = /*__VECTORS__*/null;
 const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Artifact 用の版（navigator.clipboard でコピーし、断られたら枠の文を選ぶ）
 const DECKS = /*__DECKS__*/null;   // 貸切の車の荷台の寸法（data/vehicle_decks.json。積付け・地図の画面・空きを探すと同じ値。ビルドのときに埋め込む）
+const HOME_TRIP = /*__HOME__*/null;   // 地図の画面のデモの便 T7 の空き（data/demo/carriers.json。架空。重さの余り・床の空き・1個の上限・高さ・底面。ビルドのときに埋め込む）
 const CONTACTS = /*__CONTACTS__*/null;   // 各社の問い合わせ・申し込みページ（ビルドのときに埋め込む。ページは通信しない）
 
 const GUARD = '目安です。最後は各社の見積で確かめてください';
@@ -143,7 +144,6 @@ const RULES = {
   rosen: { kgPerM3: 280, quoteOverKg: 1000 },                 // 路線便の計算重量
   t2: { floorM2: DECK_2T_SHORT.length_mm * DECK_2T_SHORT.width_mm / 1e6, longest: DECK_2T_LONG.length_mm / 10, shortLen: DECK_2T_SHORT.length_mm / 10 },  // 2t のショート（荷台長・床）とロング（荷台長）。DECKS の値
   t4: { payloadKg: DECK_4T.payload_kg },                       // 4t ウイングの公表例の最大積載量（料金の 4t の区分は 4,000kg まで）
-  t4home: { kg: 3500, floorM2: 13.0 },                        // 地図の画面のデモの便 T7（架空）
   homeFlexDays: 3,
 };
 const BOX_NOTE = '同じ名前のサービスを複数の会社が出している（条件は会社ごとに違う）';
@@ -154,7 +154,7 @@ const SOURCES = [
   '2t・4t の荷台の寸法（2t ショート 3,000×1,700mm、2t 標準 4,200×1,800mm、4t ウイング 6,200×2,200mm、最大積載量 約 2,700kg）: 積付けの公表例（data/vehicle_decks.json）。地図の画面の積付けと同じ値',
   '2t・4t の貸切の目安額: 国土交通省 標準的運賃（2024 年 3 月 22 日告示）の距離制運賃。関東運輸局・近畿運輸局の表。値は官報の告示本文（令和 6 年国土交通省告示第 209 号）と照合済み',
   `見積を頼む先: 各社の公式の問い合わせ・申し込みページ（${CONTACTS.checked_on} に確認）。記録が無い送り方は、記録が無いと書いて、窓口を作り出していない`,
-  '帰り便: このサイトの地図の画面のデモ（架空の便）。デモの便 T7 は最大 3,500kg・床 13.0m²（車両の大きさ。地図のカードの数字は空いている分）',
+  '帰り便: このサイトの地図の画面のデモ（架空の便）。デモの便 T7 は空きが重さ 2,000kg・床 6.0m²（車両は最大 2,700kg・床 13.64m²）。地図の画面の照合と同じく、空きに載るかで判定',
 ];
 
 /* ---------------------------------------------------------------- 貸切の運賃（kashikiri_fares と同じ） */
@@ -291,13 +291,21 @@ function evalKashikiri(cls, pieces, t, from, km) {
   return opt(id, name, status, reasons, { amount: fare.amount });
 }
 
-function evalHome(t, flex) {
-  const H = RULES.t4home, name = '帰り便（空いた帰りのトラックに載せる）';
+function evalHome(pieces, t, flex) {
+  // 地図の画面の照合（/api/b/match）と同じ規則で、デモの便 T7 の「空き」に載るかを見る（車の大きさではなく、重さの余りと床の空き）
+  const H = HOME_TRIP, name = '帰り便（空いた帰りのトラックに載せる）';
   const bad = [];
   if (flex < RULES.homeFlexDays) bad.push(`日の幅が ${flex} 日。帰り便は 3 日以上の幅があるときに合いやすい`);
-  if (t.kg > H.kg || t.floor > H.floorM2) bad.push(`荷が 4t の荷台の目安（${fmt(H.kg)}kg・床 ${H.floorM2.toFixed(1)}m²）に収まらない（合計 ${f1(t.kg)}kg、床 ${f1(t.floor)}m²）`);
+  const heaviest = Math.max(...pieces.map((p) => p.kg));
+  if (heaviest > H.max_piece_kg) bad.push(`1 個の重さ ${f1(heaviest)}kg がデモの便の上限 ${fmt(H.max_piece_kg)}kg を超える`);
+  const limitH = H.clear_height_mm - 50;
+  if (Math.max(...pieces.map((p) => p.h * 10)) > limitH) bad.push(`箱の高さがデモの便の空きの高さ − 50mm（${fmt(limitH)}mm）を超える`);
+  const [fw, fd] = H.unit_footprint_mm;
+  if (pieces.some((p) => !((p.l * 10 <= fw && p.w * 10 <= fd) || (p.w * 10 <= fw && p.l * 10 <= fd)))) bad.push(`箱の底面がデモの便の底面 ${fmt(fw)}×${fmt(fd)}mm に収まらない`);
+  if (t.kg > H.weight_slack_kg) bad.push(`合計 ${f1(t.kg)}kg がデモの便の重さの余り ${fmt(H.weight_slack_kg)}kg を超える`);
+  if (t.floor > H.floor_free_m2) bad.push(`床 ${f1(t.floor)}m² がデモの便の床の空き ${H.floor_free_m2.toFixed(1)}m² を超える`);
   if (bad.length) return opt('home', name, 'ng', bad);
-  return opt('home', name, 'check', ['日の幅があり、帰り便に合う荷です。地図の画面の『空きを探す・つなぐ』で探せます（デモ）'], { home: true });
+  return opt('home', name, 'check', ['日の幅があり、デモの帰り便の空き（重さの余り ' + fmt(H.weight_slack_kg) + 'kg・床 ' + H.floor_free_m2.toFixed(1) + 'm²）に収まる荷です。受け取り場所などは、地図の画面の『空きを探す・つなぐ』で調べられます（デモ）'], { home: true });
 }
 
 function evaluate(inp) {
@@ -305,7 +313,7 @@ function evaluate(inp) {
   if (errs.length || !pieces.length) return { errs: errs.length ? errs : ['荷物を 1 行以上入れてください'], options: [], totals: null, pieces };
   const t = totals(pieces), km = inp.km === '' || inp.km == null ? NaN : Number(inp.km);
   const options = [evalTakuhai(pieces), evalKazai(pieces, inp.recv), evalAkabane(t), evalKei(pieces, t), evalJitbox(pieces, t, inp.recv), evalRosen(t, inp.recv),
-    evalKashikiri('2t', pieces, t, inp.from, km), evalKashikiri('4t', pieces, t, inp.from, km), evalHome(t, Number(inp.flex) || 0)];
+    evalKashikiri('2t', pieces, t, inp.from, km), evalKashikiri('4t', pieces, t, inp.from, km), evalHome(pieces, t, Number(inp.flex) || 0)];
   return { errs: [], options, totals: t, pieces };
 }
 
@@ -338,6 +346,13 @@ function runSelftest() {
   const res = evaluate(s6), by = Object.fromEntries(res.options.map((o) => [o.id, o]));
   const want = { takuhai: 'ng', kazai: 'check', akabane: 'ng', kei: 'ng', jitbox: 'ng', rosen: 'check', kashikiri_2t: 'ok', kashikiri_4t: 'ok', home: 'check' };
   for (const [k, v] of Object.entries(want)) { n += 1; if (!by[k] || by[k].status !== v) fails.push(`S6 ${k}: ${by[k] && by[k].status} (期待 ${v})`); }
+  // 帰り便は車の大きさではなく T7 の空き（重さの余り 2,000kg・床の空き 6.0m²）で判定する（/api/b/match と同じ）
+  const big = evaluate({ ...s6, rows: [{ n: 30, l: 100, w: 100, h: 50, kg: 100 }] }).options.find((o) => o.id === 'home');   // 3,000kg・床 30m²
+  n += 1; if (!big || big.status !== 'ng') fails.push('3,000kg の荷は T7 の空きに載らない（帰り便 ng）');
+  const edge = evaluate({ ...s6, rows: [{ n: 20, l: 100, w: 60, h: 50, kg: 100 }] }).options.find((o) => o.id === 'home');   // 2,000kg ちょうど・床 12m² は床が超える
+  n += 1; if (!edge || edge.status !== 'ng') fails.push('床 12m² の荷は T7 の床の空き 6.0m² を超える（帰り便 ng）');
+  const okh = evaluate({ ...s6, rows: [{ n: 10, l: 100, w: 60, h: 50, kg: 200 }] }).options.find((o) => o.id === 'home');   // 2,000kg ちょうど・床 6.0m² ちょうど
+  n += 1; if (!okh || okh.status !== 'check') fails.push('2,000kg・床 6.0m² ちょうどの荷は T7 の空きに載る');
   n += 1; if (!by.kashikiri_4t || by.kashikiri_4t.amount !== 126060) fails.push('S6 4t 492km は 126,060 円');
   const person = evaluate({ ...s6, recv: 'person', flex: 1 }), byp = Object.fromEntries(person.options.map((o) => [o.id, o]));
   n += 1; if (byp.jitbox.status !== 'ng' || byp.home.status !== 'ng') fails.push('個人宅はカゴ台車が ng、日の幅 1 日は帰り便が ng');

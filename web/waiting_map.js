@@ -10,12 +10,13 @@ const WaitingMap = (() => {
   const hm = (m) => (m ? `${Math.floor(m / 60)} 時間 ${m % 60} 分` : '0 分');
 
   // 点の色は平均の荷待ちの 4 段（30 分未満・30〜59・60〜119・120 以上）。色だけに頼らず、凡例と点の中の数字でも読めるようにする
+  // 色は web/kit/kit.js の Kit.palette.bands と共有する。区分の名前と下限は同じ順で持ち、試験（test_v39_ui_contrast_kit.py）が Kit と同じことを確かめる
   const BANDS = [
-    { label: '30 分未満', min: 0, rgb: [255, 226, 120] },
-    { label: '30〜59 分', min: 30, rgb: [255, 170, 54] },
-    { label: '60〜119 分', min: 60, rgb: [238, 92, 64] },
-    { label: '120 分以上', min: 120, rgb: [178, 28, 92] },
-  ];
+    { label: '30 分未満', min: 0 },
+    { label: '30〜59 分', min: 30 },
+    { label: '60〜119 分', min: 60 },
+    { label: '120 分以上', min: 120 },
+  ].map((b, i) => ({ ...b, rgb: Kit.palette.bands[i].color }));
   const bandOf = (avg) => { let b = 0; BANDS.forEach((x, i) => { if (avg >= x.min) b = i; }); return b; };
   const rgbCss = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 

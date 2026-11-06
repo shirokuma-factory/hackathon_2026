@@ -131,7 +131,7 @@ def test_g104_selftest_passes_for_both_artifact_builds():
     nw = len(json.loads(VECTORS_W.read_text(encoding="utf-8"))["cases"])
     nc = len(json.loads(VECTORS_C.read_text(encoding="utf-8"))["cases"])
     with cw.edge_page(1440, 900) as page:
-        for path, expect in ((WAIT, f"SELFTEST PASS {nw + 4}/{nw + 4}"), (CMP, f"SELFTEST PASS {nc + 14}/{nc + 14}")):
+        for path, expect in ((WAIT, f"SELFTEST PASS {nw + 4}/{nw + 4}"), (CMP, f"SELFTEST PASS {nc + 17}/{nc + 17}")):
             page.goto(_shell(path) + "?selftest=1")
             page.wait(lambda: page.js("document.querySelector('#selftest') && document.querySelector('#selftest').textContent.length > 0"), 30, "自己確認")
             assert page.js("document.querySelector('#selftest').textContent") == expect

@@ -122,7 +122,7 @@ def test_g89_page_makes_no_network_calls():
 def test_g90_page_has_the_required_texts():
     html = PAGE.read_text(encoding="utf-8")
     for t in ("目安です。最後は各社の見積で確かめてください", "使える ○", "要確認 △", "使えない ×", "道路の距離 km", "法人・店舗・事業所", "個人宅", "日の幅",
-              "日の幅があり、帰り便に合う荷です。地図の画面の『空きを探す・つなぐ』で探せます（デモ）", "見積依頼文", "出典",
+              "デモの帰り便の空き（重さの余り ", "見積依頼文", "出典",
               "法人・店舗への配達ができるかは未確認", "荷台の寸法は公式に確認できていない", "1,000kg を超えるので要見積", "法人発・法人着", "容積 ", "× 280"):
         assert t in html, t
     for pref in ("北海道", "東京都", "大阪府", "沖縄県"):
@@ -137,7 +137,7 @@ def test_g91_selftest_and_s6_in_headless_edge():
         page.goto(PAGE.as_uri() + "?selftest=1")
         page.wait(lambda: page.js("document.querySelector('#selftest') && document.querySelector('#selftest').textContent.length > 0"), 30, "自己確認")
         text = page.js("document.querySelector('#selftest').textContent")
-        assert text == f"SELFTEST PASS {n + 14}/{n + 14}", text
+        assert text == f"SELFTEST PASS {n + 17}/{n + 17}", text
         page.goto(PAGE.as_uri() + "?example=1")
         page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")
         got = page.js("""(function(){

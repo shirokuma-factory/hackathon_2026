@@ -324,9 +324,12 @@
 <div id="loadview" hidden></div>
 <div id="toast" role="status"></div>
 <div id="loading">地図を読み込んでいます</div>
+<button id="attr-toggle" type="button" aria-expanded="false" aria-label="地図の出典を表示する">出典</button>
+<script>(function(){var b=document.getElementById("attr-toggle");b.addEventListener("click",function(){var o=document.body.classList.toggle("attr-open");b.setAttribute("aria-expanded",String(o));b.setAttribute("aria-label",o?"地図の出典を閉じる":"地図の出典を表示する");});})();</script>
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
+<script src="kit/kit.js"></script>
 <script src="perf.js"></script>
 <script src="work.js"></script>
 <script src="loadview.js"></script>

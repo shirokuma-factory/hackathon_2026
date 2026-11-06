@@ -35,6 +35,19 @@ WORKFLOW_DIR = Path(os.environ.get("COMFY_WORKFLOW_DIR", REPO / "workflows" / "c
 mcp = FastMCP("local-ai")
 
 
+def _comfy_org_key() -> str:
+    """有料の API ノード（MiniMax など）用の Comfy.org の API キー。環境変数か <repo>/.env の COMFY_ORG_API_KEY。値は返り値やログに出さない。"""
+    v = os.environ.get("COMFY_ORG_API_KEY", "").strip()
+    if v:
+        return v
+    env = REPO / ".env"
+    if env.exists():
+        for line in env.read_text(encoding="utf-8").splitlines():
+            if line.strip().startswith("COMFY_ORG_API_KEY="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return ""
+
+
 def _http(method: str, url: str, body: Any = None, timeout: float = 30) -> Any:
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(url, data=data, method=method, headers={"Content-Type": "application/json"})
@@ -101,6 +114,9 @@ def _apply_overrides(graph: dict, overrides: dict[str, Any]) -> dict:
         parts = rest.split(".") if rest else []
         if not parts:
             raise KeyError(f"override key needs a field after the node id: {key}")
+        if parts[0] == "inputs" and len(parts) > 2:
+            # 入力名に「.」を含むノード（例 MiniMax H3 の "model.prompt"）は、inputs の後ろを 1 つの名前として扱う
+            parts = ["inputs", ".".join(parts[1:])]
         for part in parts[:-1]:
             target = target.setdefault(part, {})
         target[parts[-1]] = value
@@ -174,7 +190,11 @@ def comfy_run_workflow(
     vram_before = _vram_used_mib()
     started = time.time()
     with _VramSampler() as sampler:
-        queued = _http("POST", f"{COMFYUI_URL}/prompt", {"prompt": graph, "client_id": client_id})
+        body: dict[str, Any] = {"prompt": graph, "client_id": client_id}
+        org_key = _comfy_org_key()
+        if org_key:
+            body["extra_data"] = {"api_key_comfy_org": org_key}
+        queued = _http("POST", f"{COMFYUI_URL}/prompt", body)
         prompt_id = queued["prompt_id"]
         result: dict[str, Any] = {
             "prompt_id": prompt_id,

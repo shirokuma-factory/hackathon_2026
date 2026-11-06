@@ -6,8 +6,6 @@
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -220,12 +218,8 @@ def test_spec18_stats_files_carry_attribution():
 
 # ---------------------------------------------------------------- G46: P31 がリポジトリに入っていない
 def _git_files() -> list[str]:
-    if shutil.which("git") is None:
-        pytest.skip("git がない")
-    res = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
-    if res.returncode != 0:
-        pytest.skip("git のリポジトリではない")
-    return res.stdout.splitlines()
+    from conftest import git_run
+    return git_run("ls-files").stdout.splitlines()
 
 
 def test_spec18_g46_no_raw_or_p31_files_tracked():
