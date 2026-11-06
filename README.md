@@ -43,8 +43,8 @@
 - 本線の Claude が仕様と受入条件（SPEC §1〜§33、受入条件 G01〜G143）を書き、実装は `coder`、調査は `researcher`、反証は `reviewer` に分けた。担当が重ならない仕様は git worktree で並行に実装した。
 - 作成者の言葉から採点基準を作り、毎回前の点を知らない新しいエージェントに役（懐疑的な審査員、配車担当、荷主、CLO）を演じさせて採点し、指摘を SPEC と試験に落として直した。公開版の採点は 64 → 68 → 87 → 89。手順は Skill（[`.claude/skills/rubric-loop`](.claude/skills/rubric-loop/SKILL.md)）にした。
 - 3D の車両・施設 18 種は、Claude が Blender MCP と画面なしの Blender で作り、手元の RTX 5080 で描いた。
-- 試験は約 790 件。push のたびに GitHub Actions で回し、公開リポジトリに秘密情報や PC 固有のパスが混ざると試験が落ちる（`tests/test_public_safety.py`）。
-- 11/2〜11/6 で 138 コミット。失敗と作り直し（11/3 に「全然イメージと違う」と言われて地図中心に作り直した経緯など）は DEVLOG に残した。
+- 試験は 900 件を超える（画面の試験は Edge か Chrome で回す）。push のたびに GitHub Actions で回し、公開リポジトリに秘密情報や PC 固有のパスが混ざると試験が落ちる（`tests/test_public_safety.py`）。
+- 11/2〜11/6 で 150 を超えるコミット。失敗と作り直し（11/3 に「全然イメージと違う」と言われて地図中心に作り直した経緯など）は DEVLOG に残した。
 
 ## 使い方
 
