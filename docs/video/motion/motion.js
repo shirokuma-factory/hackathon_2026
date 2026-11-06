@@ -19,8 +19,10 @@
     var s = ms / 1000;
     var e = ease(pr(s, 0, 0.35));
     var panel = document.getElementById('panel');
-    panel.style.opacity = e * (1 - pr(s, D - 0.3, LAST));
-    panel.style.transform = 'translateY(' + (24 * (1 - e)) + 'px)';
+    if (panel) {
+      panel.style.opacity = e * (1 - pr(s, D - 0.3, LAST));
+      panel.style.transform = 'translateY(' + (24 * (1 - e)) + 'px)';
+    }
     $$('[data-at]').forEach(function (el) {
       var a = parseFloat(el.dataset.at);
       var k = ease(pr(s, a, a + 0.3));

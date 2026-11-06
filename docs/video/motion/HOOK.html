@@ -1,0 +1,31 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>HOOK</title><link rel="stylesheet" href="../graphics/common.css"><link rel="stylesheet" href="motion.css">
+<style>
+#hk{position:absolute;left:0;right:0;top:150px;text-align:center;text-shadow:0 4px 24px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.6)}
+#l1{font-size:120px;font-weight:700;line-height:1.25;white-space:pre}
+#l1 span{opacity:0}
+#l2{font-size:160px;font-weight:700;line-height:1.2;color:var(--warn);opacity:0}
+#nt{margin-top:28px;font-size:28px;color:#fff;opacity:0}
+</style>
+</head><body data-duration="5.5">
+<div id="hk"><div id="l1"></div><div id="l2">空。</div>
+<div id="nt">営業用トラックの積載効率 38.97%（重さと距離で測った値。国土交通省 自動車輸送統計年報 2025年度）</div></div>
+<script src="motion.js"></script>
+<script>
+(function () {
+  var T = '積める量の 6 割が、', l1 = document.getElementById('l1'), sp = [];
+  T.split('').forEach(function (c) { var e = document.createElement('span'); e.textContent = c; l1.appendChild(e); sp.push(e); });
+  var D = 5.5, ease = function (t) { return 1 - Math.pow(1 - t, 3); };
+  var pr = function (s, a, b) { return Math.min(1, Math.max(0, (s - a) / (b - a))); };
+  window.__seek = function (ms) {
+    var s = ms / 1000, out = 1 - pr(s, D - 0.3, D - 1 / 30);
+    sp.forEach(function (e, i) { e.style.opacity = s >= 0.2 + i * 0.05 ? 1 : 0; });
+    var l2 = document.getElementById('l2');
+    l2.style.opacity = s >= 1.2 ? 1 : 0;
+    l2.style.transform = 'scale(' + (1 + 0.3 * (1 - ease(pr(s, 1.2, 1.45)))) + ')';
+    document.getElementById('nt').style.opacity = ease(pr(s, 2, 2.3));
+    document.getElementById('hk').style.opacity = out;
+  };
+  window.__seek(0);
+  document.fonts.ready.then(function () { window.__seek(0); window.__ready = true; });
+})();
+</script></body></html>
