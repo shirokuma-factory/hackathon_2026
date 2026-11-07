@@ -89,7 +89,7 @@ def test_entry_choice_and_first_result_with_denominators(app):
     page = app
     to_sample(page)
     t = T(page, "#neg-root")
-    assert "荷主への相談文を作る" in t and page.js("!!document.querySelector('#neg-entry-sample') && !!document.querySelector('#neg-entry-file')") and "#neg-head" and page.js("!document.querySelector('#neg-result')")
+    assert "荷主に案内する文を作る" in t and page.js("!!document.querySelector('#neg-entry-sample') && !!document.querySelector('#neg-entry-file')") and "#neg-head" and page.js("!document.querySelector('#neg-result')")
     shot(page, "2026-11-06_v44_neg_entry_1920.jpg")
     click(page, "#neg-entry-sample")
     head = T(page, "#neg-head")
@@ -175,7 +175,7 @@ def test_draft_edit_protection_regenerate_confirm_and_copy(app):
     # 社外の文に入れないもの
     for bad in ("5678", "3344", "haisha", "digitaco", ".csv", "5/5", "2,790", "2790", "6,931", "6931", "D01", "L0", "さつま運輸", "円"):
         assert bad not in v0, bad
-    assert "【宛先" in v0 and "江東区周辺" in v0 and "土曜日" in v0 and "積込を希望する日時" in v0 and "お受けできるかとお見積りをお返しします" in v0
+    assert "【宛先" in v0 and "江東区周辺" in v0 and "土曜日" in v0 and "積込を希望する日時" in v0 and "お受けできるかとお見積りをお送りします" in v0
     assert "社内の根拠" in T(page, "#neg-internal") or page.js("!!document.querySelector('#neg-internal')")
     page.js("document.querySelector('#neg-internal').open = true")
     assert "5 本中 空車 5 本" in T(page, "#neg-internal") and "6,931.9 km" in T(page, "#neg-internal")  # 2026-11-07 見本の鹿児島化（文言の直し 2026-11-07 で「便」を「本」に統一）
@@ -308,7 +308,7 @@ def test_csv_import_flow_failure_and_no_empty(app, tmp_path):
     page.wait(lambda: page.js("Own.state.mode") == "import" and not page.js("Own.state.busy"), 120, "取り込み")
     page.wait(lambda: page.js("!!document.querySelector('#neg-result')"), 20, "結果")
     assert page.js("Negotiate.analysisOf(Own.state.data, null, null).model.confirmed.empty") == 0
-    assert page.js("document.querySelector('#neg-go-cond').disabled") is True and "相談文は作れません" in T(page, "#neg-noempty") and "配車表" in T(page, "#neg-noempty")  # 文言の直し 2026-11-07
+    assert page.js("document.querySelector('#neg-go-cond').disabled") is True and "案内文は作れません" in T(page, "#neg-noempty") and "配車表" in T(page, "#neg-noempty")  # 文言の直し 2026-11-07
     page.js("document.querySelector('#own-src [data-act=reset]').click()")
     page.wait(lambda: page.js("Own.state.mode") == "sample", 10, "サンプルに戻る")
 

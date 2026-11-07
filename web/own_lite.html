@@ -3991,22 +3991,22 @@ const Negotiate = (() => {
     const head = ['【宛先（会社名・ご担当者名）】 様', '', '突然のご連絡で失礼します。【運送会社名】の【担当者名】です。'];
     if (st === 'hold') {
       const picks = (p.hold && p.hold.picks) || [];
-      return [...head, '', `${from}で集荷し、${to}へお届けする便について、条件が合わない点がありました。条件を変えられるか、再確認させてください。`, '',
+      return [...head, '', `${from}から${to}へ戻る便でお運びする件で、条件が合わない点がありました。条件を変えられるか、再確認させてください。`, '',
         '■再確認したいこと', ...(picks.length ? picks.map((k) => `・${HOLD_ASK[k]}`) : ['・【再確認する内容を選ぶか、ここに書いてください】']), '',
         '※ 条件の確認のご連絡です。お受けできるかは、確認のあとでお伝えします。'].join('\n');
     }
     const type = p.type === 'returnable' ? 'returnable' : 'commodity';
     const intro = type === 'returnable'
-      ? `${to}から${from}へ、空の通い箱・パレットを返送する予定はありますか。当社の${from}へ向かう便の空きで運べるかを、ご相談したく連絡しました。`
-      : `${from}で集荷し、${to}へお届けする荷物について、ご相談です。${day}の集荷を第一候補として、この方面へ出荷される荷物があるかを、お聞かせください。`;
+      ? `毎週${day}に、${from}から${to}へ戻る便に空きがあります。空の通い箱・パレットの返送にお使いいただけます。`
+      : `毎週${day}に、${from}から${to}へ戻るトラックに空きがあります。この方面へ出荷される荷物があれば、この便でお運びできます。`;
     const confirmed = [];
     if (p.load.state === 'ok') confirmed.push(`・積込の条件: ${(p.load.note || '').trim() || '確認できています（内容は別途お伝えします）'}`);
     if (p.recv.state === 'ok') confirmed.push(`・受取の条件: ${(p.recv.note || '').trim() || '確認できています（内容は別途お伝えします）'}`);
     const asks = QUESTIONS[type].filter(([c]) => c === 'always' || (c === 'load' && p.load.state !== 'ok') || (c === 'recv' && p.recv.state !== 'ok')).map(([, t]) => `・${t}`);
-    return [...head, '', intro, '', '■確認できている条件', ...(confirmed.length ? confirmed : ['・現時点で、確認できている条件はありません']), '',
+    return [...head, '', intro, 'お運びできるかを確かめるため、次の点をお聞かせください。', '', '■確認できている条件', ...(confirmed.length ? confirmed : ['・現時点で、確認できている条件はありません']), '',
       '■お聞かせいただきたいこと', ...asks, '',
       '■お見積りの前提', ...COMPARE.map((t) => `・${t}`), '上の条件で、総額をお出しします。', '',
-      '■進め方', 'まず 1 件だけ、お試しでご相談させてください。条件を伺ってから、お受けできるかとお見積りをお返しします。'].join('\n');
+      '■進め方', 'まずは 1 回、お試しでいかがでしょうか。条件を伺ったうえで、お受けできるかとお見積りをお送りします。'].join('\n');
   }
 
   // 社外の文に入れてはいけない語。車番・運転者・元のファイル名と行・他の地点名・会社名・社内の数字・入れた金額
@@ -4127,8 +4127,8 @@ const Negotiate = (() => {
 
   function entryHtml() {
     const err = ctx.error ? `<p class="neg-err" role="alert">${esc(ctx.error)}<\/p>` : '';
-    return `<div class="neg-box"><h3>帰りの空車から、荷主への相談文を作る<\/h3>
-      <p class="neg-sub">帰りが空だった曜日を調べ、荷主への相談文を作ります。送信はしません。<\/p>
+    return `<div class="neg-box"><h3>帰りの空車を、荷主に案内する文を作る<\/h3>
+      <p class="neg-sub">帰りが空いている曜日を調べ、荷主に空きを案内する文を作ります。送信はしません。<\/p>
       <div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-sample" data-act="entry-sample">架空のサンプルで試す<\/button>
         <button type="button" class="btn-sm" id="neg-entry-file" data-act="entry-file">自社の運行記録を読み込む<\/button><\/div>${err}<\/div>`;
   }
@@ -4169,7 +4169,7 @@ const Negotiate = (() => {
          <div class="neg-row"><span class="neg-lab">ほかの曜日<\/span>${bar(o.empty, o.judged)}<b class="neg-val">${o.empty} / ${o.judged} 便が空車<\/b><\/div>`;
     const basisNote = k.trips ? `行き先が分かった ${k.trips} 本のうち ${m.basis.date + m.basis.none} 本は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
     const warn = noEmpty
-      ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、相談文は作れません。配車表とデジタコの記録を確かめてください。<\/p>` : '';
+      ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。配車表とデジタコの記録を確かめてください。<\/p>` : '';
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。<\/p>` : '';
     return `<div class="neg-box" id="neg-result"><h3>曜日ごとの帰りの空車<\/h3>
       <div class="neg-pick">${pairSel}${wdSel}<\/div>
@@ -4179,16 +4179,16 @@ const Negotiate = (() => {
       <details class="neg-more" id="neg-more"><summary>数え方<\/summary>
         <ul class="neg-ul"><li>ほかの曜日の不明: ${o.unknown} 本<\/li><li id="neg-basis">時刻なし（日付で数えた）: ${m.basis.date + m.basis.none} 本<\/li><li>同じ行を 1 本にした: ${m.duplicates_dropped || 0} 件<\/li><li>${t.weekday}曜の空車の距離: ${n1(t.confirmed.empty_km)} km<\/li><li>過去の記録です。今後は未定<\/li><\/ul><\/details>
       ${evidenceHtml(a)}
-      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-cond" data-act="go-cond" ${noEmpty ? 'disabled aria-disabled="true"' : ''}>相談する荷主と条件を選ぶ<\/button><\/div><\/div>`;
+      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-cond" data-act="go-cond" ${noEmpty ? 'disabled aria-disabled="true"' : ''}>案内する荷主と条件を選ぶ<\/button><\/div><\/div>`;
   }
 
   /* ------------------------------------------------------------ 手順に沿って進める画面（guided。ctx.guided が真のとき）
-     1 データを選ぶ → 2 空いた帰りを見る → 3 荷主に相談する（3 は 荷主の種類 → 条件 → 文面）。
+     1 データを選ぶ → 2 空いた帰りを見る → 3 荷主に案内する（3 は 荷主の種類 → 条件 → 文面）。
      1 画面に出すのは、見出し・短い 1 文・中身・主ボタン 1 つ。根拠と補足は閉じた「詳しく」「集計の根拠を見る」に入れる。 */
 
   const guidedStep = () => (S.entry === null || (S.entry === 'file' && ctx.mode !== 'import') || !ctx.data ? 1 : S.view === 'result' ? 2 : 3);
   function stepsHtml(n) {
-    const L = ['データを選ぶ', '空いた帰りを見る', '荷主に相談する'];
+    const L = ['データを選ぶ', '空いた帰りを見る', '荷主に案内する'];
     return `<div class="neg-stephead"><ol class="neg-steps" id="neg-steps" aria-label="進み具合">${L.map((t, i) => `<li class="${i + 1 === n ? 'on' : i + 1 < n ? 'done' : ''}" ${i + 1 === n ? 'aria-current="step"' : ''}><b>${i + 1}<\/b> ${t}<\/li>`).join('')}<\/ol>
       ${ctx.toFull ? '<button type="button" class="btn-link neg-full" data-act="to-full">すべての項目を見る<\/button>' : ''}<\/div>`;
   }
@@ -4218,7 +4218,7 @@ const Negotiate = (() => {
       <div class="neg-row"><span class="neg-lab">ほかの曜日<\/span>${bar(o.empty, o.judged)}<b class="neg-val">${o.empty} / ${o.judged} 便が空車<\/b><\/div>`;
     const basisNote = k.trips ? `行き先が分かった ${k.trips} 本のうち ${m.basis.date + m.basis.none} 本は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。<\/p>` : '';
-    const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、相談文は作れません。配車表とデジタコの記録を確かめてください。<\/p>` : '';
+    const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。配車表とデジタコの記録を確かめてください。<\/p>` : '';
     const pre = `<p class="neg-base" id="neg-base">帰りの便 <b>${c.trips} 本<\/b>（空車 ${c.empty}・実車 ${c.loaded}・不明 ${c.unknown}）のうち、行き先が分かった便は <b>${k.trips} 本<\/b>（空車 ${k.empty}・実車 ${k.loaded}）です。残り ${u.trips} 本は行き先と積荷が分からないので、${esc(a.pair.to_label)}に着いた便には入れていません。<\/p>
       <p class="neg-note">ほかの曜日の不明 ${o.unknown} 便は別に数えています。<\/p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}<\/p>${kmLine}
       <p class="neg-note">${ctx.mode === 'import' ? '過去の記録の集計です。今後も同じ曜日に空く保証ではなく、今予約できる便でもありません。' : '架空の過去の運行記録です。今予約できる便や、今後も毎週空く保証ではありません。'}<\/p>`;
@@ -4227,12 +4227,12 @@ const Negotiate = (() => {
       <p class="neg-lg" id="neg-lg"><i class="lg-s"><\/i>実線＝荷物あり、<i class="lg-d"><\/i>点線＝空車<\/p>
       <p class="neg-note" id="neg-denom">行き先まで分かった便だけ数えています（ほか ${u.trips} 便は除外）。<\/p>${warn}
       ${evidenceHtml(a, pre)}
-      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-cond" data-act="go-cond" ${noEmpty ? 'disabled aria-disabled="true"' : ''}>荷主に相談する文を作る<\/button>
+      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-cond" data-act="go-cond" ${noEmpty ? 'disabled aria-disabled="true"' : ''}>荷主に案内する文を作る<\/button>
         <button type="button" class="btn-sm" data-act="to-entry">別のデータを選ぶ<\/button><\/div><\/div>`;
   }
   function gTypeHtml(a) {
     const types = Object.entries(TYPES).map(([k, v]) => `<label class="neg-rad neg-type"><input type="radio" name="neg-type" data-type="${k}" ${S.type === k ? 'checked' : ''}><span><b>${labelOf(k, v, a)}<\/b><small>${hintOf(k, v, a)}<\/small><\/span><\/label>`).join('');
-    return `<div class="neg-box" id="neg-cond"><h3>相談する荷主の種類を選ぶ<\/h3><p class="neg-sub">実在の会社は出てきません。相手の種類だけ選びます。<\/p>
+    return `<div class="neg-box" id="neg-cond"><h3>案内する荷主の種類を選ぶ<\/h3><p class="neg-sub">実在の会社は出てきません。相手の種類だけ選びます。<\/p>
       <fieldset class="neg-types"><legend>${esc(a.pair.fr_label)} → ${esc(a.pair.to_label)}・${a.target.weekday}曜<\/legend>${types}<\/fieldset>
       <div class="neg-btns"><button type="button" class="btn-primary" id="neg-g-conds" data-act="g-conds">条件を確認する<\/button><button type="button" class="btn-sm" data-act="to-result">空いた帰りに戻る<\/button><\/div><\/div>`;
   }
@@ -4248,12 +4248,12 @@ const Negotiate = (() => {
     const tm = timesNote(a.target), deps = a.target.rows.filter((r) => r.dt_basis === 'dep').length;
     const evLoad = tm ? `${a.pair.fr_label}発・${a.target.weekday}曜の便 ${deps} 本（${(tm.split(' / ').find((x) => x.startsWith('出発')) || '').replace('出発の記録: ', '出発 ')}）` : '';
     const evRecv = tm && tm.includes('到着') ? tm.split(' / ').find((x) => x.startsWith('到着')) : '';
-    return `<div class="neg-box" id="neg-cond"><h3>積込と受取の条件を確認する<\/h3><p class="neg-sub">分かっている条件を選びます。未確認は相談文で質問します。<\/p>
+    return `<div class="neg-box" id="neg-cond"><h3>積込と受取の条件を確認する<\/h3><p class="neg-sub">分かっている条件を選びます。未確認は案内文で質問します。<\/p>
       ${gCondCard('load', `${a.target.weekday}曜の積込`, evLoad, S.load)}${gCondCard('recv', '受取（納品・返却）', evRecv, S.recv)}
-      <details class="neg-int" id="neg-int"><summary>社内の確認と採算（相談文に入りません）<\/summary><ul class="neg-ul">${INTERNAL_CHECK.map((x) => `<li>${x}<\/li>`).join('')}<\/ul>
+      <details class="neg-int" id="neg-int"><summary>社内の確認と採算（案内文に入りません）<\/summary><ul class="neg-ul">${INTERNAL_CHECK.map((x) => `<li>${x}<\/li>`).join('')}<\/ul>
         <p class="neg-note"><b>採算を計算する（任意）<\/b><\/p>${econInner()}<\/details>
       ${statusHtml(a, 'cond')}
-      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-draft" data-act="go-draft">相談文を見る<\/button><button type="button" class="btn-sm" data-act="g-type">荷主の種類に戻る<\/button><\/div><\/div>`;
+      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-draft" data-act="go-draft">案内文を見る<\/button><button type="button" class="btn-sm" data-act="g-type">荷主の種類に戻る<\/button><\/div><\/div>`;
   }
 
   function condCard(key, title, ev, st) {
@@ -4277,7 +4277,7 @@ const Negotiate = (() => {
         <label>追加費用（円）<input class="ctl sm" type="text" inputmode="decimal" data-e="cost" value="${esc(e.cost)}" autocomplete="off">${unit('cUnit', e.cUnit)}${tax('cTax', e.cTax)}<\/label><\/div>
       <fieldset class="neg-scope"><legend>追加費用に含めた範囲<\/legend>${sc}<label class="neg-rad"><input type="checkbox" data-e="scopeOk" ${e.scopeOk ? 'checked' : ''}>この範囲で費用を確認した<\/label><\/fieldset>
       <div id="neg-econ-out">${econOutHtml()}<\/div>
-      <p class="neg-note">金額は相談文に入りません。0 円のときは 0 と入れます。<\/p><\/div>`;
+      <p class="neg-note">金額は案内文に入りません。0 円のときは 0 と入れます。<\/p><\/div>`;
   }
   function econOutHtml() {
     const r = economics(S.econ);
@@ -4295,7 +4295,7 @@ const Negotiate = (() => {
     let extra = '';
     if (st === 'hold' || st === 'skip') {
       extra = `<div class="neg-hold"><label class="neg-rad"><input type="radio" name="neg-hold" data-hold="hold" ${S.hold.action === 'hold' ? 'checked' : ''}>保留（条件を変えて再確認する）<\/label>
-        <label class="neg-rad"><input type="radio" name="neg-hold" data-hold="skip" ${S.hold.action === 'skip' ? 'checked' : ''}>見送る（この荷主には相談しない）<\/label>
+        <label class="neg-rad"><input type="radio" name="neg-hold" data-hold="skip" ${S.hold.action === 'skip' ? 'checked' : ''}>見送る（この荷主には案内しない）<\/label>
         ${S.hold.action === 'hold' ? `<div class="neg-picks"><small>再確認する内容を選ぶ<\/small>${HOLD_OPTS.map(([k, l]) => `<label class="neg-rad"><input type="checkbox" data-pick="${k}" ${S.hold.picks.includes(k) ? 'checked' : ''}>${l}<\/label>`).join('')}<\/div>` : ''}
         <p class="neg-note">合わない条件のままでは、依頼の文は作りません。<\/p><\/div>`;
     }
@@ -4308,14 +4308,14 @@ const Negotiate = (() => {
     const evLoad = tm ? `${a.pair.fr_label}発・${a.target.weekday}曜の便 ${deps} 本（${(tm.split(' / ').find((x) => x.startsWith('出発')) || '').replace('出発の記録: ', '出発 ')}）` : '';
     const evRecv = tm && tm.includes('到着') ? tm.split(' / ').find((x) => x.startsWith('到着')) : '';
     const types = Object.entries(TYPES).map(([k, v]) => `<label class="neg-rad neg-type"><input type="radio" name="neg-type" data-type="${k}" ${S.type === k ? 'checked' : ''}><span><b>${labelOf(k, v, a)}<\/b><small>${hintOf(k, v, a)}<\/small><\/span><\/label>`).join('');
-    return `<div class="neg-box" id="neg-cond"><h3>相談する荷主と条件を選ぶ<\/h3>
-      <p class="neg-sub">相談する区間: ${esc(a.pair.fr_label)} → ${esc(a.pair.to_label)}・${a.target.weekday}曜。相談する荷主の種類を選びます（実在の会社は出ません）。<\/p>
-      <fieldset class="neg-types"><legend>相談する荷主の種類<\/legend>${types}<\/fieldset>
+    return `<div class="neg-box" id="neg-cond"><h3>案内する荷主と条件を選ぶ<\/h3>
+      <p class="neg-sub">案内する区間: ${esc(a.pair.fr_label)} → ${esc(a.pair.to_label)}・${a.target.weekday}曜。案内する荷主の種類を選びます（実在の会社は出ません）。<\/p>
+      <fieldset class="neg-types"><legend>案内する荷主の種類<\/legend>${types}<\/fieldset>
       ${condCard('load', `${a.target.weekday}曜の積込の条件`, evLoad, S.load)}${condCard('recv', '受取（納品・返却）の条件', evRecv, S.recv)}
-      <p class="neg-note">未確認の項目は、相談文で質問にします。<\/p>
+      <p class="neg-note">未確認の項目は、案内文で質問にします。<\/p>
       <details class="neg-int"><summary>社内で確かめること（文面には入れません）<\/summary><ul class="neg-ul">${INTERNAL_CHECK.map((x) => `<li>${x}<\/li>`).join('')}<\/ul><\/details>
       ${econHtml()}${statusHtml(a)}
-      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-draft" data-act="go-draft">相談文を見る<\/button><button type="button" class="btn-sm" data-act="to-result">空車の便に戻る<\/button><\/div><\/div>`;
+      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-draft" data-act="go-draft">案内文を見る<\/button><button type="button" class="btn-sm" data-act="to-result">空車の便に戻る<\/button><\/div><\/div>`;
   }
 
   function internalHtml(a) {
@@ -4343,10 +4343,10 @@ const Negotiate = (() => {
     const lk = leaks(S.draft.text, toks);
     const can = !none && S.draft.text.trim() && !(st === 'hold' && !S.hold.picks.length);
     const g = !!ctx.guided;
-    return `<div class="neg-box" id="neg-draft"><h3>${g ? '相談文を直してコピーする' : '相談文を直してコピーする'}<\/h3>
+    return `<div class="neg-box" id="neg-draft"><h3>${g ? '案内文を直してコピーする' : '案内文を直してコピーする'}<\/h3>
       ${statusHtml(a, 'draft')}${internalHtml(a)}
       ${none ? `<p class="neg-warn" id="neg-none">${STATUS_JA[st]}のため、文面は作りません。条件に戻って見直してください。<\/p>` : `
-      <label class="neg-tl">相談文（【 】の宛先・社名・担当者名を書き換えてください）
+      <label class="neg-tl">案内文（【 】の宛先・社名・担当者名を書き換えてください）
         <textarea id="neg-text" class="o-ta" rows="${g ? 11 : 16}" spellcheck="false">${esc(S.draft.text)}<\/textarea><\/label>`}
       <div id="neg-live">${staleHtml(a)}<p class="neg-warn" id="neg-leak" ${lk.length ? '' : 'hidden'}>${lk.length ? `社内の情報（${esc(lk.join('、'))}）が文面に入っています。消してからコピーしてください。` : ''}<\/p><\/div>
       <div class="neg-btns"><button type="button" class="btn-primary" id="neg-copy" data-act="copy" ${can && !lk.length ? '' : 'disabled aria-disabled="true"'}>文面をコピー<\/button>
@@ -4416,7 +4416,7 @@ const Negotiate = (() => {
     let html;
     if (ctx.guided) html = guidedHtml();
     else if (S.entry === null) html = !ctx.guided && ctx.data && ctx.mode !== 'import' && !S.picking
-      ? `<details class="neg-entry-d"><summary>荷主への相談文を作る<\/summary>${entryHtml()}<\/details>`   // サンプルがもう読み込まれている全部を見る画面では、入口を閉じた欄に入れる（主ボタンを出さない）
+      ? `<details class="neg-entry-d"><summary>荷主に案内する文を作る<\/summary>${entryHtml()}<\/details>`   // サンプルがもう読み込まれている全部を見る画面では、入口を閉じた欄に入れる（主ボタンを出さない）
       : entryHtml();
     else if (S.entry === 'file' && ctx.mode !== 'import') html = fileWaitHtml();
     else if (!ctx.data) html = '';
