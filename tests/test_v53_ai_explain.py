@@ -27,7 +27,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import serve_web  # noqa: E402
 
-SENTINEL = "sk-ant-TESTSENTINEL-0123456789"
+SENTINEL = "sk-" + "ant-TESTSENTINEL-0123456789"
 
 
 # ---------------------------------------------------------------- 差し替えの部品

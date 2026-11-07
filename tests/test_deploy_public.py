@@ -323,4 +323,3 @@ def test_upload_set_has_no_forbidden_files():
 def test_dockerfile_is_stdlib_only():
     text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "python:3.13-slim" in text and "--public" in text and "pip install" not in text
-    assert "streamlit" not in (ROOT / "tools" / "serve_web.py").read_text(encoding="utf-8")

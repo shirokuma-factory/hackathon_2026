@@ -13,13 +13,8 @@ from shipcompare.guide import (
 from shipcompare.tariffs import ROUTES, data_dir
 
 from conftest import make_shipment, one, row_of
-from test_app import confirm, load_scenario as app_load, new_app
 
 CHECKED = "2026-11-03"
-
-
-def df_all(at) -> str:
-    return "\n".join(d.value.to_string() for d in at.dataframe)
 
 
 # ---------------------------------------------------------------- G14 (13.7)
@@ -92,16 +87,6 @@ def test_spec13_7_corporate_scenarios_unchanged():
         assert row_of(rows, "rosen").status in (ST_OK, ST_CHECK, ST_NOCALC)
 
 
-def test_spec13_7_app_request_tab_shows_contacts():
-    at = confirm(app_load(new_app(), 1))
-    assert not at.exception
-    text = df_all(at)
-    assert "https://www2.sagawa-exp.co.jp/contact/logistics/" in text
-    assert "https://www.nipponexpress.com/jp/ja/contact/" in text
-    assert "2026-11-03" in text and "窓口の確認が必要" in text
-    assert any("問い合わせ先" in m.value for m in at.markdown)
-
-
 # ---------------------------------------------------------------- G15 (13.8)
 SAGAWA_NOTE = "代表の郵便番号で照会した値。集荷時間や時期で変わります"
 
@@ -143,19 +128,6 @@ def test_spec13_8_unknown_route_has_no_days_and_data_has_sources():
     assert all(m["source_url"].startswith("https://") and m["checked_on"] == CHECKED for m in modes.values())
 
 
-def test_spec13_8_app_estimate_tab_shows_days_column():
-    at = confirm(app_load(new_app(), 1))
-    assert not at.exception
-    df = next(d.value for d in at.dataframe if "お届け日数（公表）" in d.value.columns)
-    col = dict(zip(df["手段"], df["お届け日数（公表）"]))
-    takuhai = next(v for k, v in col.items() if k.startswith("宅配"))
-    assert "発送日+1日（午後以降の配達）" in takuhai and SAGAWA_NOTE in takuhai
-    assert next(v for k, v in col.items() if k.startswith("路線便")) == "公表なし（見積で確認）"
-    jit = next(v for k, v in col.items() if k.startswith("カゴ台車"))
-    assert jit.startswith("900km圏内は預かりの翌日")
-    assert any("公表した値だけ" in c.value for c in at.caption)
-
-
 # ---------------------------------------------------------------- G16 (13.9)
 def test_spec13_9_every_guide_row_has_url_and_checked_on():
     rows = load_guide()
@@ -179,11 +151,3 @@ def test_spec13_9_guide_values_match_spec():
     assert "運賃表なし" in rows["パレット1枚単位（SST便）"].price_text
 
 
-def test_spec13_9_app_shows_guide_expander():
-    at = confirm(app_load(new_app(), 1))
-    assert not at.exception
-    ex = next(e for e in at.expander if "ほかの輸送手段（早見表、計算はしていません）" in e.label)
-    assert ex is not None
-    text = df_all(at)
-    assert "shippingfee_jitpallet.pdf" in text and "フェリー（シャーシだけを船に載せる）" in text
-    assert "https://www.jrfreight.co.jp/service/price/calculation.html" in text

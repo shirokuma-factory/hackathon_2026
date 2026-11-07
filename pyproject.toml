@@ -5,13 +5,14 @@ description = "Backfull: 中小の運送会社と荷主のための物流ツー�
 requires-python = ">=3.13"
 dependencies = [
     "anthropic>=2.6.0",
-    "streamlit>=1.40",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8",
     "pytest-xdist>=3.8.0",
+    "websockets>=13",
+    "pillow>=10",
 ]
 
 [build-system]
