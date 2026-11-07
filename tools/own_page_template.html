@@ -806,7 +806,7 @@ function printHtml(d) {
       ${rev && rev.total ? tr('帰り荷の売上の目安（上限）', yen(rev.total), `空車の帰り ${rev.counted} 便の合計。標準的運賃の表に当てた目安で、相場ではありません`) : ''}</table>
     <h3>空車の便数が多い区間と曜日</h3><table><thead><tr><th>区間</th><th>曜日</th><th>便数</th><th>空車</th><th>不明</th><th>空車の km</th></tr></thead><tbody>${rows}</tbody></table>
     <h3>気づき</h3><ol>${d.insights.map((i) => `<li>${esc(i.text)}</li>`).join('') || '<li>この月の気づきはありません。</li>'}</ol>
-    <p>全国の実車率 ${d.national.actual_rate_pct}%（営業用普通車）は、自社の値と同じ式ではありません。</p>`;
+    <p>全国の実車率 ${d.national.actual_rate_pct}%（営業用普通車）は、自社の実車率と比べられます。全国の積載効率はトンキロの比で、自社の値と同じ式ではありません。</p>`;
 }
 
 /* ------------------------------------------------------------ 全体の描画 */

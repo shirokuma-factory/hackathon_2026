@@ -440,11 +440,21 @@ const Own = (() => {
     if (/^[A-Za-z0-9_-]{2,}$/.test(s)) return 'code_like';
     return 'other_text';
   }
-  // 見出しの欄に、見出しではなく値が入っているとき（見出しのない CSV）は、見出しを送らず「列 N」にする
+  // 見出しは、列名の辞書（OwnCalc の DIGITACO_DICT など）にある名前か、ごく一般的な語のときだけ送る。
+  // それ以外（運転者名・地点名・会社名・メールアドレス・車番・見出しのない CSV の値）は、送らずに「列 N」にする
+  const GENERIC_HEADS = new Set(['日付', '日', '年月日', '時刻', '時間', '開始', '終了', '出発', '到着', '出発時刻', '到着時刻', '実績', '実績値', '数量', '数', '個数', '重量', '重さ', '距離', '区分', '種別', '種類', '状態', '備考', 'メモ', '番号', 'コード', '便', '便名', '品名', '値', '単位', '合計', '曜日', '月', '年',
+    'date', 'time', 'start', 'end', 'km', 'kg', 'type', 'status', 'note', 'memo', 'no', 'id', 'code', 'value', 'count', 'weight', 'distance', 'flag', 'kind']);
   function safeHeader(h, i) {
     const s = String(h || '').normalize('NFKC').trim();
-    if (!s || s.length > 20 || /\d{4,}/.test(s) || valueShape(s) !== 'other_text' && valueShape(s) !== 'place_like' && valueShape(s) !== 'code_like') return `列 ${i + 1}`;
-    return s;
+    const fallback = `列 ${i + 1}`;
+    if (!s || s.length > 20 || /\d{4,}/.test(s) || /[@:]|[/]/.test(s)) return fallback;
+    const calc = typeof OwnCalc !== 'undefined' ? OwnCalc : null;
+    const key = s.toUpperCase();
+    const own = (o) => !!o && Object.prototype.hasOwnProperty.call(o, s);
+    if (calc && ((calc.roleOfDict && calc.roleOfDict(s)) || (calc.roleOf && calc.roleOf(s, null)) || own(calc.HAISHA_DICT) || own(calc.DIGITACO_DICT))) return s;
+    const bare = s.replace(/\s*[([【][^)\]】]{0,6}[)\]】]\s*$/, '').trim();   // 「距離(km)」の単位の括弧を外して引く
+    if (GENERIC_HEADS.has(bare) || GENERIC_HEADS.has(bare.toLowerCase()) || GENERIC_HEADS.has(key.toLowerCase())) return s;
+    return fallback;
   }
   // 列 x の値（そのファイルの全行）から、値の形の要約だけを作る。この関数が返す物に値は入らない
   function columnShape(x, files) {
@@ -495,7 +505,7 @@ const Own = (() => {
     return `<div class="o-aiconf" role="group" aria-label="AI に送る内容の確認"><b>この内容を Anthropic の API に送ります</b>
       <table class="o-tbl"><thead><tr><th>列の見出し</th><th>値の形（割合）</th><th>入力あり</th><th>種類の数</th>${same ? '' : '<th>選べる役割</th>'}</tr></thead><tbody>${rows}</tbody></table>
       ${same ? `<p class="o-hint">選べる役割（全列共通）: ${esc(optsOf(cols[0]))}</p>` : ''}
-      <p class="o-hint">値そのものは送りません（車番・運転者・地点名・金額は出ません）。形の割合は、読み込んだ全行からこのブラウザの中で数えています。送るのは上の表だけで、AI の案を決めるのはあなたです。</p>
+      <p class="o-hint">値そのものは送りません（車番・運転者・地点名・金額は出ません）。見出しも、列名の辞書にあるものと一般的な語だけを送り、それ以外は「列 N」にしています。形の割合は、読み込んだ全行からこのブラウザの中で数えています。送るのは上の表だけで、AI の案を決めるのはあなたです。</p>
       <div class="bar"><button type="button" class="primary" data-act="ai-cols-send">送る</button><button type="button" data-act="ai-cols-cancel">やめる</button></div></div>`;
   }
   function aiBoxHtml(need) {
@@ -1114,7 +1124,7 @@ const Own = (() => {
         <small class="o-formula">全便に荷が付くことはまずありません。</small></div>${skipP}
       <details class="o-more" id="own-rev-more"><summary>便ごとの額を見る</summary>
         <div class="o-tw2"><table class="o-tbl"><thead><tr><th>日</th><th>車番</th><th>区間</th><th>車格</th><th>km</th><th>目安</th><th>式</th></tr></thead><tbody>${trips}</tbody></table></div>
-        <p class="o-note">標準的運賃（国土交通省 2024 年 3 月 22 日告示）の距離制の表。運賃の地域は、その便の発地の県で決めています（県が分からないか関東・近畿以外は関東の表）。車の種類は 8 t 以上を 10t、3 t 以下を 2t、その間を 4t としています。${esc(REV_GLOSS)}実際の運賃は荷主との相談で決まります。
+        <p class="o-note">標準的運賃（国土交通省 2024 年 3 月 22 日告示）の距離制の表。運賃の地域は、その便の発地の県で決めています（県が分からないか関東・近畿以外は関東の表）。国の通達では、車がいる営業所の地域の表を使うので、営業所が関東・近畿以外の会社では実際の額と違います。車の種類は 8 t 以上を 10t、3 t 以下を 2t、その間を 4t としています。${esc(REV_GLOSS)}実際の運賃は荷主との相談で決まります。
           上の「空車の費用」は、帰り荷を取っても減らない費用です。この売上の目安と引き算はしないでください。</p></details>`;
     return `<div class="o-rev" id="own-rev">${head}${body}<p class="o-note">用語: 空車 km${OwnMonth.tipHtml('空車 km')}</p></div>`;
   }

@@ -510,17 +510,20 @@ def unmatched_numbers(draft: str, facts: dict[str, Any]) -> list[str]:
         m = _hm_to_min(_tot(facts).get(key))
         if m is not None:
             known.add(str(m))
-    # 事実に分・時間の形で入っている時間は、分への換算も許す（例: 90 分 = 1 時間 30 分）
-    for k in list(known):
-        if k.isdigit() and int(k) < 100000:
-            n = int(k)
-            known.add(str(n // 60))
-            known.add(str(n % 60))
+    # 換算は、事実にある分の値（合計・行・基準）だけを時間と分に直したものに限る（例: 682 分 = 11 時間 22 分）
+    for v in _allowed_sets(facts)["min"]:
+        n = int(v)
+        known.update({str(n), str(n // 60), str(n % 60)})
     return sorted(n for n in _numbers(draft) if n not in known)
 
 
 # 数字に付く助数詞の前の漢数字だけを断る（一緒・一つ・一度・一方 などの普通の語は通す）
-_KANJI_COUNTER_RE = re.compile(r"[〇一二三四五六七八九十百千万]+\s*(?:円|回|件|分|時間|日|台|人|か所|ヶ所|箇所)")
+_KANJI_COUNTER_RE = re.compile(r"[〇一二三四五六七八九十百千万]+\s*(?:円|回|件|分|時間|日|台|人|か所|ヶ所|箇所|割|倍|%)|半額")
+_URL_RE = re.compile(r"https?://|www\.|[a-z0-9-]+\.(?:com|jp|net|org|io)\b", re.I)
+_INSTR_RE = re.compile(r"転送|クリック|リンク|振込|振り込|送金|ダウンロード|ログイン")
+_RATIO_RE = re.compile(r"\d[\d,.]*\s*(?:%|倍|割|日以内|日まで|日間|日)")
+_MD_RE = re.compile(r"\d{1,2}\s*月\s*\d{1,2}\s*日")
+_PSEUDO_RE = re.compile(r"荷主[A-Z]|地点\d+|【[^】]*】")
 _JUBUN_OK_RE = re.compile(r"十分(?=[になでをはもだ、。]|$)")  # 「十分に」は数ではない
 _YEN_RE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*円")
 _MAN_YEN_RE = re.compile(r"\d[\d,]*\s*万\s*円")
@@ -555,6 +558,19 @@ def draft_issues(draft: str, facts: dict[str, Any]) -> list[dict[str, str]]:
             out.append({"quote": m.group(0), "reason": "「時間」の前の数字が、一覧の時間に一致しません（機械照合）"})
     for m in _KANJI_COUNTER_RE.finditer(_JUBUN_OK_RE.sub("", text)):
         out.append({"quote": m.group(0), "reason": "漢数字が使われていて数字を照合できません（機械照合）"})
+    ftxt = unicodedata.normalize("NFKC", canonical(facts) + "\n" + figures_text(facts))
+    fcomp = re.sub(r"[\s,]", "", ftxt)
+    for m in _URL_RE.finditer(text):
+        out.append({"quote": m.group(0), "reason": "事実にない URL が入っています（機械照合）"})
+    for m in _INSTR_RE.finditer(text):
+        if m.group(0) not in ftxt:
+            out.append({"quote": m.group(0), "reason": "事実にない依頼・指示の言い方が入っています（機械照合）"})
+    for m in list(_RATIO_RE.finditer(text)) + list(_MD_RE.finditer(text)):
+        if re.sub(r"[\s,]", "", m.group(0)) not in fcomp:
+            out.append({"quote": m.group(0), "reason": "割合・倍率・期限・日付が、事実の中に見つかりません（機械照合）"})
+    for m in _PSEUDO_RE.finditer(text):
+        if m.group(0) not in ftxt:
+            out.append({"quote": m.group(0), "reason": "事実にない呼び名・差し込みの欄が入っています（機械照合）"})
     return out
 
 
@@ -819,7 +835,10 @@ def clean_own_columns(body: Any) -> list[dict[str, Any]]:
             continue
         seen.add(idx)
         header = unicodedata.normalize("NFKC", str(c.get("header", ""))).strip()[:OWN_HEADER_MAX]
-        opts = [r for r in (c.get("options") or []) if isinstance(r, str) and r in OWN_ROLES]
+        raw_opts = c.get("options")
+        if raw_opts is not None and not isinstance(raw_opts, list):
+            raise AiError("列の形が違います")
+        opts = [r for r in (raw_opts or []) if isinstance(r, str) and r in OWN_ROLES]
         opts = list(dict.fromkeys(opts)) or [r for r in OWN_ROLES if r != "skip"]
         sh = c.get("shape") if isinstance(c.get("shape"), dict) else {}
         classes: dict[str, float] = {}
@@ -923,8 +942,11 @@ SYS_POLISH = ("あなたは運送会社の配車担当です。帰り便の空�
               "(4) 荷主への質問は、初めての連絡でいちばん大事な 3〜4 件に絞る。残りの質問は消し、代わりに「詳しい条件は、ご関心があればあらためて伺います。」の 1 行を入れる。"
               "(5) 元の文より長くしない。出力は書き直した案内文の本文だけ（前置き・説明・見出しの記号を付けない）。")
 _PH_RE = re.compile(r"【[^】]*】")
-_WD_RE = re.compile(r"([月火水木金土日])曜")
-_PLACE_RE = re.compile(r"[一-龥々ヶ]+周辺")
+_WD_RE = re.compile(r"([月火水木金土日])曜|[（(]([月火水木金土日])[）)]")
+_WD_EN_RE = re.compile(r"\b(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\b", re.I)
+_PLACE_RE = re.compile(r"[一-龥々ヶァ-ヶー]+周辺|[ぁ-ん]+周辺")
+_MONEY_RE = re.compile(r"\d[\d,.]*\s*円|万\s*円|[一二三四五六七八九十百千万]+\s*円")
+_PLATE_LIKE_RE = re.compile(r"[一-龥々]{2,4}\s*\d{2,3}\s*[ぁ-んァ-ヶ]\s*[・.\-\d]{1,6}")
 
 
 def clean_polish(body: Any) -> str:
@@ -934,6 +956,11 @@ def clean_polish(body: Any) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")
     if len(text) > POLISH_MAX_INPUT_CHARS:
         raise AiError(f"整えられる文は {POLISH_MAX_INPUT_CHARS} 字までです", "too_large", 413)
+    norm = unicodedata.normalize("NFKC", text)
+    if PLATE_RE.search(norm) or _PLATE_LIKE_RE.search(norm):
+        raise AiError("車番のような文字列が入っているので、整えられません", "plate", 400)
+    if _MONEY_RE.search(norm):
+        raise AiError("金額のような文字列が入っているので、整えられません", "money", 400)
     return text
 
 
@@ -948,7 +975,10 @@ def polish_problems(src: str, out: str) -> list[str]:
         probs.append(f"{k} が消えています")
     for k in sorted(ph_out - ph_in):
         probs.append(f"元の文にない {k} が入っています")
-    wd_in, wd_out = set(_WD_RE.findall(a)), set(_WD_RE.findall(b))
+    wd_in = {x or y for x, y in _WD_RE.findall(a)}
+    wd_out = {x or y for x, y in _WD_RE.findall(b)}
+    for k in sorted({w.lower()[:3] for w in _WD_EN_RE.findall(b)} - {w.lower()[:3] for w in _WD_EN_RE.findall(a)}):
+        probs.append(f"元の文にない英語の曜日「{k}」が入っています")
     for k in sorted(wd_in - wd_out):
         probs.append(f"曜日「{k}曜」が消えています")
     for k in sorted(wd_out - wd_in):
@@ -958,6 +988,28 @@ def polish_problems(src: str, out: str) -> list[str]:
         probs.append(f"場所「{k}」が消えています")
     for k in sorted(pl_out - pl_in):
         probs.append(f"元の文にない場所「{k}」が入っています")
+    seq_in = list(dict.fromkeys(_PLACE_RE.findall(a)))
+    seq_out = list(dict.fromkeys(_PLACE_RE.findall(b)))
+    if set(seq_in) == set(seq_out) and seq_in != seq_out:
+        probs.append("場所の順番（…から…へ）が元の文と入れ替わっています")
+    pairs_in = re.findall(r"(\S+?周辺)から(\S+?周辺)へ", a)
+    for pa, pb in re.findall(r"(\S+?周辺)から(\S+?周辺)へ", b):
+        if (pb, pa) in pairs_in:
+            probs.append("場所の向き（…から…へ）が元の文と逆です")
+    if b.count("周辺") > a.count("周辺"):
+        probs.append("「周辺」の言い方が増えています")
+    k_in = set(_KANJI_COUNTER_RE.findall(_JUBUN_OK_RE.sub("", a)))
+    for m in sorted(set(_KANJI_COUNTER_RE.findall(_JUBUN_OK_RE.sub("", b))) - k_in):
+        probs.append(f"元の文にない漢数字・割合の言い方「{m}」が入っています")
+    for m in re.findall(r"[一二三四五六七八九十]+[百千万]|半額|倍|割", b):
+        if m not in a:
+            probs.append(f"元の文にない数量・割合の言い方「{m}」が入っています")
+    for m in _URL_RE.findall(b):
+        if m not in a:
+            probs.append(f"元の文にない URL「{m}」が入っています")
+    for m in _INSTR_RE.findall(b):
+        if m not in a:
+            probs.append(f"元の文にない依頼の言い回し「{m}」が入っています")
     n_in, n_out = _numbers(a), _numbers(b)
     for k in sorted(n_in - n_out, key=str):
         probs.append(f"数字「{k}」が消えています")
@@ -1075,6 +1127,7 @@ def cargo_allowed(text: str) -> dict[str, set[float]]:
     """入力の文から、欄ごとに出してよい数を作る。単位の換算（mm・m → cm、t・g → kg）はここで計算する。
     「120 サイズ」の数は宅配の区分なので、どの欄にも入れない。"""
     t = unicodedata.normalize("NFKC", text).lower().replace(",", "")
+    t = re.sub(r"\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}\s*/\s*\d{1,2}|\d{1,2}\s*月\s*\d{1,2}\s*日", " ", t)   # 日付の数は、どの欄にも入れない
     dims: set[float] = set()
     kg: set[float] = set()
     cnt: set[float] = set()
@@ -1097,7 +1150,8 @@ def cargo_allowed(text: str) -> dict[str, set[float]]:
         if any(a <= m.start() < b for a, b in used):
             continue
         if not u:
-            cnt.add(round(v, 4))   # 個数は「3箱」「1枚」のように単位なしの数（寸法の並びの中の数は除く）
+            cnt.add(round(v, 4))   # 単位なしの数は個数だけ（寸法と重さには入れない。寸法の並びの中の数は除く）
+            continue
         if u in ("mm", "cm", "m"):
             dims.add(round(dim_val(v, u), 4))
         elif u == "kg":
@@ -1106,9 +1160,6 @@ def cargo_allowed(text: str) -> dict[str, set[float]]:
             kg.add(round(v / 1000, 4))
         elif u in ("t", "トン"):
             kg.add(round(v * 1000, 4))
-        else:
-            dims.add(round(v, 4))
-            kg.add(round(v, 4))
     return {"dims": dims, "kg": kg, "n": cnt}
 
 
@@ -1150,6 +1201,9 @@ def cargo_validate(text: str, data: Any) -> tuple[list[dict[str, Any]], str, str
             out[key] = int(v) if v == int(v) else round(v, 2)
         note = str(r.get("note", "")).strip()[:CARGO_NOTE_MAX]
         n_note = {round(float(x), 4) for x in re.findall(_NUM, unicodedata.normalize("NFKC", note).replace(",", ""))}
+        if _URL_RE.search(note):
+            note = ""
+            dropped.append(f"{i + 1} 行目の備考に URL があったので消しました")
         if n_note - note_ok:
             note = ""
             dropped.append(f"{i + 1} 行目の備考に、文にない数字があったので消しました")
@@ -1171,6 +1225,8 @@ def cargo_validate(text: str, data: Any) -> tuple[list[dict[str, Any]], str, str
     raw_unk = data.get("unknowns") if isinstance(data, dict) else None
     for u in raw_unk if isinstance(raw_unk, list) else []:
         if isinstance(u, str) and u.strip():
+            if _URL_RE.search(u) or _INSTR_RE.search(u):
+                continue
             unknowns.append(u.strip()[:CARGO_UNKNOWN_MAX])
     for s in sizes:
         unknowns.append(f"{s}サイズは3辺合計{s}cm以内の区分で、縦・横・高さは分かりません")
@@ -1179,10 +1235,18 @@ def cargo_validate(text: str, data: Any) -> tuple[list[dict[str, Any]], str, str
     for key, label in (("origin", "発地"), ("destination", "着地")):
         v = data.get(key) if isinstance(data, dict) else ""
         v = v.strip()[:CARGO_PLACE_MAX] if isinstance(v, str) else ""
+        if v and (len(v) < 2 or re.fullmatch(r"[ぁ-ん]{1,3}", v)):
+            dropped.append(f"{label}「{v}」は短すぎるので入れませんでした")
+            v = ""
         if v and v not in norm and v not in text:
             dropped.append(f"{label}「{v}」は文にないので入れませんでした")
             v = ""
         places.append(v)
+    if places[0] and places[1]:
+        io, idd = norm.find(places[0]), norm.find(places[1])
+        if io >= 0 and idd >= 0 and io > idd:
+            dropped.append("発地と着地の順番が文と逆なので、どちらも入れませんでした")
+            places = ["", ""]
     return rows, places[0], places[1], unknowns, dropped
 
 
