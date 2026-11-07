@@ -3053,7 +3053,7 @@ const OwnCalc = (() => {
 
   /* ------------------------------------------------------------ 書き出し */
 
-  const csvCell = (v) => { const s = v == null ? '' : String(v); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const csvCell = (v) => { const s0 = v == null ? '' : String(v); const s = /^[=+\-@\t\r]/.test(s0) && !/^[-+]?\d+(\.\d+)?$/.test(s0) ? `'${s0}` : s0; return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const KIND_JA = { loaded: '実車', empty: '空車', unknown: '不明' };
   const DIR_JA = { out: '行き', back: '帰り' };
 
