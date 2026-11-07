@@ -710,7 +710,7 @@ const Rt = (() => {
         // 船は「つながる航路がありません」と書き、横棒の図（Rt.modeState('ferry') === 'none'）と同じ言い方にする（SPEC §33 #7）
         if (m === 'ferry') {
           return `<div class="rt-card off" style="--c:${rgb(col(m))}" data-state="none" title="${esc((s && s.why) || '')}"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b></span>` +
-            '<span class="rt-why">なし（つながる航路がありません）</span></div>';
+            '<span class="rt-why">このデモの航路の表に入っていません（船会社に見積を頼んでください）</span></div>';
         }
         return `<div class="rt-card off" style="--c:${rgb(col(m))}"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b><span class="rt-km">なし</span></span>` +
           `<span class="rt-why">${esc((s && s.why) || 'この送り方の道はありません')}</span></div>`;

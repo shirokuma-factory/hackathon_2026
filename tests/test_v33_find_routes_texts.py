@@ -46,7 +46,7 @@ def test_routes_labels_and_cards():
     js = _read(WEB / "routes.js")
     assert "rail: '鉄道'" in js and "rail: '電車'" not in js
     assert "ferry: '船'" in js
-    assert "なし（つながる航路がありません）" in js
+    assert "このデモの航路の表に入っていません（船会社に見積を頼んでください）" in js
     assert "貨物駅を通るため、トラックより長くなります。" in js and "s.km > 2 * tk.km" in js
     assert "function modeState(m)" in js and "modeState," in js
     # 画面に出す文で「電車」「フェリー」を手段の名前に使わない（航路・経路の説明の「フェリー」は残してよい）

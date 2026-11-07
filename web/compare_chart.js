@@ -17,6 +17,7 @@ const CompareChart = (() => {
     return String(d).replace(/（.*$/, '').replace(/\s*https?:\/\/\S+/, '').trim();
   }
 
+  const pickOf = (c) => c.pick || c.label;   // 丸ボタンの値。貸切が車格ごとに複数あるときは「貸切 4t車」
   const priced = (c) => c.amount !== null && c.amount !== undefined && c.amount > 0;
   // 条件のそろった手段（公開条件に合う）。要確認の手段は最安・倍率に入れない（レビュー F02）
   const fit = (c) => priced(c) && c.status === '公開条件に合う';
@@ -38,7 +39,7 @@ const CompareChart = (() => {
 
   // 額の出る手段が 1 つだけのとき（倍率は出さない。SPEC §33 #3）。表を持たない手段は、宅配・路線便・カゴ台車のうち問い合わせになっているもの
   function onlyText(one, others) {
-    const ask = ['宅配', '路線便', 'カゴ台車'].filter((n) => others.some((c) => c.label === n && c.status !== '使えない'));
+    const ask = ['宅配', '路線便', 'カゴ台車'].filter((n) => others.some((c) => c.label === n && c.status !== '使えない' && !priced(c)));
     return `条件がそろって額が出るのは${one.label}だけです。` + (ask.length ? `${ask.join('・')}は料金表がないため、問い合わせが要ります。どれが安いかはまだ分かりません。` : '');
   }
 
@@ -51,6 +52,7 @@ const CompareChart = (() => {
   let altOpen = true;   // 鉄道・船・飛行機の欄の開閉（表を作り直しても保つ）
   document.addEventListener('toggle', (e) => { if (e.target && e.target.classList && e.target.classList.contains('cc-alt')) altOpen = e.target.open; }, true);
   const CAGE_EXPL = 'カゴ単位で払う便';
+  const SHIP_NO_DATA = 'このデモの航路の表に入っていません。船会社に見積を頼んでください。';
   const NO_FARE = '公表の運賃表を持っていないため、額は出しません';
   const rtNone = (m) => !!(typeof Rt !== 'undefined' && Rt.cur && Rt.cur.sets && Rt.cur.sets[m] && Rt.cur.sets[m].ok === false);
   // 飛行機のカードは app.js の手段の一覧に無いので、ここで足す（鉄道・船は app.js が作る）
@@ -82,9 +84,9 @@ const CompareChart = (() => {
     const plain = others.filter((c) => !MODE_OF[c.label]);
     // 他の手段が「要見積」（表を持たない）のとき、額の出る 1 つだけを最安として初めから選ばない（r7b 指摘1）
     const unknownOthers = others.some((c) => c.status !== '使えない' && !c.routeNone);
-    if (auto && !pick && base.length && (r || !unknownOthers)) { const f = r ? base.find((c) => c.amount === r.lo) : base[0]; if (f) pick = f.label; }
+    if (auto && !pick && base.length && (r || !unknownOthers)) { const f = r ? base.find((c) => c.amount === r.lo) : base[0]; if (f) pick = pickOf(f); }
     const max = Math.max(1, ...cards.filter(priced).map((c) => c.amount));
-    const name = (c, usable) => `<span class="cc-name">${usable ? `<input type="radio" name="cc-pick" value="${esc(c.label)}"${pick === c.label ? ' checked' : ''} aria-label="${esc(disp(c.label))}を選ぶ">` : ''}<span>${esc(disp(c.label))}${c.sub ? `<small>${esc(c.sub)}</small>` : ''}</span></span>`;
+    const name = (c, usable) => `<span class="cc-name">${usable ? `<input type="radio" name="cc-pick" value="${esc(pickOf(c))}"${pick === pickOf(c) ? ' checked' : ''} aria-label="${esc(disp(c.label))}${c.sub ? esc(c.sub) : ''}を選ぶ">` : ''}<span>${esc(disp(c.label))}${c.sub ? `<small>${esc(c.sub)}</small>` : ''}</span></span>`;
     const days = (c) => (c.days ? `<span class="cc-days" data-l="日数" title="${esc(c.days)}">${esc(shortDays(c.days))}</span>` : '<span class="cc-days unk" data-l="日数">未確認</span>');
     const ok = (txt, cls) => `<span class="cc-ok ${cls}" data-l="この荷物に使えるか">${txt}</span>`;
     const line = (c) => {
@@ -102,10 +104,11 @@ const CompareChart = (() => {
       const unusable = c.status === '使えない';
       const nonet = !!c.routeNone;
       const alt = !!MODE_OF[c.label];   // 鉄道・船・飛行機: 公表の運賃表が無い。日数も出典のある値が無いので見積で確かめる
-      const txt = unusable ? '—' : nonet ? (c.label === '飛行機' ? 'なし（つながる路線がありません）' : 'なし（つながる航路がありません）') : alt ? '日数と額は見積で確認' : '見積が要ります';   // 料金が取れない手段は 0 円にせず「要見積」
-      const note = unusable ? (c.none ? `<span class="cc-why">理由: ${esc(c.none)}</span>` : '') : nonet ? '' : alt ? `<span class="cc-nofare">${esc(ALT_DETAIL[c.label])}。金額は見積で確かめます。道は地図に出ます。</span>` : '<span class="cc-why">この行き先の料金表がないため、見積で確かめてください。</span>';
+      const shipNoData = nonet && c.label !== '飛行機';   // 船: 持っている経路の表に無いだけ。船が無いとは言わず、見積を頼む形で選べるままにする
+      const txt = unusable ? '—' : shipNoData ? '航路の表に入っていません' : nonet ? 'なし（つながる路線がありません）' : alt ? '日数と額は見積で確認' : '見積が要ります';   // 料金が取れない手段は 0 円にせず「要見積」
+      const note = unusable ? (c.none ? `<span class="cc-why">理由: ${esc(c.none)}</span>` : '') : shipNoData ? `<span class="cc-nofare">${esc(SHIP_NO_DATA)}</span>` : nonet ? '' : alt ? `<span class="cc-nofare">${esc(ALT_DETAIL[c.label])}。金額は見積で確かめます。道は地図に出ます。</span>` : '<span class="cc-why">この行き先の料金表がないため、見積で確かめてください。</span>';
       const dy = alt && !c.days ? '<span class="cc-days unk" data-l="日数">見積で確認</span>' : days(c);
-      return `<label class="cc-row off">${name(c, !unusable && !nonet)}${ok(unusable ? '使えない' : '未確認', unusable ? 'no' : 'unk')}` +
+      return `<label class="cc-row off">${name(c, !unusable && (!nonet || shipNoData))}${ok(unusable ? '使えない' : '未確認', unusable ? 'no' : 'unk')}` +
         `<span class="cc-track" data-l="費用の目安"><span class="cc-off">${txt}</span></span>${dy}${note}</label>`;
     };
     let sum = '';
@@ -127,7 +130,7 @@ const CompareChart = (() => {
   document.addEventListener('change', (e) => {
     const t = e.target;
     if (!t || t.name !== 'cc-pick' || typeof Rt === 'undefined' || !Rt.cur || !Rt.cur.sets) return;
-    const m = MODE_OF[t.value] || 'truck', s = Rt.cur.sets[m];
+    const m = MODE_OF[String(t.value).split(' ')[0]] || 'truck', s = Rt.cur.sets[m];
     if (s && s.ok && Rt.focus !== m) Rt.setFocus(m);
   });
 

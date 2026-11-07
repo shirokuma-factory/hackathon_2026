@@ -592,6 +592,17 @@ const cardModel = (key, r) => (key !== 'kashikiri' ? CARD_MODEL[key] : r.detail 
 // 船の経路が無いか。routes.js（Rt）の状態をそのまま読む。経路の読み込み前は false（問い合わせ）
 const shipNoneNow = () => !!(typeof Rt !== 'undefined' && Rt.cur && Rt.cur.sets && Rt.cur.sets.ferry && Rt.cur.sets.ferry.ok === false);
 
+// 手段ごとの API の行。貸切は車格ごとに行があるので、載る車格を安い順にすべて返す（3.5m の荷なら 2t が要確認でも 4t が条件に合う、を落とさない）。
+// 条件に合う（公開条件に合う）最初の車格までを出し、それより大きい車は出さない。1 つも合わなければ額の出る車格すべて。載る車格がなければ最初の行
+function rowsOfMode(group, rows) {
+  const all = rows.filter((x) => x.group === group);
+  if (group !== 'kashikiri') return all.slice(0, 1);
+  const usable = all.filter((x) => x.amount !== null && x.amount !== undefined && x.status !== '使えない');
+  if (!usable.length) return all.slice(0, 1);
+  const k = usable.findIndex((x) => x.status === '公開条件に合う');
+  return k < 0 ? usable : usable.slice(0, k + 1);
+}
+
 function buildCards(i, est) {
   const cards = [];
   S.shipNone = shipNoneNow();
@@ -601,12 +612,11 @@ function buildCards(i, est) {
       const hn = Hubs.nearest(S.origin, i);
       cards.push({ label: m.label, key: m.key, routeNone: m.key === 'ferry' && S.shipNone, model: CARD_MODEL[m.key], status: '計算できない', amount: null, dim: true, hub: hn && !(m.key === 'ferry' && S.shipNone) ? { kind: m.key, ...hn[m.key] } : null, // 航路が無い着地では、最寄りの港と点線のボタンは出さない（レビュー F5）
        
-        none: m.key === 'ferry' && S.shipNone ? 'なし（つながる航路がありません）' : '料金表がないため、各社に問い合わせてください。',
+        none: m.key === 'ferry' && S.shipNone ? 'このデモの航路の表に入っていません。船会社に見積を頼んでください。' : '料金表がないため、各社に問い合わせてください。',
         tip: m.key === 'rail' ? 'JR 貨物の運賃は公開の決まりで載せられないため、金額は出していません。' : 'フェリーの運賃は確かめられなかったため、金額は出していません。' });
       continue;
     }
-    const r = est.rows.find((x) => x.group === m.key);
-    if (!r) continue;
+    for (const r of rowsOfMode(m.key, est.rows)) {
     const notes = [].concat(r.notes, r.issues.map((x) => x.message).filter((x) => !r.notes.includes(x)));
     const days = r.transit ? (r.transit.published || m.key === 'jitbox' ? r.transit.display : r.transit.text) : null;
     if (r.amount === null || r.amount === undefined) {
@@ -629,7 +639,9 @@ function buildCards(i, est) {
     // 路線便の試算が出せる区間の限り（比べるページには額が無い理由）は、吹き出しだけでなくカードの本文に出す（SPEC §32 #5）
     const rosenNote = m.key === 'rosen' ? r.notes.find((x) => x.startsWith('路線便の試算は')) : null;
     cards.push({ label: m.label, model: cardModel(m.key, r), sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, note: rosenNote || (r.detail && r.detail.load_note) || '',
-      amount: isEst ? round100(r.amount) : r.amount, low: isEst ? round100(r.low) : r.low, high: isEst ? round100(r.high) : r.high, est: isEst, days: dayText, tip, why: r.status === '要確認' ? ((r.reasons && r.reasons[0]) || (r.issues && r.issues[0] && r.issues[0].message) || '条件を確かめてください') : '', src: srcOf(r) });
+      amount: isEst ? round100(r.amount) : r.amount, low: isEst ? round100(r.low) : r.low, high: isEst ? round100(r.high) : r.high, est: isEst, days: dayText, tip, why: r.status === '要確認' ? ((r.reasons && r.reasons[0]) || (r.issues && r.issues[0] && r.issues[0].message) || '条件を確かめてください') : '', src: srcOf(r),
+      pick: m.key === 'kashikiri' && r.detail && r.detail.vehicle ? `${m.label} ${r.detail.vehicle}車` : undefined });
+    }
   }
   return cards;
 }

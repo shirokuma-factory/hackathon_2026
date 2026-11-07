@@ -157,9 +157,9 @@ def test_f5_ship_card_agrees_with_route_card_when_no_route():
         time.sleep(3)
         r = json.loads(page.js("""(function(){const c=[...document.querySelectorAll('#cards .card')].find(x=>x.querySelector('h3').textContent.startsWith('船'));
           return JSON.stringify({none:(c.querySelector('.amt-none')||{}).textContent||'',hub:!!c.querySelector('.hub-btn'),
-            chart:document.querySelector('.cc').textContent.includes('なし（つながる航路がありません）')});})()"""))
-        assert r["chart"], r  # 図は「なし」と言っている
-        assert r["none"] == "なし（つながる航路がありません）" and not r["hub"], r  # 詳しいカードも同じ言い方
+            chart:document.querySelector('.cc').textContent.includes('このデモの航路の表に入っていません')});})()"""))
+        assert r["chart"], r  # 図も同じ言い方
+        assert r["none"] == "このデモの航路の表に入っていません。船会社に見積を頼んでください。" and not r["hub"], r  # 詳しいカードも同じ言い方（S11）
         _clean(page)
 
 

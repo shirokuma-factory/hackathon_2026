@@ -208,7 +208,7 @@ def test_kashikiri_distance_steps_and_range():
     assert row_of(rows(one(), distance_km=200, **kw), "kashikiri_2t").amount == 52300
     assert row_of(rows(one(), distance_km=201, **kw), "kashikiri_2t").amount == 52300 + 3830
     low = [x for x in rows(one(), distance_km=199, **kw) if x.mode == "kashikiri"][0]
-    assert low.status == ST_UNUSABLE
+    assert low.status == ST_NOCALC and "200km 未満" in low.reasons[0]   # 近距離の段は表に無い。使えないのではなく額を出せない（S09）
     unk = [x for x in rows(one(), route="other", distance_km=300, origin_in_kanto=None) if x.mode == "kashikiri"][0]
     assert unk.status == ST_NOCALC
 
@@ -223,12 +223,12 @@ def test_kashikiri_national_guideline_note():
 def test_jitbox_piece_fit_by_any_orientation():
     # 170×104×104cm ちょうどは入る（3辺を並べ替えてよい）
     assert row_of(rows([Item(1, 104, 170, 104, 10)]), "jitbox").status == ST_OK
-    # 1辺でも内寸を超えたら要確認。額は出す
+    # 1辺でも内寸を超えたら使えない（1個は分けられない。S08）。額は出さない
     r = row_of(rows([Item(1, 105, 105, 100, 10)]), "jitbox")
-    assert r.status == ST_CHECK and r.amount == 20000
+    assert r.status == ST_UNUSABLE and r.amount is None
     assert any("1個がボックスの内寸を超えます" in x for x in r.reasons)
     r = row_of(rows([Item(1, 100, 100, 171, 10)]), "jitbox")
-    assert r.status == ST_CHECK
+    assert r.status == ST_UNUSABLE
 
 
 def test_no_route_says_route_missing_not_manual_input():

@@ -271,7 +271,7 @@ def test_shipper_result_order_collapsed_details_and_request_text():
         # 鉄道・船・飛行機の行を足したので、鉄道は「日数と額は見積で確認」も許す
         for r in rows:
             if "円" not in r["amt"]:
-                assert r["amt"] in ("要見積", "—", "日数と額は見積で確認") or r["amt"].startswith("なし"), r
+                assert r["amt"] in ("要見積", "—", "日数と額は見積で確認", "航路の表に入っていません") or r["amt"].startswith("なし"), r
         # 経路の説明・内訳は閉じている
         assert page.js("document.getElementById('rt-details').open") is False
         assert page.js("document.querySelector('#cards .cards-more').open") is False

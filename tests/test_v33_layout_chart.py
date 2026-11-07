@@ -89,9 +89,11 @@ def test_g143_3_7_chart_sentence_ratio_and_ship_row():
         assert "倍" not in html and "最安" not in html
         html = h(two)
         assert "約 2.6 倍" in html and "額が出るのは" not in html
-        assert "なし（つながる航路がありません）" in h(ship_none)
+        none_html = h(ship_none)   # S11: 経路の表に無いだけなので「船が無い」とは言わず、見積を頼む形で選べる
+        assert "このデモの航路の表に入っていません。船会社に見積を頼んでください。" in none_html and "つながる航路がありません" not in none_html
+        assert 'value="船"' in none_html
         ask = h(ship_ask)
-        assert "なし（つながる航路がありません）" not in ask and "日数と額は見積で確認" in ask   # 鉄道・船は額を出さない（v5.0: 公表の運賃表を持たない）
+        assert "つながる航路がありません" not in ask and "日数と額は見積で確認" in ask   # 鉄道・船は額を出さない（v5.0: 公表の運賃表を持たない）
         assert "金額は見積で確かめます" in ask   # 文言の直し 2026-11-07
         assert not page.js("window.__errs.length") and not page.js("window.__con.length"), page.js("window.__con")
 

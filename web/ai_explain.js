@@ -20,6 +20,9 @@
   };
   const ORDER = ['check', 'draft', 'verify'];
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // 点検の欄の名前（英字のキー）を画面では日本語で出す
+  const FIELD_JA = { date: '日付', place: '場所', arrive: '到着', reception: '受付', appointed: '指定の到着時刻', start: '荷役開始', end: '荷役終了', handler: '荷役をした人', shipper_fault: '荷主等の都合', wait_min: '待ち時間', handling_min: '荷役の時間', amount: '参考額', row: '行' };
+  const fieldJa = (f) => FIELD_JA[f] || f;
   const usd = (x) => `約 $${(x < 0.01 ? x.toFixed(4) : x.toFixed(3))}`;
   const memo = { key: '', events: [], result: null };
   let statusP = null;
@@ -178,7 +181,7 @@
     }
     const chk = (res.steps || []).find((s) => s.step === 'check');
     const checkFailed = !!chk && chk.status === 'failed';
-    parts.push(`<p><b>記録の点検</b></p>${checkFailed ? '<p class="small">点検できませんでした。</p>' : (res.issues || []).length ? `<ul>${res.issues.map((i) => `<li>${(i.n || 1) > 1 ? `${esc(i.field)}: ${esc(i.message)}（${esc(i.n)} 件）` : `${esc(i.row)} 行目 ${esc(i.field)}: ${esc(i.message)}`}</li>`).join('')}</ul>` : '<p class="small">指摘はありませんでした。</p>'}`);
+    parts.push(`<p><b>記録の点検</b></p>${checkFailed ? '<p class="small">点検できませんでした。</p>' : (res.issues || []).length ? `<ul>${res.issues.map((i) => `<li>${(i.n || 1) > 1 ? `${esc(fieldJa(i.field))}: ${esc(i.message)}（${esc(i.n)} 件）` : `${esc(i.row)} 行目 ${esc(fieldJa(i.field))}: ${esc(i.message)}`}</li>`).join('')}</ul>` : '<p class="small">指摘はありませんでした。</p>'}`);
     if ((res.steps || []).some((s) => s.status === 'failed')) parts.push('<div class="bar"><button type="button" data-ai="retry">もう一度試す</button><span class="small">失敗した回も、もう一度押すと新しく送ります。</span></div>');
     if (tot) parts.push(`<p class="ai-cost">合計 入力 ${tot.input_tokens} / 出力 ${tot.output_tokens} トークン、${usd(tot.cost_usd)}（目安）。金額は概算です。</p>`);
     return parts.join('');
@@ -310,7 +313,7 @@
   function cargoHtml(st) {
     const dis = cg.phase === 'busy' ? ' disabled' : '';
     const parts = [`<details class="ai-cg" id="ai-cg-box"${cg.open ? ' open' : ''}><summary>文で書いて AI に表にしてもらう</summary>
-      <p class="small">荷物の内容を文で書くと、荷物の表の案を作ります。送るのはここに書いた文だけです。作った案は、押すまで表に入りません。</p>
+      <p class="small">荷物の内容を文で書くと、荷物の表の案を作ります。送るのはここに書いた文だけです。作った案は、押すまで表に入りません。お客さまの名前や住所など、個人の情報は書かないでください。</p>
       <textarea class="ctl ai-cg-text" id="ai-cg-text" rows="3" maxlength="${CARGO_MAX}" placeholder="${esc(CG_EXAMPLE)}" aria-label="荷物の条件を書いた文"${dis}>${esc(cg.text)}</textarea>
       <div class="ai-cg-bar"><button type="button" class="btn-primary sm" data-cg="ask"${dis}>表にしてもらう</button><span class="small" id="ai-cg-count">${cg.text.length} / ${CARGO_MAX} 字</span></div>`];
     if (cg.err) parts.push(`<p class="errs" role="alert" id="ai-cg-err">${esc(cg.err)}</p>`);

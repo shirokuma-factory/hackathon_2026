@@ -56,9 +56,9 @@ def test_s2():
     assert r["rosen"].amount == 12450
     assert str(r["rosen"].detail["chargeable_kg"]) == "406.56"
     assert r["rosen"].detail["weight_band_kg"] == 450
-    assert r["jitbox"].amount == 18000
-    # 110×110×120cm は内寸 104×104×170cm に入らない（どの向きでも）ので要確認。額は出す
-    assert r["jitbox"].status == ST_CHECK
+    # 110×110×120cm は内寸 104×104×170cm に入らない（どの向きでも）。1個は分けられないので使えない（S08）
+    assert r["jitbox"].amount is None
+    assert r["jitbox"].status == ST_UNUSABLE
     assert any("1個がボックスの内寸を超えます" in x for x in r["jitbox"].reasons)
     assert r["kashikiri_2t"].amount == 82940
     assert r["kashikiri_4t"].amount == 95400
@@ -83,8 +83,8 @@ def test_s4():
     assert r["rosen"].amount == 42000
     assert str(r["rosen"].detail["chargeable_kg"]) == "813.12"
     assert r["rosen"].detail["weight_band_kg"] == 850
-    assert r["jitbox"].amount == 80000
-    assert r["jitbox"].status == ST_CHECK
+    assert r["jitbox"].amount is None   # 内寸を超える 1 個は分けられないので使えない（S08）
+    assert r["jitbox"].status == ST_UNUSABLE
     assert any("1個がボックスの内寸を超えます" in x for x in r["jitbox"].reasons)
     assert r["jitbox"].detail["boxes"] == 2
     kashikiri = [x for x in r.values() if x.mode.startswith("kashikiri")]

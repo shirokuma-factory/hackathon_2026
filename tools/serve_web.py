@@ -434,11 +434,11 @@ def _place_of(v: Any) -> dict[str, Any] | None:
     label, km, note = v.get("label"), v.get("km"), v.get("note")
     if not isinstance(label, str) or not label.strip() or len(label) > 80:
         raise BadRequest("place.label は 80 文字以内の文字列で渡してください")
-    if isinstance(km, bool) or not isinstance(km, (int, float)) or not 0 < km < 10000:
-        raise BadRequest("place.km は 0 より大きい数で渡してください")
+    if km is not None and (isinstance(km, bool) or not isinstance(km, (int, float)) or not 0 < km < 10000):
+        raise BadRequest("place.km は 0 より大きい数か null で渡してください")   # 船・飛行機でしか行けない着地は距離を持たない
     if note is not None and (not isinstance(note, str) or len(note) > 120):
         raise BadRequest("place.note は 120 文字以内の文字列で渡してください")
-    return {"label": label.strip(), "km": float(km), "note": note}
+    return {"label": label.strip(), "km": float(km) if km is not None else None, "note": note}
 
 
 def evaluation_dict(e) -> dict[str, Any]:

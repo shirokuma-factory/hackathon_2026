@@ -70,9 +70,9 @@ const totalOnlyMark = (q) => (isTotalOnly(q) ? '<span class="demo">（内訳不�
 // 見積依頼文に書く送り方: 結果の表で選んだ行（app.js の S.pickLabel）。なければ表の丸ボタンの選択
 const pickedMode = () => {
   const a = window.__app && window.__app.S ? window.__app.S.pickLabel : null;
-  if (a) return a;
   const r = document.querySelector('#cards input[name="cc-pick"]:checked');
-  return r ? r.value : null;
+  const v = a || (r ? r.value : null);
+  return v ? String(v).split(' ')[0] : null;   // 「貸切 4t車」は送り方の名前「貸切」だけを使う
 };
 const versionSig = () => JSON.stringify([confirmedShipment(), curVer() && curVer().scenario, W.place, pickedMode()]);
 
@@ -399,7 +399,9 @@ async function startFromDestination(est) {
     const changed = r.changed;
     W.C = r.case;
     const g = est.geo, label = W.hooks.routeLabel ? W.hooks.routeLabel() : '';
-    W.place = g && g.km && !g.no_route && !g.ferry && label ? { label, km: g.km, note: g.origin_note || null } : null;
+    // 船・飛行機でしか行けない着地は距離を持たない。届け先の名前（label）だけ渡し、km は省く（依頼文に「距離 不明 km」と書かない）
+    const kmKnown = !!(g && g.km && !g.no_route && !g.ferry);
+    W.place = label && (kmKnown || (g && (g.no_route || g.ferry))) ? { label, km: kmKnown ? g.km : null, note: kmKnown ? (g.origin_note || null) : null } : null;
     for (const k of ['route', 'distance_km', 'origin_in_kanto']) W.draft[k] = est.shipment[k];
     afterCase(changed);
     if (changed) toastCompare('届け先に合わせて区間を変えました');

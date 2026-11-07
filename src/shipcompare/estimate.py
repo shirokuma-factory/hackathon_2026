@@ -35,6 +35,14 @@ USER_INPUT_SOURCE = Source("利用者の入力", "", None, "")
 TAKUHAI_LABEL = "宅配便（大手の公表運賃からの試算）"
 ROSEN_LABEL = "路線便（積合せの公表運賃からの試算）"
 JITBOX_LABEL = "カゴ台車 1 本単位（公表運賃からの試算）"
+SAMPLE_LABEL_NOTE = "架空の表からの例。実在の運賃ではありません"
+
+
+def row_label(label: str, tariff: dict[str, Any]) -> str:
+    """架空の見本の表を使ったときは、名前の括弧の中を「架空の表からの例」に替える（公表運賃と読ませない）。"""
+    if not tariff.get("is_sample"):
+        return label
+    return label.split("（", 1)[0] + f"（{SAMPLE_LABEL_NOTE}）"
 # 出典の行（SPEC §30.1）。各社の表の名前・ファイル名・頁は出さない
 SAMPLE_SOURCE_NAME = "架空の表をもとにした試算。実在の会社の運賃ではありません（試験と画面の説明のための値。会社名と各社の表は載せません）"
 ANON_SOURCE_NAME = "大手の公表運賃をもとにした試算。会社名と各社の表は載せません（各社の利用条件のため）"
@@ -162,7 +170,7 @@ def _route_km(shipment: Shipment) -> Decimal | None:
 
 def estimate_takuhai(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
                      manual: dict[str, int]) -> EstimateRow:
-    row = EstimateRow("takuhai", TAKUHAI_LABEL, ST_OK, source=anon_source(tariff))
+    row = EstimateRow("takuhai", row_label(TAKUHAI_LABEL, tariff), ST_OK, source=anon_source(tariff))
     if not totals.ok:
         return _nocalc(row, totals)
 
@@ -262,7 +270,7 @@ def _oversize_reasons(shipment: Shipment) -> list[str]:
 
 def estimate_rosen(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
                    manual: dict[str, int]) -> EstimateRow:
-    row = EstimateRow("rosen", ROSEN_LABEL, ST_OK, source=anon_source(tariff))
+    row = EstimateRow("rosen", row_label(ROSEN_LABEL, tariff), ST_OK, source=anon_source(tariff))
     if shipment.receiver_type == "個人":
         row.status = ST_UNUSABLE
         row.reasons = ["使えない（法人向けの商品で、個人あての配送はしていません）"]
@@ -355,7 +363,7 @@ def _boxes_by_pieces(shipment: Shipment, box: dict[str, Any]) -> int:
 
 def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
                     manual: dict[str, int]) -> EstimateRow:
-    row = EstimateRow("jitbox", JITBOX_LABEL, ST_OK, source=anon_source(tariff))
+    row = EstimateRow("jitbox", row_label(JITBOX_LABEL, tariff), ST_OK, source=anon_source(tariff))
     row.notes.append("区間の代表（東京→大阪府、東京→宮城、道央→東京）の運賃を使っています")
 
     kinds = {shipment.sender_type, shipment.receiver_type}
@@ -405,12 +413,13 @@ def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
     too_big = [i for i, item in enumerate(shipment.items, start=1)
                if any(d > b for d, b in zip(sorted(to_decimal(x) for x in (item.length_cm, item.width_cm, item.height_cm)), inner))]
     if too_big:
-        row.status = ST_CHECK
-        row.reasons.append("1個がボックスの内寸を超えます。荷を分けて詰め直せる場合だけ使えます"
-                           f"（荷物{'・'.join(str(i) for i in too_big)}行目）")
+        # 1個はどの向きでも内寸に入らない。1個は分けられないので、この手段は使えない（比べるページの判定と同じ）
+        row.status = ST_UNUSABLE
+        row.amount = None
+        row.reasons.append(f"1個がボックスの内寸を超えます（荷物{'・'.join(str(i) for i in too_big)}行目）。"
+                           "1個は分けられないので、この手段は使えません")
         row.issues.append(Issue(ISSUE_LOADING, row.reasons[-1]))
-        if not (shipment.sender_type == "法人" and shipment.receiver_type == "法人"):
-            row.issues.append(Issue(ISSUE_CORPORATE, "法人間の商品。利用できるかは要確認"))
+        row.notes = [n for n in row.notes if not n.startswith("最低")]
     elif shipment.sender_type == "法人" and shipment.receiver_type == "法人":
         row.status = ST_OK
     else:
@@ -587,9 +596,10 @@ def estimate_kashikiri(shipment: Shipment, totals: Totals, tariff: dict[str, Any
         r.reasons = ["計算できない（不足: 距離 km）"]
         return [r]
     if km < tariff["base_km"]:
+        # 取り込んだ表は 200km 以上の式だけで、近距離の段は持っていない。使えないのではなく額を出せないだけ
         r = base_row()
-        r.status = ST_UNUSABLE
-        r.reasons = [f"この表の範囲外（距離{tariff['base_km']}km未満）"]
+        r.status = ST_NOCALC
+        r.reasons = [f"{tariff['base_km']}km 未満は表の範囲外のため、額は見積で確かめてください"]
         r.issues.append(Issue(ISSUE_OUT_OF_RANGE, r.reasons[0]))
         return [r]
     if not totals.ok:

@@ -98,6 +98,8 @@ def build_request(shipment: Shipment, scenario: dict | None = None, place: dict 
     あれば「発着」の行に区間の想定の値ではなく、この市区町村と道路距離を書く（SPEC §31.5 #16）。"""
     totals = summarize(shipment)
     required, optional = missing_items(shipment, totals)
+    if place and place.get("label") and mode in ("鉄道", "船", "飛行機"):
+        required = [x for x in required if x != "距離 km"]   # 道路の距離では測れない送り方。届け先の名前があれば足りる
     status = STATUS_READY if not required else STATUS_DRAFT
 
     lines: list[str] = []
@@ -124,6 +126,8 @@ def build_request(shipment: Shipment, scenario: dict | None = None, place: dict 
     elif place and place.get("label") and place.get("km"):
         note = f"。{place['note']}" if place.get("note") else ""
         lines.append(f"  発着: {place['label']}（道路距離 {place['km']:,.1f}km{note}）")
+    elif place and place.get("label"):   # 距離が無い着地（船・飛行機でしか行けない）: 届け先の名前だけ書く
+        lines.append(f"  発着: {place['label']}")
     elif shipment.route == ROUTE_OTHER:
         lines.append(f"  発着: その他（距離 {_fmt(to_decimal(shipment.distance_km))} km）")
     else:
