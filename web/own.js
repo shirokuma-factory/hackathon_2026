@@ -9,7 +9,7 @@ const Own = (() => {
   const W = { year: 2026, rows: [], res: null, err: '', tok: 0, tm: null, partner: '', pasteMsg: '', pasteNote: '', bulkMsg: '', idxMap: [], bad: new Set() };
   const O = {
     data: null, loaded: false, active: false, tab: 'import', market: false, dec: {}, fixTxt: {}, open: new Set(), geo: null, markers: [], dropMsg: '',
-    sample: null, mode: 'sample', files: [], userAliases: {}, largeT: null, yearPick: null, cost: { perKm: '', perHour: '' }, lastCopy: '', copyMsg: '', munis: null, pairs: null, busy: false, pendingYear: null, pendingRoles: null, haishaUse: null, maxPayload: loadMaxPayload(),
+    sample: null, mode: 'sample', files: [], userAliases: {}, largeT: null, yearPick: null, cost: { perKm: '', perHour: '' }, lastCopy: '', copyMsg: '', munis: null, pairs: null, busy: false, pendingYear: null, pendingRoles: null, haishaUse: null, aiOwn: { avail: null, confirm: null, busy: false, msg: '', sugg: {} }, maxPayload: loadMaxPayload(),
     monthPick: null, board: null, tmr: null, fileOrder: null, prevHaishaUsed: null,  rate: { kind: 'km', value: '' }, cmpId: '', saveMsg: '', roles: {}, restoreOffer: null, glossOpen: false,
     guided: false, goal: '', advOpen: false, focus: null, focusKey: '', focusGeo: null, fxT0: 0,
   };
@@ -396,14 +396,183 @@ const Own = (() => {
     const r = O.roles, out = { haisha: { ...(r.haisha || {}), ...(r.both || {}) }, digitaco: { ...(r.digitaco || {}), ...(r.both || {}) } };
     return Object.keys(out.haisha).length || Object.keys(out.digitaco).length ? out : undefined;
   }
+  /* ------------------------------------------------------------ 取り込みの案内と見本の CSV、AI による列の整理（SPEC §53.1） */
+
+  // 見本の CSV（架空）。web/data/own_sample.json の元にした data/own_sample/raw の配車表と同じ地名・車番の書き方で、OwnCalc の辞書が読む見出しを使う
+  const SAMPLE_CSV = ['日付,車番,車種,発地,着地,着時刻,重さ,実空',
+    '2026/10/01,鹿児島 100 か 9001,大型,鹿屋,江東,05:30,4.6t,',
+    '2026/10/02,鹿児島 100 か 9001,大型,江東,鹿屋,04:30,,空',
+    '2026/10/03,鹿児島 100 か 9001,大型,鹿屋,江東,05:30,3.2t,',
+    '2026/10/04,鹿児島 100 か 9001,大型,江東,鹿屋,04:30,,空',
+    '2026/10/01,鹿児島 100 か 9002,大型,鹿屋,辰巳,05:30,3.8t,',
+    '2026/10/02,鹿児島 100 か 9002,大型,辰巳,鹿屋,04:00,2.9t,'].join('\r\n') + '\r\n';
+  function saveSampleCsv() {
+    const blob = new Blob(['﻿' + SAMPLE_CSV], { type: 'text/csv;charset=utf-8' }); // BOM つき UTF-8（Excel でも文字化けしない）
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = '見本_配車表.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('見本の CSV を保存しました（中身は架空です）');
+  }
+  // 最低限の列は own_calc.js の判定から: 配車表の縦の形は 日付・車番・発地か着地、横の形は 車番と 10/1 のような日付の見出し。デジタコは 開始と終了の日時を含む 3 列以上、または 日付と実車・空車の距離
+  function formatGuideHtml() {
+    return `<div class="o-fmt" id="own-fmt"><p class="o-hint">読めるのは、配車表・デジタコ・運行日報の CSV です。Excel のファイルは「CSV として保存」してください。文字コードは UTF-8 でも Shift_JIS でも読めます。</p>
+      <p class="o-hint">最低限ほしい列は、配車表なら「日付・車番・発地か着地」（日付が横に並ぶ表なら「車番」と 10/1 のような日付の見出し）、デジタコなら「開始と終了の日時を含む 3 列以上」か「日付と実車・空車の距離」です。着時刻・重さがあれば使います。</p>
+      <button type="button" class="btn-link" data-act="sample-csv">見本の CSV を保存</button></div>`;
+  }
+
+  // 値の形（決まった語彙のどれか）。値そのものは外に出さない。語彙は src/shipcompare/ai_explain.py の SHAPE_LABELS と同じ
+  const SHAPE_JA = {
+    date_ymd: 'YYYY/MM/DD の日付', date_md: 'M/D の日付', datetime: 'YYYY-MM-DD HH:MM の日時', time_hm: 'HH:MM の時刻', int_1_2: '整数 1〜2 桁', int_3_4: '整数 3〜4 桁',
+    int_5p: '整数 5 桁以上', decimal: '小数まじりの数', number_unit: '数 + 単位', plate_like: '車番らしい文字列', place_like: '漢字・かなの名称', code_like: '英数字の符号', other_text: 'そのほかの文字列',
+  };
+  function valueShape(v) {
+    const s = String(v).normalize('NFKC').trim();
+    if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}[ T]\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return 'datetime';
+    if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(s)) return 'date_ymd';
+    if (/^\d{1,2}[/月]\d{1,2}日?(\(.\))?$/.test(s)) return 'date_md';
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return 'time_hm';
+    if (/^\d+$/.test(s)) return s.length <= 2 ? 'int_1_2' : s.length <= 4 ? 'int_3_4' : 'int_5p';
+    if (/^\d+\.\d+$/.test(s)) return 'decimal';
+    if (/^\d+(\.\d+)?\s*[A-Za-zぁ-んァ-ヶ一-鿿]{1,3}$/.test(s)) return 'number_unit';
+    if (OwnCalc.normalizePlate && OwnCalc.normalizePlate(s) != null) return 'plate_like';
+    if (/^[぀-ヿ一-鿿々ー・\s]+$/.test(s)) return 'place_like';
+    if (/^[A-Za-z0-9_-]{2,}$/.test(s)) return 'code_like';
+    return 'other_text';
+  }
+  // 見出しの欄に、見出しではなく値が入っているとき（見出しのない CSV）は、見出しを送らず「列 N」にする
+  function safeHeader(h, i) {
+    const s = String(h || '').normalize('NFKC').trim();
+    if (!s || s.length > 20 || /\d{4,}/.test(s) || valueShape(s) !== 'other_text' && valueShape(s) !== 'place_like' && valueShape(s) !== 'code_like') return `列 ${i + 1}`;
+    return s;
+  }
+  // 列 x の値（そのファイルの全行）から、値の形の要約だけを作る。この関数が返す物に値は入らない
+  function columnShape(x, files) {
+    const vals = [];
+    for (const name of (x.files && x.files.length ? x.files : [x.file])) {
+      const f = files.find((y) => y.name === name);
+      if (!f) continue;
+      let rows;
+      try { rows = OwnCalc.parseCsv(f.text); } catch (e) { continue; }
+      let hi = -1, j = -1;
+      for (let i = 0; i < Math.min(rows.length, 40) && j < 0; i++) { const k = rows[i].findIndex((c) => String(c || '').trim() === x.column); if (k >= 0) { hi = i; j = k; } }
+      if (j < 0) continue;
+      for (const r of rows.slice(hi + 1)) vals.push(j < r.length ? String(r[j] || '') : '');
+    }
+    const filled = vals.map((v) => v.trim()).filter((v) => v);
+    const cnt = {};
+    for (const v of filled) { const k = valueShape(v); cnt[k] = (cnt[k] || 0) + 1; }
+    const classes = {};
+    Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 5).forEach(([k, n]) => { classes[k] = Math.round((n / filled.length) * 100) / 100; });
+    const lens = filled.map((v) => v.length);
+    return { n: vals.length, fill: vals.length ? Math.round((filled.length / vals.length) * 100) / 100 : 0, distinct: new Set(filled).size, classes, len_min: lens.length ? Math.min(...lens) : 0, len_max: lens.length ? Math.max(...lens) : 0 };
+  }
+  const aiNeed = () => (O.pendingRoles ? O.pendingRoles.need : roleNeeds(O.data || {}));
+  const aiFiles = () => (O.pendingRoles ? O.pendingRoles.files : O.files);
+  const aiKey = (x) => `${x.source || ''}|${x.column}`;
+  function buildAiPayload() {
+    const need = aiNeed().slice(0, 40), files = aiFiles();
+    return {
+      keys: need.map(aiKey),
+      payload: { columns: need.map((x, i) => ({ index: i, header: safeHeader(x.column, i), options: (x.options && x.options.length ? x.options.map((o) => o.role) : ROLE_OPTS.map((o) => o[0])), shape: columnShape(x, files) })) },
+    };
+  }
+  const roleJa = (r) => (ROLE_OPTS.find((o) => o[0] === r) || [])[1] || (OwnCalc.ROLE_LABEL_JA && OwnCalc.ROLE_LABEL_JA[r]) || AI_ROLE_JA[r] || r;
+  const AI_ROLE_JA = { type: '車種・トン数', time: '着く時刻', mark: '実空の印', kind: '走行か停車か', start_time: '開始の日時', end_time: '終了の日時', distance_km: '走った距離', loaded_flag: '実車か空車か', place_name: '停車した場所', driver_code: '運転者', loaded_km: '実車の距離', empty_km: '空車の距離', wait_min: '荷待ちの時間', restraint: '拘束時間' };
+
+  function aiStatusInit() {
+    const A = O.aiOwn;
+    if (A.avail !== null) return;
+    A.avail = false;
+    if (typeof AiExplain === 'undefined' || !AiExplain.status) return;
+    AiExplain.status().then((st) => { if (st && st.available) { A.avail = true; if (aiNeed().length) renderLeft(); } }).catch(() => {});
+  }
+  function aiConfirmHtml(c) {
+    const cols = c.payload.columns, optsOf = (x) => x.options.map(roleJa).join('・');
+    const same = cols.every((x) => optsOf(x) === optsOf(cols[0])); // 選べる役割が全列で同じなら、表の下に 1 回だけ出す
+    const rows = cols.map((x) => `<tr><td>${esc(x.header)}</td><td>${Object.entries(x.shape.classes).map(([k, v]) => `${esc(SHAPE_JA[k] || k)} ${Math.round(v * 100)}%`).join('、') || '—'}</td>
+      <td class="num">${Math.round(x.shape.fill * 100)}%</td><td class="num">${x.shape.distinct}</td>${same ? '' : `<td>${esc(optsOf(x))}</td>`}</tr>`).join('');
+    return `<div class="o-aiconf" role="group" aria-label="AI に送る内容の確認"><b>この内容を Anthropic の API に送ります</b>
+      <table class="o-tbl"><thead><tr><th>列の見出し</th><th>値の形（割合）</th><th>入力あり</th><th>種類の数</th>${same ? '' : '<th>選べる役割</th>'}</tr></thead><tbody>${rows}</tbody></table>
+      ${same ? `<p class="o-hint">選べる役割（全列共通）: ${esc(optsOf(cols[0]))}</p>` : ''}
+      <p class="o-hint">値そのものは送りません（車番・運転者・地点名・金額は出ません）。形の割合は、読み込んだ全行からこのブラウザの中で数えています。送るのは上の表だけで、AI の案を決めるのはあなたです。</p>
+      <div class="bar"><button type="button" class="primary" data-act="ai-cols-send">送る</button><button type="button" data-act="ai-cols-cancel">やめる</button></div></div>`;
+  }
+  function aiBoxHtml(need) {
+    const A = O.aiOwn;
+    if (!A.avail && !A.msg) return '';
+    const open = Object.keys(A.sugg).some((k) => need.some((x) => aiKey(x) === k));
+    return `<div class="o-aibox" id="own-aibox">${A.avail ? `<button type="button" class="btn-link" data-act="ai-cols" ${A.busy || A.confirm ? 'disabled' : ''}>AI に列を整理してもらう</button><small class="o-hint"> 列の見出しと値の形だけを送ります（確認の画面が出ます）</small>` : ''}
+      ${A.busy ? '<p class="o-hint" role="status">AI が列を整理しています…</p>' : ''}${A.msg ? `<p class="o-hint" role="status">${esc(A.msg)}</p>` : ''}${A.confirm ? aiConfirmHtml(A.confirm) : ''}
+      ${open ? '<button type="button" class="btn-link" data-act="ai-apply-all">AI の案をすべて決める</button>' : ''}</div>`;
+  }
+  // 役割を 1 列ぶん決める（選んだ役割の記録と、見出しの形ごとの記憶）。計算し直しは呼び出し側が 1 回だけ行う
+  function setRoleChoice(source, col, filesStr, value, pend) {
+    const g = roleGroup(source);
+    const grp = { ...((pend ? pend.roles : O.roles)[g] || {}) };
+    if (value) grp[col] = value; else delete grp[col];
+    const nr = { ...(pend ? pend.roles : O.roles), [g]: grp };
+    if (pend) pend.roles = nr; else O.roles = nr;
+    const fl = pend ? pend.files : O.files;
+    for (const fname of (filesStr || '').split('|')) { // 同じ見出しの形のファイルを次に落としたときのために覚える
+      const f = fl.find((x) => x.name === fname);
+      if (!f) continue;
+      const hs = OwnMonth.headSig(f.text), cur = OwnMonth.rolesGet(hs) || {};
+      const gg = { ...(cur[g] || {}) };
+      if (value) gg[col] = value; else delete gg[col];
+      OwnMonth.rolesSet(hs, { ...cur, [g]: gg });
+    }
+  }
+  const afterRoles = (pend, any) => { if (pend) { if (any) commitImport(pend.files, pend.bad, null, pend.roles); } else reanalyze(); };
+  function aiApply(keys) {
+    const pend = O.pendingRoles, need = aiNeed();
+    let any = false;
+    for (const k of keys) {
+      const x = need.find((y) => aiKey(y) === k), s = O.aiOwn.sugg[k];
+      if (!x || !s) continue;
+      const files = (x.files && x.files.length ? x.files : [x.file]).filter((f) => f);
+      setRoleChoice(x.source || '', x.column, files.join('|'), s.role, pend);
+      delete O.aiOwn.sugg[k]; any = true;
+    }
+    if (any) afterRoles(pend, true);
+  }
+  function aiSend() {
+    const A = O.aiOwn, c = A.confirm;
+    if (!c) return;
+    A.confirm = null; A.busy = true; A.msg = ''; renderLeft();
+    AiExplain.ownColumns(c.payload).then((res) => {
+      const need = aiNeed();
+      let n = 0;
+      for (const s of res.suggestions || []) {
+        const key = c.keys[s.index], x = need.find((y) => aiKey(y) === key);
+        const role = s.role === 'ignore' ? 'skip' : s.role;
+        const ok = x && (x.options && x.options.length ? x.options.some((o) => o.role === role) : ROLE_OPTS.some((o) => o[0] === role));
+        if (!ok) continue;
+        A.sugg[key] = { role, confidence: s.confidence, reason: s.reason_ja }; n++;
+      }
+      A.busy = false; A.msg = n ? `AI の案が ${n} 列に付きました。内容を確かめて、決めてください（決めるまで計算は変わりません）` : 'AI は役割を決められませんでした。手で選んでください';
+      renderLeft();
+    }).catch((e) => { A.busy = false; A.msg = e.message || 'AI に整理してもらえませんでした。手で選んでください'; renderLeft(); });
+  }
+
+  (function injectImportStyle() {
+    if (typeof document === 'undefined' || document.getElementById('own-fmt-style')) return;
+    const st = document.createElement('style');
+    st.id = 'own-fmt-style';
+    st.textContent = '.o-fmt{margin:6px 0 8px}.o-fmt .o-hint{margin:2px 0}.o-aibox{margin:6px 0 8px}.o-aibox>small{display:block;margin:2px 0}.o-aiconf{margin:8px 0;padding:10px 12px;border:1px solid var(--line,#ccc);border-radius:10px;overflow-x:auto}' +
+      '.o-aiconf .o-tbl{margin:6px 0}.o-aitag{color:var(--accent,#1b5fbf)}.o-aitag b{border:1px solid currentColor;border-radius:999px;padding:0 8px}';
+    document.head.appendChild(st);
+  })();
+
   // 役割を選ぶ欄の中身。need は column_roles_needed、roles は選んだ役割（{ haisha, digitaco, both }）
   function rolesRows(need, roles) {
     return need.map((x) => {
-      const cur = ((roles[roleGroup(x.source)] || {})[x.column]) || '';
+      const cur0 = ((roles[roleGroup(x.source)] || {})[x.column]) || '';
+      const sg = !cur0 ? O.aiOwn.sugg[aiKey(x)] : null, cur = cur0 || (sg ? sg.role : '');
       const opts = [['', 'この列の中身を選ぶ']].concat(x.options && x.options.length ? x.options.map((o) => [o.role, o.label_ja]) : ROLE_OPTS);
       const why = x.reason_ja || (x.blocking ? 'この列の役割を決めないと、ファイルを読めません' : '列の名前から役割を決められませんでした。使うか、使わないかを選べます');
       const files = (x.files && x.files.length ? x.files : [x.file]).filter((f) => f);
-      return `<div class="o-rl"><span class="o-rn"><b>${esc(x.column)}</b><small>${esc(x.source || '')}・${esc(files.join('、'))}</small>${x.samples && x.samples.length ? `<small>中身の例: ${esc(x.samples.slice(0, 3).join('、'))}</small>` : ''}<small>${esc(why)}</small>${x.suggested_label_ja ? `<small>候補: ${esc(x.suggested_label_ja)}</small>` : ''}</span>
+      return `<div class="o-rl"><span class="o-rn"><b>${esc(x.column)}</b><small>${esc(x.source || '')}・${esc(files.join('、'))}</small>${x.samples && x.samples.length ? `<small>中身の例: ${esc(x.samples.slice(0, 3).join('、'))}</small>` : ''}<small>${esc(why)}</small>${x.suggested_label_ja ? `<small>候補: ${esc(x.suggested_label_ja)}</small>` : ''}${sg ? `<small class="o-aitag"><b>AI の案</b>: ${esc(roleJa(sg.role))}（${{ high: '確からしい', medium: 'たぶん', low: '自信なし' }[sg.confidence] || ''}）${esc(sg.reason)} <button type="button" class="btn-link" data-act="ai-apply" data-key="${esc(aiKey(x))}">この案で決める</button></small>` : ''}</span>
         <select class="ctl sm o-rsel" data-role-source="${esc(x.source || '')}" data-role-col="${esc(x.column)}" data-role-files="${esc(files.join('|'))}" aria-label="${esc(x.column)} の役割">${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`;
     }).join('');
   }
@@ -412,7 +581,7 @@ const Own = (() => {
     const need = roleNeeds(d);
     if (!need.length) return '';
     return `<div class="o-roles" id="own-roles"><div class="o-h">役割を選んでほしい列 ${need.length} 本</div>
-      <p class="o-hint">列の名前だけでは役割を決められなかった列です。選ぶと計算し直します。選んだ役割は、見出しの形が同じファイルを次に落としたときも使います（このブラウザの中だけに覚えます）。</p>${rolesRows(need, O.roles)}</div>`;
+      <p class="o-hint">列の名前だけでは役割を決められなかった列です。選ぶと計算し直します。選んだ役割は、見出しの形が同じファイルを次に落としたときも使います（このブラウザの中だけに覚えます）。</p>${aiBoxHtml(need)}${rolesRows(need, O.roles)}</div>`;
   }
   // 区間を 1 件も読めなかったが、列の役割を選べば読めるかもしれないファイル。選ぶまで前の表示は変えない（O.pendingRoles）
   function pendingRolesHtml() {
@@ -420,7 +589,7 @@ const Own = (() => {
     if (!p) return '';
     return `<div class="o-roles o-pend" id="own-roles-pend" role="alert"><div class="o-h">この列の中身を選んでください（${p.need.length} 本）。選ぶまで計算しません</div>
       <p class="o-hint">${esc(p.failed)}。列の名前だけでは役割を決められなかったためです。下の列の役割を選ぶと、読み直します。選んだ役割は、見出しの形が同じファイルを次に落としたときも使います（このブラウザの中だけに覚えます）。</p>
-      ${rolesRows(p.need, p.roles)}<button type="button" class="btn-link" data-act="roles-cancel">このファイルを読むのをやめる</button></div>`;
+      ${aiBoxHtml(p.need)}${rolesRows(p.need, p.roles)}<button type="button" class="btn-link" data-act="roles-cancel">このファイルを読むのをやめる</button></div>`;
   }
 
   // 月ごとの保存と、前の月との並び（own_month.js）。ファイルの中身は保存しない
@@ -505,6 +674,7 @@ const Own = (() => {
   }
 
   function importHtml() {
+    aiStatusInit(); // 使えるかの確認は、取り込み欄を最初に出したときに 1 回だけ（ファイルを落としたあとには要求を出さない）
     const d = O.data;
     const rows = d.files.map((f) => `<tr><td class="o-fn"><b>${esc(f.file)}</b>${isImport() ? `<button type="button" class="btn-link o-fx" data-act="file-remove" data-f="${esc(f.file)}" aria-label="${esc(f.file)}を外して計算し直す">外す</button>` : ''}<small>${esc(f.kind)}${f.encoding ? '・' + esc(f.encoding) : ''}${f.note ? '・' + esc(f.note) : ''}</small>${f.layout_note_ja ? `<small class="o-lay">${esc(f.layout_note_ja)}</small>` : ''}</td>
       <td class="num">${f.ok}</td><td class="num ${f.pending ? 'o-y' : ''}">${f.pending}</td><td class="num ${f.unreadable ? 'o-r' : ''}">${f.unreadable}</td></tr>`).join('');
@@ -520,7 +690,7 @@ const Own = (() => {
     const un = unplacedHtml(d);
     return `<div class="o-drop" id="own-drop" tabindex="0" role="button" aria-label="自社のファイルを落とす欄（配車表・デジタコの CSV。ブラウザの外には送りません）">
         <b>配車表・デジタコの CSV をここに置く</b><span>文字コードはどちらでも読めます。ファイルは外に送りません。</span><input id="own-file" type="file" accept=".csv,.txt,text/csv" multiple hidden></div>
-      <p class="o-drop-msg" id="own-drop-msg" ${O.dropMsg ? '' : 'hidden'}>${esc(O.dropMsg)}</p>${pendingYearHtml()}${pendingRolesHtml()}${yearHtml(d)}${monthPickHtml(d)}${noticesHtml(d)}${hiredHtml(d)}${haishaChoiceHtml(d)}${rolesHtml(d)}${monthHtml()}
+      ${formatGuideHtml()}<p class="o-drop-msg" id="own-drop-msg" ${O.dropMsg ? '' : 'hidden'}>${esc(O.dropMsg)}</p>${pendingYearHtml()}${pendingRolesHtml()}${yearHtml(d)}${monthPickHtml(d)}${noticesHtml(d)}${hiredHtml(d)}${haishaChoiceHtml(d)}${rolesHtml(d)}${monthHtml()}
       <table class="o-tbl"><thead><tr><th>ファイル</th><th>読めた行</th><th>確認待ち</th><th>読めない行</th></tr></thead><tbody>${rows}
         <tr class="o-paper"><td colspan="4">${esc(d.paper.text)}</td></tr></tbody></table>
       <details class="o-det"><summary>表の形の判定（ファイルごと）</summary>${d.files.map((f) => `<p class="o-verdict"><b>${esc(f.file)}</b> ${esc(f.verdict)}</p>`).join('')}</details>
@@ -1861,6 +2031,12 @@ const Own = (() => {
       if (b.dataset.act === 'file-remove') { removeFile(b.dataset.f); return; }
       if (b.dataset.act === 'tmr-make') { tmrSync(); O.tmr.text = OwnMonth.boardOne(O.tmr); O.tmr.msg = ''; renderLeft(); return; }
       if (b.dataset.act === 'tmr-copy') { tmrCopy(); return; }
+      if (b.dataset.act === 'sample-csv') { saveSampleCsv(); return; }
+      if (b.dataset.act === 'ai-cols') { const c = buildAiPayload(); if (c.payload.columns.length) { O.aiOwn.confirm = c; O.aiOwn.msg = ''; renderLeft(); } return; }
+      if (b.dataset.act === 'ai-cols-cancel') { O.aiOwn.confirm = null; renderLeft(); return; }
+      if (b.dataset.act === 'ai-cols-send') { aiSend(); return; }
+      if (b.dataset.act === 'ai-apply') { aiApply([b.dataset.key]); return; }
+      if (b.dataset.act === 'ai-apply-all') { aiApply(Object.keys(O.aiOwn.sugg)); return; }
       if (b.dataset.act === 'roles-cancel') { O.pendingRoles = null; renderLeft(); showDropMsg('取りやめました。前の表示のままです'); return; }
       if (b.dataset.act === 'year-cancel') { O.pendingYear = null; renderLeft(); showDropMsg('取りやめました。前の表示のままです'); return; }
       if (b.dataset.act === 'alias') {
@@ -1935,21 +2111,10 @@ const Own = (() => {
         O.haishaUse = l; reanalyze();
       } else if (e.target.id === 'own-year-pick' && e.target.value) chooseYear(Number(e.target.value));
       else if (e.target.matches && e.target.matches('select[data-role-col]')) { // 列の役割を選んだ: 計算し直して、同じ形のファイルのために覚える
-        const t = e.target, pend = O.pendingRoles, g = roleGroup(t.dataset.roleSource), c = t.dataset.roleCol;
-        const grp = { ...((pend ? pend.roles : O.roles)[g] || {}) };
-        if (t.value) grp[c] = t.value; else delete grp[c];
-        const nr = { ...(pend ? pend.roles : O.roles), [g]: grp };
-        if (pend) pend.roles = nr; else O.roles = nr;
-        const fl = pend ? pend.files : O.files;
-        for (const fname of (t.dataset.roleFiles || '').split('|')) { // 同じ見出しの形のファイルを次に落としたときのために覚える
-          const f = fl.find((x) => x.name === fname);
-          if (!f) continue;
-          const hs = OwnMonth.headSig(f.text), cur = OwnMonth.rolesGet(hs) || {};
-          const gg = { ...(cur[g] || {}) };
-          if (t.value) gg[c] = t.value; else delete gg[c];
-          OwnMonth.rolesSet(hs, { ...cur, [g]: gg });
-        }
-        if (pend) { if (t.value) commitImport(pend.files, pend.bad, null, pend.roles); } else reanalyze();
+        const t = e.target, pend = O.pendingRoles;
+        delete O.aiOwn.sugg[`${t.dataset.roleSource || ''}|${t.dataset.roleCol}`]; // 手で選んだ列の AI の案は消す
+        setRoleChoice(t.dataset.roleSource, t.dataset.roleCol, t.dataset.roleFiles, t.value, pend);
+        afterRoles(pend, !!t.value);
       }
     });
     q('#own-draft .od-close').addEventListener('click', () => { q('#own-draft').hidden = true; });
@@ -2119,5 +2284,5 @@ const Own = (() => {
     history.replaceState(null, '', '#' + p.toString());
   }
 
-  return { init, enter, leave, setGuided, layers, market: () => O.market, placeInfo, openPlace, closePlace, setTab, hashParams, readHash, state: O, fit };
+  return { init, enter, leave, setGuided, sampleCsv: () => SAMPLE_CSV, aiPayload: buildAiPayload, layers, market: () => O.market, placeInfo, openPlace, closePlace, setTab, hashParams, readHash, state: O, fit };
 })();

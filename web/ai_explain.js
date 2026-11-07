@@ -175,5 +175,12 @@
     });
   }
 
-  root.AiExplain = { mount, OFF_LINE, _stepsHtml: stepsHtml, _resultHtml: resultHtml };
+  // 自社の運行記録の列の整理（SPEC §53.1）。own.js が作った「列の見出し + 値の形の要約」だけを送る。値そのものは渡されない
+  function ownColumns(payload) {
+    return fetch('/api/ai/own_columns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => { if (!ok) throw new Error(j.error || '送れませんでした'); return j; });
+  }
+
+  root.AiExplain = { mount, OFF_LINE, status: getStatus, ownColumns, _stepsHtml: stepsHtml, _resultHtml: resultHtml };
 })(window);

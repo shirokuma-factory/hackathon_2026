@@ -630,6 +630,155 @@ def job_state(jid: str) -> dict[str, Any]:
     return j
 
 
+# ---------------------------------------------------------------- 自社の運行記録の列の整理（SPEC §53.1）
+# 列の見出しと「値の形の要約」だけを Haiku に送る。セルの値（車番・運転者・地点名など）は送らない。
+# 値の形は決まった語彙（SHAPE_LABELS）の割合だけで、語彙にない文字列はこちらで捨てる。
+
+OWN_MODEL = MODEL_HAIKU
+OWN_MAX_TOKENS = 2000
+OWN_EFFORT = "low"
+OWN_MAX_COLUMNS = 40
+OWN_HEADER_MAX = 30
+OWN_REASON_MAX = 60
+# 画面（web/own_calc.js の roleOptions）が選ばせる役割。この外の役割はサーバーで捨てる。ignore は「使わない」
+OWN_ROLES = ("date", "plate", "type", "from", "to", "weight", "time", "mark", "kind", "start_time", "end_time", "distance_km",
+             "loaded_flag", "place_name", "driver_code", "loaded_km", "empty_km", "wait_min", "restraint", "skip")
+OWN_IGNORE = "ignore"
+OWN_CONFIDENCE = ("high", "medium", "low")
+SHAPE_LABELS = {
+    "date_ymd": "YYYY/MM/DD の日付", "date_md": "M/D の日付", "datetime": "YYYY-MM-DD HH:MM の日時", "time_hm": "HH:MM の時刻",
+    "int_1_2": "整数 1〜2 桁", "int_3_4": "整数 3〜4 桁", "int_5p": "整数 5 桁以上", "decimal": "小数まじりの数",
+    "number_unit": "数 + 単位（km・分・t など）", "plate_like": "車番らしい文字列", "place_like": "漢字・かなの名称（地点名らしい）",
+    "code_like": "英数字の符号", "other_text": "そのほかの文字列",
+}
+OWN_SCHEMA = {
+    "type": "object",
+    "properties": {"columns": {"type": "array", "items": {
+        "type": "object",
+        "properties": {"index": {"type": "integer"}, "role": {"type": "string", "enum": [*[r for r in OWN_ROLES if r != "skip"], OWN_IGNORE]},
+                       "confidence": {"type": "string", "enum": list(OWN_CONFIDENCE)}, "reason_ja": {"type": "string"}},
+        "required": ["index", "role", "confidence", "reason_ja"], "additionalProperties": False}}},
+    "required": ["columns"], "additionalProperties": False}
+SYS_OWN = ("あなたは運送会社の運行記録（配車表・デジタコ）の列の整理係です。渡されるのは、各列の見出しと、その列の値の形の要約だけで、値そのものはありません。"
+           "各列について、options の中から役割を 1 つ選びます。使わない列（備考・金額・メモなど）は ignore にします。"
+           "見出しと値の形の両方が合うときだけ confidence を high にし、片方だけなら medium、あてずっぽうに近ければ low にします。"
+           "同じ役割を 2 つの列に付けてよいのは、本当に別の列のときだけです。"
+           f"reason_ja は {OWN_REASON_MAX} 字以内の日本語 1 文です。値の具体例を作ってはいけません（渡されていません）。")
+
+
+def clean_own_columns(body: Any) -> list[dict[str, Any]]:
+    """画面が送ってきた列の情報を検める。知っている欄だけ残し、値の形は決まった語彙の割合だけを通す。"""
+    cols_in = body.get("columns") if isinstance(body, dict) else None
+    if not isinstance(cols_in, list) or not cols_in:
+        raise AiError("整理する列がありません")
+    if len(cols_in) > OWN_MAX_COLUMNS:
+        raise AiError(f"一度に整理できる列は {OWN_MAX_COLUMNS} 本までです", "too_large", 413)
+    out: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for c in cols_in:
+        if not isinstance(c, dict) or isinstance(c.get("index"), bool) or not isinstance(c.get("index"), int):
+            continue
+        idx = c["index"]
+        if idx in seen or idx < 0:
+            continue
+        seen.add(idx)
+        header = unicodedata.normalize("NFKC", str(c.get("header", ""))).strip()[:OWN_HEADER_MAX]
+        opts = [r for r in (c.get("options") or []) if isinstance(r, str) and r in OWN_ROLES]
+        opts = list(dict.fromkeys(opts)) or [r for r in OWN_ROLES if r != "skip"]
+        sh = c.get("shape") if isinstance(c.get("shape"), dict) else {}
+        classes: dict[str, float] = {}
+        raw_classes = sh.get("classes") if isinstance(sh.get("classes"), dict) else {}
+        for k, v in raw_classes.items():
+            if k in SHAPE_LABELS and isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 1:
+                classes[k] = round(float(v), 2)
+        shape: dict[str, Any] = {"classes": dict(sorted(classes.items(), key=lambda kv: -kv[1])[:5])}
+        v = sh.get("fill")
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 1:
+            shape["fill"] = round(float(v), 2)
+        for k in ("n", "distinct", "len_min", "len_max"):
+            v = sh.get(k)
+            if isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 10_000_000:
+                shape[k] = v
+        out.append({"index": idx, "header": header, "options": opts, "shape": shape})
+    if not out:
+        raise AiError("整理する列がありません")
+    return out
+
+
+def own_columns_prompt(cols: list[dict[str, Any]]) -> str:
+    items = [{"index": c["index"], "header": c["header"], "options": c["options"] + [OWN_IGNORE],
+              "shape": {**c["shape"], "classes": {SHAPE_LABELS[k]: v for k, v in c["shape"]["classes"].items()}}} for c in cols]
+    return "列の一覧（JSON。値そのものはありません）:\n" + canonical(items)
+
+
+def validate_own_result(data: Any, cols: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """モデルの答えを検める。列の options にない役割・知らない index・重複は捨てる（画面には検めた分だけ渡す）。"""
+    allowed = {c["index"]: set(c["options"]) | {OWN_IGNORE} for c in cols}
+    out: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    items = data.get("columns") if isinstance(data, dict) else None
+    for it in items if isinstance(items, list) else []:
+        if not isinstance(it, dict):
+            continue
+        idx, role = it.get("index"), it.get("role")
+        if isinstance(idx, bool) or not isinstance(idx, int) or idx in seen or idx not in allowed or role not in allowed[idx]:
+            continue
+        conf = it.get("confidence") if it.get("confidence") in OWN_CONFIDENCE else "low"
+        seen.add(idx)
+        out.append({"index": idx, "role": role, "confidence": conf, "reason_ja": str(it.get("reason_ja", ""))[:OWN_REASON_MAX]})
+    return out
+
+
+def _call_own(client: Any, cols: list[dict[str, Any]]) -> tuple[Any, dict[str, Any]]:
+    kw: dict[str, Any] = dict(model=OWN_MODEL, max_tokens=OWN_MAX_TOKENS, system=SYS_OWN,
+                              messages=[{"role": "user", "content": own_columns_prompt(cols)}],
+                              output_config={"effort": OWN_EFFORT, "format": {"type": "json_schema", "schema": OWN_SCHEMA}})
+    t0 = time.perf_counter()
+    resp = client.messages.create(**kw)
+    ms = int((time.perf_counter() - t0) * 1000)
+    tin, tout = _usage(resp)
+    rec = {"step": "own_columns", "model": OWN_MODEL, "label": MODEL_LABEL[OWN_MODEL], "input_tokens": tin, "output_tokens": tout, "ms": ms,
+           "cost_usd": round(cost_usd(OWN_MODEL, tin, tout), 6), "stop_reason": getattr(resp, "stop_reason", None)}
+    if getattr(resp, "stop_reason", None) == "refusal":
+        raise _Refused(rec)  # type: ignore[arg-type]
+    return resp, rec
+
+
+def own_columns(body: Any, client_id: str, public: bool) -> dict[str, Any]:
+    """POST /api/ai/own_columns。同期で返す（Haiku 1 回）。同じ入力の結果は上限に数えない。"""
+    st = status(public)
+    if not st["available"]:
+        raise AiError(own_reason_text(st["reason"]), "unavailable", 403)
+    cols = clean_own_columns(body)
+    key = "own:" + cache_key({"columns": cols})
+    hit = CACHE.get(key)
+    if hit is not None:
+        return dict(hit, cached=True)
+    LIMITER.reserve(client_id)
+    try:
+        resp, rec = _call_own(make_client(), cols)
+    except _Refused:
+        raise AiError("AI が列の整理を断りました。列の役割は手で選んでください", "refused", 502) from None
+    except Exception as e:  # noqa: BLE001  メッセージにキーが入ることはないが、型名だけを返す
+        raise AiError(f"AI に列を整理してもらえませんでした（{type(e).__name__}）。手で選んでください", "api_error", 502) from None
+    try:
+        data = _json_of(resp)
+    except Exception:  # noqa: BLE001
+        raise AiError("AI の答えを読めませんでした。手で選んでください", "bad_output", 502) from None
+    suggestions = validate_own_result(data, cols)
+    res = {"ok": True, "suggestions": suggestions, "step": rec, "cached": False}
+    if suggestions:
+        CACHE.put(key, res)
+    return res
+
+
+def own_reason_text(reason: str) -> str:
+    return {"disabled": "AI による列の整理は、このサーバーでは使えない設定です",
+            "public_off": "公開版では AI による列の整理を止めています",
+            "no_key": "AI による列の整理に必要な設定がありません",
+            "no_sdk": "AI による列の整理に必要な部品（anthropic）が入っていません"}.get(reason, "AI による列の整理は今は使えません")
+
+
 def reason_text(reason: str) -> str:
     return {"disabled": "説明文の自動作成は、このサーバーでは使えない設定です",
             "public_off": "公開版では説明文の自動作成を止めています",
