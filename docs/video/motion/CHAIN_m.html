@@ -21,7 +21,8 @@ svg{position:absolute;left:0;top:0;overflow:visible}
 <script>
 (function () {
   /* 各項目が出始める秒。声に合わせた版（CHAIN_p1_m.html など）は make_chain_timed.py が TM を書き換えて作る */
-  var TM = {n1: 0.3, n2: 4.0, lim: 7.0, n3: 9.0, n3c: 9.8, n3d: 11.3, fade: 13.0, D: 18.0};
+  /* two: 声で言う 2 項目（運転手・2030 年度）だけを並べる（r10）。fadeTo: 最後の一文の間に連鎖を消す割合（1 で全部消す）。f2: 「6割」の一文が出る秒 */
+  var TM = {n1: 0.3, n2: 4.0, lim: 7.0, n3: 9.0, n3c: 9.8, n3d: 11.3, fade: 13.0, D: 18.0, two: false, fadeTo: 0.7, f2: null};
   var K = window.K, D = TM.D, E = K.E, P = K.P;
   var fig = document.getElementById('fig'), txt = document.getElementById('txt');
   var sv = K.el('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, fig);
@@ -29,7 +30,7 @@ svg{position:absolute;left:0;top:0;overflow:visible}
   var fw = K.div(txt, 'left:0;top:0;width:1920px;height:1080px', '');
   var cg = K.el('g', {}, sv);           /* 連鎖の線画 */
   var fg = K.el('g', {}, sv);           /* 最後の一文の線画 */
-  var X1 = 350, X2 = 930, X3 = 1560, AY = 470;
+  var X1 = 350, X2 = TM.two ? 620 : 930, X3 = TM.two ? 1300 : 1560, AY = 470;
   var WHITE = '#ffffff', YEL = '#f0c04a', MUT = '#9fb0c1', GREY = '#3a4757';
 
   function T(parent, x, y, w, size, weight, color, html) {
@@ -71,7 +72,7 @@ svg{position:absolute;left:0;top:0;overflow:visible}
     h.style.opacity = 0;
     return { set: function (p, ph) { l.setAttribute('x2', K.lerp(x1, x2 - 4, p)); l.style.opacity = p > 0 ? 1 : 0; h.style.opacity = ph; } };
   }
-  var a1 = arrow(585, 660), a2 = arrow(1200, 1340);
+  var a1 = arrow(585, 660), a2 = arrow(X2 + 270, X3 - 220);
 
   /* 最後の一文 */
   var tr = K.truck(fg, 3.4); tr.set(WHITE, 0, 0); tr.g.style.opacity = 0;
@@ -84,23 +85,23 @@ svg{position:absolute;left:0;top:0;overflow:visible}
   var f2 = T(fw, 960, 240, 1500, 96, 900, WHITE, '運べる量の<span class="y">6割</span>が使われていない');
 
   /* 着地時刻（秒） */
-  var LAND = { n1big: TM.n1 + 0.9, n2big: TM.n2 + 0.8, limit: TM.lim + 0.6, n3big: TM.n3c + 0.8, final6: TM.fade + 1.7 };
+  var LAND = { n1big: TM.n1 + 0.9, n2big: TM.n2 + 0.8, limit: TM.lim + 0.6, n3big: TM.n3c + 0.8, final6: (TM.f2 === null ? TM.fade + 1.1 : TM.f2) + 0.6 };
   window.__land = LAND;
 
   function render(s) {
     /* ノード1 */
     var p;
-    p = P(s, TM.n1, 0.6); tk.g.style.opacity = p;
+    p = TM.two ? 0 : P(s, TM.n1, 0.6); tk.g.style.opacity = p;
     tk.g.setAttribute('transform', 'translate(' + (X1 - 91) + ' ' + (268 + 14 * (1 - p)) + ') scale(1.9)');
-    K.show(n1a, P(s, TM.n1 + 0.15, 0.6), 0, 16);
-    K.show(n1b, P(s, TM.n1 + 0.3, 0.6), 0, 20);
+    K.show(n1a, TM.two ? 0 : P(s, TM.n1 + 0.15, 0.6), 0, 16);
+    K.show(n1b, TM.two ? 0 : P(s, TM.n1 + 0.3, 0.6), 0, 20);
     /* 矢印1 */
-    a1.set(P(s, TM.n2 - 1.0, 0.8, E.mov), P(s, TM.n2 - 0.3, 0.2));
+    if (TM.two) a1.set(0, 0); else a1.set(P(s, TM.n2 - 1.0, 0.8, E.mov), P(s, TM.n2 - 0.3, 0.2));
     /* ノード2 */
     dr.style.opacity = P(s, TM.n2, 0.6);
     dr.setAttribute('transform', 'translate(' + (X2 - 46) + ' ' + (268 + 14 * (1 - P(s, TM.n2, 0.6))) + ') scale(1.9)');
     K.show(n2b, P(s, TM.n2 + 0.2, 0.6), 0, 20);
-    K.show(n2d, P(s, TM.lim, 0.6), 0, 14);
+    K.show(n2d, TM.two ? 0 : P(s, TM.lim, 0.6), 0, 14);
     /* 矢印2 */
     a2.set(P(s, TM.n3 - 0.8, 0.8, E.mov), P(s, TM.n3 - 0.1, 0.2));
     /* ノード3 */
@@ -113,7 +114,7 @@ svg{position:absolute;left:0;top:0;overflow:visible}
     /* 13 秒: 連鎖を 30% に落とし、少し下げて縮める */
     var F = TM.fade;
     var d = P(s, F, 0.9, E.mov);
-    var op = 1 - 0.7 * d, dy = 70 * d, sc = 1 - 0.14 * d;
+    var op = 1 - TM.fadeTo * d, dy = 70 * d, sc = 1 - 0.14 * d;
     cw.style.opacity = op; cw.style.transform = 'translateY(' + dy + 'px) scale(' + sc + ')';
     cg.style.opacity = op;
     cg.setAttribute('transform', 'translate(960 ' + (470 + dy) + ') scale(' + sc + ') translate(-960 -470)');
@@ -122,9 +123,10 @@ svg{position:absolute;left:0;top:0;overflow:visible}
     tr.g.style.opacity = pt;
     place(tr.g, 960 - 48 * 1.8, 60 + 12 * (1 - pt), 1.8);
     full.style.opacity = P(s, F + 1.0, 0.5);
-    empt.style.opacity = P(s, F + 1.4, 0.6);
+    var F2 = TM.f2 === null ? F + 1.1 : TM.f2;
+    empt.style.opacity = P(s, F2 + 0.3, 0.6);
     K.show(f1, P(s, F + 0.7, 0.6), 0, 16);
-    K.show(f2, P(s, F + 1.1, 0.6), 0, 20);
+    K.show(f2, P(s, F2, 0.6), 0, 20);
   }
   K.setup(D, render);
 })();

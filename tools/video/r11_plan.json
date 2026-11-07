@@ -1,0 +1,343 @@
+{
+ "_説明": "r10 の組み立ての表（r9 から）。作成者の指摘 11/7 夜: 最初の 30 秒で文字が地図と重なる、「運ぶ人が足りないのに…6割」が成立していない、章の切り替えや効果音が終わらないうちに次の説明に入る、タイミングが全体にずれる。冒頭の図の下に暗くする幕を敷く、連鎖の図は声で言う 2 項目だけ、H1 の声を戻して図を消して一文だけを出す、章の見出し・線の切り替え・ロゴの音が鳴り終わってから声を始める（音の重なりは check_sfx_gap.py で確かめる）。r11: S2 の料金の図の出始めを戻す（遅らせると数え上げが最後の 17.7 万円に届かなかった）、最後の場面の出典の行に素材のクレジット、EDL を相対パスに",
+ "name": "r11",
+ "shots": "docs/video/shots_r7.json",
+ "voice_dir": "voice/tight_r9",
+ "voice_tag": "r7",
+ "layout": "docs/video/subs_r10_layout.json",
+ "kinetic_tool": "tools/video/make_kinetic3.py",
+ "gap_style": "cut",
+ "blocks": [
+  {
+   "id": "H0",
+   "gap": 0,
+   "lead": 0.6,
+   "tail": 0.2,
+   "v1": [
+    {
+     "path": "motion/FLOW_JP.mov",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/HOOK_m.mov",
+     "at": {
+      "say": "ろくわり",
+      "land": 2.4
+     },
+     "scrim": true
+    }
+   ]
+  },
+  {
+   "id": "P1",
+   "gap": 0,
+   "lead": 0.6,
+   "tail": 0.2,
+   "tr": true,
+   "v1": [
+    {
+     "path": "motion/FLOW_JP.mov",
+     "fill": true,
+     "off": 6.0
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/CHAIN_p1_m.mov",
+     "at": {
+      "t": 0.6
+     },
+     "scrim": true
+    }
+   ],
+   "audio": [
+    {
+     "track": 4,
+     "path": "sfx/kit/land_soft.wav",
+     "at": {
+      "say": "運転手が",
+      "land": 0.0
+     }
+    },
+    {
+     "track": 4,
+     "path": "sfx/kit/land_soft.wav",
+     "at": {
+      "say": "さんぶんのいち",
+      "land": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "id": "H1",
+   "gap": 0,
+   "lead": 0.4,
+   "tail": 0.4,
+   "v1": [
+    {
+     "path": "motion/FLOW_JP.mov",
+     "off": 6.0,
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/CHAIN_p1_m.mov",
+     "off": 9.64,
+     "at": {
+      "say": "運ぶ人が",
+      "land": 0.7
+     },
+     "scrim": true
+    }
+   ]
+  },
+  {
+   "id": "H2",
+   "gap": 0.3,
+   "lead": 0.15,
+   "tail": 0.2,
+   "v1": [
+    {
+     "path": "bframe/r9/W_R2.mp4",
+     "until": "たとえば"
+    },
+    {
+     "path": "motion/FLOW_KAGO.mov",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/MG9_m.mov",
+     "at": {
+      "say": "荷を積まずに",
+      "land": 1.2
+     },
+     "until": "たとえば",
+     "scrim": true
+    }
+   ]
+  },
+  {
+   "id": "H3",
+   "gap": 0,
+   "lead": 0.6,
+   "tail": 0.3,
+   "tr": true,
+   "v1": [
+    {
+     "path": "stock/Crystal_Glass_With_Water_In_Red_Light_uhd_1276670.mp4",
+     "off": 1.0,
+     "until": "それをつなぐ"
+    },
+    {
+     "path": "motion/LOGO_B.mov",
+     "len": 2.6
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "H4",
+   "gap": 0.3,
+   "lead": 0.5,
+   "tail": 0.3,
+   "v1": [
+    {
+     "path": "bframe/r9/W_FLOW0.mp4",
+     "until": "Backfullでできる"
+    },
+    {
+     "path": "bframe/r9/W_F1.mp4",
+     "until": "空いた荷台と荷物"
+    },
+    {
+     "path": "bframe/r9/W_F2.mp4",
+     "until": "荷待ちの相談"
+    },
+    {
+     "path": "bframe/r9/W_F3.mp4",
+     "until": "送り方を比べる"
+    },
+    {
+     "path": "bframe/r9/W_F4.mp4",
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "C1",
+   "gap": 0.4,
+   "lead": 1.0,
+   "tail": 0.3,
+   "chapter": "motion/CHM2.mov",
+   "v1": [
+    {
+     "path": "stock/office_comp.mp4",
+     "until": "そして"
+    },
+    {
+     "path": "stock/office_dive.mp4",
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "C2",
+   "gap": 0,
+   "lead": 0.15,
+   "tail": 0.2,
+   "v1": [
+    {
+     "path": "bframe/r9/W_OWNVIZ.mp4",
+     "until": "荷待ちの時間は"
+    },
+    {
+     "path": "rec7/focus/F_DRIVER_h.mp4",
+     "until": "その記録と"
+    },
+    {
+     "path": "bframe/r9/W_NEGO.mp4",
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "S1",
+   "gap": 0.4,
+   "lead": 1.0,
+   "tail": 0.3,
+   "chapter": "motion/CHM3.mov",
+   "v1": [
+    {
+     "path": "stock/laptop_dive.mp4",
+     "len": 4.0
+    },
+    {
+     "path": "bframe/r9/W_P7.mp4",
+     "until": "条件を入れると"
+    },
+    {
+     "path": "bframe/r9/W_P8.mp4",
+     "len": 4.5
+    },
+    {
+     "path": "bframe/r9/W_QUOTE.mp4",
+     "until": "トラックを借り切る",
+     "off": 8.75
+    },
+    {
+     "path": "bframe/r9/W_P8.mp4",
+     "off": 5.6,
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "S2",
+   "gap": 0.4,
+   "lead": 1.0,
+   "tail": 0.3,
+   "chapter": "motion/CHM4.mov",
+   "v1": [
+    {
+     "path": "bframe/r9/W_P9.mp4",
+     "len": 2.63
+    },
+    {
+     "path": "bframe/r9/W_P10.mp4",
+     "until": "さつま運輸の"
+    },
+    {
+     "path": "bframe/r9/W_P12.mp4",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/MG5_m.mov",
+     "at": {
+      "say": "きゅうまんごせんえん",
+      "land": 5.3
+     },
+     "scrim": true
+    }
+   ]
+  },
+  {
+   "id": "HP",
+   "gap": 0.3,
+   "lead": 0.15,
+   "tail": 0.2,
+   "v1": [
+    {
+     "path": "stock/office_comp.mp4",
+     "off": 6.0,
+     "until": "荷主は"
+    },
+    {
+     "path": "stock/laptop_comp.mp4",
+     "off": 5.0,
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "R7",
+   "gap": 0.4,
+   "lead": 1.0,
+   "tail": 0.2,
+   "chapter": "motion/CHM5.mov",
+   "v1": [
+    {
+     "path": "rec/CC_rec_v2.mp4",
+     "until": "役割を分けた"
+    },
+    {
+     "path": "motion/CLAUDE_HUB_m.mov",
+     "off": 1.0,
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "H8",
+   "gap": 0.3,
+   "lead": 0.15,
+   "tail": 0.3,
+   "v1": [
+    {
+     "path": "bframe/r9/W_END.mp4",
+     "until": "Backfull。"
+    },
+    {
+     "path": "motion/LOGO_B.mov",
+     "len": 3.0
+    }
+   ],
+   "over": []
+  }
+ ],
+ "bgm": {
+  "start_block": "P1",
+  "closing": "outputs/video/bgm/closing/closing_r09_053.wav",
+  "closing_block": "HP",
+  "closing_lead": 0.5,
+  "closing_db": -12
+ }
+}

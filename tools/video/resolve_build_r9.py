@@ -20,6 +20,13 @@ OUT_DIR = globals().get("OUT_DIR", "C:/dev/hackathon_2026/outputs/video/assembly
 OUT_NAME = globals().get("OUT_NAME", "Backfull_r9_resolve")
 RENDER = globals().get("RENDER", True)
 edl = json.load(open(EDL, encoding="utf-8"))
+ROOT_DIR = globals().get("ROOT_DIR", "C:/dev/hackathon_2026")
+# EDL の path はリポジトリからの相対パス（r11 から）。絶対パスの古い EDL もそのまま読める
+for _k in ("video", "audio"):
+    for _rows in edl[_k].values():
+        for _d in _rows:
+            if not os.path.isabs(_d["path"]):
+                _d["path"] = os.path.normpath(os.path.join(ROOT_DIR, _d["path"]))
 mp = project.GetMediaPool()
 root = mp.GetRootFolder()
 
@@ -151,6 +158,10 @@ elif STAGE == "render":
     tl = [project.GetTimelineByIndex(i) for i in range(1, project.GetTimelineCount() + 1)]
     tl = [x for x in tl if x.GetName() == name][0]
     project.SetCurrentTimeline(tl)
+    # 配置が途中で切れたタイムラインを書き出さない（11/7、build が 10 秒で切れたまま書き出しを始めたため）
+    placed = sum(len(tl.GetItemListInTrack(k, i) or []) for k in ("video", "audio") for i in range(1, tl.GetTrackCount(k) + 1))
+    if placed != len(rows_all):
+        raise RuntimeError(f"タイムラインの素材 {placed} 本と EDL の {len(rows_all)} 本が合いません。build を done まで続けてください")
     project.SetCurrentRenderFormatAndCodec("mp4", "H264")
     st = tl.GetStartFrame()
     # 書き出す範囲は EDL の長さまで（終わりの効果音の余韻がはみ出して 3 分を超えないように）

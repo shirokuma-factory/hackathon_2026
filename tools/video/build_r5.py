@@ -87,12 +87,15 @@ def main() -> None:
     prev_last = None
     for b in plan["blocks"]:
         sid = b["id"]
-        dissolve = plan.get("gap_style") == "dissolve"
+        # gap_style: "dissolve"（前を延ばして次を溶かして重ねる）/ "cut"（前を間の分だけ延ばして、重ねずに切り替える。r10、
+        # 作成者の指摘「画面と画面が重なっている所が多い。意図していない動き」11/7）/ なし（黒へ落とす）
+        dissolve = plan.get("gap_style") in ("dissolve", "cut")
+        dis = DIS if plan.get("gap_style") == "dissolve" else 0.0
         if b.get("gap"):
             if prev_last is not None:
                 if dissolve:
-                    # 黒へ落とさず、前の場面を間（gap）と重なり（DIS）の分だけ延ばし、次の場面を上から溶かして出す
-                    prev_last["L"] += round((b["gap"] + DIS) * FPS)
+                    # 黒へ落とさず、前の場面を間（gap）と重なり（dis）の分だけ延ばす
+                    prev_last["L"] += round((b["gap"] + dis) * FPS)
                     prev_last["path"] = str(hold(Path(prev_last.pop("_src")), (prev_last["off"] + prev_last["L"]) / FPS))
                 else:
                     prev_last["fade_out"] = FADE
@@ -175,7 +178,8 @@ def main() -> None:
                     "_src": str(OV / pc["path"])}
             if first and b.get("gap"):
                 if dissolve and prev_last is not None:
-                    item["dissolve_in"] = round(DIS * FPS)
+                    if dis:
+                        item["dissolve_in"] = round(dis * FPS)
                 else:
                     item["fade_in"] = FADE
             first = False
@@ -293,7 +297,7 @@ def main() -> None:
         nm, s0 = Path(d["path"]).name, d["s"] / FPS
         if nm.startswith("LOGO_B"):
             cue(3, "whoosh_soft.wav", s0 + 0.3, -4)
-            cue(4, "chime_logo.wav", s0 + 2.0, -3)
+            cue(4, "chime_logo.wav", s0 + 0.6, -3)  # r10: 次の説明が始まる前に鳴り終わるよう、ロゴが出てすぐに鳴らす
         elif nm.startswith("FLOW_KAGO"):
             cue(3, "whoosh_soft.wav", s0, -6)
     # 字幕の強調のうち数字を含むものが着地する瞬間に、弾む音（1・3・5 度を順に）
@@ -340,6 +344,15 @@ def main() -> None:
                     nxt = rows[i + 1] if i + 1 < len(rows) else None
                     d["xfade_out"] = XF if nxt and 0 <= nxt["s"] - d["e"] <= 1 and not d.get("fade_out") and (d["e"] - d["s"]) > 45 and (nxt["e"] - nxt["s"]) > 45 else 0
     edl["total"] = total
+    # 公開するリポジトリに PC の絶対パスを残さないよう、リポジトリからの相対パス（/ 区切り）で書く。
+    # 読む側（render_edl.py、resolve_build_r9.py）はリポジトリの場所とつなぐ
+    for kind in ("video", "audio"):
+        for rows in edl[kind].values():
+            for d in rows:
+                try:
+                    d["path"] = Path(d["path"]).resolve().relative_to(ROOT).as_posix()
+                except ValueError:
+                    pass
     with open(ROOT / f"docs/video/edl_{NAME}.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(edl, f, ensure_ascii=False, indent=1)
     print(f"{NAME}: 合計 {total:.1f} 秒、字幕 {len(cards_all)} 枚 -> docs/video/edl_{NAME}.json")

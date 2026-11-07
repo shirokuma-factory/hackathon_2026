@@ -21,8 +21,8 @@ import make_subtitles as ms  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 VOICE = ROOT / "outputs" / "video" / "voice"
 # 項目: (読みの言葉, その言葉より何秒前に出始めるか)
-ANCHORS = {"n1": ("トラックが運んで", 0.6), "n2": ("運転手が", 0.4),
-           "n3": ("にせんさんじゅうねんど", 0.2), "n3c": ("さんぶんのいち", 0.5), "n3d": ("足りなく", 0.3)}
+# r10: P1 は「運転手が足りない」と「2030 年度に約 3 分の 1」だけを言うので、図も 2 項目（two）にする
+ANCHORS = {"n2": ("運転手が", 0.4), "n3": ("にせんさんじゅうねんど", 0.2), "n3c": ("さんぶんのいち", 0.5), "n3d": ("足りなく", 0.3)}
 
 
 def main() -> None:
@@ -41,10 +41,19 @@ def main() -> None:
         if i < 0:
             raise SystemExit(f"P1 の読みに「{w}」がありません")
         tm[k] = round(max(0.0, ms.squeeze(al["character_start_times_seconds"][i], sil) / a.atempo - lead), 2)
-    tm["lim"] = round(tm["n2"] + 1.6, 2)  # 2024 年の上限は声では言わず、運転手の項目のすぐ後に図だけで出す（11/7 に台本から外した）
+    tm["n1"], tm["lim"] = 0.0, 99.0  # 2 項目の形では出さない
     end = ms.squeeze(al["character_end_times_seconds"][-1], sil) / a.atempo
     tm["fade"] = round(end + 0.1, 2)   # P1 の声が終わってから。H1 の重ねは、この秒から再生する
-    tm["D"] = round(tm["fade"] + 8.0, 1)  # H1（約 6 秒）の終わりまで最後の一文を出しておく
+    # H1「運ぶ人が足りないのに……運べる量の、ろくわりは」: 「6割」の一文を「運べる量」と言う所で出す。
+    # H1 の重ねは図の fade+0.7 秒を「運ぶ人が」の言い始めに合わせて置く（r10_plan.json の land 0.7）
+    a1 = json.loads((VOICE / f"H1_{a.tag}.json").read_text(encoding="utf-8"))["alignment"]
+    r1 = "".join(a1["characters"])
+    s1 = ms.silences(VOICE / f"H1_{a.tag}.mp3")
+    t_hako = ms.squeeze(a1["character_start_times_seconds"][r1.find("運ぶ人が")], s1) / a.atempo
+    t_beru = ms.squeeze(a1["character_start_times_seconds"][r1.find("運べる量")], s1) / a.atempo
+    tm["f2"] = round(tm["fade"] + 0.7 + (t_beru - t_hako) - 0.2, 2)
+    tm["two"], tm["fadeTo"] = "true", 1.0
+    tm["D"] = round(tm["f2"] + 6.0, 1)
     src = (ROOT / "docs/video/motion/CHAIN_m.html").read_text(encoding="utf-8")
     js = "{" + ", ".join(f"{k}: {v}" for k, v in tm.items()) + "}"
     out, n = re.subn(r"var TM = \{[^}]*\};", f"var TM = {js};", src)
