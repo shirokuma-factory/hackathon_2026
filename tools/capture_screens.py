@@ -99,6 +99,70 @@ def stop_tree(proc: subprocess.Popen) -> None:
     except Exception:
         proc.kill()
 
+_JOB = None  # このプロセスで 1 つだけ作るジョブ。ハンドルは閉じない（プロセスが死ぬと OS が閉じ、中の子も止まる）
+
+
+def _job_handle():
+    """KILL_ON_JOB_CLOSE のジョブオブジェクトを必要になったときに作る。作れなければ 0。"""
+    global _JOB
+    if _JOB is not None:
+        return _JOB
+    _JOB = 0
+    if os.name != "nt":
+        return _JOB
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _BASIC(ctypes.Structure):
+            _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
+                        ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                        ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                        ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD), ("SchedulingClass", wintypes.DWORD)]
+
+        class _IO(ctypes.Structure):
+            _fields_ = [(n, ctypes.c_uint64) for n in ("ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                                                       "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+        class _EXT(ctypes.Structure):
+            _fields_ = [("BasicLimitInformation", _BASIC), ("IoInfo", _IO), ("ProcessMemoryLimit", ctypes.c_size_t),
+                        ("JobMemoryLimit", ctypes.c_size_t), ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                        ("PeakJobMemoryUsed", ctypes.c_size_t)]
+
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateJobObjectW.restype = wintypes.HANDLE
+        k32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        k32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+        job = k32.CreateJobObjectW(None, None)
+        if not job:
+            return _JOB
+        info = _EXT()
+        info.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        # 9 = JobObjectExtendedLimitInformation
+        if k32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info)):
+            _JOB = job
+    except Exception:
+        _JOB = 0
+    return _JOB
+
+
+def bind_to_job(proc):
+    """起動した子（と、その子がこれから起動する孫）を、このプロセスの終了と一緒に止まるようにする。
+    Windows 以外、または失敗したときは何もしない。proc をそのまま返す。"""
+    if os.name != "nt":
+        return proc
+    try:
+        import ctypes
+        from ctypes import wintypes
+        job = _job_handle()
+        if job:
+            k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+            k32.AssignProcessToJobObject(job, int(proc._handle))
+    except Exception:
+        pass
+    return proc
+
 
 def stop_edge_profile(profile: str) -> None:
     """指定したプロファイルの Edge を全部止める。
@@ -630,6 +694,7 @@ def main() -> int:
              "--server.port", str(PORT), "--client.toolbarMode", "minimal", "--server.fileWatcherType", "none",
              "--browser.gatherUsageStats", "false"],
             cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        bind_to_job(st_proc)
         wait_health()
         dbg = free_port()
         edge_proc = subprocess.Popen(
@@ -637,6 +702,7 @@ def main() -> int:
              f"--user-data-dir={profile}", "--hide-scrollbars", "--force-device-scale-factor=1",
              "--no-first-run", *EDGE_CLEAN_FLAGS, "about:blank"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        bind_to_job(edge_proc)
         targets = []
         for _ in range(60):
             try:

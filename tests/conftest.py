@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import atexit
 import contextlib
 import json
 import subprocess
@@ -153,6 +154,9 @@ def _connect_blank(cs, dbg: int, page_cls=None):
     return (page_cls or cs.Page)(targets[0]["webSocketDebuggerUrl"])
 
 
+_EDGE_PROCS: list = []  # このプロセスが起動して、まだ止めていない Edge。終了時に止める
+
+
 @contextlib.contextmanager
 def edge_page(width: int = 1920, height: int = 1080, *, page_cls=None, hooks: tuple[str, ...] = (), webgl: bool = True):
     """ヘッドレス Edge を 1 つ起動して page を渡す。ロックで直列にし、終わりに必ずプロセスとプロファイルを片づける。
@@ -167,6 +171,8 @@ def edge_page(width: int = 1920, height: int = 1080, *, page_cls=None, hooks: tu
         if webgl:
             args += ["--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader"]
         proc = subprocess.Popen(args + ["about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cs.bind_to_job(proc)
+        _EDGE_PROCS.append(proc)
         try:
             page = _connect_blank(cs, dbg, page_cls)
             for h in hooks:
@@ -177,6 +183,10 @@ def edge_page(width: int = 1920, height: int = 1080, *, page_cls=None, hooks: tu
             try:
                 cs.stop_tree(proc)
             finally:
+                try:
+                    _EDGE_PROCS.remove(proc)
+                except ValueError:
+                    pass
                 cs.release_profile(profile)
 
 
@@ -238,6 +248,7 @@ def server_port(kind: str) -> int:
     }[kind]
     port = cs.free_port()
     proc = subprocess.Popen([sys.executable, "-c", code, str(port), *argv], cwd=str(ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    cs.bind_to_job(proc)
     _SERVERS[kind] = (proc, port)
     try:
         wait_server(port, probe)
@@ -248,11 +259,24 @@ def server_port(kind: str) -> int:
     return port
 
 
-def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001
+def _stop_children() -> None:
+    """このプロセスが起動した試験用サーバーと Edge だけを止める（名前での一括停止はしない）。何度呼んでもよい。"""
     import capture_screens as cs
     for proc, _ in list(_SERVERS.values()):
         cs.stop_tree(proc)
     _SERVERS.clear()
+    for proc in list(_EDGE_PROCS):
+        cs.stop_tree(proc)
+    _EDGE_PROCS.clear()
+
+
+def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001
+    _stop_children()
+
+
+# sessionfinish を通らない終わり方（xdist のワーカーの通常終了など）でも片づける。
+# 外から強制終了された場合は atexit も動かないので、Job Object（cs.bind_to_job）が OS 側で子を止める。
+atexit.register(_stop_children)
 
 
 @pytest.fixture(scope="session")
