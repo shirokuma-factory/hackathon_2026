@@ -1201,8 +1201,22 @@ function setHubSel(kind) {
 // 画質の段が変わったとき（と起動時）: 描画の解像度比を合わせる
 function applyQuality() {
   const r = PERF.pixelRatio();
-  try { if (map && map.getPixelRatio && map.getPixelRatio() !== r && map.setPixelRatio) map.setPixelRatio(r); } catch (e) { console.error(e); }
-  if (overlay) overlay.setProps({ useDevicePixels: r });
+  try {
+    if (map && map.getPixelRatio && map.setPixelRatio) {
+      const c = map.getCanvas();
+      if (map.getPixelRatio() !== r) map.setPixelRatio(r);
+      // 作成時の pixelRatio が描画バッファに反映されず、端末の拡大率のままになることがある（getPixelRatio() は r を返すのに canvas.width は DPR 倍）。
+      // 食い違うと deck の層が地図に対して左上基準で拡大して重なる（DPR 2 の録画で日本が二重に見えた）。バッファの大きさを作り直して合わせる
+      if (c && c.clientWidth > 0 && Math.abs(c.width - Math.round(c.clientWidth * r)) > 1) map.resize();
+    }
+  } catch (e) { console.error(e); }
+  if (overlay) {
+    // 重ね合わせ（interleaved）では deck は地図の描画バッファをそのまま使うので、実際のバッファの解像度比を渡す
+    let eff = r;
+    try { const c = map.getCanvas(); if (c.clientWidth > 0) eff = c.width / c.clientWidth; } catch (e) { /* 地図が無いとき */ }
+    overlay.setProps({ useDevicePixels: eff });
+  }
+  try { map.triggerRepaint(); } catch (e) { /* 地図が無いとき */ }
 }
 
 /* 部品（スクリプト）の読み込みに失敗したとき。読み直し（index.html）でも読めなかった部品がある見方だけを止め、ほかの見方は起動する（SPEC §42）。
@@ -1411,7 +1425,7 @@ async function main() {
     if (qs.get('perf') || qs.get('check')) { const sc = document.createElement('script'); sc.src = 'perfprobe.js'; document.head.appendChild(sc); }
     if (qs.get('check')) { const sc = document.createElement('script'); sc.src = 'check.js'; document.head.appendChild(sc); }
   }
-  window.__app = { WARM, S, Market: V.Market, Muni: V.Muni, Hubs, Find: V.Find, Own: V.Own, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
+  window.__app = { WARM, S, Market: V.Market, Muni: V.Muni, Hubs, Find: V.Find, Own: V.Own, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, overlay: () => overlay, refreshEstimate };
 }
 
 /* 全国の物流傾向: 選んでいる区間と今の表示条件を地図のそばに出し、全国の指標と区間の順位は選んだときだけ開く */
