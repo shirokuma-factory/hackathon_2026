@@ -339,7 +339,7 @@ def main() -> None:
                     k += 1
     for d in edl["video"].get("1", []):
         nm, s0 = Path(d["path"]).name, d["s"] / FPS
-        if nm.startswith("LOGO_B"):
+        if nm.startswith(("LOGO_B", "LOGO_F")):
             cue(3, "whoosh_soft.wav", s0 + 0.3, -4)
             cue(4, "chime_logo.wav", s0 + 0.6, -3)  # r10: 次の説明が始まる前に鳴り終わるよう、ロゴが出てすぐに鳴らす
         elif nm.startswith("FLOW_KAGO"):
