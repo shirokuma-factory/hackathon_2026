@@ -21,6 +21,10 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import private_terms as _private  # noqa: E402
+
+_PRIV = _private.combined()
 ONLINE = "--online" in sys.argv
 results: list[tuple[bool, str]] = []
 
@@ -100,7 +104,7 @@ def main() -> int:
 
     files = tracked_files()
     pat_path = re.compile(r"(?i)C:[\\/]+Users[\\/]+[^\\/\s]+")
-    pat_name = re.compile("\u4f5c\u6210\u8005|user" + "name")  # この行が自分に当たらないよう、エスケープと連結で書く
+    pat_name = _PRIV  # 追跡しない private_terms.txt か環境変数から読む。無ければ None
     pat_secret = re.compile(r"sk-" r"ant-[A-Za-z0-9_-]{20,}|\bsk_[a-f0-9]{40,}\b|AIza[0-9A-Za-z_-]{35}|"
                             r"\b(ghp|gho|github_pat)_[A-Za-z0-9_]{20,}|-----BEGIN [A-Z ]*PRIVATE" r" KEY-----")  # 自分に当たらないよう分けて書く
     hit_path, hit_name, hit_secret = [], [], []
@@ -114,13 +118,13 @@ def main() -> int:
             continue
         if pat_path.search(s):
             hit_path.append(f)
-        if pat_name.search(s):
+        if pat_name and pat_name.search(s):
             hit_name.append(f)
         if pat_secret.search(s):
             hit_secret.append(f)
     check(not hit_secret, f"秘密の形: {hit_secret or 'なし'}")
     check(not hit_path, f"PC 固有のパス: {hit_path[:15] or 'なし'}{' ほか' if len(hit_path) > 15 else ''}（{len(hit_path)} 個）")
-    check(not hit_name, f"作成者の呼び名・アカウント名: {hit_name or 'なし'}")
+    check(not hit_name, f"作成者の呼び名・アカウント名: {hit_name or 'なし'}" + ("" if _PRIV else _private.SKIP_NOTE))
 
     # 作業ツリーだけでなく、公開されるコミット（HEAD）の中身も調べる（作業ツリーで直しても未コミットなら公開に残る）
     def head_hits(pat: str) -> list[str]:
@@ -128,7 +132,7 @@ def main() -> int:
                            capture_output=True)
         return [x.split(":", 1)[1] for x in r.stdout.decode("utf-8", "replace").splitlines() if ":" in x]
     head_path = head_hits(r"C:[\\/]+Users[\\/]+[^\\/ ]+")
-    head_name = head_hits("\u4f5c\u6210\u8005|user" + "name")  # 呼び名。この行が自分に当たらないようエスケープで書く
+    head_name = head_hits("|".join(_private.load())) if pat_name else []
     check(not head_path and not head_name, f"コミット済み（HEAD）の PC 固有のパス・呼び名: {(head_path + head_name)[:10] or 'なし'}")
 
     junk = [f for f in files if "/" not in f and re.search(r"\.whl$|\.tar\.gz$|^\.edit_.*\.py$|^\.runtests\.sh$", f)]

@@ -112,6 +112,23 @@ def resolve_port(public: bool, cli_port: int | None, env: dict[str, str] | None 
     return DEFAULT_PORT
 
 
+# HTML の応答に付ける Content-Security-Policy。地図の部品は cdn.jsdelivr.net、地図の絵は tiles.openfreemap.org、
+# 書体は Google Fonts から読む。各ページに短い inline の script / style があるので 'unsafe-inline' は残している（外部ファイルへ出せば外せる）。
+CSP = "; ".join([
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://tiles.openfreemap.org",
+    "connect-src 'self' data: blob: https://tiles.openfreemap.org",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+])
+
+
 class _Ctx(threading.local):
     """リクエストごとの状態（ハンドラが入れる）。API の関数はここから公開版かどうかと来訪者 ID を読む。"""
     public = False
@@ -942,8 +959,18 @@ class Handler(SimpleHTTPRequestHandler):
     def public(self) -> bool:
         return bool(getattr(self.server, "public", False))
 
+    _html = False  # この応答の Content-Type が HTML か（HTML の応答にだけ CSP を付ける）
+
+    def send_header(self, keyword: str, value: str) -> None:
+        if keyword.lower() == "content-type":
+            self._html = str(value).lower().startswith("text/html")
+        super().send_header(keyword, value)
+
     def end_headers(self) -> None:
         self.send_header("Cache-Control", self._cc or "no-store")
+        if self._html:
+            self.send_header("Content-Security-Policy", CSP)
+        self._html = False
         self._cc = None
         # ブラウザ向けの保護の見出し（SPEC §44）: 種類の推測をさせない、ほかのサイトの枠に入れさせない、行き先に URL を渡さない
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -1000,10 +1027,11 @@ class Handler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_HEAD(self) -> None:  # noqa: N802
+        if not self._guard():
+            return
         if self.path.startswith("/api/"):
             self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
             return
-        self._enter()
         if self._static(urlsplit(self.path).path, head=True):
             return
         super().do_HEAD()

@@ -138,3 +138,23 @@ def test_oversized_body_without_payload_does_not_hang_forever(mod, monkeypatch):
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_head_checks_host_like_get(srv):
+    """HEAD も GET と同じく Host を調べる（手元の版は 127.0.0.1 / localhost 以外を 400。公開版は任意のホスト名を許す）。"""
+    port = srv.server_address[1]
+    assert req(port, "HEAD", "/index.html")[0] == 200
+    st_bad = req(port, "HEAD", "/index.html", headers={"Host": "evil.example"})[0]
+    st_get = req(port, "GET", "/index.html", headers={"Host": "evil.example"})[0]
+    assert st_bad == st_get
+    if not srv.public:
+        assert st_bad == 400
+
+
+def test_html_has_csp_and_other_types_do_not(srv):
+    port = srv.server_address[1]
+    h = {k.lower(): v for k, v in req(port, "GET", "/index.html")[1]}
+    assert "default-src 'self'" in h.get("content-security-policy", "")
+    assert "object-src 'none'" in h["content-security-policy"]
+    h = {k.lower(): v for k, v in req(port, "GET", "/app.js")[1]}
+    assert "content-security-policy" not in h
