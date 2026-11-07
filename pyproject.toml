@@ -13,6 +13,7 @@ dev = [
     "pytest-xdist>=3.8.0",
     "websockets>=13",
     "pillow>=10",
+    "numpy>=2.5.4",
 ]
 
 [build-system]
