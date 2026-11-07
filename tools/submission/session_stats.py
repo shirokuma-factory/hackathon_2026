@@ -40,3 +40,21 @@ for k,v in out.items():
     print(k[:8], v["first"][:16], v["last"][:16], "user", v["user_msgs"], "compact", v["compacts"], "subfiles", v["subagent_files"])
     print("  models", v["models"]); print("  agents", v["agents"]); print("  skills", v["skills"]); print("  mcp", dict(mcp_srv))
     print("  top", {t:n for t,n in list(v["tools"].items())[:14] if not t.startswith("mcp__")})
+
+# 合計と、サブエージェントの応答のモデルごとの割合（CLAUDE_USAGE の「応答の 81% が Sonnet」の出典）
+tot = collections.Counter(); agents_tot = collections.Counter(); skills_tot = collections.Counter(); users_tot = 0; compacts_tot = 0
+for v in out.values():
+    tot.update(v["tools"]); agents_tot.update(v["agents"]); skills_tot.update({k: n for k, n in v["skills"].items() if k})
+    users_tot += v["user_msgs"]; compacts_tot += v["compacts"]
+sub_models = collections.Counter()
+for sf in root.glob("*/subagents/*.jsonl"):
+    with open(sf, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            try: d = json.loads(line)
+            except Exception: continue
+            m = d.get("message") if isinstance(d.get("message"), dict) else {}
+            if d.get("type") == "assistant" and m.get("model"): sub_models[m["model"]] += 1
+n_sub = sum(sub_models.values()) or 1
+print("合計: 作成者の発言", users_tot, "圧縮", compacts_tot, "サブエージェントの起動", sum(agents_tot.values()))
+print("  agents", dict(agents_tot.most_common())); print("  skills", dict(skills_tot))
+print("  サブエージェントの応答", {k: f"{v} ({v / n_sub:.0%})" for k, v in sub_models.most_common()})

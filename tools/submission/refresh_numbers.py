@@ -25,7 +25,8 @@ def facts() -> dict:
     out = run(sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "--collect-only")
     m = re.search(r"(\d+) tests? collected", out)
     tests = int(m.group(1)) if m else None
-    reviews = len(list((ROOT / "docs" / "reviews").glob("*.md")))
+    # 公開されるもの（git が追跡しているファイル）だけを数える。未コミットの記録は数えない
+    reviews = len([x for x in run("git", "-c", "core.quotepath=false", "ls-files", "docs/reviews").splitlines() if x.endswith(".md")])
     return {"commits": commits, "days": days, "tests": tests, "reviews": reviews, "ndays": len(days)}
 
 
