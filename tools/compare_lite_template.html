@@ -121,7 +121,7 @@ ol.bars li.min .b-t > i { opacity: 1; }
 .b-v { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 ol.bars li.min .b-v { color: var(--accent); }
 @media (max-width: 520px) { table.res td.nm { font-size: var(--fs-2); } table.res tr { padding: 12px; } .amount .yen { font-size: 22px; } }
-@media (max-width: 420px) { ol.bars li { grid-template-columns: 72px 1fr auto; } .b-v { font-size: 12px; } }
+@media (max-width: 420px) { ol.bars li { grid-template-columns: 84px 1fr auto; } .b-v { font-size: 12px; } .b-n { white-space: normal; overflow-wrap: anywhere; font-size: 12px; line-height: 1.3; } }
 table.res, table.res tbody, table.res tr, table.res td { display: block; }
 table.res { width: 100%; }
 table.res thead { display: none; }
@@ -188,7 +188,8 @@ ol.bars li .chip { min-height: 22px; padding: 0 8px; font-size: 12px; }
   #result .stat-grid { grid-template-columns: 1.7fr 1fr 1fr; gap: 16px; margin-bottom: 32px; }
   #result .stat { padding: 32px 32px 28px; border-radius: var(--r-l); background: var(--card); box-shadow: var(--elev-1); }
   #result .stat.hero { background: linear-gradient(135deg, var(--hi), var(--card) 75%); border-color: var(--line); padding-right: 128px; }
-  #result .stat.hero .stat-n { font-size: 48px; white-space: nowrap; }
+  #result .stat.hero .stat-n { font-size: 48px; }
+  #result .stat.hero .stat-n.is-range { font-size: 36px; }
   #result .stat:not(.hero) .stat-n { font-size: 40px; }
   .stat-ill { width: 80px; height: 80px; right: 20px; bottom: 20px; }
   .stat-l { font-size: var(--fs-1); letter-spacing: 0.02em; }
@@ -225,6 +226,9 @@ ol.bars li .chip { min-height: 22px; padding: 0 8px; font-size: 12px; }
   #contract-card, #quote-card, #answers-card, #sources, .bar, #selftest { display: none !important; }
   main { display: block; }
 }
+/* 数字の途中では折り返さない。折り返すのは数字の前後だけ */
+.stat-n .num { white-space: nowrap; }
+@media (max-width: 699px) { .stat-n.is-range .num { font-size: 0.8em; } }
 </style>
 </head>
 <body>
@@ -559,22 +563,29 @@ function evalJitbox(pieces, t, recv) {
   return opt('jitbox', 'カゴ台車 1 本単位', 'check', ['1 ボックス（内寸 170×104×104cm、約 1.8m³、500kg）に収まる', '送る側も会社に限ります。料金は 1 箱ごとに県で決まります。', BOX_NOTE]);
 }
 
-function evalRosen(t, recv) {
+function evalRosen(t, recv, hd) {
   const R = RULES.rosen, vw = t.m3 * R.kgPerM3, cw = Math.max(t.kg, vw);
   const reasons = [`運賃に使う重さは ${f1(cw)}kg です（実重量 ${f1(t.kg)}kg、容積重量 ${f1(vw)}kg の大きいほう）。容積重量は、かさを 1m³=280kg で重さに直した値です。`];
   if (recv === 'person') reasons.push('個人宅は配達担当店が日を打ち合わせて届ける。人手が足りないと作業員料金が別にかかることがある');
+  const hOk = !hd || hd.level === 'ok';
+  if (!hOk) reasons.push(HANDLING_CHECK, ...hd.why);
   if (cw > R.quoteOverKg) { reasons.push('1,000kg を超えるので、見積が要ります。'); return opt('rosen', '路線便', 'check', reasons, { cw }); }
-  return opt('rosen', '路線便（特別積合せ）', 'ok', reasons, { cw });
+  return opt('rosen', '路線便（特別積合せ）', hOk ? 'ok' : 'check', reasons, { cw });
 }
 
 function regionOf(pref) { return KANTO.includes(pref) ? '関東' : KINKI.includes(pref) ? '近畿' : null; }
 
-function evalKashikiri(cls, pieces, t, from, km) {
+// 貸切・路線便の荷役。パレットの荷だけを見る（S6 のような 1 点 50kg 超の段ボールは従来どおり。軽貨物・赤帽は handling() をそのまま使う）
+const palletHandling = (pieces, inp) => (pieces.some((p) => p.pk === 'pallet') ? handling(pieces, inp) : { level: 'ok', why: [] });
+const HANDLING_CHECK = '荷役（フォークリフト）を確かめてください';
+function evalKashikiri(cls, pieces, t, from, km, inp) {
   const name = `${cls} 貸切（国の運賃の目安）`, id = `kashikiri_${cls}`;
   const vmax = { '2t': 2000, '4t': 4000, '10t': 10000 }[cls];   // 標準的運賃の表の区分（kg）。10t は同じ告示の表の大型（10t 車、関東・近畿とも data/tariffs にある）
   if (overKg(t, vmax)) return opt(id, name, 'ng', [`合計 ${fx(t.kg)}kg は ${cls} の最大積載 ${fmt(vmax)}kg（表の区分）を超える（${excKg(t, vmax)}）`]);
   const bad = [];
   let status = 'ok';
+  const hd = palletHandling(pieces, inp);
+  if (hd.level !== 'ok') { status = 'check'; bad.push(HANDLING_CHECK, ...hd.why); }
   // 荷の高さと向き（地図の積付けと同じ。高さは立てたまま、底面の向きだけ変える）で荷台に入るか見る。2t はショートに入らなくてもロングなら入る可能性がある
   const KEEP = '荷物は倒さずに積むとして見ています。';
   if (cls === '2t') {
@@ -646,8 +657,8 @@ function evaluate(inp) {
   if (kmRaw !== '' && readNum(kmRaw) === null) return { errs: ['道路の距離は数字で入れてください（1e3・Infinity のような書き方は使えません）'], options: [], totals: null, pieces };
   if (kmRaw !== '' && readNum(kmRaw) <= 0) return { errs: ['道路の距離は 0 km より大きい数で入れてください（0 や負の数では額を出せません）'], options: [], totals: null, pieces };
   const t = totals(pieces), km = kmOf(inp);
-  const options = [evalTakuhai(pieces), evalKazai(pieces, inp.recv), evalAkabane(t, pieces, inp), evalKei(pieces, t, inp), evalJitbox(pieces, t, inp.recv), evalRosen(t, inp.recv),
-    evalKashikiri('2t', pieces, t, inp.from, km), evalKashikiri('4t', pieces, t, inp.from, km), ...(t.kg > RULES.t4.payloadKg ? [evalKashikiri('10t', pieces, t, inp.from, km)] : []), evalHome(pieces, t, Number(inp.flex) || 0)];   // 10t は 4t ウイングの積載（約 2,700kg）を超える荷のときだけ並べる（小さな荷に大型の行を出さない）
+  const options = [evalTakuhai(pieces), evalKazai(pieces, inp.recv), evalAkabane(t, pieces, inp), evalKei(pieces, t, inp), evalJitbox(pieces, t, inp.recv), evalRosen(t, inp.recv, palletHandling(pieces, inp)),
+    evalKashikiri('2t', pieces, t, inp.from, km, inp), evalKashikiri('4t', pieces, t, inp.from, km, inp), ...(t.kg > RULES.t4.payloadKg ? [evalKashikiri('10t', pieces, t, inp.from, km, inp)] : []), evalHome(pieces, t, Number(inp.flex) || 0)];   // 10t は 4t ウイングの積載（約 2,700kg）を超える荷のときだけ並べる（小さな荷に大型の行を出さない）
   const tk = options[0];
   if (tk.status === 'ok') { const pub = publicTakuhai(pieces, inp.from, inp.to); if (pub) tk.pub = pub; }
   return { errs: [], options, totals: t, pieces };
@@ -890,7 +901,7 @@ function splitAmount(res, C, inp) {
   const nFit = fit.reduce((s, p) => s + p.n, 0), nRest = rest.reduce((s, p) => s + p.n, 0);
   const a = takuhaiAmount(fit, C, to);
   if (a.amount == null) return { amount: null, why: `宅配に載る ${nFit} 個の額が出せません（${a.why}）` };
-  const t2 = totals(rest), ro = evalRosen(t2, inp ? inp.recv : 'business');
+  const t2 = totals(rest), ro = evalRosen(t2, inp ? inp.recv : 'business', null);
   const b = rosenAmount(ro, t2, C, km, to);
   if (b.amount == null) return { amount: null, why: `路線便に回す ${nRest} 個の額が出せません（${b.why}）` };
   return { amount: a.amount + b.amount, nFit, nRest, courier: a.amount, rosen: b.amount, cw: ro.cw,
@@ -1084,19 +1095,20 @@ function parseCargoTable(text) {
   let map = null, mm = false, start = 0;
   const first = cut(lines[0]);
   if (!first.some((c) => isNum(c) || DIM.test(c))) {
-    map = first.map((c) => (/寸法|サイズ|3辺|三辺/.test(c) ? 'dim' : /個数|数量|口数|ケース数|入数|^n$/i.test(c) ? 'n' : /縦|長さ|奥行|^l$|^d$/i.test(c) ? 'l' : /横|幅|^w$/i.test(c) ? 'w' : /高さ|^h$/i.test(c) ? 'h' : /重|kg/i.test(c) ? 'kg' : null));
-    mm = first.some((c) => /mm/i.test(c));
+    map = first.map((c) => (/寸法|サイズ|3辺|三辺/.test(c) ? 'dim' : /個数|数量|口数|ケース数|^n$/i.test(c) ? 'n' : /縦|長さ|奥行|^l$|^d$/i.test(c) ? 'l' : /横|幅|^w$/i.test(c) ? 'w' : /高さ|^h$/i.test(c) ? 'h' : /重|kg/i.test(c) ? 'kg' : null));
+    mm = first.some((c, j) => /mm/i.test(c) && /^(?:dim|l|w|h)$/.test(map[j] || ''));   // mm を換算するのは寸法の列だけ。重さの列は割らない
+    if (first.some((c) => /入数/.test(c))) notes.push('「入数」（1 箱の中の数）は個数として読んでいません。箱の数は「ケース数」「個数」の列に入れてください');
     start = 1;
     if (!map.some(Boolean)) return { rows, notes: ['1 行目の見出しを読めません（個数・縦・横・高さ・重さ、または個数・寸法・重さ）'] };
   }
-  const conv = (v) => { const x = Number(unit(v)); return mm ? String(Math.round(x) / 10) : String(x); };
+  const conv = (v, dimCol) => { const x = Number(unit(v)); return mm && dimCol ? String(Math.round(x) / 10) : String(x); };
   lines.slice(start).forEach((ln, i) => {
     const c = cut(ln), no = i + start + 1, r = blank();
-    const mark = (k, v) => { if (v !== undefined && v !== '' && isNum(v)) r[k] = conv(v); };
+    const mark = (k, v) => { if (v !== undefined && v !== '' && isNum(v)) r[k] = conv(v, k !== 'kg'); };
     if (map) {
       map.forEach((k, j) => {
         if (!k || j >= c.length) return;
-        if (k === 'dim') { const m = DIM.exec(c[j]); if (m) { r.l = conv(m[1]); r.w = conv(m[2]); r.h = conv(m[3]); } }
+        if (k === 'dim') { const m = DIM.exec(c[j]); if (m) { r.l = conv(m[1], true); r.w = conv(m[2], true); r.h = conv(m[3], true); } }
         else if (k === 'n') { if (isNum(c[j])) r.n = unit(c[j]); }
         else mark(k, c[j]);
       });
@@ -1163,17 +1175,22 @@ const TERMS_HTML = '<p class="terms" id="terms"><b>言葉の説明:</b> 特別�
 const optKey = (o) => (o.status === 'ng' ? 3e15 : o.amount != null ? o.amount : o.pub ? o.pub.low : 2e15);
 const sortedOptions = (list) => list.map((o, i) => [o, i]).sort((a, b) => optKey(a[0]) - optKey(b[0]) || a[1] - b[1]).map((x) => x[0]);
 // 額の比べ（棒）と数字のタイル
+// 額の出る送り方を棒・タイル・見出しで同じ並び（optKey）にそろえる。架空の宅配の表の例の幅（pub）が先頭になることがある
+const priceRows = (res) => sortedOptions(res.options).filter((o) => o.status !== 'ng' && (o.amount != null || o.pub));
+const bestOption = (res) => priceRows(res)[0] || null;
+const optName = (o) => (o.amount == null && o.pub ? `${short(o.name)}（架空の表の例）` : short(o.name));
+const optAmtTxt = (o) => (o.amount != null ? `${fmt(o.amount)} 円` : `${fmt(o.pub.low)}〜${fmt(o.pub.high)} 円`);
 function barsHtml(res) {
-  const rows = sortedOptions(res.options).filter((o) => o.status !== 'ng' && (o.amount != null || o.pub)).map((o) => ({ name: short(o.name), v: o.amount != null ? o.amount : o.pub.low, txt: o.amount != null ? `${fmt(o.amount)} 円` : `${fmt(o.pub.low)}〜${fmt(o.pub.high)} 円`, st: o.status }));
+  const rows = priceRows(res).map((o) => ({ name: optName(o), v: o.amount != null ? o.amount : o.pub.low, txt: o.amount != null ? `${fmt(o.amount)} 円` : `${fmt(o.pub.low)}〜${fmt(o.pub.high)} 円`, st: o.status }));
   if (!rows.length) return '';
   const max = Math.max(...rows.map((r) => r.v));
   return `<div class="bars-card" id="bars-in"><h3>額の比べ<span class="small">　税抜の目安</span></h3><ol class="bars">${rows.map((r, i) => `<li${i === 0 ? ' class="min"' : ''}><span class="b-n">${esc(r.name)}</span><span class="b-t" aria-hidden="true"><i style="width:${Math.max(3, Math.round(r.v / max * 100))}%"></i></span><b class="b-v">${r.txt}</b><span class="chip ${r.st}">${LABEL[r.st]}</span></li>`).join('')}</ol><div class="b-axis" aria-hidden="true"><span></span><span class="ticks"><i>0</i><i>${fmt(Math.round(max / 2))}</i><i>${fmt(max)} 円</i></span></div></div>`;
 }
 function statsHtml(res) {
   const ok = res.options.filter((o) => o.status === 'ok').length, chk = res.options.filter((o) => o.status === 'check').length;
-  const priced = res.options.filter((o) => o.status !== 'ng' && o.amount != null).sort((a, b) => a.amount - b.amount);
-  const best = priced[0];
-  return `<div class="stat is-loaded hero"><img class="ill ill-64 stat-ill" src="@@ILL:yen_estimate:128@@" alt="" width="64" height="64"><span class="stat-l">目安の最安</span><span class="stat-n">${best ? fmt(best.amount) : '—'}<span class="stat-u">円（税抜）</span></span><span class="stat-d">${best ? esc(short(best.name)) : '額の出る送り方なし'}</span></div>` +
+  const best = bestOption(res), bestRange = best && best.amount == null;
+  const bestNum = !best ? '—' : bestRange ? `${fmt(best.pub.low)}〜${fmt(best.pub.high)}` : fmt(best.amount);
+  return `<div class="stat is-loaded hero"><img class="ill ill-64 stat-ill" src="@@ILL:yen_estimate:128@@" alt="" width="64" height="64"><span class="stat-l">目安の最安</span><span class="stat-n${bestRange ? ' is-range' : ''}"><span class="num">${bestNum}</span><span class="stat-u"> 円（税抜）</span></span><span class="stat-d">${best ? esc(optName(best)) : '額の出る送り方なし'}</span></div>` +
     `<div class="stat"><span class="stat-l">使える送り方</span><span class="stat-n">${ok + chk}<span class="stat-u">件</span></span><span class="stat-d">○ ${ok} 件・△ ${chk} 件</span></div>` +
     `<div class="stat"><span class="stat-l">荷物</span><span class="stat-n">${res.totals.count}<span class="stat-u">個</span></span><span class="stat-d">${f1(res.totals.kg)}kg</span></div>`;
 }
@@ -1215,8 +1232,8 @@ function headlineText(res) {
   if (!res.totals) return '荷物と行き先を入れると、使える送り方が出ます。';
   const ok = res.options.filter((o) => o.status !== 'ng');
   if (!ok.length) return '使える送り方はありません。理由は内訳で見られます。';
-  const priced = ok.filter((o) => o.amount != null).sort((a, b) => a.amount - b.amount);
-  return `使える送り方: ${ok.map((o) => short(o.name)).join('・')}。` + (priced.length ? `目安の最安は${short(priced[0].name)}で、およそ ${fmt(priced[0].amount)} 円（税抜）です。` : '');
+  const best = bestOption(res);
+  return `使える送り方: ${ok.map((o) => short(o.name)).join('・')}。` + (best ? `目安の最安は${optName(best)}で、およそ ${optAmtTxt(best).replace(' 円', '')} 円（税抜）です。` : '');
 }
 function render() {
   const inp = inputs(), res = evaluate(inp);

@@ -400,7 +400,7 @@
     let h = `<div class="ch"><b>地点 ${esc(p.id)}</b><span class="tag">${esc(p.type)}</span><span style="color:var(--muted)">${esc(p.pref || '県は不明')}</span>${full ? '<button type="button" class="x" id="pin-x" aria-label="カードを閉じる">閉じる</button>' : ''}</div>`;
     h += big + cardSpark(p, T, max);
     const rm = C.refMax(p.series), si = v == null || rm == null ? null : v / rm;
-    h += `<table><tr><td>ふだんの多さとの比</td><td>${si == null ? '—' : Math.round(si * 100) + '%（24時間の最大 ' + f(rm) + '）'}</td></tr><tr><td>${refLabel}</td><td>${refTxt}</td></tr>`;
+    h += `<table><tr><td>この地点の 24 時間の最大との比</td><td>${si == null ? '—' : Math.round(si * 100) + '%（24時間の最大 ' + f(rm) + '）'}</td></tr><tr><td>${refLabel}</td><td>${refTxt}</td></tr>`;
     {
       const u = p.up, d = p.down, tot = u != null && d != null ? u + d : null;
       h += `<tr><td>${esc(lastHour)} の上り / 下り</td><td>${f(u)} / ${f(d)}</td></tr>`;
@@ -616,8 +616,8 @@
   function pollEnabled() { return /^https?:$/.test(location.protocol); }
   function updateFresh() {
     const d = S.data; if (!d) return;
-    const age = C.ageText(d.fetched_at, Date.now()), old = Date.now() - Date.parse(d.fetched_at) > 90 * 60000;
-    $('#fresh').innerHTML = `<b>${C.fmtHour(d.latest_hour_code)}</b>の観測（およそ20分遅れ）<br>取得 ${C.mdhm(d.fetched_at)}　<span class="age${old ? ' old' : ''}">${age}${old ? '　古いデータです' : ''}</span>`;
+    const age = C.ageText(d.fetched_at, Date.now()), old = Date.now() - Date.parse(d.fetched_at) > 90 * 60000 || C.delayMin(d.latest_hour_code, new Date().toISOString()) > 4 * 60;
+    $('#fresh').innerHTML = `<b>${C.fmtHour(d.latest_hour_code)}</b>の観測（取得は ${C.hhmm(d.fetched_at)}、${C.delayText(d.latest_hour_code, d.fetched_at)}）<br><span class="nw">取得 ${C.mdhm(d.fetched_at)}</span>　<span class="age${old ? ' old' : ''}">${age}${old ? '　古いデータです' : ''}</span>`;
     $('#credit').textContent = d.attribution.processed;
     const st = $('#poll-st');
     if (!pollEnabled()) { st.textContent = 'ファイルで開いているため自動更新しません'; st.className = 'st'; $('#poll-bar').style.width = '0'; return; }
