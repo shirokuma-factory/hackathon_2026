@@ -57,6 +57,7 @@ def session(base_port: int, w: int, h: int):
         [edge, "--headless=new", f"--remote-debugging-port={dbg}", f"--window-size={w},{h}", f"--user-data-dir={profile}", "--hide-scrollbars",
          "--force-device-scale-factor=1", "--no-first-run", "--enable-webgl", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader", *cs.EDGE_CLEAN_FLAGS, "about:blank"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    cs.bind_to_job(proc)
     targets = []
     for _ in range(60):
         try:
