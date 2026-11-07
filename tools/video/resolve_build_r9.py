@@ -162,12 +162,19 @@ elif STAGE == "render":
     placed = sum(len(tl.GetItemListInTrack(k, i) or []) for k in ("video", "audio") for i in range(1, tl.GetTrackCount(k) + 1))
     if placed != len(rows_all):
         raise RuntimeError(f"タイムラインの素材 {placed} 本と EDL の {len(rows_all)} 本が合いません。build を done まで続けてください")
-    project.SetCurrentRenderFormatAndCodec("mp4", "H264")
+    # 画質は API の VideoQuality が受け付けられない（Resolve 21.1、どのコーデックでも False）ので、
+    # 高画質の組み込みプリセット「H.264 Master」を読み込んでから、範囲・大きさ・名前だけを上書きする
+    PRESET = globals().get("PRESET", "H.264 Master")  # "ProRes 422 HQ" で高画質の元を書き出し、配る mp4 は別に作る
+    preset_ok = project.LoadRenderPreset(PRESET)
+    if PRESET.startswith("H.264"):
+        project.SetCurrentRenderFormatAndCodec("mp4", "H264")
     st = tl.GetStartFrame()
     # 書き出す範囲は EDL の長さまで（終わりの効果音の余韻がはみ出して 3 分を超えないように）
     ok = project.SetRenderSettings({"SelectAllFrames": False, "MarkIn": st, "MarkOut": st + round(edl["total"] * 30) - 1, "TargetDir": OUT_DIR.replace("/", "\\"), "CustomName": OUT_NAME,
                                     "FormatWidth": 1920, "FormatHeight": 1080, "FrameRate": 30, "ExportVideo": True, "ExportAudio": True,
-                                    "AudioCodec": "aac", "AudioSampleRate": 48000})
+                                    **({"AudioCodec": "aac"} if PRESET.startswith("H.264") else {}), "AudioSampleRate": 48000})
+    if not ok:
+        raise RuntimeError("書き出しの設定が受け付けられませんでした（SetRenderSettings が False）")
     job = project.AddRenderJob()
     started = project.StartRendering([job]) if job else False
-    result = {"stage": "render", "render_settings": ok, "job": job, "started": started}
+    result = {"stage": "render", "preset": preset_ok, "render_settings": ok, "job": job, "started": started}
