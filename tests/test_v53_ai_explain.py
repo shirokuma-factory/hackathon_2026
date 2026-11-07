@@ -32,16 +32,26 @@ SENTINEL = "sk-" + "ant-TESTSENTINEL-0123456789"
 
 # ---------------------------------------------------------------- 差し替えの部品
 def facts_sample(n: int = 2) -> dict:
-    rows = [{"row": i + 1, "date": f"2026-10-{i + 1:02d}", "place": "江東区 地点07", "arrive": "09:00", "start": "10:30", "end": "11:00",
+    rows = [{"row": i + 1, "date": f"2026-10-{i + 1:02d}", "place": "地点1", "arrive": "09:00", "start": "10:30", "end": "11:00",
              "handler": "運転者", "shipper_fault": "はい", "wait_min": 90, "handling_min": 30, "amount": 1680 + i,
-             "vehicle_no": "品川 100 あ 1234", "secret_note": "出さない"} for i in range(n)]
-    return {"partner": "架空 元請A物流", "period": "2026-10-01 〜 2026-10-02", "count": n, "rows": rows,
+             } for i in range(n)]
+    return {"partner": "荷主A", "period": "2026-10-01 〜 2026-10-02", "count": n, "rows": rows,
             "totals": {"amount_yen_ex_tax": 3361, "wait_total": "3 時間 0 分", "handling_total": "1 時間 0 分"},
-            "basis": {"tariff_applies_from": "2024-05-15", "unit_minutes": 30, "free_minutes": 30, "quote": "告示の別紙の表に当てた額です"},
-            "raw_text": "貼り付けた元の文（送らない）"}
+            "basis": {"tariff_applies_from": "2024-05-15", "unit_minutes": 30, "free_minutes": 30, "quote": "告示の別紙の表に当てた額です"}}
 
 
-DRAFT_OK = "架空 元請A物流 様。2026-10-01 から 2026-10-02 の 2 回で、待機は合計 3 時間 0 分、参考額は 3361 円（税抜）です。告示の表に当てた目安で、協議のお願いです。"
+def facts_raw(n: int = 2) -> dict:
+    """ページが持っている、置き換える前の事実（実名・地点名・車番つき）。"""
+    f = facts_sample(n)
+    f["partner"] = "架空 元請A物流"
+    for r in f["rows"]:
+        r["place"] = "江東区 地点07"
+        r["handler"] = "山田太郎"
+    f["consult"] = ["江東区 地点07は8時台に着いた 2 回の荷待ちは、合計 98 分です。", "架空 元請A物流 さんと 品川 100 あ 1234 の件"]
+    return f
+
+
+DRAFT_OK = "荷主A 様。2026-10-01 から 2026-10-02 の 2 回で、待機は合計 3 時間 0 分、参考額は 3361 円（税抜）です。告示の表に当てた目安で、協議のお願いです。"
 
 
 class FakeClient:
@@ -59,16 +69,17 @@ class FakeClient:
     def _create(self, **kw):
         self.calls.append(kw)
         model = kw["model"]
-        p = self.plan.get(model)
+        step = "check" if kw["system"] == ax.SYS_CHECK else "draft" if kw["system"] == ax.SYS_DRAFT else "verify"
+        p = self.plan.get(step)
         if isinstance(p, Exception):
             raise p
         if callable(p):
             return p(kw)
         if p is not None:
             return p
-        if model == ax.MODEL_HAIKU:
+        if step == "check":
             return self._resp(json.dumps({"issues": [{"row": 1, "field": "start", "message": "荷役開始が到着より前に見えます" * 3}]}, ensure_ascii=False), tin=300, tout=40)
-        if model == ax.MODEL_SONNET:
+        if step == "draft":
             return self._resp(DRAFT_OK, tin=900, tout=200)
         return self._resp(json.dumps({"ok": True, "problems": []}), tin=1200, tout=120)
 
@@ -81,7 +92,7 @@ def fresh(monkeypatch):
     monkeypatch.setattr(ax, "LIMITER", ax.Limiter())
     ax.CACHE.clear()
     monkeypatch.setattr(ax, "_RUN_ASYNC", False)
-    for k in ("AI_EXPLAIN_ENABLED", "AI_EXPLAIN_PUBLIC", "AI_DAILY_LIMIT", "ANTHROPIC_API_KEY"):
+    for k in ("AI_EXPLAIN_ENABLED", "AI_EXPLAIN_PUBLIC", "AI_DAILY_LIMIT", "ANTHROPIC_API_KEY", "AI_VERIFY_OPUS"):
         monkeypatch.delenv(k, raising=False)
 
 
@@ -144,7 +155,7 @@ def test_cost_estimate_uses_the_stated_prices():
 # ---------------------------------------------------------------- 失敗したら型どおりに戻る
 def test_refusal_at_draft_falls_back_to_template():
     c = FakeClient()
-    c.plan[ax.MODEL_SONNET] = c.resp("", stop="refusal")
+    c.plan["draft"] = c.resp("", stop="refusal")
     res = run(c)
     assert res["ok"] is False and res["fallback"] is True and res["draft"] is None and "断りました" in res["message"]
     assert len(c.calls) == 2  # Opus は呼ばない
@@ -152,21 +163,21 @@ def test_refusal_at_draft_falls_back_to_template():
 
 def test_refusal_at_verify_withholds_the_draft():
     c = FakeClient()
-    c.plan[ax.MODEL_OPUS] = c.resp("", stop="refusal")
+    c.plan["verify"] = c.resp("", stop="refusal")
     res = run(c)
     assert res["ok"] is False and res["draft"] is None and res["fallback"] is True and res["problems"]
 
 
 def test_refusal_at_check_does_not_stop_the_rest():
     c = FakeClient()
-    c.plan[ax.MODEL_HAIKU] = c.resp("", stop="refusal")
+    c.plan["check"] = c.resp("", stop="refusal")
     res = run(c)
     assert res["steps"][0]["status"] == "failed" and res["ok"] is True and res["issues"] == []
 
 
 def test_verify_not_ok_returns_template_and_problems_not_the_draft():
     c = FakeClient()
-    c.plan[ax.MODEL_OPUS] = c.resp(json.dumps({"ok": False, "problems": [{"quote": "3361 円", "reason": "合計が合わない"}]}, ensure_ascii=False))
+    c.plan["verify"] = c.resp(json.dumps({"ok": False, "problems": [{"quote": "3361 円", "reason": "合計が合わない"}]}, ensure_ascii=False))
     res = run(c)
     assert res["ok"] is False and res["fallback"] is True and res["draft"] is None
     assert res["problems"][0]["reason"] == "合計が合わない"
@@ -175,7 +186,7 @@ def test_verify_not_ok_returns_template_and_problems_not_the_draft():
 
 def test_numbers_not_in_the_facts_fail_even_if_the_model_says_ok():
     c = FakeClient()
-    c.plan[ax.MODEL_SONNET] = c.resp(DRAFT_OK + " 追加で 987654 円も見込めます。")
+    c.plan["draft"] = c.resp(DRAFT_OK + " 追加で 987654 円も見込めます。")
     res = run(c)
     assert res["ok"] is False and res["draft"] is None
     assert any("987654" in p["quote"] for p in res["problems"])
@@ -189,17 +200,17 @@ def test_unmatched_numbers_helper():
 
 def test_truncated_draft_and_invalid_json_fall_back():
     c = FakeClient()
-    c.plan[ax.MODEL_SONNET] = c.resp("途中で", stop="max_tokens")
+    c.plan["draft"] = c.resp("途中で", stop="max_tokens")
     assert run(c)["fallback"] is True
     c2 = FakeClient()
-    c2.plan[ax.MODEL_OPUS] = c2.resp("これは JSON ではない")
+    c2.plan["verify"] = c2.resp("これは JSON ではない")
     r2 = run(c2)
     assert r2["ok"] is False and r2["draft"] is None
 
 
 def test_api_error_falls_back_with_class_name_only():
     c = FakeClient()
-    c.plan[ax.MODEL_SONNET] = RuntimeError(f"upstream said key={SENTINEL}")
+    c.plan["draft"] = RuntimeError(f"upstream said key={SENTINEL}")
     res = run(c)
     assert res["fallback"] is True and SENTINEL not in json.dumps(res, ensure_ascii=False)
 
@@ -302,7 +313,7 @@ def test_rejected_start_creates_no_job(monkeypatch):
 
 def test_result_with_failed_check_is_not_cached(monkeypatch):
     enable(monkeypatch)
-    c = FakeClient({ax.MODEL_HAIKU: RuntimeError("x")})
+    c = FakeClient({"check": RuntimeError("x")})
     monkeypatch.setattr(ax, "make_client", lambda: c)
     ax.start(facts_sample(), "c", False)
     assert ax.CACHE.get(ax.cache_key(ax.clean_facts(facts_sample()))) is None
@@ -319,7 +330,7 @@ def test_number_context_check_rejects_loose_numbers(draft):
     f = ax.clean_facts(facts_sample())
     assert ax.draft_issues(draft, f), draft
     c = FakeClient()
-    c.plan[ax.MODEL_SONNET] = c.resp(draft)  # Opus が一致と言っても通さない
+    c.plan["draft"] = c.resp(draft)  # Opus が一致と言っても通さない
     res = run(c)
     assert res["ok"] is False and res["draft"] is None
 
@@ -402,7 +413,7 @@ def test_http_full_flow_and_key_never_leaks(server, monkeypatch, caplog):
     enable(monkeypatch)
     monkeypatch.setattr(ax, "_RUN_ASYNC", True)
     c = FakeClient()
-    c.plan[ax.MODEL_HAIKU] = RuntimeError(f"echo {SENTINEL}")  # 点検が壊れても先へ進み、メッセージは出ない
+    c.plan["check"] = RuntimeError(f"echo {SENTINEL}")  # 点検が壊れても先へ進み、メッセージは出ない
     monkeypatch.setattr(ax, "make_client", lambda: c)
     caplog.set_level(logging.DEBUG)
     seen = []
@@ -490,14 +501,14 @@ def test_ui_button_only_when_available_and_progress_steps(monkeypatch):
         slow.wait(5)  # 画面が「点検中」を出す間を作る
         return FakeClient().resp(json.dumps({"issues": [{"row": 1, "field": "start", "message": "荷役開始が早すぎます"}]}, ensure_ascii=False), tin=300, tout=40)
 
-    c = FakeClient({ax.MODEL_HAIKU: haiku})
+    c = FakeClient({"check": haiku})
     # ページの事実から出る数字（待機・金額）に合わせて、Sonnet は事実の数字だけを使った文を返す
     def sonnet(kw):
         user = kw["messages"][0]["content"]
         facts = json.loads(user.split("事実（JSON）:\n", 1)[1].split("\n\n", 1)[0])
         t = facts["totals"]
         return FakeClient().resp(f"{facts['partner']} 様。参考額は {t['amount_yen_ex_tax']} 円（税抜）、待機は合計 {t['wait_total']} です。協議のお願いです。", tin=900, tout=200)
-    c.plan[ax.MODEL_SONNET] = sonnet
+    c.plan["draft"] = sonnet
     monkeypatch.setattr(ax, "make_client", lambda: c)
     cw = _edge()
     httpd = serve_web.make_server(port=0)
@@ -540,7 +551,8 @@ def test_ui_button_only_when_available_and_progress_steps(monkeypatch):
             page.wait(lambda: page.js("!!document.querySelector('#ai-box')"), 30, "欄")
             page.js("new Promise(r => setTimeout(r, 1500))")
             assert page.js("!document.querySelector('[data-ai=ask]')")
-            assert page.js("document.querySelector('#ai-box').textContent.trim()") == "説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）"
+            txt = page.js("document.querySelector('#ai-box').textContent.trim()")
+            assert txt.startswith("説明文の自動作成") and "サーバーで開いたときだけ" not in txt and "（今は型どおりの書面です）" in txt, txt   # サーバーで開いているのに「サーバーで開いたときだけ」と出さない（2026-11-08）
     finally:
         slow.set()
         httpd.shutdown()
@@ -574,7 +586,7 @@ def test_example_facts_pass_machine_check_and_reach_verify():
     assert f["count"] == 12 and f["totals"]["amount_yen_ex_tax"] == 33550 and f["totals"]["from_reception"] is False
     assert ax.draft_issues(DRAFT_EXAMPLE, f) == []
     c = FakeClient()
-    c.plan[ax.MODEL_SONNET] = c.resp(DRAFT_EXAMPLE, tin=3000, tout=500)
+    c.plan["draft"] = c.resp(DRAFT_EXAMPLE, tin=3000, tout=500)
     res = ax.run_pipeline(f, c)
     assert res["ok"] is True and res["draft"] == DRAFT_EXAMPLE and res["problems"] == []
     sonnet, opus = c.calls[1], c.calls[2]
@@ -607,7 +619,7 @@ def test_prompts_carry_the_rules_against_invented_promises_and_false_blank_alarm
 
 def test_truncated_draft_is_never_verified_and_is_logged():
     c = FakeClient()
-    c.plan[ax.MODEL_SONNET] = c.resp("今回を一つの区切りとして、改善策や記録の確認方法を一緒に", stop="max_tokens", tout=8000)
+    c.plan["draft"] = c.resp("今回を一つの区切りとして、改善策や記録の確認方法を一緒に", stop="max_tokens", tout=8000)
     res = run(c, EXAMPLE)
     assert res["ok"] is False and res["fallback"] is True and res["draft"] is None
     assert len(c.calls) == 2 and all(k["model"] != ax.MODEL_OPUS for k in c.calls)  # 確かめには回さない
@@ -617,11 +629,11 @@ def test_truncated_draft_is_never_verified_and_is_logged():
 
 def test_draft_ending_mid_sentence_or_too_long_is_rejected_without_cutting():
     c = FakeClient()
-    c.plan[ax.MODEL_SONNET] = c.resp("参考額は 33,550 円です。改善策を一緒に")  # stop は end_turn でも、文の途中は出さない
+    c.plan["draft"] = c.resp("参考額は 33,550 円です。改善策を一緒に")  # stop は end_turn でも、文の途中は出さない
     res = run(c, EXAMPLE)
     assert res["ok"] is False and len(c.calls) == 2 and "途中" in res["steps"][1]["detail"]
     c2 = FakeClient()
-    c2.plan[ax.MODEL_SONNET] = c2.resp("あ" * 701 + "。")
+    c2.plan["draft"] = c2.resp("あ" * 701 + "。")
     res2 = run(c2, EXAMPLE)
     assert res2["ok"] is False and len(c2.calls) == 2 and "長すぎ" in res2["steps"][1]["detail"]
 
@@ -652,7 +664,7 @@ def test_issues_are_grouped_and_optional_blank_fields_are_dropped():
     assert len(g) == 2 and g[0]["n"] == 3 and g[0]["rows"] == [3, 4, 5] and g[0]["row"] == 3 and g[1]["n"] == 1
     # 空欄でも必須欄（開始）は残す
     assert ax.group_issues([{"row": 1, "field": "start", "message": "荷役開始が空欄"}])
-    c = FakeClient({ax.MODEL_HAIKU: FakeClient().resp(json.dumps({"issues": raw}, ensure_ascii=False))})
+    c = FakeClient({"check": FakeClient().resp(json.dumps({"issues": raw}, ensure_ascii=False))})
     res = run(c, EXAMPLE)
     assert res["issues"] == [] and res["steps"][0]["count"] == 0
 

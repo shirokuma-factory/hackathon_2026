@@ -368,6 +368,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 
 <div class="actionbar is-sticky" id="copybar">
   <p class="msg" id="msg" role="status"></p>
+  <p class="hint" id="send-to">コピーしたら、配車担当・事務の方に LINE で送ります。事務所では荷待ちのページに貼って書面にします。</p>
   <button type="button" class="primary btn-primary btn-block" id="b-copy">LINE に貼る文をコピー</button>
 </div>
 
@@ -628,11 +629,11 @@ function copyAll() {
     ta.value = text; $('#fallback').hidden = false; ta.focus(); ta.select();
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-    setMsg(ok ? `${lines.length} 件をコピーしました。LINE の入力欄に貼ってください。` : '', false);   // 失敗のときは下の説明の枠を見てもらう
+    setMsg(ok ? `${lines.length} 件をコピーしました。配車担当・事務の方に LINE で送ってください。` : '', false);   // 失敗のときは下の説明の枠を見てもらう
   };
   try {
     if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
-    navigator.clipboard.writeText(text).then(() => { $('#fallback').hidden = true; setMsg(`${lines.length} 件をコピーしました。LINE の入力欄に貼ってください。`); }, fallback);
+    navigator.clipboard.writeText(text).then(() => { $('#fallback').hidden = true; setMsg(`${lines.length} 件をコピーしました。配車担当・事務の方に LINE で送ってください。`); }, fallback);
   } catch (e) { fallback(); }
 }
 
@@ -664,6 +665,7 @@ function copyUrl() {
 
 function init() {
   $('#own-url').value = location.href.split('#')[0];
+  if (/^file:/.test(location.protocol)) $('#b-home').setAttribute('href', 'index.html');   // ファイルで開いたとき、/ は C:\ を開いてしまう
   $('#url-warn').hidden = !/^(file|about|blob|data):/.test(location.protocol + '');
   const set = load(K_SET);
   if (set && typeof set === 'object') {
