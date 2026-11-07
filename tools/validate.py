@@ -28,7 +28,7 @@ PATH_RES = [
     re.compile(r"[A-Za-z]:\\Users\\", re.I),
     re.compile(r"C:/Users/", re.I),
     re.compile(r"/c/Users/", re.I),
-    re.compile("おたつ"),
+    re.compile("\u304a\u305f\u3064"),  # 呼び名。この行が自分に当たらないようエスケープで書く
 ]
 
 
