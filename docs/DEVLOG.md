@@ -454,3 +454,9 @@
 - r15: タイミングだけを見る点検（`docs/reviews/2026-11-08_タイミングの点検_r15.md`、43 件）。r16 で直した: 録画を動いているアプリから取り直し（`record_live.py`、W16_*）、冒頭の連鎖図を 1 枚につなぐ、H3 を荷台に荷物が載る図に、S2 の金額を言葉に合わせて出す図、スマートフォンは 1.4 倍で「押すだけ」に押す瞬間を合わせる、章の見出しは新しい場面と一緒に出し声は 1.2 秒後。Resolve の取り込みで、上書きした WAV の古い長さを入れ直す。
 - r16 の採点（新しい Opus、`docs/reviews/2026-11-08_デモ動画の採点_r16.md`）: 44 点（素点 73、減点 −29）、P0 0 件・P1 7 件。指摘の多くは出典の行と架空の表示の抜け。本線がコマで確かめたもの: 電話の画面に字幕が重なる、締めの字幕がロゴの前の黒に残る。
 - r17 で直した: 上に重ねた図の出典を下の映像の出典より優先（19〜28 秒の「6割」の下に純流動調査が出ていた）、27 万円の画面と帰り便の図に「目安」「架空の例」の行（r16 の録画の名前が出典の表の鍵に無かった）、締めの字幕はロゴの場面の始まりで消しロゴは暗い入りを 0.3 秒飛ばす、電話の場面の字幕を右の列へ、Haiku 点検・Sonnet 下書き・Opus 確かめを字幕で示す、「約27万円（目安）」を言う時に出す。
+- 2026-11-08 01:48 `b671d5c` Waiting email: no clerk instructions, no 0-minute handling, no blank-place phrase
+- 2026-11-08 06:38 `8624cfa` README top: try-now URL and results image first; check public pages vs HEAD
+- 2026-11-08 06:43 `1f8f461` AI checks hardened; fact fixes; validator and bug-hunt records
+- 2026-11-08 06:43 `c04aad9` README: try-now table before the first screenshot (grader r3c)
+- 2026-11-08 06:46 `77e703f` Add screenshots of the in-app Claude confirmation and result
+- 2026-11-08 06:46 `8bb0354` README: show the in-app Claude helper (confirm box and result) as screenshots
