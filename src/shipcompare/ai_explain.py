@@ -1,8 +1,10 @@
 """荷待ち協議の書面の「説明文の自動作成」（SPEC §53）。Claude を 3 段で使う。
 
 1. Haiku 5.5 が記録を点検する（時刻の抜け・食い違い）
-2. Sonnet 5.5 が、渡された事実だけから荷主あての説明文を下書きする
-3. Opus 5.5 が、下書きの数字と主張を事実と突き合わせる
+2. Haiku 5.5 が、渡された事実だけから荷主あての説明文を下書きする（2026-11-08 に Sonnet から変更。費用のため）
+3. 数字の機械照合（Python）。環境変数 AI_VERIFY_OPUS=1 のときだけ、Opus 5.5 が下書きの数字と主張を事実と突き合わせる（既定は止めている）
+
+送る事実は、相手の名前と地点名を「荷主A」「地点1」に置き換えたものだけを受け付ける（clean_facts が形を検める）。
 
 確かめが通らないとき、下書きは返さず、型どおりの書面（ページが持っている文）に戻す。
 キーは環境変数 ANTHROPIC_API_KEY だけから SDK が読む。このモジュールは値を読まず、書かず、ログにも出さない。
@@ -28,13 +30,25 @@ MODEL_SONNET = "claude-sonnet-5-5"
 MODEL_OPUS = "claude-opus-5-5"
 
 # max_tokens は思考（thinking）の分を含む。Opus 5.5 は常に考え、Haiku・Sonnet 5.5 も既定で考えるので、出力だけの量より大きく取る
-# 1 回の最悪の費用の目安（仮定）: 事実 30 KB を約 2 万トークンとして、3 段の入力と上の上限まで出力した場合で約 $0.33
+# 1 回の最悪の費用の目安（仮定）: 事実 30 KB を約 2.4 万トークン（0.8 トークン/字）として、上の上限まで出力した場合、
+# Haiku 2 段だけで約 $0.009、AI_VERIFY_OPUS=1 で Opus の確かめを足すと約 $0.23
 # 下書きは effort を low にして、思考で上限を使い切らないようにする（実測: 上限 4000・medium で文の途中で切れた）
-MAX_TOKENS = {"check": 2000, "draft": 8000, "verify": 6000}
+MAX_TOKENS = {"check": 2000, "draft": 6000, "verify": 6000}
 EFFORT = {"check": "low", "draft": "low", "verify": "medium"}
+DRAFT_MODEL = MODEL_HAIKU  # 下書きは Haiku。Sonnet だと 1 回の費用の大半を占めた（SPEC §53.3）
 # 100 万トークンあたりのドル（入力, 出力）。画面に出す額は目安
 PRICE = {MODEL_HAIKU: (0.10, 0.50), MODEL_SONNET: (2.0, 10.0), MODEL_OPUS: (4.0, 20.0)}
 MODEL_LABEL = {MODEL_HAIKU: "Haiku 5.5", MODEL_SONNET: "Sonnet 5.5", MODEL_OPUS: "Opus 5.5"}
+
+# 1 回の費用の見積もり（仮定）。画面の確認の枠が、送る内容の大きさからこの表で計算する
+TOKENS_PER_CHAR = 0.8   # 日本語まじりの JSON の 1 字あたりのトークン数（仮定。実測でないので「目安」と出す）
+USD_JPY = 150           # 円の換算（仮定）
+# in_base: 指示文などの固定の入力トークン、scale: 事実のどこを入力に足すか（rows = 記録の行だけ、all = 事実全体）、out: 出力（思考を含む）の見込み
+STAGE_EST = {
+    "check": {"in_base": 300, "scale": "rows", "out": 700},
+    "draft": {"in_base": 1000, "scale": "all", "out": 1800},
+    "verify": {"in_base": 800, "scale": "all", "out": 1500},
+}
 
 MAX_FACTS_BYTES = 30_000
 DEFAULT_DAILY_LIMIT = 100
@@ -44,6 +58,12 @@ DRAFT_ASK_CHARS = 450
 ISSUE_MAX_CHARS = 30
 MAX_ISSUES = 20
 MAX_HISTORY = 5
+
+# 相手の名前・地点名は置き換えたものだけを受け付ける（SPEC §53.3）。荷役をした人は役割の語だけ
+PARTNER_RE = re.compile(r"^荷主[A-Z]{1,2}$")
+PLACE_RE = re.compile(r"^地点\d{1,3}$")
+HANDLER_OK = ("", "運転者", "荷主側", "荷主", "施設側", "センター側", "倉庫側", "他")
+PLATE_RE = re.compile(r"[一-龥]{2,4}\s*\d{2,3}\s*[ぁ-ん]\s*\d{1,4}")  # 「品川 100 あ 1234」のような車番
 
 FACT_KEYS = ("partner", "period", "count", "rows", "totals", "basis", "consult", "history")
 ROW_KEYS = ("row", "date", "place", "arrive", "reception", "appointed", "start", "end", "handler", "shipper_fault",
@@ -70,19 +90,45 @@ def daily_limit() -> int:
     return int(raw) if raw.isdigit() and int(raw) > 0 else DEFAULT_DAILY_LIMIT
 
 
+def verify_opus_on() -> bool:
+    """Opus による確かめ。既定は止めている（AI_VERIFY_OPUS=1 のときだけ）。数字の機械照合は常に行う。"""
+    return _truthy("AI_VERIFY_OPUS")
+
+
+def cost_stages(verify: bool | None = None) -> list[dict[str, Any]]:
+    v = verify_opus_on() if verify is None else verify
+    plan = [("check", MODEL_HAIKU), ("draft", DRAFT_MODEL)] + ([("verify", MODEL_OPUS)] if v else [])
+    return [{"step": st, "model": m, "label": MODEL_LABEL[m], "price_in": PRICE[m][0], "price_out": PRICE[m][1], **STAGE_EST[st]} for st, m in plan]
+
+
+def estimate_cost_usd(facts: dict[str, Any], verify: bool | None = None) -> float:
+    """送る事実から 1 回の費用（ドル）を見積もる。画面（ai_explain.js）も同じ表で計算する。"""
+    all_t = len(canonical(facts)) * TOKENS_PER_CHAR
+    rows_t = len(canonical(facts.get("rows", []))) * TOKENS_PER_CHAR
+    total = 0.0
+    for g in cost_stages(verify):
+        tin = g["in_base"] + (rows_t if g["scale"] == "rows" else all_t)
+        total += (tin * g["price_in"] + g["out"] * g["price_out"]) / 1_000_000
+    return total
+
+
 def status(public: bool) -> dict[str, Any]:
-    """{available, reason, limits}。キーの値は見ず、あるかないかだけを調べる。reason は利用者に見せてよい文。"""
-    limits = {"daily": daily_limit(), "per_client_per_hour": PER_CLIENT_PER_HOUR, "max_request_bytes": MAX_FACTS_BYTES,
-              "models": {"check": MODEL_HAIKU, "draft": MODEL_SONNET, "verify": MODEL_OPUS}}
+    """{available, reason, limits, remaining, ...}。キーの値は見ず、あるかないかだけを調べる。reason は利用者に見せてよい文。"""
+    verify = verify_opus_on()
+    models = {"check": MODEL_HAIKU, "draft": DRAFT_MODEL, "verify": MODEL_OPUS if verify else None}
+    limits = {"daily": daily_limit(), "per_client_per_hour": PER_CLIENT_PER_HOUR, "max_request_bytes": MAX_FACTS_BYTES, "models": models}
+    used = LIMITER.used_today()
+    extra = {"public": bool(public), "remaining": max(0, daily_limit() - used), "verify_opus": verify,
+             "cost": {"tokens_per_char": TOKENS_PER_CHAR, "usd_jpy": USD_JPY, "stages": cost_stages(verify), "assumed": True}}
     if not _truthy("AI_EXPLAIN_ENABLED"):
-        return {"available": False, "reason": "disabled", "limits": limits}
+        return {"available": False, "reason": "disabled", "limits": limits, **extra}
     if public and not _truthy("AI_EXPLAIN_PUBLIC"):
-        return {"available": False, "reason": "public_off", "limits": limits}
+        return {"available": False, "reason": "public_off", "limits": limits, **extra}
     if importlib.util.find_spec("anthropic") is None:
-        return {"available": False, "reason": "no_sdk", "limits": limits}
+        return {"available": False, "reason": "no_sdk", "limits": limits, **extra}
     if not os.environ.get("ANTHROPIC_API_KEY", "").strip():
-        return {"available": False, "reason": "no_key", "limits": limits}
-    return {"available": True, "reason": "", "limits": limits}
+        return {"available": False, "reason": "no_key", "limits": limits, **extra}
+    return {"available": True, "reason": "", "limits": limits, **extra}
 
 
 class Limiter:
@@ -159,19 +205,47 @@ CACHE = ResultCache()
 
 # ---------------------------------------------------------------- 入力
 
+def _strings(obj: Any):
+    if isinstance(obj, str):
+        yield obj
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            yield from _strings(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from _strings(v)
+
+
 def clean_facts(body: Any) -> dict[str, Any]:
-    """ページが送ってきた事実を検める。知っている欄だけ残す（生のファイルや余計な欄は通さない）。"""
+    """ページが送ってきた事実を検める。許す欄以外が 1 つでもあれば断る（黙って捨てない）。
+    相手の名前と地点名は置き換えたもの（荷主A・地点1）だけを通す。車番らしい文字列があれば断る。"""
     if not isinstance(body, dict):
         raise AiError("事実の形が違います")
     if len(canonical(body).encode("utf-8")) > MAX_FACTS_BYTES:
         raise AiError(f"送る事実が大きすぎます（{MAX_FACTS_BYTES // 1000} KB まで）", "too_large", 413)
+    extra = [k for k in body if k not in FACT_KEYS]
+    if extra:
+        raise AiError(f"送れない項目が含まれています（{'、'.join(str(k)[:20] for k in extra[:3])}）", "bad_field", 400)
     facts = {k: body[k] for k in FACT_KEYS if k in body}
     rows = facts.get("rows")
     if not isinstance(rows, list) or not rows:
         raise AiError("記録の行がありません")
-    facts["rows"] = [{k: r[k] for k in ROW_KEYS if k in r} for r in rows if isinstance(r, dict)]
-    if not facts["rows"]:
-        raise AiError("記録の行がありません")
+    if not all(isinstance(r, dict) for r in rows):
+        raise AiError("記録の行の形が違います")
+    bad = sorted({k for r in rows for k in r if k not in ROW_KEYS})
+    if bad:
+        raise AiError(f"送れない項目が含まれています（行の {'、'.join(str(k)[:20] for k in bad[:3])}）", "bad_field", 400)
+    if "partner" in facts and not (isinstance(facts["partner"], str) and PARTNER_RE.match(facts["partner"])):
+        raise AiError("相手の名前は「荷主A」の形に置き換えて送ってください", "not_pseudonymized", 400)
+    for r in rows:
+        pl = r.get("place", "")
+        if pl not in ("", None) and not (isinstance(pl, str) and PLACE_RE.match(pl)):
+            raise AiError("地点名は「地点1」の形に置き換えて送ってください", "not_pseudonymized", 400)
+        if r.get("handler", "") not in HANDLER_OK:
+            raise AiError("荷役をした人は役割の語だけを送れます", "not_pseudonymized", 400)
+    if any(PLATE_RE.search(t) for t in _strings(facts)):
+        raise AiError("車番らしい文字列が含まれているため送れません", "not_pseudonymized", 400)
+    facts["rows"] = [dict(r) for r in rows]
     if isinstance(facts.get("history"), list):
         facts["history"] = [str(x)[:300] for x in facts["history"][:MAX_HISTORY]]
     elif "history" in facts:
@@ -179,6 +253,55 @@ def clean_facts(body: Any) -> dict[str, Any]:
     if len(canonical(facts).encode("utf-8")) > MAX_FACTS_BYTES:
         raise AiError(f"送る事実が大きすぎます（{MAX_FACTS_BYTES // 1000} KB まで）", "too_large", 413)
     return facts
+
+
+def pseudonymize(facts: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
+    """相手の名前を「荷主A」、地点名を「地点1」「地点2」…に置き換える（出てきた順）。車番は消し、荷役をした人は役割の語だけ残す。
+    戻り値は (置き換えた事実, {置き換え後: 元})。web/ai_explain.js の pseudonymize と同じ規則。"""
+    mapping: dict[str, str] = {}
+    names: list[tuple[str, str]] = []
+    partner = str(facts.get("partner") or "")
+    if partner:
+        mapping["荷主A"] = partner
+        names.append((partner, "荷主A"))
+    places: dict[str, str] = {}
+    for r in facts.get("rows", []):
+        pl = str(r.get("place") or "")
+        if pl and pl not in places:
+            places[pl] = f"地点{len(places) + 1}"
+            mapping[places[pl]] = pl
+    names = sorted(names + list(places.items()), key=lambda t: -len(t[0]))
+
+    def scrub(v: Any) -> Any:
+        if isinstance(v, str):
+            for old, new in names:
+                v = v.replace(old, new)
+            return PLATE_RE.sub("（車番）", v)
+        if isinstance(v, list):
+            return [scrub(x) for x in v]
+        if isinstance(v, dict):
+            return {k: scrub(x) for k, x in v.items()}
+        return v
+
+    out: dict[str, Any] = {}
+    for k in FACT_KEYS:
+        if k not in facts:
+            continue
+        if k == "partner":
+            out[k] = "荷主A" if partner else ""
+        elif k == "rows":
+            rows = []
+            for r in facts[k]:
+                n = {rk: scrub(r[rk]) for rk in ROW_KEYS if rk in r}
+                if "place" in n:
+                    n["place"] = places.get(str(r.get("place") or ""), "")
+                if "handler" in n and n["handler"] not in HANDLER_OK:
+                    n["handler"] = "他"
+                rows.append(n)
+            out[k] = rows
+        else:
+            out[k] = scrub(facts[k])
+    return out, mapping
 
 
 def canonical(obj: Any) -> str:
@@ -233,7 +356,8 @@ SYS_DRAFT = ("あなたは運送会社の配車課長です。荷主の担当者
              "(2) 数字は一覧にあるものだけを、算用数字（半角）で書く。漢数字（一回、三万円など）は使わない。計算し直さない。足し算・割り算・丸めをしない。"
              "(3) 約束・謝罪・記録の出来についての言及をしない（『今後は補います』『記録の不備』のような、事実から言えない約束や評価は書かない）。"
              "(4) 空欄の任意欄（受付、指定の到着時刻、荷役終了など）には触れない。"
-             "(5) 相手を責めない。相談のお願いの文にする。(6) これまでの協議の履歴（history）があれば、その続きとして触れる。")
+             "(5) 相手を責めない。相談のお願いの文にする。(6) これまでの協議の履歴（history）があれば、その続きとして触れる。"
+             "(7) 相手の名前と場所は、事実に書かれた呼び名（荷主A、地点1 など）のまま書く。言い換えたり、実在の名前を推測して書いたりしない。")
 SYS_VERIFY = ("あなたは説明文の検算係です。事実（facts）と下書き（draft）を突き合わせ、下書きの数字・日付・場所・名前・主張の"
               "すべてが事実から言えるかを確かめます。事実にない数字、事実と違う数字、事実から言えない断定（約束、謝罪、記録の出来への評価を含む）があれば problems に入れます"
               "（quote は下書きからの引用、reason は理由）。すべて一致するときだけ ok を true にし、problems は空にします。")
@@ -484,59 +608,67 @@ def run_pipeline(facts: dict[str, Any], client: Any, progress: Progress | None =
         fail_step("check", MODEL_HAIKU, f"点検できませんでした（{type(e).__name__}）")
 
     # 2 下書き（失敗したら型どおりに戻す）
-    emit({"event": "start", "step": "draft", "model": MODEL_SONNET, "label": MODEL_LABEL[MODEL_SONNET]})
+    emit({"event": "start", "step": "draft", "model": DRAFT_MODEL, "label": MODEL_LABEL[DRAFT_MODEL]})
     try:
         # 点検の指摘は渡さない（記録の出来や約束についての文を誘うため）。数字は一覧のものだけ
         user = ("事実（JSON）:\n" + facts_json + "\n\n使ってよい数字の一覧（これ以外の数字は書かない）:\n" + figures_text(facts)
                 + f"\n\n上の事実と一覧だけを使って、定型の書面に添える短い添え書きを {DRAFT_ASK_CHARS} 字以内、2〜3 つの短い段落で書いてください。")
-        resp, rec = _call(client, "draft", MODEL_SONNET, SYS_DRAFT, user, None)
+        resp, rec = _call(client, "draft", DRAFT_MODEL, SYS_DRAFT, user, None)
         if getattr(resp, "stop_reason", None) == "max_tokens":  # 切れた下書きは確かめに回さない
-            fail_step("draft", MODEL_SONNET, "下書きが途中で切れました（max_tokens）", rec)
+            fail_step("draft", DRAFT_MODEL, "下書きが途中で切れました（max_tokens）", rec)
             out["message"] = "説明文が途中で切れたため、出していません。もう一度試すか、型どおりの書面をお使いください。"
             return out
         draft = _text_of(resp).strip()
         if not draft:
             raise ValueError("下書きが空でした")
         if len(draft) > DRAFT_MAX_CHARS:
-            fail_step("draft", MODEL_SONNET, f"下書きが長すぎました（{len(draft)} 字）", rec)
+            fail_step("draft", DRAFT_MODEL, f"下書きが長すぎました（{len(draft)} 字）", rec)
             out["message"] = "説明文が長すぎたため、出していません。もう一度試すか、型どおりの書面をお使いください。"
             return out
         if draft[-1] not in "。」）)":  # 文の途中で終わっている
-            fail_step("draft", MODEL_SONNET, "下書きが文の途中で終わっていました", rec)
+            fail_step("draft", DRAFT_MODEL, "下書きが文の途中で終わっていました", rec)
             out["message"] = "説明文が途中で切れたため、出していません。もう一度試すか、型どおりの書面をお使いください。"
             return out
         done(rec, status="ok", detail=f"{len(draft)} 字")
     except _Refused as e:
-        fail_step("draft", MODEL_SONNET, "下書きは断られました", e.args[0])
+        fail_step("draft", DRAFT_MODEL, "下書きは断られました", e.args[0])
         out["message"] = "Claude が説明文の作成を断りました。型どおりの書面をお使いください。"
         return out
     except Exception as e:  # noqa: BLE001
-        fail_step("draft", MODEL_SONNET, f"下書きできませんでした（{type(e).__name__}）")
+        fail_step("draft", DRAFT_MODEL, f"下書きできませんでした（{type(e).__name__}）")
         out["message"] = "説明文を作れませんでした。型どおりの書面をお使いください。"
         return out
 
-    # 3 数字の確かめ（Opus。通らなければ下書きは返さない）
-    emit({"event": "start", "step": "verify", "model": MODEL_OPUS, "label": MODEL_LABEL[MODEL_OPUS]})
-    try:
-        user = "事実（JSON）:\n" + facts_json + "\n\n下書き:\n" + draft
-        resp, rec = _call(client, "verify", MODEL_OPUS, SYS_VERIFY, user, VERIFY_SCHEMA)
-        data = _json_of(resp)
-        problems = [{"quote": str(p["quote"])[:200], "reason": str(p["reason"])[:200]} for p in data.get("problems", [])[:10]]
-        model_ok = bool(data.get("ok")) and not problems
-        odd = draft_issues(draft, facts)
-        problems.extend(odd)
-        ok = model_ok and not odd
+    # 3 数字の確かめ。機械照合は常に行う。Opus による確かめは AI_VERIFY_OPUS=1 のときだけ（通らなければ下書きは返さない）
+    if not verify_opus_on():
+        emit({"event": "start", "step": "verify", "model": "machine", "label": "数字の機械照合"})
+        problems = draft_issues(draft, facts)
+        ok = not problems
+        rec = {"step": "verify", "model": "machine", "label": "数字の機械照合", "input_tokens": 0, "output_tokens": 0, "ms": 0,
+               "cost_usd": 0.0, "stop_reason": None}
         done(rec, status="ok" if ok else "mismatch", detail="一致" if ok else f"要確認（{len(problems)} 件）", verified=ok)
-    except _Refused as e:
-        fail_step("verify", MODEL_OPUS, "確かめは断られました", e.args[0])
-        out["problems"] = [{"quote": "", "reason": "数字を確かめられなかったため、下書きは出していません"}]
-        out["message"] = "数字を確かめられなかったので、型どおりの書面をお使いください。"
-        return out
-    except Exception as e:  # noqa: BLE001
-        fail_step("verify", MODEL_OPUS, f"確かめられませんでした（{type(e).__name__}）")
-        out["problems"] = [{"quote": "", "reason": "数字を確かめられなかったため、下書きは出していません"}]
-        out["message"] = "数字を確かめられなかったので、型どおりの書面をお使いください。"
-        return out
+    else:
+        emit({"event": "start", "step": "verify", "model": MODEL_OPUS, "label": MODEL_LABEL[MODEL_OPUS]})
+        try:
+            user = "事実（JSON）:\n" + facts_json + "\n\n下書き:\n" + draft
+            resp, rec = _call(client, "verify", MODEL_OPUS, SYS_VERIFY, user, VERIFY_SCHEMA)
+            data = _json_of(resp)
+            problems = [{"quote": str(p["quote"])[:200], "reason": str(p["reason"])[:200]} for p in data.get("problems", [])[:10]]
+            model_ok = bool(data.get("ok")) and not problems
+            odd = draft_issues(draft, facts)
+            problems.extend(odd)
+            ok = model_ok and not odd
+            done(rec, status="ok" if ok else "mismatch", detail="一致" if ok else f"要確認（{len(problems)} 件）", verified=ok)
+        except _Refused as e:
+            fail_step("verify", MODEL_OPUS, "確かめは断られました", e.args[0])
+            out["problems"] = [{"quote": "", "reason": "数字を確かめられなかったため、下書きは出していません"}]
+            out["message"] = "数字を確かめられなかったので、型どおりの書面をお使いください。"
+            return out
+        except Exception as e:  # noqa: BLE001
+            fail_step("verify", MODEL_OPUS, f"確かめられませんでした（{type(e).__name__}）")
+            out["problems"] = [{"quote": "", "reason": "数字を確かめられなかったため、下書きは出していません"}]
+            out["message"] = "数字を確かめられなかったので、型どおりの書面をお使いください。"
+            return out
 
     out["problems"] = problems
     if ok:
@@ -594,9 +726,9 @@ def start(body: Any, client_id: str, public: bool) -> dict[str, Any]:
     なければ上限を確かめてから仕事を作り、{job} を返す。上限で断った仕事は作らない。"""
     st = status(public)
     if not st["available"]:
-        raise AiError(reason_text(st["reason"]), "unavailable", 403)
+        raise AiError(reason_text(st["reason"], public), "unavailable", 403)
     facts = clean_facts(body)
-    key = cache_key(facts)
+    key = cache_key(facts) + (":opus" if verify_opus_on() else "")  # 確かめの有無で結果が変わる
     hit = CACHE.get(key)
     if hit is not None:
         return {"cached": True, "result": dict(hit, cached=True)}
@@ -889,8 +1021,9 @@ def own_reason_text(reason: str) -> str:
             "no_sdk": "AI による列の整理に必要な部品（anthropic）が入っていません"}.get(reason, "AI による列の整理は今は使えません")
 
 
-def reason_text(reason: str) -> str:
-    return {"disabled": "説明文の自動作成は、このサーバーでは使えない設定です",
-            "public_off": "公開版では説明文の自動作成を止めています",
-            "no_key": "説明文の自動作成に必要な設定がありません",
-            "no_sdk": "説明文の自動作成に必要な部品（anthropic）が入っていません"}.get(reason, "説明文の自動作成は今は使えません")
+def reason_text(reason: str, public: bool = False) -> str:
+    if reason == "public_off" or (reason == "disabled" and public):
+        return "この公開版では止めています（費用の上限のため）"
+    return {"disabled": "このサーバーでは使えない設定です（AI_EXPLAIN_ENABLED を 1 にすると使えます）",
+            "no_key": "API キーが設定されていません（サーバーの環境変数 ANTHROPIC_API_KEY）",
+            "no_sdk": "必要な部品（anthropic）が入っていません"}.get(reason, "今は使えません")

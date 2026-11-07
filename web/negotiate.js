@@ -9,7 +9,7 @@ const Negotiate = (() => {
   const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const n0 = (v) => Math.round(v).toLocaleString('ja-JP');
   const n1 = (v) => v.toLocaleString('ja-JP', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  const SRC_JA = { digitaco: 'デジタコ', haisha: '配車表', estimate: '推定', user: '手で直した値', unknown: '不明' };
+  const SRC_JA = { digitaco: 'デジタコ', haisha: '配車表', file: 'ファイル', estimate: '推定', user: '手で直した値', unknown: '不明' };
 
   /* ------------------------------------------------------------ 相手の種類と確認する条件 */
 
