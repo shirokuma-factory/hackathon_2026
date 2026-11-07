@@ -78,7 +78,7 @@ def item(path):
 STAGE = globals().get("STAGE", "import")
 START = globals().get("START", 0)
 T0 = time.time()
-BUDGET = 7.0
+BUDGET = 4.5  # MCP の 1 回は 10 秒で切れる。読み込みの遅い素材があっても間に合うよう余裕を持つ
 name = edl["timeline"]
 
 # V1 の dissolve_in を V2 へ移す（r9 の EDL は V2 を使っていない）
@@ -110,7 +110,7 @@ elif STAGE == "build":
         x = project.GetTimelineByIndex(i)
         if x and x.GetName() == name:
             tl = x
-    if START == 0:
+    if START == 0 and not globals().get("NOCREATE"):  # NOCREATE=True なら作り直さずに 0 本目から置く
         if tl:
             mp.DeleteTimelines([tl])
         mp.SetCurrentFolder(fol)
