@@ -19,7 +19,8 @@
      "track": 5,
      "path": "motion/HOOK_m.mov",
      "at": {
-      "t": 0.3
+      "say": "ろくわり",
+      "land": 2.4
      }
     },
     {
@@ -37,13 +38,6 @@
      "path": "sfx/prepared/amb_highway.wav",
      "at": {
       "t": 0
-     }
-    },
-    {
-     "track": 3,
-     "path": "sfx/prepared/truck_pass.wav",
-     "at": {
-      "t": 0.5
      }
     }
    ]
@@ -64,33 +58,20 @@
      "track": 5,
      "path": "motion/MG1_m.mov",
      "at": {
-      "t": 0.3
+      "say": "さんじゅうきゅう",
+      "land": 2.0
      }
     },
     {
      "track": 5,
      "path": "motion/MG7_m.mov",
      "at": {
-      "card": "2030"
+      "say": "さんじゅうよん",
+      "land": 1.7
      }
     }
    ],
-   "audio": [
-    {
-     "track": 3,
-     "path": "sfx/prepared/whoosh.wav",
-     "at": {
-      "t": -0.3
-     }
-    },
-    {
-     "track": 4,
-     "path": "sfx/prepared/tally.wav",
-     "at": {
-      "t": 0.9
-     }
-    }
-   ],
+   "audio": [],
    "tr": true
   },
   {
@@ -117,7 +98,8 @@
      "track": 5,
      "path": "motion/MG9_m.mov",
      "at": {
-      "card": "少ない量"
+      "say": "荷を積まずに",
+      "land": 2.2
      },
      "scrim": true
     },
@@ -125,27 +107,13 @@
      "track": 5,
      "path": "motion/MG8_m.mov",
      "at": {
-      "card": "しかも"
+      "say": "会員制",
+      "land": 3.0
      },
      "scrim": true
     }
    ],
-   "audio": [
-    {
-     "track": 4,
-     "path": "sfx/prepared/dink.wav",
-     "at": {
-      "card": "中でも"
-     }
-    },
-    {
-     "track": 4,
-     "path": "sfx/prepared/dink.wav",
-     "at": {
-      "card": "しかも"
-     }
-    }
-   ]
+   "audio": []
   },
   {
    "id": "H3",
@@ -173,15 +141,7 @@
      "until": "それをつなぐ"
     }
    ],
-   "audio": [
-    {
-     "track": 2,
-     "path": "sfx/prepared/sanding.wav",
-     "at": {
-      "t": 0
-     }
-    }
-   ],
+   "audio": [],
    "tr": true
   },
   {
@@ -194,7 +154,8 @@
      "path": "motion/MG0_r6.mov",
      "fill": true
     }
-   ]
+   ],
+   "audio": []
   },
   {
    "id": "R4",
@@ -226,7 +187,7 @@
      "track": 2,
      "path": "overlays/tag_c1_r5.mov",
      "at": {
-      "t": 0.8
+      "t": 1.9
      }
     },
     {
@@ -241,7 +202,8 @@
      "track": 5,
      "path": "motion/MG3_m.mov",
      "at": {
-      "card": "この例では"
+      "say": "にじゅうびん",
+      "land": 4.4
      },
      "scrim": true
     }
@@ -252,13 +214,6 @@
      "path": "sfx/prepared/amb_office.wav",
      "at": {
       "t": 0
-     }
-    },
-    {
-     "track": 4,
-     "path": "sfx/prepared/dink.wav",
-     "at": {
-      "card": "この例では"
      }
     }
    ]
@@ -289,7 +244,7 @@
      "track": 2,
      "path": "overlays/tag_c2_r4.mov",
      "at": {
-      "t": 0.8
+      "t": 1.9
      }
     },
     {
@@ -300,7 +255,8 @@
      },
      "len": 3.0
     }
-   ]
+   ],
+   "audio": []
   },
   {
    "id": "R6",
@@ -331,20 +287,13 @@
      "track": 5,
      "path": "motion/MG5_m.mov",
      "at": {
-      "card": "この例では"
+      "say": "きゅうまんごせんえん",
+      "land": 4.5
      },
      "scrim": true
     }
    ],
-   "audio": [
-    {
-     "track": 4,
-     "path": "sfx/prepared/tally.wav",
-     "at": {
-      "card": "この例では"
-     }
-    }
-   ]
+   "audio": []
   },
   {
    "id": "R7",
@@ -372,11 +321,12 @@
      "track": 3,
      "path": "rec/tag_cc.mov",
      "at": {
-      "t": 0.1
+      "t": 1.9
      },
      "len": 3.97
     }
-   ]
+   ],
+   "audio": []
   },
   {
    "id": "H8",
@@ -401,7 +351,8 @@
      "path": "motion/LOGO_B.mov",
      "len": 6.0
     }
-   ]
+   ],
+   "audio": []
   }
  ]
 }
