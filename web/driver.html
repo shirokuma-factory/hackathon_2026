@@ -316,7 +316,11 @@ dialog.sheet::backdrop { background: var(--scrim); }
 @media print {
   :root, :root:not([data-theme="light"]) { --bg: #ffffff; --card: #ffffff; --card-2: #ffffff; --text: #000000; --muted: #333333; --line: #999999; --line-soft: #999999; --accent: #000000; --field: #ffffff; --btn: #ffffff; --radius: 0; --page-glow: none; --elev-1: none; color-scheme: light; }
   body { background: #fff; padding: 0; }
-  body > main > :not(#more), #more > :not(#report), #report button, #report .msg { display: none !important; }
+  .side-note, main > :not(#more), #more > :not(#report), #report button, #report .msg { display: none !important; }
+  .stage { display: block; min-height: 0; padding: 0; max-width: none; margin: 0; gap: 0; }
+  .device { width: auto; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  .device::before { display: none; }
+  .device-screen { height: auto; min-height: 0; overflow: visible; border-radius: 0; padding: 0; background: #fff; }
   #more { border: 0; padding: 0; margin: 0; box-shadow: none; }
   section.card { border: 0; padding: 0; box-shadow: none; }
   .print-only { display: block; }
@@ -353,6 +357,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 
 <section class="card" aria-label="いまの 1 回">
   <div id="stamps" class="tiles"></div>
+  <p class="msg bad" id="order-warn" role="status" hidden></p>
   <button type="button" class="setup-chip" id="setup-sum">場所・荷主・車番</button>
   <button type="button" class="save-row btn-secondary" id="b-save">この回を保存する</button>
 </section>
@@ -509,6 +514,13 @@ function renderStamps() {
     return `<button type="button" class="tile${S.cur[k] ? ' done' : ''}" data-stamp="${k}"><span class="tl">${main}${hint}</span><span class="t">${S.cur[k] ? shortTime(S.cur[k]) : ''}</span></button>`;
   }).join('');
   markNext();
+  const ow = $('#order-warn');
+  if (ow) {   // 受付が着より前で、差が 12 時間より短いとき（夜中をまたいだ受付ではないとき）は、入れ違いを知らせる
+    const a = toMin(S.cur.arrive), rc = toMin(S.cur.reception);
+    const bad = a !== null && rc !== null && rc < a && a - rc < 720;
+    ow.hidden = !bad;
+    ow.textContent = bad ? `受付の時刻 ${shortTime(S.cur.reception)} が着いた時刻 ${shortTime(S.cur.arrive)} より前です。時刻を確かめてください（下の「時刻を直す」で直せます）。` : '';
+  }
   $('#fixes').innerHTML = STAMPS.map(([k, label]) => `<div class="stamp${S.cur[k] ? ' done' : ''}"><span class="lb">${label}</span>` +
     `<input type="time" step="60" data-time="${k}" value="${S.cur[k] || ''}" aria-label="${label}の時刻">` +
     `<button type="button" class="x" data-clear="${k}" aria-label="${label}の時刻を消す">×</button></div>`).join('');

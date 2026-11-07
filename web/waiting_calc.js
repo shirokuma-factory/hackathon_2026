@@ -68,7 +68,8 @@ const WaitingShared = (() => {
   const MONTH_CLOSE = '発荷主・着荷主様との調整が必要な場合は、この一覧をそのままお使いください。';
   const monthLabel = (m) => `${m.slice(0, 4)} 年 ${parseInt(m.slice(5), 10)} 月`;
   const CONSULT_TITLE = '荷待ちを減らすためのご相談';
-  const PM_PARTNER_TITLE = '場所ごと・月ごとの平均の荷待ち（この相手の行だけ。ページ全体の表とは数字が違います）';
+  const PM_PARTNER_TITLE = '場所ごと・月ごとの平均の荷待ち';
+  const PM_PARTNER_SCREEN_NOTE = 'この相手の行だけです。ページ全体の表とは数字が違います。';   // 画面だけ。荷主に送る文・印刷には入れない
   const CONSULT_CLOSE = '荷待ちが減れば、待機時間料の対象も減ります。到着の時刻の指定、受付の予約、荷役を始める順番などの見直しをご相談させてください。';
 
   // 開いた直後と「例を入れる」の記録（架空。SPEC §27.4）。同じ場所（江東区 地点07・市川市 地点03）で、8時台に着いた回は長く待ち、10時台は短い
@@ -743,6 +744,8 @@ const WaitingShared = (() => {
     const rowNotes = handler === UNKNOWN_HANDLER && end !== null ? [UNKNOWN_HANDLER_NOTE] : [];
     if (['arrive', 'start', 'end', 'depart', 'appointed', 'reception', 'call'].some((k) => /(?:頃|ごろ|ころ)$/.test(nz(raw[k])))) rowNotes.push(APPROX_TIME_NOTE);
     if (receptionRaw && reception === null) rowNotes.push(`受付「${receptionRaw}」を読めなかったので、受付の時刻は書面に出していません`);
+    // 受付が到着より前で、差が 12 時間より短い（日付なし）ときは、夜中をまたいだ受付（23:50 着・0:20 受付）ではないので、時刻の入れ違いを知らせる
+    if (reception !== null && arrive !== null && norm(raw.arrive_src) !== 'reception' && !datePart(receptionRaw) && reception < arrive && arrive - reception < 720) rowNotes.push(`受付の時刻 ${fmtTime(reception)} が到着 ${fmtTime(arrive)} より前です。時刻を確かめてください`);
     // 早着（SPEC §41）。指定の到着時刻があって到着が指定より前: 指定の時刻から数えている。指定が無く 5:00〜7:59 の到着: 早着の疑い（別に数える）
     let early = '';
     if (appointed !== null && base > 0) early = 'designated';
@@ -1016,6 +1019,7 @@ const WaitingShared = (() => {
   // 照合の鍵は 3 通り。車番が両方にあれば日付と車番（数字の下 4 桁）。車番が片方でも空なら、日付と場所と到着の時刻（±30 分）。場所も空なら日付と到着の時刻（±30 分）。
   // 候補が複数あって 1 組に決められない行は、組にせず candidates に並べる（推測で組にしない）
   const FALLBACK_MIN = 30;
+  const BEST_GAP = 10;   // 候補が複数あるとき、いちばん近い行が 2 番目より何分以上近ければ同じ回とするか
   const placeKey = (v) => nz(v).replace(/\s+/g, '').toLowerCase();
   const placeSame = (a, b) => { const x = placeKey(a), y = placeKey(b); return !!x && !!y && (x === y || (Math.min(x.length, y.length) >= 2 && (x.includes(y) || y.includes(x)))); };
   function crossCheck(carrierRows, shipperRows, thr) {
@@ -1053,11 +1057,30 @@ const WaitingShared = (() => {
         const hasPlace = !!placeKey(c.place) && !!placeKey(s.place);
         if (hasPlace && !placeSame(c.place, s.place)) continue;
         if (!cand.has(i)) cand.set(i, []);
-        cand.get(i).push({ j, key: hasPlace ? 'place' : 'time' });
+        cand.get(i).push({ j, key: hasPlace ? 'place' : 'time', d: Math.abs(sdiff(ma, sa)) });
         if (!back.has(j)) back.set(j, []);
         back.get(j).push(i);
       }
     }
+    // 候補が複数あっても、お互いにいちばん時刻が近く、2 番目の候補より BEST_GAP 分以上近い組は、同じ回とする（時刻まで一致する行を、近くの別の回に邪魔させない）。決まった行を外して、残りで繰り返す
+    const dropC = new Set(), dropS = new Set();
+    for (let again = true; again;) {
+      again = false;
+      const bestOf = (list) => { const a = list.filter((x) => !dropS.has(x.j)).sort((x, y) => x.d - y.d); return a.length && (a.length === 1 || a[1].d - a[0].d >= BEST_GAP) ? a[0] : null; };
+      const sideBest = new Map();   // j → [{i, d}]
+      for (const [i, list] of cand) { if (dropC.has(i)) continue; list.forEach((x) => { if (dropS.has(x.j)) return; if (!sideBest.has(x.j)) sideBest.set(x.j, []); sideBest.get(x.j).push({ i, d: x.d }); }); }
+      for (const [i, list] of cand) {
+        if (dropC.has(i)) continue;
+        const b = bestOf(list); if (!b) continue;
+        const back1 = sideBest.get(b.j).sort((x, y) => x.d - y.d);
+        if (back1[0].i !== i || (back1.length > 1 && back1[1].d - back1[0].d < BEST_GAP)) continue;
+        dropC.add(i); dropS.add(b.j); usedC.add(i); usedS.add(b.j); pairs.push(mkPair(carrierRows[i], shipperRows[b.j], b.key)); again = true; break;
+      }
+    }
+    for (const i of dropC) cand.delete(i);
+    for (const [i, list] of [...cand]) { const rest = list.filter((x) => !dropS.has(x.j)); if (rest.length) cand.set(i, rest); else cand.delete(i); }
+    back.clear();
+    for (const [i, list] of cand) list.forEach((x) => { if (!back.has(x.j)) back.set(x.j, []); back.get(x.j).push(i); });
     const inAmbiguous = new Set(), ambC = new Set();
     for (const [i, list] of cand) {
       if (list.length === 1 && back.get(list[0].j).length === 1) {
@@ -1082,6 +1105,6 @@ const WaitingShared = (() => {
   return {
     rowKey, mergeRows, shipperSummary, shipperActions, noticeTemplate, crossCheck, hourLabel, vehicleKey, REVERSE_MAX_MIN,
     HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, parseMemoText, looseTableToTsv, MEMO_NO_PARTNER, PROVISIONAL_PARTNER, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
-    BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE, CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE,
+    BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE, CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, PM_PARTNER_SCREEN_NOTE,
   };
 })();

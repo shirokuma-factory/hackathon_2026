@@ -117,7 +117,7 @@
   function reasonText(st) {
     const r = st.reason;
     if (r === 'public_off' || (r === 'disabled' && st.public)) return 'この公開版では止めています（費用の上限のため）';
-    if (r === 'disabled') return 'このサーバーでは使えない設定です（AI_EXPLAIN_ENABLED を 1 にすると使えます）';
+    if (r === 'disabled') return 'この画面では説明文の自動作成を止めています';
     if (r === 'no_key') return 'API キーが設定されていません（サーバーの環境変数）';
     if (r === 'no_sdk') return '必要な部品（anthropic）が入っていません';
     if (r === 'network') return 'サーバーに接続できませんでした';

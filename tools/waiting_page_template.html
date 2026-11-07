@@ -21,6 +21,7 @@ if (!document.documentElement.hasAttribute('data-theme')) document.documentEleme
 #hotspots td.num, #hotspots th.num { white-space: nowrap; }
 /* 施設名・場所の列は縦に 1 文字ずつ並ばない幅を持たせる（空白では折り返す）。表が広いときは .scroll-x で横に動かす */
 table.par td:first-child, table.par th:first-child { min-width: 7em; }
+#hotspots th:nth-child(4), #placemonth th:nth-child(3), #hotspots td:nth-child(4), #placemonth td:nth-child(3) { white-space: nowrap; min-width: 3.2em; }   /* 「回数」が 1 字ずつ縦に折れない */
 #shipper-places td:first-child, #shipper-hours td:first-child { min-width: 9em; white-space: nowrap; }
 #shipper-places td, #shipper-places th { min-width: 4.5em; }
 #hotspots td.c1, #placemonth td.c1 { white-space: nowrap; min-width: 7em; } /* 「江東区 地点07」のような場所が縦に折れない。表が広いときは .scroll-x で横に動かす */
@@ -125,6 +126,8 @@ body.demo #basis, body.demo #notes-fold { display: none; }
 #guide h2 { margin: 0 0 4px; font-size: 16px; }
 .g-choices { display: grid; gap: 10px; margin: 12px 0; }
 .g-choices button small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.g-choices button span, .g-choices button small { display: block; }
+.g-choices button small { margin-top: 2px; text-wrap: balance; }
 .g-choices button.primary small { color: var(--on-accent); }
 #g-bar { margin: 4px 0; font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
 body.guided header.top > :not(h1):not(#g-bar):not(#g-lead) { display: none !important; }
@@ -349,7 +352,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   #result-d::details-content { content-visibility: visible; display: block; }   /* 例の結果の枠は閉じていても、印刷では中身を出す */
   /* 書面だけを A4 縦に流す。隠すものは display:none にして、余白の白紙ページが出ないようにする */
   html, body { background: #fff; margin: 0; padding: 0; }
-  header.top, .app-header, .protect, #selftest, .col-in, #partners, #ai-box, #draft-area > h2, #draft-area > .bar, #draft-area > .ask, aside#process { display: none !important; }
+  header.top, .app-header, .protect, #selftest, .col-in, #partners, #ai-box, #draft-area > h2, #draft-area > .bar, #draft-area > .ask, aside#process, .scr-only { display: none !important; }
   main, .col-out, section.card, #draft-area, .wrap { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; width: auto; }
   #wait-doc { border: 0; border-radius: 0; box-shadow: none; padding: 0; width: auto; max-width: none; min-height: 0; color: #000; background: #fff; font-size: 10pt; line-height: 1.6; }
   #draft-area > .doc-hint { display: none !important; }
@@ -483,7 +486,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 const TARIFF = /*__TARIFF__*/null;
 const VECTORS = /*__VECTORS__*/null;
 const { HEADER_ALIASES, headerKey, COLUMNS, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, monthLabel, truncWarn, BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE,
-  CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, ASK_PARTNER, PROVISIONAL_PARTNER } = WaitingShared;
+  CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, PM_PARTNER_SCREEN_NOTE, ASK_PARTNER, PROVISIONAL_PARTNER } = WaitingShared;
 const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Artifact 用の版（印刷と CSV の保存は使えないので、文と CSV をコピーする）
 
 
@@ -688,7 +691,8 @@ function updateNotesSum() {
   const s = $('#notes-sum'), f = $('#notes-fold');
   if (!s || !f) return;
   const n = [...f.querySelectorAll('#paste-note span, #errs > div, #defaults-box > *, #ask-box > *')].filter((e) => e.textContent.trim()).length;
-  s.textContent = n ? `読めなかった所（${n} 件）` : '読めなかった所はありません';
+  const failed = f.querySelectorAll('#errs > div').length > 0 || [...f.querySelectorAll('#paste-note span')].some((e) => /読めません|読めなかった|読まなかった|入れていません/.test(e.textContent));
+  s.textContent = n ? `${failed ? '読めなかった所' : '読み取りの注意'}（${n} 件）` : '読めなかった所はありません';
   if (document.body.classList.contains('g-step') && S.gTouched && n) f.open = true;
 }
 const askHtml = () => (S.askPartner ? `<div class="note" id="ask-partner">${esc(ASK_PARTNER_TEXT)} <button type="button" id="b-ask-ok">この相手のままにする</button></div>` : '');
@@ -1003,13 +1007,14 @@ function draftHtml(p) {
     ${consultNote(p.partner) ? `<p class="small" id="doc-consult-note">${esc(consultNote(p.partner))}</p>` : ''}
     <p>${esc(CONSULT_CLOSE)}</p>
     <h5 id="doc-pm-title">${esc(PM_PARTNER_TITLE)}</h5>
+    <p class="small scr-only" id="doc-pm-screen">${esc(PM_PARTNER_SCREEN_NOTE)}</p>
     <p class="small">${esc(PM_DEF)}</p>
     <div class="rec-w"><table class="rec" id="doc-placemonth"><thead><tr>${allPlaceless(p.partner) ? '' : '<th>場所</th>'}<th>月</th><th class="num">回数</th><th class="num">平均の荷待ち（分）</th><th class="num">1 時間以上の回数</th></tr></thead><tbody>${monthTable(p.partner).map((x) => `<tr>${allPlaceless(p.partner) ? '' : `<td>${esc(noPlace(x.place) ? '場所の記載なし' : x.place)}</td>`}<td>${esc(monthLabel(x.month))}</td><td class="num">${x.count}</td><td class="num">${x.avg_minutes}</td><td class="num">${x.over_1h_count}</td></tr>`).join('')}</tbody></table></div>
     <p>${esc(MONTH_CLOSE)}</p>` : ''}
     <h4>${CLAUSE_TITLE}</h4>
     <ul class="list">${clauseList(t).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
     <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけないか、ご相談させてください。</p>
-    <p class="small" id="doc-cross-note">このメールを受け取った荷主の方は、記録の一覧の「日付・車番・到着・荷役開始」の列を、照らし合わせのページの「荷主として使う」の照合の欄に貼ると、自社の受付記録と照らし合わせられます。<br><b>照らし合わせのページ:</b> <span id="doc-url">${esc(letterPageAddress())}</span></p>
+    <p class="small" id="doc-cross-note">このメールを受け取った荷主の方は、記録の一覧の「日付・車番・到着・荷役開始」の列を、照らし合わせのページ（下のアドレス）を開き、「届いた書面を受付簿と見比べる（荷主の方）」を選んで自社の受付簿を貼ったあと、「運送会社から届いた書面と見比べる」の欄に貼ると、自社の受付記録と照らし合わせられます。<br><b>照らし合わせのページ:</b> <span id="doc-url">${esc(letterPageAddress())}</span></p>
   </details>`;
   return kc(html);
 }
@@ -1031,7 +1036,7 @@ function aiFacts(p) {
 }
 const PRIV_AI = '記録は外に送りません（Claude で説明文を作るときだけ、確認のうえ計算結果を送ります）';
 function mountAi(p) {
-  if (!window.AiExplain) return;
+  if (!window.AiExplain || !$('#ai-box')) return;
   const mounted = window.AiExplain.mount($('#ai-box'), () => aiFacts(p));
   // 使えないときは、理由（サーバーが返す文）を本文に出す。吹き出しだけだと、画面から読めない
   if (mounted && mounted.then) mounted.then((ok) => {
@@ -1059,8 +1064,9 @@ function loadAi() {
 const draftSubject = (p) => kc(mailModel(p).subject);
 function mailTableText(rm) {
   const mk = (c) => c.t + (c.n ? `※${c.n}` : '');
-  const k = rm.head.indexOf('荷役終了');   // 荷役終了の列は空欄（—）が多いので、コピーする文だけ省く（画面の表には残す）
-  const keep = (a) => a.filter((_, i) => i !== k);
+  const k = rm.head.indexOf('荷役終了');   // 荷役終了の列は、どの行にも時刻が無いときだけ、コピーする文から省く（画面の表には残す）
+  const drop = k >= 0 && rm.body.every((cells) => !cells[k] || cells[k].t === '—');
+  const keep = (a) => a.filter((_, i) => !(drop && i === k));
   const L = [keep(rm.head).join('｜'), ...rm.body.map((cells) => keep(cells.map(mk)).join('｜')), keep(['合計', ...Array(rm.lead - 1).fill(''), ...rm.total]).join('｜')];
   if (rm.notes.length) L.push('', ...rm.notes.map((x, i) => `※${i + 1} ${x}`));
   return L;
@@ -1137,6 +1143,7 @@ function heatHtml(p) {
   rows.forEach((r) => { const m = /^(\d{1,2}):/.exec(r.arrive || ''); if (!m) return; const hr = Number(m[1]); const v = r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min; by[hr] = (by[hr] || 0) + (Number(v) || 0); });
   const hrs = Object.keys(by).map(Number);
   if (!hrs.length) return '';
+  if (!Object.values(by).some((v) => v > 0)) return '<p class="small" id="heat-empty">荷主の都合で待った時間がないので、時間帯の図は出していません。</p>';
   const max = Math.max(...Object.values(by), 1);
   const cells = [], axis = [];
   for (let hr = 0; hr <= 23; hr++) { const v = by[hr] || 0; cells.push(`<span class="${v ? '' : 'z'}" style="--v:${(0.3 + 0.7 * v / max).toFixed(2)};--h:${v ? Math.max(8, Math.round(v / max * 100)) : 0}%" title="${hr} 時台に着いた回の待ち ${v} 分"></span>`); axis.push(`<span>${hr % 3 === 0 ? hr : ''}</span>`); }
@@ -1153,7 +1160,7 @@ const hotspotsHtml = (r) => {
     <p>この期間に荷主の都合で待った時間は、合計 ${hm(total)}です。</p>
     ${trunc ? `<p class="errs" id="trunc-warn"><b>${esc(TRUNC_WARN)}</b></p>` : ''}
     <p class="small" id="trunc-line">${esc(TRUNC_LINE)}</p>
-    ${top.length ? `<div class="scroll-x"><table class="par" id="hotspots"><thead><tr><th>契約の相手</th><th>場所</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>請求の目安（円）</th><th>メモ</th></tr></thead><tbody>${tb}</tbody></table></div>` : '<p class="empty">荷待ちのある組はありません。</p>'}
+    ${top.length ? `<div class="scroll-x"><table class="par" id="hotspots"><thead><tr><th>契約の相手</th><th>場所</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>参考額（円）</th><th>メモ</th></tr></thead><tbody>${tb}</tbody></table></div>` : '<p class="empty">荷待ちのある組はありません。</p>'}
     <h3>場所ごと・月ごとの平均の荷待ち（分）</h3>
     <p>${esc(PLACE_MONTH_LEAD)}</p>
     <p class="small" id="pm-def">${esc(PM_DEF)}</p>
@@ -1180,7 +1187,7 @@ function renderResult() {
   const lead = (S.exampleAuto ? '<p class="note keep-show" id="example-lead">例の記録です（架空）。自分の記録を貼ると置き換わります。</p>' : '') +
     `<p class="small keep-show" id="tile-for">この数字とメールは『${esc(sel)}』の分です。${r.by_partner.length > 1 ? 'ほかの相手は、下の表の行を押すと切り替わります。' : ''}</p>`;
   $('#partners').innerHTML = `${provisionalHtml()}${faultDefaultHtml()}${handlerUnknownHtml()}${lead}${statsHtml(p)}${heatHtml(p)}<h2>依頼元ごと<span class="small" title="運送を頼んできた会社">（?）</span><span class="small">　金額は税抜。行を押すと書面の相手が変わります</span></h2>
-    <div class="scroll-x"><table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th title="積み降ろしの作業">運転者の荷役の合計</th><th>請求の目安</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">待ちと荷役で 2 時間以上</th></tr></thead><tbody>${tb}</tbody></table></div>
+    <div class="scroll-x"><table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th title="積み降ろしの作業">運転者の荷役の合計</th><th>参考額</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">待ちと荷役で 2 時間以上</th></tr></thead><tbody>${tb}</tbody></table></div>
     <details class="defs" id="head-defs"><summary>表の見出しの意味</summary><ul>
       <li><b>待機の合計</b>: 荷主側の荷役の時間を含む待機の分です。</li>
       <li><b>1 時間以上の荷待ち</b>: 待機（荷主側の荷役を含む）が 1 時間以上だった回数です。</li>
@@ -1188,10 +1195,10 @@ function renderResult() {
     ${hotspotsHtml(r)}`;
   $('#draft-area').innerHTML = `<h2>荷主に出す相談のメール（下書き）<img class="ill ill-64" src="@@ILL:document:128@@" alt="" width="64" height="64"></h2>
     ${S.askPartner ? `<div class="errs ask" id="ask-doc"><b>相手の会社名を確かめてください。</b> 合っていれば「この相手のままにする」を押します。</div>` : ''}
-    ${docBar()}
+    ${mainWait(p) <= 0 ? '<p class="note" id="no-wait-note">荷主の都合で待った時間がないので、相談のメールは作りません。</p>' : `${docBar()}
     ${earlyN ? `<p class="note" id="early-note">社内向けの注意: 指定の到着時刻がなく、早く着いた可能性のある回が ${earlyN} 回あります。この点はメールには書いていません。</p>` : ''}
     <p class="small doc-hint" id="doc-hint">メールの黄色の部分（会社名・担当者名・電話番号・メールアドレス）は、そのまま書き換えられます。書き換えた内容はコピーする文にも入ります。</p>
-    <div class="wrap"><article id="wait-doc">${draftHtml(p)}</article><div class="side-col">${processHtml()}${ARTIFACT ? '' : `<div id="ai-box" class="ai-box"><p class="small ai-off">${esc(AI_OFF_LINE)}</p></div>`}</div></div>`;
+    <div class="wrap"><article id="wait-doc">${draftHtml(p)}</article><div class="side-col">${processHtml()}${ARTIFACT ? '' : `<div id="ai-box" class="ai-box"><p class="small ai-off">${esc(AI_OFF_LINE)}</p></div>`}</div></div>`}`;
   mountAi(p);
   const cs = $('#csv-scope');
   const cm = r.by_partner.length > 1 ? `CSV は「${sel}」の行だけです` : '';

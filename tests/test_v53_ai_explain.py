@@ -787,7 +787,7 @@ def test_ui_unavailable_reasons_are_visible_text(monkeypatch):
     try:
         with cw.edge_page(1280, 1000) as page:   # AI_EXPLAIN_ENABLED なし
             page.goto(base + "/waiting.html?example=1")
-            page.wait(lambda: page.js("!!document.querySelector('#ai-box .ai-off') && document.querySelector('#ai-box .ai-off').textContent.includes('使えない設定')"), 30, "理由")
+            page.wait(lambda: page.js("!!document.querySelector('#ai-box .ai-off') && document.querySelector('#ai-box .ai-off').textContent.includes('自動作成を止めています')"), 30, "理由")
             assert page.js("document.querySelector('#ai-box').title") == ""
             assert page.js("!document.querySelector('[data-ai=ask]')")
             r = page.js("""JSON.stringify(['public_off', 'network', 'http', 'no_sdk'].map((reason) => AiExplain.reasonText({ reason, http: 404 }))

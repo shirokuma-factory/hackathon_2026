@@ -24894,6 +24894,9 @@
       "has_side_work": false,
       "method": "",
       "month": "2026-10",
+      "notes": [
+       "受付の時刻 09:00 が到着 09:30 より前です。時刻を確かめてください"
+      ],
       "over_1h": true,
       "over_2h_total": false,
       "partner": "A運輸",
@@ -26427,6 +26430,9 @@
       "has_side_work": false,
       "method": "",
       "month": "2026-11",
+      "notes": [
+       "受付の時刻 06:20 が到着 07:00 より前です。時刻を確かめてください"
+      ],
       "over_1h": true,
       "over_2h_total": false,
       "partner": "(相手未記入)",

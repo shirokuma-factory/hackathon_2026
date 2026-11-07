@@ -805,6 +805,10 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
         row_notes.append(APPROX_TIME_NOTE)
     if reception_raw and reception is None:
         row_notes.append(f"受付「{reception_raw}」を読めなかったので、受付の時刻は書面に出していません")
+    # 受付が到着より前で、差が 12 時間より短い（日付なし）ときは、夜中をまたいだ受付ではないので、時刻の入れ違いを知らせる（JS の waiting_calc.js と同じ）
+    if (reception is not None and arrive is not None and _norm(raw.get("arrive_src")) != "reception" and not _date_part(reception_raw)
+            and reception < arrive and arrive - reception < 720):
+        row_notes.append(f"受付の時刻 {fmt_time(reception)} が到着 {fmt_time(arrive)} より前です。時刻を確かめてください")
     # 早着（SPEC §41）。指定の到着時刻があって到着が指定より前: 指定の時刻から数えている。指定が無く 5:00〜7:59 の到着: 早着の疑い（別に数える）
     early = ""
     if appointed is not None and base > 0:
