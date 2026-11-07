@@ -67,10 +67,37 @@ fol = fol[0] if fol else mp.AddSubFolder(root, "13_r9")
 log = []
 
 
+def _tc_sec(tc, fps=30.0):
+    try:
+        h, m, s, f = (int(x) for x in str(tc).replace(";", ":").split(":"))
+        return h * 3600 + m * 60 + s + f / fps
+    except Exception:
+        return None
+
+
+def _stale(clip, path):
+    """同じ名前で上書きした wav を、Resolve が前の長さのまま持っていないか（r14 で H2 の声が 12.3 秒で切れた）。"""
+    if not path.lower().endswith(".wav"):
+        return False
+    import wave
+    try:
+        with wave.open(path) as w:
+            real = w.getnframes() / w.getframerate()
+    except Exception:
+        return False
+    have = _tc_sec(clip.GetClipProperty("Duration"))
+    return have is not None and abs(real - have) > 0.1
+
+
 def item(path):
     k = path.replace("/", "\\").lower()
     if k in pool:
-        return pool[k]
+        if not _stale(pool[k], path):
+            return pool[k]
+        # 中身が変わったのに長さが古いままの素材は、消して読み込み直す
+        mp.DeleteClips([pool[k]])
+        log.append(["reimported (stale length)", os.path.basename(path)])
+        del pool[k]
     mp.SetCurrentFolder(fol)
     r = mp.ImportMedia([path.replace("/", "\\")])
     if r:
