@@ -16,6 +16,7 @@
   <header class="top glass">
     <p class="back"><a href="./#v=market">地図の画面に戻る</a></p>
     <h1>いまの大型車</h1>
+    <p class="purpose">大型車がいま多く走る道路と時間帯を見ます。帰りの便が荷を見つけやすい区間を探す参考で、空きや荷の有無そのものは分かりません。</p>
     <p class="fresh" id="fresh">読み込み中です</p>
     <div class="poll" id="poll">
       <span class="bar" aria-hidden="true"><i id="poll-bar"></i></span>
@@ -46,14 +47,15 @@
       <div class="sec">
         <h2>道路の色<button type="button" class="toggle" id="lg-toggle" aria-expanded="false">詳しく</button></h2>
         <div class="bins" id="lg-bins"></div>
-        <div class="basis">色は各地点のふだんの多さとの比（速度ではありません）</div>
+        <div class="basis">色は、その地点の直近24時間でいちばん多い時を100%とした割合です（速度ではありません）</div>
       </div>
       <div class="collapsible">
         <div class="sec">
+          <div class="k"><i class="line glow"></i><span>白く光って見える所は、流れの帯が重なった所です（台数が多い区間。色の意味はありません）</span></div>
           <div class="k"><i class="line"></i><span>流れの帯は大型車の台数に比例し、混むほどゆっくり流れます（見せ方で、速度ではありません）。道路の左右 2 本は上り・下りで、それぞれの台数で数と色が変わります</span></div>
           <div class="k"><i class="line grey"></i><span>観測点の間は、同じ道路の上で 2 つの観測点の値を距離に応じて混ぜて色を付けます。最後の観測点の先は 25 km まで延ばし、15 km を超えた区間は細く薄く描きます。灰青の細い線は観測点につながらない道路（データなし。0 台ではありません）</span></div>
           <div class="k"><i class="ring"></i><span>輪（◯）は欠測の観測点</span></div>
-          <p class="calc">比 = その時間の台数 ÷ その地点の 24 時間の最大（最大が 20 台/時未満の地点は 20 で割る）。線の太さは道路の種類で、台数ではありません。</p>
+          <p class="calc">割合 = その時間の台数 ÷ その地点の 24 時間の最大（最大が 20 台/時未満の地点は 20 で割る）。線の太さは道路の種類で、台数ではありません。</p>
         </div>
         <label class="chk"><input type="checkbox" id="show-pts"> 観測点を表示</label>
       </div>

@@ -48,7 +48,7 @@
     return valueAt(point.series, Math.max(0, T - 1));
   }
 
-  /* ---- 道路の区間の「混み具合」。速度ではなく、各地点のふだんの多さ（24 時間の最大）との比 ---- */
+  /* ---- 道路の区間の「混み具合」。速度ではなく、各地点の直近 24 時間の最大との比 ---- */
   const NODATA = [110, 120, 135];
   const MIN_REF = 20; // 24 時間の最大が小さい地点は、台数のわずかな差で赤くならないよう 20 台/時を下限にする
   const STATE_BINS = [
@@ -138,6 +138,16 @@
   /* fetched_at は日本時間（+09:00）で書かれているので、文字列のまま切り出す */
   function hhmm(iso) { return String(iso).slice(11, 16); }
   function mdhm(iso) { const s = String(iso); return `${+s.slice(5, 7)}月${+s.slice(8, 10)}日 ${s.slice(11, 16)}`; }
+  /* 観測の時間（時間コード、日本時間）の始まりから、取得した時刻までの遅れ。計算した値だけを文にする */
+  function delayMin(code, fetchedIso) {
+    const c = parseCode(code), p = (x) => String(x).padStart(2, '0');
+    const start = Date.parse(`${c.y}-${p(c.m)}-${p(c.d)}T${p(c.h)}:00:00+09:00`);
+    return Math.max(0, Math.round((Date.parse(fetchedIso) - start) / 60000));
+  }
+  function delayText(code, fetchedIso) {
+    const m = delayMin(code, fetchedIso);
+    return m < 60 ? `${m} 分遅れ` : `約 ${Math.round(m / 60)} 時間遅れ`;
+  }
   function ageText(iso, nowMs) {
     const min = Math.max(0, Math.round((nowMs - Date.parse(iso)) / 60000));
     if (min < 90) return `${min} 分前`;
@@ -211,7 +221,7 @@
   }
 
   const api = { NEUTRAL, BLUE, ORANGE, NODATA, STATE_BINS, DENS_MAX, refMax, stateIndex, stateBin, stateColor, particleDensity, particleSpeed, blend, valueAt, changeRatio, changeColor, effectiveMode, refFor, missingAt, missingHours,
-    parseCode, fmtHour, shiftCode, hhmm, mdhm, ageText, sparkPath, pipelineModel, rankPrefs, changedIds, isNewer };
+    parseCode, fmtHour, shiftCode, hhmm, mdhm, delayMin, delayText, ageText, sparkPath, pipelineModel, rankPrefs, changedIds, isNewer };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TrucksCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);
