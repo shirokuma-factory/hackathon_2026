@@ -13,16 +13,16 @@
 | サブエージェントの起動 | 281 回 | Agent の呼び出し |
 | サブエージェントの応答のうち Sonnet | 76%（Sonnet 23,608・Opus 7,557・Haiku 7） | サブエージェントの記録の model |
 | Workflow（複数の採点者を同時に動かす台本） | 11 回 | Workflow の呼び出し |
-| コミット | 263 | `git rev-list --count origin/claude/exciting-bell-uj2kvl` |
-| 自動試験 | 2,086 件 | `uv run pytest --collect-only -q` |
-| 採点・監査の記録 | 87 件 | `docs/reviews/*.md` |
+| コミット | 285 | `git rev-list --count origin/claude/exciting-bell-uj2kvl` |
+| 自動試験 | 2,201 件 | `uv run pytest --collect-only -q` |
+| 採点・監査の記録 | 101 件 | `docs/reviews/*.md` |
 | 一次資料の照合 | 111 件（不一致 0 件） | `docs/plan/2026-11-03_課題の出典.md` |
 
 ## Claude Code で可能になったこと
 
 | 1 人では難しいこと | Claude Code でどうしたか | 記録 |
 |---|---|---|
-| 6 日で、試験 2,086 件つきのアプリを作る | 本線が仕様と受入条件を書き、coder（Sonnet）を git worktree で最大 5 人同時に動かした。実行中の coder に SendMessage で直しを足した | `SPEC.md` の §1〜§53 |
+| 6 日で、試験 2,201 件つきのアプリを作る | 本線が仕様と受入条件を書き、coder（Sonnet）を git worktree で最大 5 人同時に動かした。実行中の coder に SendMessage で直しを足した | `SPEC.md` の §1〜§53 |
 | 自分の作ったものを、甘くない目で何度も採点する | 前の点を知らない新しい Opus に、審査員・配車担当・荷主の役で採点させ、点が頭打ちになったら基準を替えた（第 1〜8 部） | [試行錯誤の記録](試行錯誤の記録.md) |
 | 物流の実体験が無いまま、法令と統計で課題を確かめる | researcher（Opus）が一次資料を開いて照合し、ページと表の位置まで記録した | `docs/plan/2026-11-03_課題の出典.md`、`2026-11-04_自社データの形と記録義務の調査.md` |
 | 3D・画像・動画の編集を 1 人で回す | Blender・ComfyUI・DaVinci Resolve を MCP から動かし、仕上がりを画像の一覧で確かめた | `docs/LOCAL_AI.md`、`docs/video/` |
