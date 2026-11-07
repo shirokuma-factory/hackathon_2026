@@ -46,7 +46,7 @@ const Market = (() => {
       '営業用普通車の積載効率・実車率: 国土交通省「自動車輸送統計年報」2025 年度（e-Stat 統計表 ID 000040511074 ほか）。出典は e-Stat、政府標準利用規約（第 2.0 版）に従って加工しています',
       '営業用トラックの積載効率 38.97%: 自動車輸送統計年報 2025 年度 表 3-1（輸送トンキロ ÷ 能力トンキロ）。国の目標 44%（2028 年度）: 「基本的な方針」6 頁（令和 7 年 2 月 18 日告示）。目標の土台の範囲は国の資料で未確認です',
       '2030 年度に輸送能力が 34.1% 足りなくなるおそれ: 国土交通省「持続可能な物流の実現に向けた検討会 最終取りまとめ」2023 年 8 月、4 頁（対策をしない場合の見通し）',
-      `${esc(M.j.attribution)}。台数は参考値です。積荷の有無は分かりません`,
+      `${esc(M.j.attribution)}。台数は参考値です。積荷の有無は分かりません。このサービスは、交通量 API 機能を使用していますが、サービスの内容は国土交通省によって保証されたものではありません。`,
       '動く線の形: 国土数値情報（鉄道データ）（国土交通省）を加工して作成。道路は OSRM、フェリー航路・貨物専用線・空港は OpenStreetMap（© OpenStreetMap contributors, ODbL 1.0）',
       '拠点（貨物駅・港・フェリー航路）: © OpenStreetMap contributors（ODbL 1.0）／地図: OpenFreeMap © OpenMapTiles Data from OpenStreetMap／行政区域: 国土数値情報（国土交通省）を加工',
     ].map((t) => `<div>${t}</div>`).join('');
@@ -159,6 +159,7 @@ const Market = (() => {
       return `<span style="left:${pos}%">${lab(v)}</span>`;
     }).join('');
     q('#mlg-jartic').hidden = !M.jartic;
+    q('#mc-jt').hidden = !M.jartic;   // 交通量 API の注記は、その値を出している間いつも見える所に出す
     if (M.j && M.j.period) { const t = q('#mlg-jartic-t'); const w = `${weekText()}の大型車の点`; if (t && t.textContent !== w) t.textContent = w; }
     q('#mlg-flow').hidden = false;
     q('#mlg-traf').hidden = M.mode !== 'truck' || !TF.lines;
