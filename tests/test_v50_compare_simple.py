@@ -55,14 +55,14 @@ def test_chart_renames_cage_row_explains_it_and_offers_rail_and_air():
     with edge_page(1920, 1080) as page:
         _open(page, "#v=compare&o=13104&l=km")
         h = lambda cards: page.js(f"CompareChart.html({json.dumps(cards, ensure_ascii=False)})")  # noqa: E731
-        near = [_card("カゴ台車", 92400, note="4 本分（23,100 円 × 4）"), _card("貸切", 98000, sub="2t車"),
+        near = [_card("カゴ台車", 92000, note="4 本分（23,000 円 × 4）"), _card("貸切", 98000, sub="2t車"),
                 _card("鉄道", None, status="計算できない"), _card("船", None, status="計算できない", routeNone=False)]
         html = h(near)
         assert "カゴ台車の貸切（1 本単位）" in html
         assert "カゴ単位で払う便" in html   # 文言の直し 2026-11-07
-        assert "4 本分（23,100 円 × 4）で、2t 車 1 台を貸し切るのに近い量です。" in html
+        assert "4 本分（23,000 円 × 4）で、2t 車 1 台を貸し切るのに近い量です。" in html
         # 額の離れているときは理由の 1 行を出さない
-        far = h([_card("カゴ台車", 23100, note="1 本分（23,100 円）"), _card("貸切", 98000, sub="2t車")])
+        far = h([_card("カゴ台車", 20000, note="1 本分（20,000 円）"), _card("貸切", 98000, sub="2t車")])
         assert "近い量です" not in far and "cc-near" not in far
         # 鉄道・船・飛行機: 額は出さず、選べる。値は内部の名前のまま
         for lab in ("鉄道（コンテナ貨物）。金額は見積で確かめます", "船（フェリー）。金額は見積で確かめます", "飛行機（航空便）。金額は見積で確かめます"):  # 文言の直し 2026-11-07

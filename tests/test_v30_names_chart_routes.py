@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from shipcompare.estimate import ANON_SOURCE_NAME, estimate_all, round_100
+from shipcompare.estimate import ANON_SOURCE_NAME, SAMPLE_SOURCE_NAME, estimate_all, round_100
 from shipcompare.storage import load_scenario, shipment_to_dict
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,7 +60,7 @@ def test_labels_and_sources_follow_spec_30_1():
     assert rows["rosen"].label == "路線便（積合せの公表運賃からの試算）"
     assert rows["jitbox"].label == "カゴ台車 1 本単位（公表運賃からの試算）"
     for m in ("takuhai", "rosen", "jitbox"):
-        assert rows[m].source.name == ANON_SOURCE_NAME and not rows[m].source.url
+        assert rows[m].source.name in (ANON_SOURCE_NAME, SAMPLE_SOURCE_NAME) and not rows[m].source.url
     assert ANON_SOURCE_NAME == "大手の公表運賃をもとにした試算。会社名と各社の表は載せません（各社の利用条件のため）"
     for r in rows.values():
         text = json.dumps([r.label, r.reasons, r.notes, r.missing, [i.message for i in r.issues],
@@ -94,7 +94,8 @@ def test_public_api_estimate_has_no_company_names(pub):
 
 @pytest.mark.parametrize("path", ["/data/tariffs/sagawa_kanto.json", "/data/tariffs/nittsu_tsumiawase.json",
                                   "/data/tariffs/yamato_jitbox.json", "/data/tariffs/mlit_standard_fare_kanto.json",
-                                  "/data/tariffs/", "/tariffs/sagawa_kanto.json"])
+                                  "/data/tariffs/", "/tariffs/sagawa_kanto.json", "/data/tariffs/private/sagawa_kanto.json",
+                                  "/data/tariffs/private/expected.json", "/data/tariffs/sample_parcel.json"])
 def test_tariffs_are_not_served_in_public_mode(pub, path):
     assert _call(pub, "GET", path)[0] == 404
 
