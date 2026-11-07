@@ -26,7 +26,7 @@ const Own = (() => {
   const KIND = Kit.palette.legs.labels;
   const NOT_YET = 'AI の案: まだありません';
   const isImport = () => O.mode === 'import';
-  const claudeText = (c) => (c ? 'Claude の提案: ' + c.role : isImport() ? 'AI は使っていません' : NOT_YET);
+  const claudeText = (c) => (c ? 'Claude の提案: ' + roleJa(c.role) : isImport() ? 'AI は使っていません' : NOT_YET);
 
   /* ------------------------------------------------------------ 読み込み */
 
@@ -488,7 +488,7 @@ const Own = (() => {
     };
   }
   const roleJa = (r) => (ROLE_OPTS.find((o) => o[0] === r) || [])[1] || (OwnCalc.ROLE_LABEL_JA && OwnCalc.ROLE_LABEL_JA[r]) || AI_ROLE_JA[r] || r;
-  const AI_ROLE_JA = { type: '車種・トン数', time: '着く時刻', mark: '実空の印', kind: '走行か停車か', start_time: '開始の日時', end_time: '終了の日時', distance_km: '走った距離', loaded_flag: '実車か空車か', place_name: '停車した場所', driver_code: '運転者', loaded_km: '実車の距離', empty_km: '空車の距離', wait_min: '荷待ちの時間', restraint: '拘束時間' };
+  const AI_ROLE_JA = { vehicle_type: '車種・トン数', plate: '車番', date: '日付', type: '車種・トン数', time: '着く時刻', mark: '実空の印', kind: '走行か停車か', start_time: '開始の日時', end_time: '終了の日時', distance_km: '走った距離', loaded_flag: '実車か空車か', place_name: '停車した場所', driver_code: '運転者', loaded_km: '実車の距離', empty_km: '空車の距離', wait_min: '荷待ちの時間', restraint: '拘束時間' };
 
   function aiStatusInit() {
     const A = O.aiOwn;
@@ -598,7 +598,7 @@ const Own = (() => {
     const p = O.pendingRoles;
     if (!p) return '';
     return `<div class="o-roles o-pend" id="own-roles-pend" role="alert"><div class="o-h">この列の中身を選んでください（${p.need.length} 本）。選ぶまで計算しません</div>
-      <p class="o-hint">${esc(p.failed)}。列の名前だけでは役割を決められなかったためです。下の列の役割を選ぶと、読み直します。選んだ役割は、見出しの形が同じファイルを次に落としたときも使います（このブラウザの中だけに覚えます）。</p>
+      <p class="o-hint">列の名前だけでは役割を決められなかったためです。下の列の役割を選ぶと、読み直します。選んだ役割は、見出しの形が同じファイルを次に落としたときも使います（このブラウザの中だけに覚えます）。</p>
       ${aiBoxHtml(p.need)}${rolesRows(p.need, p.roles)}<button type="button" class="btn-link" data-act="roles-cancel">このファイルを読むのをやめる</button></div>`;
   }
 
@@ -767,6 +767,7 @@ const Own = (() => {
     const d = O.data, cnt = { ok: 0, fix: 0, skip: 0 };
     for (const c of d.confirm) if (O.dec[ck(c)]) cnt[O.dec[ck(c)]]++;
     const pend = d.confirm.length - cnt.ok - cnt.fix - cnt.skip;
+    const common = isImport() ? '' : effectText({}); // サンプルでは、どのカードも同じ文になる。カードごとには繰り返さず、一覧の上に 1 回だけ書く
     const cards = d.confirm.map((c) => {
       const key = ck(c), st = O.dec[key] || '';
       const claude = c.kind === 'column' && !isImport() ? `<div class="o-kv"><span>Claude</span><span class="${c.claude ? '' : 'o-none'}">${esc(claudeText(c.claude))}</span></div>` : '';
@@ -777,7 +778,7 @@ const Own = (() => {
         <div class="o-ch"><i class="${dotCls(st ? 'green' : c.color)}"></i><b>${esc(c.kind === 'return' ? `車庫へ戻る区間 ${c.count != null ? c.count : ''} 件に空・実車の印がありません` : c.title)}</b><small>${esc(c.source)}</small></div>
         <div class="o-kv"><span>元の値</span><span>${esc(c.original)}</span></div>
         <div class="o-kv"><span>提案</span><span>${esc(c.proposal)}</span></div>${c.reason_ja ? `<div class="o-kv"><span>理由</span><span>${esc(c.reason_ja)}</span></div>` : ''}${claude}${c.reason_ja ? '' : conf}
-        <div class="o-kv"><span>反映</span><span class="o-eff">${esc(eff)}</span></div>
+        ${eff === common ? '' : `<div class="o-kv"><span>反映</span><span class="o-eff">${esc(eff)}</span></div>`}
         <div class="o-btns">${st ? `<span class="o-res">${label}${st === 'fix' && O.fixTxt[key] ? '：' + esc(O.fixTxt[key]) : ''}</span><button type="button" class="btn-link" data-act="undo">取り消す</button>`
           : (c.kind === 'return' ? '<button type="button" class="btn-sm" data-act="ru-empty">全部 空車にする</button><button type="button" class="btn-sm" data-act="ru-loaded">全部 実車</button><button type="button" class="btn-sm" data-act="ru-keep">不明のまま</button>'
             : '<button type="button" class="btn-sm" data-act="ok">確定</button><button type="button" class="btn-sm" data-act="fix">修正</button><button type="button" class="btn-sm" data-act="skip">読まない</button>')}</div>
@@ -785,7 +786,7 @@ const Own = (() => {
         <div class="o-fix" ${O.open.has('fix' + key) && !st ? '' : 'hidden'}><input class="ctl sm" type="text" placeholder="${esc(fixHint(c))}" aria-label="直した値"><button type="button" class="btn-sm" data-act="fixok">反映</button></div>
       </div>`;
     }).join('');
-    return `<p class="o-sum">確認待ち <b class="num">${pend}</b> 件・確定 ${cnt.ok}・修正 ${cnt.fix}・読まない ${cnt.skip}<small>${isImport() ? '押した結果は計算に渡し、数字を計算し直します。確認の決定は、このブラウザに保存されます（「月ごとの保存」の欄で消せます）。' : '押した結果はこのページの中だけに残ります。'}</small></p>${cards}`;
+    return `<p class="o-sum">確認待ち <b class="num">${pend}</b> 件・確定 ${cnt.ok}・修正 ${cnt.fix}・読まない ${cnt.skip}<small>${isImport() ? '押した結果は計算に渡し、数字を計算し直します。確認の決定は、このブラウザに保存されます（「月ごとの保存」の欄で消せます）。' : '押した結果はこのページの中だけに残ります。'}</small></p>${common ? `<p class="o-hint" id="own-eff-common">${esc(common)}。</p>` : ''}${cards}`;
   }
 
   // 求荷求車のサイトや LINE に貼れる文（空車の帰りの区間 = 発地 → 着地ごとに 1 つ。曜日・便数・車格・空きの重さ。連絡先は空欄）。全部を 1 つの欄に並べ、区間ごとのコピーも出す
@@ -1974,9 +1975,9 @@ const Own = (() => {
     const ins = O.data.insights.find((i) => i.rule === 1);
     const p = ins ? ins.next.payload : null;
     const m = O.data.mon;
-    if (!p) return `${m} 月の運行から、帰り便の下書きを作りました。11/13 の帰り便 T7 はこの下書きから登録した、という設定の架空の便です。`;
+    if (!p) return `${m} 月の運行から、帰り便の下書きを作りました。空き探しの画面にある架空の便 T7 は、この下書きの使い方を見せるための例です。`;
     const body = p.empty === p.trips ? `帰りが ${p.empty} 回とも空でした` : `帰りが ${p.trips} 回のうち ${p.empty} 回空でした`;
-    return `${m} 月は${p.weekday}曜${p.night ? 'の夜' : ''}に出た便の${body}。11/13 の帰り便 T7 はこの下書きから登録した、という設定の架空の便です。`;
+    return `${m} 月は${p.weekday}曜${p.night ? 'の夜' : ''}に出た便の${body}。空き探しの画面にある架空の便 T7 は、この下書きの使い方を見せるための例です。`;
   }
 
   // 取り込んだ自社のファイルのとき: 下書きのもとにする区間（気づきの曜日・向きに当たる空車の区間。無ければ向きだけ合う区間）

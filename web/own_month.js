@@ -230,7 +230,7 @@ const OwnMonth = (() => {
         const e = d.pairs.find((x) => x && x.frm === p.frm && x.to === p.to);
         if (!e || !(e.empty > 0)) continue;
         p.n = e.empty;
-        if (Array.isArray(e.by_weekday)) { const wd = {}; for (const w of e.by_weekday) if (w && w.empty > 0 && w.wd != null) wd[w.wd] = w.empty; if (Object.keys(wd).length) p.wd = wd; }
+        if (Array.isArray(e.by_weekday)) { const wd = {}, wt = {}; for (const w of e.by_weekday) if (w && w.empty > 0 && w.wd != null) { wd[w.wd] = w.empty; wt[w.wd] = w.trips; } if (Object.keys(wd).length) { p.wd = wd; p.wdTrips = wt; } }
       }
     }
     for (const p of m.values()) p.dates.sort();
@@ -261,13 +261,20 @@ const OwnMonth = (() => {
   // 「毎週○曜」と書くのは、その月に同じ曜日が 3 回以上あるときだけ。月に 1〜2 回の曜日は約束にならないので、日付を並べる
   const WEEKLY_MIN = 3;
   const dateWd = (iso) => `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}（${WDN[wdOf(iso)]}）`;
+  // 「毎週」は、その曜日の帰りの便が 3 回以上で、8 割以上が空のときだけ（negotiate.js の案内文と同じ規則）。そうでない曜日は、記録にあったことだけを書く
   function dayText(p) {
-    const weekly = Object.keys(p.wd).map(Number).filter((w) => p.wd[w] >= WEEKLY_MIN).sort((x, y) => p.wd[y] - p.wd[x] || x - y).slice(0, 3).sort((x, y) => x - y);
+    const wdTrips = p.wdTrips || {};
+    const isWeekly = (w) => p.wd[w] >= WEEKLY_MIN && (wdTrips[w] == null || p.wd[w] / wdTrips[w] >= 0.8);
+    const all = Object.keys(p.wd).map(Number).filter((w) => p.wd[w] > 0);
+    const weekly = all.filter(isWeekly).sort((x, y) => p.wd[y] - p.wd[x] || x - y).slice(0, 3).sort((x, y) => x - y);
+    const other = all.filter((w) => !weekly.includes(w)).sort((x, y) => x - y);
     const rest = (p.dates || []).filter((iso) => !weekly.includes(wdOf(iso)));
     const shown = rest.slice(0, 6).map(dateWd).join('・') + (rest.length > 6 ? `・ほか ${rest.length - 6} 日` : '');
     const w = weekly.length ? `毎週${weekly.map((x) => WDN[x] + '曜').join('・')}` : '';
-    if (w && shown) return `${w}（ほか ${shown}）`;
+    const o = other.length ? `これまでの記録では${other.map((x) => WDN[x] + '曜').join('・')}の帰りに空きがありました${shown ? `（${shown}）` : ''}` : '';
+    if (w && o) return `${w}。${o}`;
     if (w) return w;
+    if (o) return o;
     if (shown) return shown;
     return '（曜日を入れてください）';
   }

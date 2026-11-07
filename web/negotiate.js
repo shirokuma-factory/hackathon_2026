@@ -349,7 +349,7 @@ const Negotiate = (() => {
       ${lines}<p class="neg-note">空車か実車か分かった便で割っています。</p>
       ${warn}
       <details class="neg-more" id="neg-more"><summary>数え方</summary>
-        <ul class="neg-ul"><li>ほかの曜日の不明: ${o.unknown} 本</li><li id="neg-basis">時刻なし（日付で数えた）: ${m.basis.date + m.basis.none} 本</li><li>同じ行を 1 本にした: ${m.duplicates_dropped || 0} 件</li><li>${t.weekday}曜の空車の距離: ${n1(t.confirmed.empty_km)} km</li><li>過去の記録です。今後は未定</li></ul></details>
+        <ul class="neg-ul"><li>ほかの曜日で空車か実車か分からない便: ${o.unknown} 本</li><li id="neg-basis">時刻なし（日付で数えた）: ${m.basis.date + m.basis.none} 本</li><li>同じ行を 1 本にした: ${m.duplicates_dropped || 0} 件</li><li>${t.weekday}曜の空車の距離: ${n1(t.confirmed.empty_km)} km</li><li>過去の記録です。今後は未定</li></ul></details>
       ${evidenceHtml(a)}
       <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-cond" data-act="go-cond" ${noEmpty ? 'disabled aria-disabled="true"' : ''}>案内する荷主と条件を選ぶ</button></div></div>`;
   }
@@ -392,7 +392,7 @@ const Negotiate = (() => {
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。</p>` : '';
     const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。配車表とデジタコの記録を確かめてください。</p>` : '';
     const pre = `<p class="neg-base" id="neg-base">帰りの便 <b>${c.trips} 本</b>（空車 ${c.empty}・実車 ${c.loaded}・不明 ${c.unknown}）のうち、行き先が分かった便は <b>${k.trips} 本</b>（空車 ${k.empty}・実車 ${k.loaded}）です。残り ${u.trips} 本は行き先と積荷が分からないので、${esc(a.pair.to_label)}に着いた便には入れていません。</p>
-      <p class="neg-note">ほかの曜日の不明 ${o.unknown} 便は別に数えています。</p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}</p>${kmLine}
+      <p class="neg-note">ほかの曜日で空車か実車か分からない ${o.unknown} 便は別に数えています。</p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}</p>${kmLine}
       <p class="neg-note">${ctx.mode === 'import' ? '過去の記録の集計です。今後も同じ曜日に空く保証ではなく、今予約できる便でもありません。' : '架空の過去の運行記録です。今予約できる便や、今後も毎週空く保証ではありません。'}</p>`;
     return `<div class="neg-box" id="neg-result"><h3>空いた帰りを見る</h3>
       <div class="neg-pick">${pairSel}${wdSel}</div>${lines}

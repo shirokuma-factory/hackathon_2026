@@ -532,7 +532,7 @@ def test_ui_own_js_wording():
     js = (WEB / "own.js").read_text(encoding="utf-8")
     assert "AI の案: まだありません" in js   # 文言の直し 2026-11-07  # 提案が null のときの表示
     assert "この版ではサンプルだけを扱います" not in js and "OwnCalc.analyze" in js  # ファイルを落とすと、JS で計算して表示する（SPEC §35）
-    assert "11/13 の帰り便 T7 はこの下書きから登録した、という設定の架空の便です" in js
+    assert "空き探しの画面にある架空の便 T7 は、この下書きの使い方を見せるための例です" in js
     assert "帰り便の下書きにする" in (WEB / "data" / "own_sample.json").read_text(encoding="utf-8")
     assert "Find.setRole('carrier')" in js and "App.setView('find')" in js
     assert "PathLayer" in js and "全国の荷の流れを地図に重ねる" in js and "Market.flowLayers" in (WEB / "app.js").read_text(encoding="utf-8")

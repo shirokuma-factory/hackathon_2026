@@ -343,7 +343,7 @@ const OwnCalc = (() => {
   const H_PLATE_MID = new Set(['車両', '車輌', '車両名']);
   const H_PLATE_WEAK = new Set(['号車', 'NO']); // 他に車番の列が無いときだけ車番として読む（行の通し番号のことがある）
   const H_TYPE = new Set(['車種', '車格', 'トン数', '車型', '積載量', '積載トン数', '車両区分', '車種区分', 'トン']);
-  const H_DATE = new Set(['日付', '日', '運行日', '配車日', '出発日', '出荷日', '年月日', '積日', '配送日', '納品日', '運行年月日', '月日']);
+  const H_DATE = new Set(['日付', '日', '運行日', '配車日', '出発日', '出荷日', '年月日', '積日', '配送日', '納品日', '運行年月日', '月日', '稼働日']);
   const H_FROM = new Set(['発地', '積地', '出発地', '積み地', '積込地', '積込場所', '出発', '発', '出発場所', '積地名', '積込', '積み込み地', '積み込み場所', '発地名', '集荷先', '積先', '積み先']);
   const H_TO = new Set(['着地', '降ろし地', '卸地', '荷降地', '届け先', '届先', '納品先', '到着地', '着', '降ろし', '卸し地', '卸先', '配達先', '荷卸地', '卸', '降し地', '降地', '着地名', '配送先', '納入先', '卸し先', '降ろし先', '卸場所', '降ろし場所']);
   const H_TIME = new Set(['時刻', '着時刻', '到着', '到着時刻', '着時間', '時間', '着予定', '到着予定', '納品時間', '指定時刻', '着予定時刻', '到着時間', '納品時刻']);
@@ -3463,7 +3463,7 @@ const OwnMonth = (() => {
         const e = d.pairs.find((x) => x && x.frm === p.frm && x.to === p.to);
         if (!e || !(e.empty > 0)) continue;
         p.n = e.empty;
-        if (Array.isArray(e.by_weekday)) { const wd = {}; for (const w of e.by_weekday) if (w && w.empty > 0 && w.wd != null) wd[w.wd] = w.empty; if (Object.keys(wd).length) p.wd = wd; }
+        if (Array.isArray(e.by_weekday)) { const wd = {}, wt = {}; for (const w of e.by_weekday) if (w && w.empty > 0 && w.wd != null) { wd[w.wd] = w.empty; wt[w.wd] = w.trips; } if (Object.keys(wd).length) { p.wd = wd; p.wdTrips = wt; } }
       }
     }
     for (const p of m.values()) p.dates.sort();
@@ -3494,13 +3494,20 @@ const OwnMonth = (() => {
   // 「毎週○曜」と書くのは、その月に同じ曜日が 3 回以上あるときだけ。月に 1〜2 回の曜日は約束にならないので、日付を並べる
   const WEEKLY_MIN = 3;
   const dateWd = (iso) => `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}（${WDN[wdOf(iso)]}）`;
+  // 「毎週」は、その曜日の帰りの便が 3 回以上で、8 割以上が空のときだけ（negotiate.js の案内文と同じ規則）。そうでない曜日は、記録にあったことだけを書く
   function dayText(p) {
-    const weekly = Object.keys(p.wd).map(Number).filter((w) => p.wd[w] >= WEEKLY_MIN).sort((x, y) => p.wd[y] - p.wd[x] || x - y).slice(0, 3).sort((x, y) => x - y);
+    const wdTrips = p.wdTrips || {};
+    const isWeekly = (w) => p.wd[w] >= WEEKLY_MIN && (wdTrips[w] == null || p.wd[w] / wdTrips[w] >= 0.8);
+    const all = Object.keys(p.wd).map(Number).filter((w) => p.wd[w] > 0);
+    const weekly = all.filter(isWeekly).sort((x, y) => p.wd[y] - p.wd[x] || x - y).slice(0, 3).sort((x, y) => x - y);
+    const other = all.filter((w) => !weekly.includes(w)).sort((x, y) => x - y);
     const rest = (p.dates || []).filter((iso) => !weekly.includes(wdOf(iso)));
     const shown = rest.slice(0, 6).map(dateWd).join('・') + (rest.length > 6 ? `・ほか ${rest.length - 6} 日` : '');
     const w = weekly.length ? `毎週${weekly.map((x) => WDN[x] + '曜').join('・')}` : '';
-    if (w && shown) return `${w}（ほか ${shown}）`;
+    const o = other.length ? `これまでの記録では${other.map((x) => WDN[x] + '曜').join('・')}の帰りに空きがありました${shown ? `（${shown}）` : ''}` : '';
+    if (w && o) return `${w}。${o}`;
     if (w) return w;
+    if (o) return o;
     if (shown) return shown;
     return '（曜日を入れてください）';
   }
@@ -3981,7 +3988,7 @@ const Negotiate = (() => {
       ${lines}<p class="neg-note">空車か実車か分かった便で割っています。<\/p>
       ${warn}
       <details class="neg-more" id="neg-more"><summary>数え方<\/summary>
-        <ul class="neg-ul"><li>ほかの曜日の不明: ${o.unknown} 本<\/li><li id="neg-basis">時刻なし（日付で数えた）: ${m.basis.date + m.basis.none} 本<\/li><li>同じ行を 1 本にした: ${m.duplicates_dropped || 0} 件<\/li><li>${t.weekday}曜の空車の距離: ${n1(t.confirmed.empty_km)} km<\/li><li>過去の記録です。今後は未定<\/li><\/ul><\/details>
+        <ul class="neg-ul"><li>ほかの曜日で空車か実車か分からない便: ${o.unknown} 本<\/li><li id="neg-basis">時刻なし（日付で数えた）: ${m.basis.date + m.basis.none} 本<\/li><li>同じ行を 1 本にした: ${m.duplicates_dropped || 0} 件<\/li><li>${t.weekday}曜の空車の距離: ${n1(t.confirmed.empty_km)} km<\/li><li>過去の記録です。今後は未定<\/li><\/ul><\/details>
       ${evidenceHtml(a)}
       <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-cond" data-act="go-cond" ${noEmpty ? 'disabled aria-disabled="true"' : ''}>案内する荷主と条件を選ぶ<\/button><\/div><\/div>`;
   }
@@ -4024,7 +4031,7 @@ const Negotiate = (() => {
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。<\/p>` : '';
     const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。配車表とデジタコの記録を確かめてください。<\/p>` : '';
     const pre = `<p class="neg-base" id="neg-base">帰りの便 <b>${c.trips} 本<\/b>（空車 ${c.empty}・実車 ${c.loaded}・不明 ${c.unknown}）のうち、行き先が分かった便は <b>${k.trips} 本<\/b>（空車 ${k.empty}・実車 ${k.loaded}）です。残り ${u.trips} 本は行き先と積荷が分からないので、${esc(a.pair.to_label)}に着いた便には入れていません。<\/p>
-      <p class="neg-note">ほかの曜日の不明 ${o.unknown} 便は別に数えています。<\/p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}<\/p>${kmLine}
+      <p class="neg-note">ほかの曜日で空車か実車か分からない ${o.unknown} 便は別に数えています。<\/p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}<\/p>${kmLine}
       <p class="neg-note">${ctx.mode === 'import' ? '過去の記録の集計です。今後も同じ曜日に空く保証ではなく、今予約できる便でもありません。' : '架空の過去の運行記録です。今予約できる便や、今後も毎週空く保証ではありません。'}<\/p>`;
     return `<div class="neg-box" id="neg-result"><h3>空いた帰りを見る<\/h3>
       <div class="neg-pick">${pairSel}${wdSel}<\/div>${lines}
@@ -4783,7 +4790,7 @@ function go(files, fresh, mode) {
   }
   if (d.failed) {
     const need = roleNeeds(d);
-    if (need.length) { S.pending = { type: 'roles', files, mode, need, failed: d.failed }; setMsg(`${d.failed}。下で列の中身を選ぶと読めます。`, true); }
+    if (need.length) { S.pending = { type: 'roles', files, mode, need, failed: d.failed }; setMsg('下で列の中身を選ぶと読めます。', true); }
     else { Object.assign(S, snap); S.pending = null; setMsg(`${d.failed}。${S.data ? '前のデータのまま表示しています。' : ''}${S.bad && S.bad.length ? '読めなかった: ' + S.bad.join('。') : ''}`, true); }
     render(); return;
   }
@@ -4815,7 +4822,16 @@ function loadSample() {
   go(SAMPLE_FILES.map((f) => ({ name: f.name, text: f.text, encoding: 'UTF-8' })), true, 'sample');
 }
 
+// 帰り便の提案の段（案内文・条件・コピーの表示）を最初の状態に戻す。前のデータの下書きや「コピーしました」を次のデータに持ち越さない
+function negReset() {
+  const N = Negotiate, st = N.state;
+  Object.assign(st, { view: 'result', pairKey: null, wd: null, type: 'commodity', load: { state: 'unconfirmed', note: '' }, recv: { state: 'unconfirmed', note: '' },
+    hold: { action: 'hold', picks: [] }, econ: N.emptyEcon(), draft: N.newDraft(), regenAsk: false, copyMsg: '', lastCopied: null, sig: null, gsub: 'type', goalDone: false, polish: null, entry: null });
+  clearTimeout(toastT); const t = $('#toast'); if (t) t.hidden = true;
+}
+
 function resetAll() {
+  negReset();
   S.files = []; S.data = null; S.mode = ''; S.pending = null; S.aliases = {}; S.dec = {}; S.fixTxt = {}; S.roles = {}; S.yearPick = null; S.monthPick = null; S.haishaUse = null;
   S.restore = null; S.saveMsg = ''; S.tmOut = ''; S.open = new Set(); setMsg('', false); render();
 }
@@ -4909,6 +4925,8 @@ async function copyText(text, what) {
   toast(ok ? `${what}をコピーしました` : `コピーできませんでした。${what}の欄の文字を選んで、手でコピーしてください`);
   return ok;
 }
+// 架空のサンプルは会社名が無く「自社のファイル」になるので、画面の上と同じ「架空のサンプル」と書く
+const coName = (d) => (d.fiction || S.mode === 'sample' ? '架空のサンプル' : d.company.name);
 let toastT = null;
 function toast(t) {
   const el = $('#toast');
@@ -5017,7 +5035,7 @@ function kpiHtml(d) {
   const assumed = S.mode !== '' && d.vehicles.some((v) => v.max_load_assumed);
   const mr = d.max_load_raised, largeShown = S.largeT || (mr ? mr.to_kg / 1000 : 10);
   const raisedNote = mr ? `<p class="hint" id="max-raised">配車表に ${(mr.to_kg / 1000).toFixed(1)}t の荷があったので、${esc(mr.cls)}の最大積載量を ${(mr.to_kg / 1000).toFixed(1)}t にしました。下の欄で変えられます。</p>` : '';
-  return `<section class="card" id="sec-kpi"><h2>${monthWord(d)}の実車率と積載率 <small>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}</small></h2>
+  return `<section class="card" id="sec-kpi"><h2>${monthWord(d)}の実車率と積載率 <small>${esc(coName(d))}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}</small></h2>
     ${readq}<div class="tiles">
       ${tile('actual_rate', '実車率', ar.value, `空車か実車か分かった区間 ${pc(ar.share)}（${ar.legs} / ${ar.of}）${ar.value == null && ar.legs ? '。距離が分からないので実車率は出せません' : ar.legs_with_km != null && ar.legs_with_km < ar.legs ? `。距離が分かるのは ${ar.legs_with_km} 区間で、率はその区間だけで計算しています` : ''}`, `全国 ${n.actual_rate_pct}%（営業用普通車）`, ar.formula, arFaint, rq.low && rq.lo != null && ar.value != null ? `${pcs(rq.lo)}〜${pcs(ar.value)}<small>%</small>` : '')}
       ${tile('load_rate', '大型の積載率', lr.value, `計算できた区間 ${pc(lr.share)}（${lr.legs} 区間。大型 ${lr.of_large} 区間のうち）`, overNote, lr.formula, lrFaint)}
@@ -5322,7 +5340,7 @@ function printHtml(d) {
   const tr = (a, b, t) => `<tr><th>${a}</th><td>${b}</td><td>${t || ''}</td></tr>`;
   const rows = sortedPairTable(d).slice(0, 8).map((r) => `<tr><td>${esc(r.label)}・${ROLE_JA[r.role] || '区間'}</td><td>${WD[r.wd]}曜発</td><td>${r.trips}</td><td>${r.empty}</td><td>${r.unknown}</td><td>${r.empty_km ? n1(r.empty_km) : '—'}</td></tr>`).join('');
   return `<h2>自社の運行 ${monthWord(d)}${S.mode === 'sample' ? '（架空のサンプル）' : ''}</h2>
-    <p>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}。この数字は取り込んだ記録から計算した目安です。法令で残す元の記録は別に保管してください。</p>
+    <p>${esc(coName(d))}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}。この数字は取り込んだ記録から計算した目安です。法令で残す元の記録は別に保管してください。</p>
     <table>${tr('実車率', pc(k.actual_rate.value), `判定できた区間 ${k.actual_rate.legs} / ${k.actual_rate.of}。実車か空車か不明の ${d.counts.unknown} 区間と、読めなかった行・セル ${d.counts.unreadable} 件は入れていません`)}
       ${alt ? tr(alt.mode === 'km' ? '（不明を空車として数えた実車率）' : '（不明を空車として数えた実車の区間の割合）', pc(alt.rate), alt.mode === 'km' ? `不明 ${alt.unkLegs} 区間の距離 ${n1(alt.unkKm)} km を空車に入れた場合` : `不明を外すと ${pc(alt.base)}。不明 ${alt.unkLegs} 区間には距離が無いので区間の数で数えた`) : ''}
       ${tr('大型の積載率', pc(k.load_rate.value), `大型の最大積載量は登録が無いとき ${d.max_load_raised ? (d.max_load_raised.to_kg / 1000).toFixed(1).replace(/\.0$/, '') : 10} t と仮定`)}${tr('大型の積載効率', pc(k.load_efficiency.value), '大型の積載率 × 大型の実車率')}

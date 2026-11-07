@@ -258,7 +258,7 @@ function go(files, fresh, mode) {
   }
   if (d.failed) {
     const need = roleNeeds(d);
-    if (need.length) { S.pending = { type: 'roles', files, mode, need, failed: d.failed }; setMsg(`${d.failed}。下で列の中身を選ぶと読めます。`, true); }
+    if (need.length) { S.pending = { type: 'roles', files, mode, need, failed: d.failed }; setMsg('下で列の中身を選ぶと読めます。', true); }
     else { Object.assign(S, snap); S.pending = null; setMsg(`${d.failed}。${S.data ? '前のデータのまま表示しています。' : ''}${S.bad && S.bad.length ? '読めなかった: ' + S.bad.join('。') : ''}`, true); }
     render(); return;
   }
@@ -290,7 +290,16 @@ function loadSample() {
   go(SAMPLE_FILES.map((f) => ({ name: f.name, text: f.text, encoding: 'UTF-8' })), true, 'sample');
 }
 
+// 帰り便の提案の段（案内文・条件・コピーの表示）を最初の状態に戻す。前のデータの下書きや「コピーしました」を次のデータに持ち越さない
+function negReset() {
+  const N = Negotiate, st = N.state;
+  Object.assign(st, { view: 'result', pairKey: null, wd: null, type: 'commodity', load: { state: 'unconfirmed', note: '' }, recv: { state: 'unconfirmed', note: '' },
+    hold: { action: 'hold', picks: [] }, econ: N.emptyEcon(), draft: N.newDraft(), regenAsk: false, copyMsg: '', lastCopied: null, sig: null, gsub: 'type', goalDone: false, polish: null, entry: null });
+  clearTimeout(toastT); const t = $('#toast'); if (t) t.hidden = true;
+}
+
 function resetAll() {
+  negReset();
   S.files = []; S.data = null; S.mode = ''; S.pending = null; S.aliases = {}; S.dec = {}; S.fixTxt = {}; S.roles = {}; S.yearPick = null; S.monthPick = null; S.haishaUse = null;
   S.restore = null; S.saveMsg = ''; S.tmOut = ''; S.open = new Set(); setMsg('', false); render();
 }
@@ -384,6 +393,8 @@ async function copyText(text, what) {
   toast(ok ? `${what}をコピーしました` : `コピーできませんでした。${what}の欄の文字を選んで、手でコピーしてください`);
   return ok;
 }
+// 架空のサンプルは会社名が無く「自社のファイル」になるので、画面の上と同じ「架空のサンプル」と書く
+const coName = (d) => (d.fiction || S.mode === 'sample' ? '架空のサンプル' : d.company.name);
 let toastT = null;
 function toast(t) {
   const el = $('#toast');
@@ -492,7 +503,7 @@ function kpiHtml(d) {
   const assumed = S.mode !== '' && d.vehicles.some((v) => v.max_load_assumed);
   const mr = d.max_load_raised, largeShown = S.largeT || (mr ? mr.to_kg / 1000 : 10);
   const raisedNote = mr ? `<p class="hint" id="max-raised">配車表に ${(mr.to_kg / 1000).toFixed(1)}t の荷があったので、${esc(mr.cls)}の最大積載量を ${(mr.to_kg / 1000).toFixed(1)}t にしました。下の欄で変えられます。</p>` : '';
-  return `<section class="card" id="sec-kpi"><h2>${monthWord(d)}の実車率と積載率 <small>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}</small></h2>
+  return `<section class="card" id="sec-kpi"><h2>${monthWord(d)}の実車率と積載率 <small>${esc(coName(d))}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}</small></h2>
     ${readq}<div class="tiles">
       ${tile('actual_rate', '実車率', ar.value, `空車か実車か分かった区間 ${pc(ar.share)}（${ar.legs} / ${ar.of}）${ar.value == null && ar.legs ? '。距離が分からないので実車率は出せません' : ar.legs_with_km != null && ar.legs_with_km < ar.legs ? `。距離が分かるのは ${ar.legs_with_km} 区間で、率はその区間だけで計算しています` : ''}`, `全国 ${n.actual_rate_pct}%（営業用普通車）`, ar.formula, arFaint, rq.low && rq.lo != null && ar.value != null ? `${pcs(rq.lo)}〜${pcs(ar.value)}<small>%</small>` : '')}
       ${tile('load_rate', '大型の積載率', lr.value, `計算できた区間 ${pc(lr.share)}（${lr.legs} 区間。大型 ${lr.of_large} 区間のうち）`, overNote, lr.formula, lrFaint)}
@@ -797,7 +808,7 @@ function printHtml(d) {
   const tr = (a, b, t) => `<tr><th>${a}</th><td>${b}</td><td>${t || ''}</td></tr>`;
   const rows = sortedPairTable(d).slice(0, 8).map((r) => `<tr><td>${esc(r.label)}・${ROLE_JA[r.role] || '区間'}</td><td>${WD[r.wd]}曜発</td><td>${r.trips}</td><td>${r.empty}</td><td>${r.unknown}</td><td>${r.empty_km ? n1(r.empty_km) : '—'}</td></tr>`).join('');
   return `<h2>自社の運行 ${monthWord(d)}${S.mode === 'sample' ? '（架空のサンプル）' : ''}</h2>
-    <p>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}。この数字は取り込んだ記録から計算した目安です。法令で残す元の記録は別に保管してください。</p>
+    <p>${esc(coName(d))}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}。この数字は取り込んだ記録から計算した目安です。法令で残す元の記録は別に保管してください。</p>
     <table>${tr('実車率', pc(k.actual_rate.value), `判定できた区間 ${k.actual_rate.legs} / ${k.actual_rate.of}。実車か空車か不明の ${d.counts.unknown} 区間と、読めなかった行・セル ${d.counts.unreadable} 件は入れていません`)}
       ${alt ? tr(alt.mode === 'km' ? '（不明を空車として数えた実車率）' : '（不明を空車として数えた実車の区間の割合）', pc(alt.rate), alt.mode === 'km' ? `不明 ${alt.unkLegs} 区間の距離 ${n1(alt.unkKm)} km を空車に入れた場合` : `不明を外すと ${pc(alt.base)}。不明 ${alt.unkLegs} 区間には距離が無いので区間の数で数えた`) : ''}
       ${tr('大型の積載率', pc(k.load_rate.value), `大型の最大積載量は登録が無いとき ${d.max_load_raised ? (d.max_load_raised.to_kg / 1000).toFixed(1).replace(/\.0$/, '') : 10} t と仮定`)}${tr('大型の積載効率', pc(k.load_efficiency.value), '大型の積載率 × 大型の実車率')}
