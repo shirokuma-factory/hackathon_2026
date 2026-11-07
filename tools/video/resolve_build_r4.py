@@ -4,8 +4,13 @@ DaVinci Resolve の MCP（run_script_unsafe）に、このファイルの中身�
 `resolve` と `project` は MCP が用意する。読み込み済みのファイルは同じパスのものを使い、無ければ 12_r4 に読み込む。
 """
 import json
+import os
 
-EDL = globals().get("EDL_PATH", "C:/dev/hackathon_2026/docs/video/edl_r4.json")
+# リポジトリの場所は呼び出す側が ROOT_DIR で渡すか、環境変数 BACKFULL_ROOT で決める（PC 固有のパスを台本に書かない）
+ROOT_DIR = globals().get("ROOT_DIR") or os.environ.get("BACKFULL_ROOT")
+EDL = globals().get("EDL_PATH") or (os.path.join(ROOT_DIR, "docs/video/edl_r4.json") if ROOT_DIR else None)
+if not EDL:
+    raise RuntimeError("EDL_PATH か ROOT_DIR（または環境変数 BACKFULL_ROOT）を渡してください")
 edl = json.load(open(EDL, encoding="utf-8"))
 mp = project.GetMediaPool()
 root = mp.GetRootFolder()

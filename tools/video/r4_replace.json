@@ -1,50 +1,59 @@
 {
  "motion/LOGO.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/motion/LOGO_B.mov"
+  "path": "outputs/video/motion/LOGO_B.mov"
  },
  "motion/HOOK_v2.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/motion/HOOK_r4.mov"
+  "path": "outputs/video/motion/HOOK_r4_s.mov"
  },
  "motion/MG8_v3.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/motion/MG8_r4.mov"
+  "path": "outputs/video/motion/MG8_r4_s.mov"
  },
  "motion/MG0_v3.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/motion/MG0_r5.mov"
+  "path": "outputs/video/motion/MG0_r5.mov"
  },
  "motion/MG3.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/motion/MG3_r4.mov"
+  "path": "outputs/video/motion/MG3_r5_s.mov"
  },
  "motion/MG5_v3.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/motion/MG5_r6.mov"
+  "path": "outputs/video/motion/MG5_r6_s.mov"
  },
  "motion/AIL_v2.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/motion/AIL_v2_r4.mov"
+  "path": "outputs/video/motion/AIL_v2_r4_s.mov"
  },
  "graphics/G4_still4.mp4": {
-  "path": "C:/dev/hackathon_2026/outputs/video/graphics/G4_r4_still.mp4"
+  "path": "outputs/video/graphics/G4_r4_s_still.mp4"
  },
  "tight_r3/R4_v3.wav": {
-  "path": "C:/dev/hackathon_2026/outputs/video/voice/tight_r4/R4_r4.wav",
+  "path": "outputs/video/voice/tight_r4/R4_r4.wav",
   "off": 0,
   "len": 1013
  },
  "tight_r3/R5.wav": {
-  "path": "C:/dev/hackathon_2026/outputs/video/voice/tight_r4/R5_r4b.wav",
+  "path": "outputs/video/voice/tight_r4/R5_r4b.wav",
   "off": 0,
   "len": 556
  },
  "overlays/tag_c1_top.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/overlays/tag_c1_r4.mov"
+  "path": "outputs/video/overlays/tag_c1_r4.mov"
  },
  "overlays/tag_c2_shinjuku.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/overlays/tag_c2_r4.mov"
+  "path": "outputs/video/overlays/tag_c2_r4.mov"
  },
  "overlays/note_ai.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/overlays/note_ai_r4.mov"
+  "path": "outputs/video/overlays/note_ai_r4.mov"
  },
  "tight_r3/R6_v3.wav": {
-  "path": "C:/dev/hackathon_2026/outputs/video/voice/tight_r4/R6_r4b.wav",
+  "path": "outputs/video/voice/tight_r4/R6_r4b.wav",
   "off": 0,
   "len": 565
+ },
+ "motion/MG1.mov": {
+  "path": "outputs/video/motion/MG1_r4_s.mov"
+ },
+ "motion/MG7_v2.mov": {
+  "path": "outputs/video/motion/MG7_r4_s.mov"
+ },
+ "motion/MG2.mov": {
+  "path": "outputs/video/motion/MG2_r5_s.mov"
  }
 }

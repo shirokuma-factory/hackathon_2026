@@ -8,6 +8,8 @@ r4 版（resolve_build_r4.py）との違い:
   - V1 の dissolve_in（黒を挟まない切り替え）は、同じトラックに重ねられないので V2 に置き、フェードインで下の V1 から現れる
   - fade_in / fade_out は SetFades、効果音の gain_db は AudioVolume
   - 最後に 1920x1080 の H.264 で書き出しを登録して始める（RENDER=False なら組むだけ）
+呼び出し方（MCP の run_script_unsafe）: g = dict(globals()); g.update(ROOT_DIR=<リポジトリ>, EDL_PATH="docs/video/edl_r14.json", STAGE=...);
+exec(open(<リポジトリ>/tools/video/resolve_build_r9.py).read(), g)。
 MCP の 1 回の実行は 10 秒で打ち切られるので、STAGE と START を渡して少しずつ進める:
   STAGE="import"（読み込みだけ。終わるまで繰り返す）→ STAGE="build", START=0（返る next を次の START に。done まで）→ STAGE="render"
 """
@@ -15,12 +17,18 @@ import time
 import json
 import os
 
-EDL = globals().get("EDL_PATH", "C:/dev/hackathon_2026/docs/video/edl_r9.json")
-OUT_DIR = globals().get("OUT_DIR", "C:/dev/hackathon_2026/outputs/video/assembly")
+# リポジトリの場所は呼び出す側が ROOT_DIR で渡すか、環境変数 BACKFULL_ROOT で決める（PC 固有のパスを台本に書かない）。
+# Resolve の中で exec される台本なので __file__ は使えない
+ROOT_DIR = globals().get("ROOT_DIR") or os.environ.get("BACKFULL_ROOT")
+if not ROOT_DIR:
+    raise RuntimeError("ROOT_DIR（呼び出す側から）か環境変数 BACKFULL_ROOT にリポジトリの場所を入れてください")
+EDL = globals().get("EDL_PATH") or os.path.join(ROOT_DIR, "docs/video/edl_r9.json")
+if not os.path.isabs(EDL):
+    EDL = os.path.join(ROOT_DIR, EDL)
+OUT_DIR = globals().get("OUT_DIR") or os.path.join(ROOT_DIR, "outputs/video/assembly")
 OUT_NAME = globals().get("OUT_NAME", "Backfull_r9_resolve")
 RENDER = globals().get("RENDER", True)
 edl = json.load(open(EDL, encoding="utf-8"))
-ROOT_DIR = globals().get("ROOT_DIR", "C:/dev/hackathon_2026")
 # EDL の path はリポジトリからの相対パス（r11 から）。絶対パスの古い EDL もそのまま読める
 for _k in ("video", "audio"):
     for _rows in edl[_k].values():
