@@ -1,0 +1,30 @@
+# push と pull request のたびに、全部の試験を回す。
+# 公開リポジトリに秘密情報・PC 固有のパスが混ざっていないかも、tests/test_public_safety.py で同じときに確かめる。
+# ブラウザ（Edge）を使う撮影の試験は、Edge が無いので自動でスキップされる（手元の Windows で回す）。
+name: test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+      - name: 依存を入れる
+        run: uv sync --frozen
+      - name: 試験
+        run: uv run pytest -q -rs
