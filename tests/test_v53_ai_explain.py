@@ -108,34 +108,120 @@ def run(client: FakeClient, facts: dict | None = None, events: list | None = Non
     return ax.run_pipeline(f, client, events.append if events is not None else None)
 
 
-# ---------------------------------------------------------------- 3 段の順と呼び出しの形
-def test_pipeline_runs_haiku_sonnet_opus_in_order_with_documented_params():
+# ---------------------------------------------------------------- 段の順と呼び出しの形（2026-11-08: 下書きは Haiku、Opus の確かめは既定で止める）
+def test_default_pipeline_is_two_haiku_calls_and_machine_check_without_opus():
     c = FakeClient()
     events: list = []
     res = run(c, events=events)
-    assert [k["model"] for k in c.calls] == ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"]
-    h, s, o = c.calls
-    assert [k["max_tokens"] for k in c.calls] == [2000, 8000, 6000]  # 思考の分を含む
-    assert h["output_config"]["effort"] == "low" and s["output_config"]["effort"] == "low" and o["output_config"]["effort"] == "medium"
-    assert h["output_config"]["format"]["type"] == "json_schema" and o["output_config"]["format"]["type"] == "json_schema"
-    assert "format" not in s["output_config"]
-    for sch in (h["output_config"]["format"]["schema"], o["output_config"]["format"]["schema"]):
-        assert sch["additionalProperties"] is False and sch["required"]
+    assert [k["model"] for k in c.calls] == ["claude-haiku-5-5", "claude-haiku-5-5"]  # Opus も Sonnet も呼ばない
+    h, d = c.calls
+    assert h["system"] == ax.SYS_CHECK and d["system"] == ax.SYS_DRAFT
+    assert [k["max_tokens"] for k in c.calls] == [2000, 6000]  # 思考の分を含む
+    assert h["output_config"]["effort"] == "low" and d["output_config"]["effort"] == "low"
+    assert h["output_config"]["format"]["type"] == "json_schema" and "format" not in d["output_config"]
     for k in c.calls:
-        assert "thinking" not in k  # Opus 5.5 は常にオン。無効化を送らない
-        assert [m["role"] for m in k["messages"]] == ["user"]  # assistant の書き出しを使わない
+        assert "thinking" not in k
+        assert [m["role"] for m in k["messages"]] == ["user"]
     assert res["ok"] is True and res["draft"] == DRAFT_OK and res["fallback"] is False
     assert [st["step"] for st in res["steps"]] == ["check", "draft", "verify"]
-    assert all({"model", "input_tokens", "output_tokens", "ms", "cost_usd", "stop_reason"} <= set(st) for st in res["steps"])
+    v = res["steps"][2]
+    assert v["model"] == "machine" and v["cost_usd"] == 0.0 and v["verified"] is True
     assert [(e["event"], e["step"]) for e in events] == [("start", "check"), ("done", "check"), ("start", "draft"), ("done", "draft"), ("start", "verify"), ("done", "verify")]
+
+
+def test_opus_verify_runs_only_with_AI_VERIFY_OPUS(monkeypatch):
+    monkeypatch.setenv("AI_VERIFY_OPUS", "1")
+    c = FakeClient()
+    res = run(c)
+    assert [k["model"] for k in c.calls] == ["claude-haiku-5-5", "claude-haiku-5-5", "claude-opus-5-5"]
+    o = c.calls[2]
+    assert o["max_tokens"] == 6000 and o["output_config"]["effort"] == "medium" and o["output_config"]["format"]["type"] == "json_schema"
+    assert o["output_config"]["format"]["schema"]["additionalProperties"] is False
+    assert res["ok"] is True and res["steps"][2]["model"] == "claude-opus-5-5"
+    monkeypatch.setenv("AI_VERIFY_OPUS", "0")
+    c2 = FakeClient()
+    run(c2)
+    assert all(k["model"] != ax.MODEL_OPUS for k in c2.calls)
+
+
+def test_payload_has_no_original_names_or_plate_numbers():
+    raw = facts_raw()
+    with pytest.raises(ax.AiError) as e:   # 置き換える前の事実はサーバーが断る
+        ax.clean_facts(raw)
+    assert e.value.status == 400
+    ps, mapping = ax.pseudonymize(raw)
+    c = FakeClient()
+    run(c, ps)
+    sent = json.dumps([k["messages"] for k in c.calls], ensure_ascii=False)
+    for needle in ("架空 元請A物流", "江東区", "地点07", "山田太郎", "品川 100"):
+        assert needle not in sent, needle
+    assert "荷主A" in sent and "地点1" in sent and "（車番）" in sent
+    assert mapping == {"荷主A": "架空 元請A物流", "地点1": "江東区 地点07"}
+    assert all(r["handler"] == "他" for r in ps["rows"])   # 役割の語でない荷役者（運転者名）は残さない
+    assert ps["rows"][0]["wait_min"] == 90 and ps["totals"] == raw["totals"]   # 数字はそのまま
+
+
+def test_pseudonyms_follow_order_of_appearance_and_longest_name_first():
+    f = facts_sample(3)
+    f["partner"] = "山田運輸"
+    f["rows"][0]["place"], f["rows"][1]["place"], f["rows"][2]["place"] = "東京 倉庫", "東京", "東京 倉庫"
+    f["consult"] = ["東京 倉庫は山田運輸の", "東京に着いた"]
+    ps, m = ax.pseudonymize(f)
+    assert [r["place"] for r in ps["rows"]] == ["地点1", "地点2", "地点1"]
+    assert ps["consult"] == ["地点1は荷主Aの", "地点2に着いた"] and m == {"荷主A": "山田運輸", "地点1": "東京 倉庫", "地点2": "東京"}
+
+
+def test_server_rejects_fields_outside_the_allowlist():
+    for mutate, word in ((lambda f: f.update(raw_text="貼り付けた元の文"), "raw_text"),
+                         (lambda f: f["rows"][0].update(vehicle_no="1234"), "vehicle_no"),
+                         (lambda f: f["rows"][0].update(driver_name="山田"), "driver_name")):
+        f = facts_sample()
+        mutate(f)
+        with pytest.raises(ax.AiError) as e:
+            ax.clean_facts(f)
+        assert e.value.code == "bad_field" and word in str(e.value)
+    for mutate in (lambda f: f.update(partner="架空 元請A物流"), lambda f: f["rows"][0].update(place="江東区 地点07"),
+                   lambda f: f["rows"][0].update(handler="山田太郎"), lambda f: f.update(consult=["品川 100 あ 1234 が着いた"])):
+        f = facts_sample()
+        mutate(f)
+        with pytest.raises(ax.AiError) as e:
+            ax.clean_facts(f)
+        assert e.value.code == "not_pseudonymized"
+
+
+def test_status_reports_remaining_and_estimate(monkeypatch):
+    enable(monkeypatch, AI_DAILY_LIMIT="5")
+    monkeypatch.setattr(ax, "make_client", lambda: FakeClient())
+    st = ax.status(False)
+    assert st["available"] is True and st["remaining"] == 5 and st["verify_opus"] is False and st["public"] is False
+    assert [g["model"] for g in st["cost"]["stages"]] == ["claude-haiku-5-5", "claude-haiku-5-5"]
+    ax.start(facts_sample(), "c", False)
+    assert ax.status(False)["remaining"] == 4
+    ax.start(facts_sample(), "c", False)   # 同じ内容は数えない
+    assert ax.status(False)["remaining"] == 4
+    monkeypatch.setenv("AI_VERIFY_OPUS", "1")
+    assert ax.status(False)["cost"]["stages"][2]["model"] == "claude-opus-5-5" and ax.status(False)["limits"]["models"]["verify"] == "claude-opus-5-5"
+
+
+def test_per_run_cost_estimate_is_about_a_cent_or_less():
+    f = ax.clean_facts(EXAMPLE)
+    usd = ax.estimate_cost_usd(f)
+    assert usd <= 0.01, usd
+    assert ax.estimate_cost_usd(f, verify=True) > 0.03   # Opus を足すと桁が変わる
+
+
+def test_reason_texts():
+    assert ax.reason_text("public_off") == "この公開版では止めています（費用の上限のため）"
+    assert ax.reason_text("disabled", True) == "この公開版では止めています（費用の上限のため）"
+    assert "AI_EXPLAIN_ENABLED" in ax.reason_text("disabled")
+    assert "サーバーで開いたときだけ" not in "".join(ax.reason_text(r) for r in ("disabled", "public_off", "no_key", "no_sdk"))
 
 
 def test_only_known_fields_reach_the_model_and_no_raw_text():
     c = FakeClient()
     run(c)
     sent = json.dumps([k["messages"] for k in c.calls], ensure_ascii=False)
-    assert "品川 100" not in sent and "secret_note" not in sent and "貼り付けた元の文" not in sent
-    assert "架空 元請A物流" in sent
+    assert "荷主A" in sent and "vehicle_no" not in sent
 
 
 def test_check_issues_are_cut_to_30_chars_and_reported_with_count():
@@ -149,7 +235,7 @@ def test_cost_estimate_uses_the_stated_prices():
     assert ax.cost_usd(ax.MODEL_SONNET, 1_000_000, 1_000_000) == pytest.approx(12.0)
     assert ax.cost_usd(ax.MODEL_OPUS, 1_000_000, 1_000_000) == pytest.approx(24.0)
     t = ax.totals(run(FakeClient())["steps"])
-    assert t["input_tokens"] == 300 + 900 + 1200 and t["output_tokens"] == 40 + 200 + 120 and t["cost_usd"] > 0
+    assert t["input_tokens"] == 300 + 900 and t["output_tokens"] == 40 + 200 and 0 < t["cost_usd"] < 0.001
 
 
 # ---------------------------------------------------------------- 失敗したら型どおりに戻る
@@ -161,7 +247,8 @@ def test_refusal_at_draft_falls_back_to_template():
     assert len(c.calls) == 2  # Opus は呼ばない
 
 
-def test_refusal_at_verify_withholds_the_draft():
+def test_refusal_at_verify_withholds_the_draft(monkeypatch):
+    monkeypatch.setenv("AI_VERIFY_OPUS", "1")
     c = FakeClient()
     c.plan["verify"] = c.resp("", stop="refusal")
     res = run(c)
@@ -175,7 +262,8 @@ def test_refusal_at_check_does_not_stop_the_rest():
     assert res["steps"][0]["status"] == "failed" and res["ok"] is True and res["issues"] == []
 
 
-def test_verify_not_ok_returns_template_and_problems_not_the_draft():
+def test_verify_not_ok_returns_template_and_problems_not_the_draft(monkeypatch):
+    monkeypatch.setenv("AI_VERIFY_OPUS", "1")
     c = FakeClient()
     c.plan["verify"] = c.resp(json.dumps({"ok": False, "problems": [{"quote": "3361 円", "reason": "合計が合わない"}]}, ensure_ascii=False))
     res = run(c)
@@ -198,7 +286,8 @@ def test_unmatched_numbers_helper():
     assert ax.unmatched_numbers("777 円", f) == ["777"]
 
 
-def test_truncated_draft_and_invalid_json_fall_back():
+def test_truncated_draft_and_invalid_json_fall_back(monkeypatch):
+    monkeypatch.setenv("AI_VERIFY_OPUS", "1")
     c = FakeClient()
     c.plan["draft"] = c.resp("途中で", stop="max_tokens")
     assert run(c)["fallback"] is True
@@ -228,9 +317,9 @@ def test_clean_facts_rejects_empty_and_oversize():
     assert e.value.status == 413
 
 
-def test_clean_facts_drops_unknown_keys():
+def test_clean_facts_keeps_only_allowed_fields():
     f = ax.clean_facts(facts_sample())
-    assert "raw_text" not in f and "vehicle_no" not in f["rows"][0] and "secret_note" not in f["rows"][0]
+    assert set(f) <= set(ax.FACT_KEYS) and set(f["rows"][0]) <= set(ax.ROW_KEYS)
 
 
 def test_daily_cap(monkeypatch):
@@ -363,7 +452,7 @@ def test_identical_input_is_served_from_cache(monkeypatch):
     monkeypatch.setattr(ax, "make_client", lambda: c)
     j1 = ax.start(facts_sample(), "c", False)
     n = len(c.calls)
-    assert n == 3 and j1["cached"] is False
+    assert n == 2 and j1["cached"] is False
     j2 = ax.start(facts_sample(), "c", False)
     assert j2["cached"] is True and len(c.calls) == n and "job" not in j2  # 仕事は作らず、結果をその場で返す
     res = j2["result"]
@@ -522,28 +611,35 @@ def test_ui_button_only_when_available_and_progress_steps(monkeypatch):
             page.wait(lambda: page.js("!!document.querySelector('#ai-box [data-ai=ask]')"), 15, "ボタン")
             assert page.js("document.querySelector('#ai-box [data-ai=ask]').textContent") == "Claude で説明文を作る"
             page.js("document.querySelector('#ai-box [data-ai=ask]').click()")
-            page.wait(lambda: page.js("!document.querySelector('.ai-confirm').hidden"), 5, "確認")
+            page.wait(lambda: page.js("!!document.querySelector('.ai-confirm [data-ai=send]')"), 5, "確認")   # 準備中の表示のあと、残りの回数を読んで出る
             conf = page.js("document.querySelector('.ai-confirm').textContent")
             assert "記録" in conf and "行" in conf and "送らないもの" in conf and "車番" in conf
+            # 確認の枠: 送る JSON そのもの（置き換え後）、費用の目安（ドルと円）、今日の残り
+            sent_json = page.js("document.querySelector('.ai-confirm .ai-json-text').textContent")
+            assert json.loads(sent_json) == ax.pseudonymize(EXAMPLE_RAW)[0]   # Python の置き換えと同じ結果
+            assert "架空 元請A物流" not in conf and "江東区" not in conf and "荷主A" in conf and "地点1" in conf
+            assert "1 回の費用の目安: 約 $0.00" in conf and " 円" in conf and "今日の残り 100 回" in conf
             assert page.js("!!document.querySelector('.ai-confirm [data-ai=send]') && !!document.querySelector('.ai-confirm [data-ai=cancel]')")
             page.js("document.querySelector('.ai-confirm [data-ai=cancel]').click()")
             assert page.js("document.querySelector('.ai-confirm').hidden")
             assert c.calls == []  # やめたら何も送らない
             page.js("document.querySelector('#ai-box [data-ai=ask]').click()")
+            page.wait(lambda: page.js("!!document.querySelector('.ai-confirm [data-ai=send]')"), 5, "送るボタン")   # 残りの回数を読んでから出る
             page.js("document.querySelector('.ai-confirm [data-ai=send]').click()")
             page.wait(lambda: "Haiku 5.5 が記録を点検中" in page.js("document.querySelector('.ai-steps').textContent"), 10, "点検中")
             slow.set()
             page.wait(lambda: page.js("!!document.querySelector('.ai-result') && !document.querySelector('.ai-result').hidden"), 20, "結果")
             steps = page.js("document.querySelector('.ai-steps').textContent")
             assert "Haiku 5.5 が記録を点検 → 完了（指摘 1 件）" in steps
-            assert "Sonnet 5.5 が説明文を下書き" in steps and "Opus 5.5 が数字と根拠を確かめ → 一致" in steps
+            assert "Haiku 5.5 が説明文を下書き" in steps and "数字を機械で照合 → 一致" in steps and "Opus" not in steps and "Sonnet" not in steps
             assert "トークン" in steps and "目安" in steps
             body = page.js("document.querySelector('.ai-result .ai-body').textContent")
             assert "一致" in body and "参考額は" in body and "説明文をコピー" in body and "荷役開始が早すぎます" in body
+            assert "架空 元請A物流 様" in body and "荷主A" not in body   # 表示のときだけ元の名前に戻す
             assert page.js("document.querySelector('.ai-result').open")
             # 送った事実に、車番などは入っていない
-            sent = json.dumps(c.calls[0]["messages"], ensure_ascii=False)
-            assert "vehicle_no" not in sent
+            sent = json.dumps([k["messages"] for k in c.calls], ensure_ascii=False)
+            assert "vehicle_no" not in sent and "架空 元請A物流" not in sent and "江東区" not in sent and ax.LIMITER.used_today() == 1
         # サーバーが使えないとき（キーなし）は、ボタンを出さず 1 行だけ
         monkeypatch.delenv("ANTHROPIC_API_KEY")
         with cw.edge_page(1280, 1000) as page:
@@ -552,7 +648,8 @@ def test_ui_button_only_when_available_and_progress_steps(monkeypatch):
             page.js("new Promise(r => setTimeout(r, 1500))")
             assert page.js("!document.querySelector('[data-ai=ask]')")
             txt = page.js("document.querySelector('#ai-box').textContent.trim()")
-            assert txt.startswith("説明文の自動作成") and "サーバーで開いたときだけ" not in txt and "（今は型どおりの書面です）" in txt, txt   # サーバーで開いているのに「サーバーで開いたときだけ」と出さない（2026-11-08）
+            assert txt.startswith("説明文の自動作成") and "サーバーで開いたときだけ" not in txt and "（今は型どおりの書面です）" in txt, txt
+            assert "API キーが設定されていません" in txt, txt   # 理由を本文に出す（吹き出しだけにしない）   # サーバーで開いているのに「サーバーで開いたときだけ」と出さない（2026-11-08）
     finally:
         slow.set()
         httpd.shutdown()
@@ -571,7 +668,8 @@ def test_ui_file_url_shows_the_one_line_only():
 
 
 # ---------------------------------------------------------------- 実運用の指摘（2026-11-07）への対策
-EXAMPLE = json.loads((ROOT / "tests" / "data" / "waiting_example_facts.json").read_text(encoding="utf-8"))  # waiting.html?example=1 の aiFacts()
+EXAMPLE_RAW = json.loads((ROOT / "tests" / "data" / "waiting_example_facts.json").read_text(encoding="utf-8"))  # waiting.html?example=1 の aiFacts()（置き換え前）
+EXAMPLE = ax.pseudonymize(EXAMPLE_RAW)[0]   # 送る形
 
 # 規則どおりに書いた下書き（一覧の数字だけ、約束・謝罪なし、算用数字、3 段落）
 DRAFT_EXAMPLE = (
@@ -581,7 +679,8 @@ DRAFT_EXAMPLE = (
     "つきましては、今後の荷待ちを減らす方法について、一度ご相談の時間をいただけないでしょうか。どうぞよろしくお願いいたします。")
 
 
-def test_example_facts_pass_machine_check_and_reach_verify():
+def test_example_facts_pass_machine_check_and_reach_verify(monkeypatch):
+    monkeypatch.setenv("AI_VERIFY_OPUS", "1")
     f = ax.clean_facts(EXAMPLE)
     assert f["count"] == 12 and f["totals"]["amount_yen_ex_tax"] == 33550 and f["totals"]["from_reception"] is False
     assert ax.draft_issues(DRAFT_EXAMPLE, f) == []
@@ -589,7 +688,7 @@ def test_example_facts_pass_machine_check_and_reach_verify():
     c.plan["draft"] = c.resp(DRAFT_EXAMPLE, tin=3000, tout=500)
     res = ax.run_pipeline(f, c)
     assert res["ok"] is True and res["draft"] == DRAFT_EXAMPLE and res["problems"] == []
-    sonnet, opus = c.calls[1], c.calls[2]
+    sonnet, opus = c.calls[1], c.calls[2]   # 下書き（Haiku）と確かめ（Opus。AI_VERIFY_OPUS=1 のとき）
     assert DRAFT_EXAMPLE in opus["messages"][0]["content"]  # 確かめの段に下書きが渡る
     s_user = sonnet["messages"][0]["content"]
     for needle in ("682 分（11 時間 22 分）", "33,550 円", "5 回", "1 回", "12 件", "2026-10-01 〜 2026-10-16", "着いた時刻（到着）から"):
@@ -672,3 +771,28 @@ def test_issues_are_grouped_and_optional_blank_fields_are_dropped():
 def test_ui_groups_identical_issue_messages():
     js = (ROOT / "web" / "ai_explain.js").read_text(encoding="utf-8")
     assert "（${esc(i.n)} 件）" in js
+
+
+def test_ui_unavailable_reasons_are_visible_text(monkeypatch):
+    """使えないとき、理由を本文に出す（吹き出しだけにしない）。ファイルで開いたときの 1 行はページ側の持ち分。"""
+    cw = _edge()
+    httpd = serve_web.make_server(port=0)
+    th = threading.Thread(target=httpd.serve_forever, daemon=True)
+    th.start()
+    base = f"http://127.0.0.1:{httpd.server_address[1]}"
+    try:
+        with cw.edge_page(1280, 1000) as page:   # AI_EXPLAIN_ENABLED なし
+            page.goto(base + "/waiting.html?example=1")
+            page.wait(lambda: page.js("!!document.querySelector('#ai-box .ai-off') && document.querySelector('#ai-box .ai-off').textContent.includes('使えない設定')"), 30, "理由")
+            assert page.js("document.querySelector('#ai-box').title") == ""
+            assert page.js("!document.querySelector('[data-ai=ask]')")
+            r = page.js("""JSON.stringify(['public_off', 'network', 'http', 'no_sdk'].map((reason) => AiExplain.reasonText({ reason, http: 404 }))
+                .concat([AiExplain.reasonText({ reason: 'disabled', public: true })]))""")
+            texts = json.loads(r)
+            assert texts[0] == "この公開版では止めています（費用の上限のため）" and texts[4] == texts[0]
+            assert texts[1] == "サーバーに接続できませんでした" and "HTTP 404" in texts[2] and "anthropic" in texts[3]
+        assert "ファイルで開いたときは使えません" in (ROOT / "web" / "ai_explain.js").read_text(encoding="utf-8")
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        th.join(timeout=5)
