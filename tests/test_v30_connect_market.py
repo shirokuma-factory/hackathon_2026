@@ -37,11 +37,11 @@ def reverse_trips(frm: str, to: str):
 def test_g130_summary_has_numbers_and_sources():
     html = read("index.html")
     summary = html[html.index('id="m-summary"'):html.index("</section>", html.index('id="m-summary"'))]
-    assert "38.97%" in summary and "44%" in summary and "34.1%" in summary
+    assert "38.97%" in summary and "44%" in summary and "約 25%" in summary and "34.1%" not in summary   # 最新の見通しに 2026-11-07
     assert "2025 年度" in summary and "2028 年度" in summary and "2030 年度" in summary
     assert "約 5 ポイント足りない" in summary
     for src in ("自動車輸送統計年報 2025 年度 表 3-1", "基本的な方針", "令和 7 年 2 月 18 日告示", "目標の土台の範囲は国の資料で未確認",
-                "持続可能な物流の実現に向けた検討会 最終取りまとめ", "2023 年 8 月", "4 頁"):
+                "総合物流施策大綱に関する検討会 提言", "2026 年 3 月", "52 頁"):
         assert src in summary, src
     # 今ある 39.08%・62.15% の行は残し、範囲を書く
     assert 'id="sum-load"' in summary and 'id="sum-rate"' in summary and "営業用普通車" in summary
@@ -49,7 +49,7 @@ def test_g130_summary_has_numbers_and_sources():
 
 def test_g130_credits_have_new_sources_and_x_sentence():
     js = read("market.js")
-    assert "38.97%" in js and "44%（2028 年度）" in js and "34.1%" in js and "最終取りまとめ" in js
+    assert "38.97%" in js and "44%（2028 年度）" in js and "約 25%" in js and "総合物流施策大綱に関する検討会 提言" in js
     html = read("index.html")
     assert "X が動くのは、帰りが空く向きに荷を持つ荷主が帰り便を使い、運送会社が帰り便を登録したときです。このデモの便はすべて架空です。" in html
     # 上の 2 行が、3 つの数字の前にある
