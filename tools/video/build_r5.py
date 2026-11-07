@@ -255,6 +255,11 @@ def main() -> None:
     for c in cards_all:
         if "x=100" in c["text"] and "_L" in v1_at(c["start"]):
             c["text"] = c["text"].replace("x=100", "x=1320")
+    # 次が {hide}（ロゴなどの場面）の字幕は、その場面の始まりで消す。
+    # r16 では締めの字幕がロゴの前の暗い所に 0.2 秒残った（採点 r16 の P1）
+    for c, nx in zip(cards_all, cards_all[1:]):
+        if nx["text"].startswith("{hide}") and c["end"] > nx["start"]:
+            c["end"] = nx["start"]
     ms.STYLE = "clean"
     ms.OUT = OV / f"subs_{NAME}"
     ms.OUT.mkdir(parents=True, exist_ok=True)
@@ -273,14 +278,31 @@ def main() -> None:
     V(4).append({"s": 0, "L": round(total * FPS), "off": 0, "path": str(sub)})
     # 出典の行
     smap = json.loads((ROOT / "docs/video/sources_r4_map.json").read_text(encoding="utf-8"))
-    sc = []
+    by_tr: dict[str, list[dict]] = {"1": [], "5": []}
     for tr in ("1", "5"):
         for d in edl["video"].get(tr, []):
             nm = Path(d["path"]).name
             for k, txt in smap.items():
                 if nm.startswith(k):
-                    sc.append({"start": d["s"] / FPS, "end": (d["s"] + d["L"]) / FPS, "text": txt})
+                    by_tr[tr].append({"start": d["s"] / FPS, "end": (d["s"] + d["L"]) / FPS, "text": txt})
                     break  # 鍵は長い順。いちばん長く一致した鍵だけを使う
+    # 上に重ねた図（5 番）の出典を、下の映像（1 番）の出典より優先する。
+    # r16 では 19〜28 秒の「6割」の図の下に地図の出典（純流動調査）が出ていた（採点 r16 の P1）
+    sc = list(by_tr["5"])
+    for c in by_tr["1"]:
+        parts = [(c["start"], c["end"])]
+        for o in by_tr["5"]:
+            nxt = []
+            for a0, a1 in parts:
+                if o["end"] <= a0 or o["start"] >= a1:
+                    nxt.append((a0, a1))
+                    continue
+                if o["start"] - a0 >= 0.5:
+                    nxt.append((a0, o["start"]))
+                if a1 - o["end"] >= 0.5:
+                    nxt.append((o["end"], a1))
+            parts = nxt
+        sc += [{"start": a0, "end": a1, "text": c["text"]} for a0, a1 in parts]
     sc.sort(key=lambda c: c["start"])
     sp = ms.OUT / "sources_cards.json"
     with open(sp, "w", encoding="utf-8", newline="\n") as f:
