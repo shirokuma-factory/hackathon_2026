@@ -32,6 +32,17 @@ CUTS = {
     "W_P10": ("rec6/R5cg.mp4", 2.0, 6.5, 1.0),
     "W_P12": ("rec6/R5cg.mp4", 6.0, 14.5, 1.0),
     "W_END": ("rec6/R2g.mp4", 14.0, 26.0, 1.0),
+    "W_C1": ("rec6/R2g.mp4", 14.0, 26.0, 1.0),   # C1 用（W_END と同じ絵。W_END には最後のクレジットの行が付くので名前を分ける）
+    # r12: 窓を左右に出し分ける（作成者の指摘 11/7）。_L は窓が左、字幕は右の列
+    "W_FLOW0_L": ("rec6/FLOW0.mp4", 0.0, 14.0, 1.0, "left"),
+    "W_F2_L": ("rec6/R5cg.mp4", 6.0, 12.0, 1.0, "left"),
+    "W_F4_L": ("rec6/R5ag.mp4", 1.0, 7.0, 1.0, "left"),
+    "W_NEGO_L": ("rec7/NEGOTIATE.mp4", 0.2, 14.8, 0.75, "left"),
+    "W_P8_L": ("rec6/R5bg.mp4", 1.5, 9.37, 0.8, "left"),
+    "W_P9_L": ("rec6/R5cg.mp4", 0.0, 2.63, 1.0, "left"),
+    "W_P10_L": ("rec6/R5cg.mp4", 2.0, 6.5, 1.0, "left"),
+    "W_P12_L": ("rec6/R5cg.mp4", 6.0, 14.5, 1.0, "left"),
+    "W_LIVE_L": ("rec7/LIVE.mp4", 0.3, 13.5, 1.0, "left"),   # H2「国道を走る大型車の数」
 }
 
 
@@ -40,13 +51,14 @@ def main() -> None:
     (OV / "rawcut").mkdir(parents=True, exist_ok=True)
     (OV / "bframe/r9").mkdir(parents=True, exist_ok=True)
     for n in names:
-        src, t0, t1, sp = CUTS[n]
+        src, t0, t1, sp, *rest = CUTS[n]
+        side = rest[0] if rest else "right"
         cut = OV / "rawcut" / f"{n}.mp4"
         subprocess.run([FF, "-v", "error", "-y", "-ss", f"{t0}", "-t", f"{t1 - t0}", "-i", str(OV / src),
                         "-vf", f"setpts=PTS/{sp},fps=30", "-an", "-c:v", "libx264", "-crf", "12", "-preset", "fast", "-pix_fmt", "yuv420p", str(cut)], check=True)
         for sc, tag in ((2, "_4k"), (1, "")):
             subprocess.run([sys.executable, str(ROOT / "tools/video/browser_frame_ff.py"), "--in", str(cut),
-                            "--out", str(OV / "bframe/r9" / f"{n}{tag}.mp4"), "--scale", str(sc)], check=True)
+                            "--out", str(OV / "bframe/r9" / f"{n}{tag}.mp4"), "--scale", str(sc), "--side", side], check=True)
 
 
 if __name__ == "__main__":

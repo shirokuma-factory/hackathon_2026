@@ -233,6 +233,17 @@ def main() -> None:
         cards_all = out
     else:
         print(f"注意: 字幕の割り付け {len(lay)} 枚と字幕 {len(cards_all)} 枚が合わないので、自動の改行にします")
+    # 窓が左の場面（名前に _L）では、左の列の字幕（x=100）を右の列（x=1320）へ移す（r12、窓を左右に出し分ける）
+    v1rows = sorted(edl["video"].get("1", []), key=lambda d: d["s"])
+
+    def v1_at(tt: float) -> str:
+        for d in v1rows:
+            if d["s"] / FPS <= tt + 0.05 < (d["s"] + d["L"]) / FPS:
+                return Path(d["path"]).stem
+        return ""
+    for c in cards_all:
+        if "x=100" in c["text"] and "_L" in v1_at(c["start"]):
+            c["text"] = c["text"].replace("x=100", "x=1320")
     ms.STYLE = "clean"
     ms.OUT = OV / f"subs_{NAME}"
     ms.OUT.mkdir(parents=True, exist_ok=True)

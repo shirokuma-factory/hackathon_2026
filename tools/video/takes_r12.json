@@ -1,0 +1,59 @@
+[
+ {
+  "id": "AIEXPLAIN",
+  "url_path": "/waiting.html?example=1",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready": "[data-ai=ask]",
+  "steps": [
+   {
+    "wait": 1.0
+   },
+   {
+    "eval": "(function(sel,off,ms){const e=document.querySelector(sel); if(!e) return false; const y0=scrollY, y1=Math.max(0,e.getBoundingClientRect().top+y0-off), t0=performance.now();function s(n){const p=Math.min(1,(n-t0)/ms), k=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2; scrollTo(0,y0+(y1-y0)*k); if(p<1) requestAnimationFrame(s);} requestAnimationFrame(s); return true;})('#ai-box',260,1400)"
+   },
+   {
+    "wait": 1.8
+   },
+   {
+    "highlight": [
+     "[data-ai=ask]",
+     1.2
+    ]
+   },
+   {
+    "click": "[data-ai=ask]"
+   },
+   {
+    "wait": 3.0
+   },
+   {
+    "highlight": [
+     "[data-ai=send]",
+     0.8
+    ]
+   },
+   {
+    "click": "[data-ai=send]"
+   },
+   {
+    "wait": 20.0
+   },
+   {
+    "wait": 20.0
+   },
+   {
+    "wait_for": "#ai-text"
+   },
+   {
+    "wait": 1.0
+   },
+   {
+    "eval": "(function(sel,off,ms){const e=document.querySelector(sel); if(!e) return false; const y0=scrollY, y1=Math.max(0,e.getBoundingClientRect().top+y0-off), t0=performance.now();function s(n){const p=Math.min(1,(n-t0)/ms), k=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2; scrollTo(0,y0+(y1-y0)*k); if(p<1) requestAnimationFrame(s);} requestAnimationFrame(s); return true;})('#ai-text',360,1400)"
+   },
+   {
+    "wait": 4.0
+   }
+  ]
+ }
+]
