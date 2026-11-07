@@ -806,8 +806,23 @@ function bindWork() {
 
 // 案内の「送り方を比べる」は、例の荷ではなく 1 種類の簡単な荷（段ボール 100 サイズ・10kg・10 個）から始める。
 // 利用者が触る前で、いまの確定が例のままのときだけ、一度だけ入れ替えて自動で確定する（版の違いの警告を出さない）
+async function retryInitConfirm() {   // 起動時に確定できなかったときは、比べる画面に入ったときにもう一度試し、だめなら誤りを出す
+  if (!W.initError || W.initRetrying) return;
+  W.initRetrying = true;
+  try {
+    const r = await wapi('/api/confirm', { case: caseForApi(), shipment: W.draft, scenario_id: W.scenarioSel || null });
+    W.C = r.case; W.initError = '';
+    renderCargoEditor();
+    afterCase(true);
+  } catch (e) {
+    W.initError = e.message || W.initError;
+    if (!W.initShown) { W.initShown = true; toast(`荷物の条件を確定できませんでした（${W.initError}）。送り方の比較は使えません。`); }
+  } finally { W.initRetrying = false; }
+}
+
 async function applySimpleDefault() {
   const b = document.body.classList, v = curVer();
+  if (!v && W.initError && b.contains('view-compare')) { retryInitConfirm(); return; }
   if (W.defaultApplied || W.touched || !v || !b.contains('guided') || !b.contains('view-compare')) return;
   if (v.scenario && v.scenario.modified) return;
   if (JSON.stringify(W.draft) !== JSON.stringify(v.shipment)) return;   // 確定していない入力がある
@@ -831,8 +846,12 @@ async function winit(hooks) {
   W.draft = s1 ? wclone(s1.shipment) : blankShipment();
   applyDefaults(W.draft);   // 詳しい条件を開かない人でも、発送者・受取人・集荷・配達・届け先の数が入った状態で確定する
   W.scenarioSel = s1 ? s1.id : '';
-  const r = await wapi('/api/confirm', { case: caseForApi(), shipment: W.draft, scenario_id: W.scenarioSel || null });
-  W.C = r.case;
+  // 荷物の確定は送り方を比べるだけで使う。失敗しても全国の物流傾向・空きを探すは開けるようにし、誤りは比べる画面に入ったときに出す
+  try {
+    const r = await wapi('/api/confirm', { case: caseForApi(), shipment: W.draft, scenario_id: W.scenarioSel || null });
+    W.C = r.case;
+    W.initError = '';
+  } catch (e) { W.initError = e.message || '荷物の条件を確定できませんでした'; }
   bindCargo();
   bindWork();
   renderCargoHead();
@@ -847,4 +866,6 @@ window.Work = {
   init: winit, api: wapi, confirmedShipment, startFromDestination, openWork, closeWork,
   isOpen: () => W.open, version: () => (curVer() ? curVer().number : 0),
   scenarioId: () => (curVer() && curVer().scenario ? curVer().scenario.id : null),
+  // 荷主が自分で入れた荷物か（例の場面そのままではない）。空きを探すが、入れた荷物を例に差し替えないために使う
+  ownCargo: () => { const v = curVer(); return !!v && (!v.scenario || !!v.scenario.modified); },
 };

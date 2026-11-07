@@ -1059,7 +1059,7 @@ function syncGuideBar() {
   const lg = document.getElementById('g-legend'), st = document.getElementById('g-steps');
   if (lg) {
     const html = !g ? '' : S.view === 'compare'
-      ? `<span class="g-k">色は${LAYER_WORD[S.layer] || '道路距離'}（濃いほど大きい）</span>${(Rt.guideLegend && S.sel >= 0 ? Rt.guideLegend() : '')}<span class="g-k g-more">線と車の絵は道の目安で、実際の便ではありません。</span>`
+      ? `<span class="g-k">色は${LAYER_WORD[S.layer] || '道路距離'}（遠いほど明るい水色）</span>${(Rt.guideLegend && S.sel >= 0 ? Rt.guideLegend() : '')}<span class="g-k g-more">線と車の絵は道の目安で、実際の便ではありません。</span>`
       : (GUIDE_LEGEND[S.view] || '');
     if (lg.dataset.k !== html) { lg.dataset.k = html; lg.innerHTML = html; }
     lg.hidden = !html;
@@ -1070,7 +1070,7 @@ function syncGuideBar() {
     // 段の表示: 送り方を比べる（条件 → 結果 → 見積依頼文）、全国の物流傾向と空きを探す（区間を選ぶ → 空きを探す）
     const on = g && (S.view === 'compare' || S.view === 'market' || S.view === 'find');
     const n = S.view === 'find' ? 2 : S.view === 'market' ? 1 : b.contains('has-work') ? 3 : b.contains('has-detail') ? 2 : 1;
-    const labels = S.view === 'compare' ? ['荷物と行き先', '送り方と費用', '見積の依頼文'] : ['行き先の県を選ぶ', '空いた帰り便を探す'];
+    const labels = S.view === 'compare' ? ['荷物と行き先', '送り方と費用', '見積の依頼文'] : ['区間を選ぶ', '空いた帰り便を探す'];
     const key = on ? `${S.view}${n}` : '';
     if (st.dataset.n !== key) {
       st.dataset.n = key;
@@ -1453,8 +1453,8 @@ function setupMarketNow(noN) {
       if (has && fit === null) V.Find.checkFit(pn).then(() => sync());
       const noFit = has && fit === false;
       const noAnswer = has && (!V.Find.hasReturn(pn) || noFit);   // 選んだ区間の帰りの向きに合う架空の便が 1 つも無いときは、行き先が空の結果になるので主ボタンを出さない
-      if (noAnswer) { const sl = q('#mg-sel'); if (sl) sl.textContent += noFit ? ' この向きの例の便には、例の荷物が載りません。別の向きを選んでください。' : ' この向きの例の便は、まだありません。別の向きを選んでください。'; }
-      if (nx) { nx.hidden = noAnswer || !has; nx.disabled = !has; /* 区間を選ぶまでは、押せない主ボタンを出さない */ const t = has ? 'この向きで帰り便を探す' : '向きを選ぶ'; if (nx.dataset.t !== t) { nx.dataset.t = t; nx.innerHTML = has ? `${t}<small class="mg-badge">架空のデモ</small>` : t; } }
+      if (noAnswer) { const sl = q('#mg-sel'); if (sl) sl.textContent += noFit ? ' この向きの例の便には、例の荷物が載りません。別の向きを選ぶか、ボタンで空きを探してください。' : ' この向きの例の便は、まだありません。別の向きを選ぶか、ボタンで空きを探してください。'; }
+      if (nx) { nx.hidden = !has; nx.disabled = !has; /* 区間を選ぶまでは、押せない主ボタンを出さない。例の便が無い区間でも、次の行き先として空きを探すを出す */ const t = has ? (noAnswer ? 'この区間で空きを探す' : 'この向きで帰り便を探す') : '向きを選ぶ'; if (nx.dataset.t !== t) { nx.dataset.t = t; nx.innerHTML = has ? `${t}<small class="mg-badge">架空のデモ</small>` : t; } }
     } catch (e) { /* 区間が読めていないとき */ }
     q('#m-now-cond').textContent = `${pressed('#m-mode')}／${pressed('#m-scope')}ごと／上位 ${txt('#m-n-out')}／${txt('#m-km-out')}`;
     let r = null; try { r = V.Market.pairNames(); } catch (e) { r = null; }
@@ -1664,6 +1664,7 @@ const HeroCaptions = (function () {
   document.addEventListener('visibilitychange', () => { if (document.hidden) { if (raf) cancelAnimationFrame(raf); raf = 0; } else run(); });
   function init() {
     if (MapFx.reduced() || innerWidth <= 700) return;
+    if (!/[?&]captions=1/.test(location.search + location.hash)) return;   // 字幕の台本（scenes.json）は明示したときだけ読む（無いと 404 になる）
     fetch(HERO_DIR + 'scenes.json').then((r) => (r.ok ? r.json() : null)).then(load).catch(() => {});
   }
   return { init, load, update, run };

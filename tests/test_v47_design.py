@@ -110,7 +110,7 @@ def test_handoff_passes_the_selected_section_and_fills_pickup(w, h):
         page.js("document.querySelector('.mg-row').click()")   # 兵庫県 → 東京都（荷が多い向き）
         time.sleep(2.2)
         label = page.js("document.getElementById('mg-next').innerText.replace(/\\s+/g,' ').trim()")
-        assert label.startswith("この向きで帰り便を探す") and "架空のデモ" in label, label   # 文言の直し 2026-11-07
+        assert label.startswith(("この向きで帰り便を探す", "この区間で空きを探す")) and "架空のデモ" in label, label   # 文言の直し 2026-11-07
         if w == 360:   # 折れない（ボタンの高さは 2 行まで）
             assert page.js("document.getElementById('mg-next').getBoundingClientRect().height") < 70
             assert page.js("document.querySelector('#mg-next .mg-badge').getBoundingClientRect().height") < 20

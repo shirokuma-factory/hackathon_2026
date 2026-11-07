@@ -38,7 +38,9 @@ def test_top5_route_opens_find_with_a_fitting_trip(idx):
         page.js(f"document.querySelectorAll('.mg-row')[{idx}].click()")
         if idx in NO_TRIP:   # 鹿児島版のサンプルには兵庫県行きの便が無い（2026-11-07）。主ボタンを出さず、理由を 1 行出す
             page.wait(lambda: "この向きの例の便は、まだありません" in page.js("document.getElementById('mg-sel').textContent"), 30, f"理由の 1 行 {name}")   # 文言の直し 2026-11-07
-            assert page.js("document.getElementById('mg-next').hidden") is True
+            # 行き止まりにしない（2026-11-08）: 主ボタンは「この区間で空きを探す」として出し、空きを探すへ進める
+            assert page.js("document.getElementById('mg-next').hidden") is False
+            assert page.js("document.getElementById('mg-next').textContent").startswith("この区間で空きを探す")
             return
         # 載る例の荷の有無を調べ終えるまで待つ。主ボタンは出ているか、理由が 1 行出ているかのどちらか
         page.wait(lambda: page.js("(function(){const b=document.getElementById('mg-next');return !!b && !b.hidden && !b.disabled;})()") is True, 60, f"主ボタン {name}")

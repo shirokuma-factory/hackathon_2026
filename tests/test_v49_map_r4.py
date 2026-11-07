@@ -105,7 +105,7 @@ def test_find_has_repick_link_that_returns_to_market_with_the_selection(w, h):
         page.js("document.getElementById('f-repick').click()")
         page.wait(lambda: "v=market" in page.js("location.hash"), 30, "全国の物流傾向へ戻る")
         page.wait(lambda: page.js("__app.Market.state.sel") == k, 30, "選んだ区間のまま")
-        assert page.js("document.querySelector('#g-steps [aria-current=step]').textContent.replace(/\\s+/g,'')") == "1行き先の県を選ぶ"   # 文言の直し 2026-11-07
+        assert page.js("document.querySelector('#g-steps [aria-current=step]').textContent.replace(/\\s+/g,'')") == "1区間を選ぶ"   # 文言の直し 2026-11-07
         assert page.js("document.querySelector('.mg-row[aria-pressed=true]') !== null") is True
 
 
@@ -120,7 +120,7 @@ def test_market_numbers_do_not_overlap_and_only_the_selected_one_stays(w, h):
         time.sleep(2.5)
         # 区間を選ぶ前: 押せない主ボタンは出さない。段の表示は「1 区間を選ぶ」
         assert page.js("document.getElementById('mg-next').hidden") is True
-        assert page.js("document.querySelector('#g-steps [aria-current=step]').textContent.replace(/\\s+/g,'')") == "1行き先の県を選ぶ"   # 文言の直し 2026-11-07
+        assert page.js("document.querySelector('#g-steps [aria-current=step]').textContent.replace(/\\s+/g,'')") == "1区間を選ぶ"   # 文言の直し 2026-11-07
         m0 = _count(page)
         assert m0["controls"] <= 8 and m0["primary"] == 0 and m0["chars"] <= BUDGETS[w], m0
         pos = json.loads(page.js("JSON.stringify([...document.querySelectorAll('.m-num')].map(e => {const r=e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2];}))"))

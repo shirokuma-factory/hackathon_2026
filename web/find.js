@@ -1310,7 +1310,11 @@ const Find = (() => {
       if (ts.length) { F.carrier = ts[0].carrier_id; F.sel = ts[0].id; }
     } else if (pair) F.dir = null;
     await runMatch();
-    if (pair && rev.length && F.role === 'shipper' && !rev.some((t) => (F.results[t.id] || {}).ok)) {   // 選んだ区間の帰り便に載る荷で始める（「合う便はありません」から始めない）
+    if (pair && rev.length && F.role === 'shipper' && !rev.some((t) => (F.results[t.id] || {}).ok) && Work.ownCargo()) {
+      // 荷主が送り方を比べるで入れた荷物は、例の荷物に差し替えない。載らないことを伝え、例で試すかは本人が押して決める
+      const c0 = cargoOf();
+      F.autoNote = `入れた荷物（${c0 ? `${c0.label}・${c0.n} 個・${c0.w} kg` : ''}）は、この区間の便に載りません。例の荷物で試すときは「載る荷物の例で試す」を押してください。`;
+    } else if (pair && rev.length && F.role === 'shipper' && !rev.some((t) => (F.results[t.id] || {}).ok)) {   // 選んだ区間の帰り便に載る荷で始める（「合う便はありません」から始めない）
       await startExample();
       if (F.ex.id) {
         await tryExample(true);
