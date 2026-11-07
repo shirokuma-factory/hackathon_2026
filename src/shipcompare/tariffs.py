@@ -13,12 +13,20 @@ from .models import ROUTE_OTHER
 # 必ず持つメタデータ項目（受入条件 G06）。applies_from は資料に記載がなければ null
 REQUIRED_METADATA = ("carrier", "service", "source_url", "checked_on", "tax", "scope_note", "verified_by")
 
+# 宅配・路線便・ボックス便の表は、実在の会社の運賃の抜粋が data/tariffs/private/（git に入れない）にあればそれを、
+# なければ架空の見本（data/tariffs/sample_*.json）を読む。見本のとき、読んだ辞書の is_sample が True になる
 TARIFF_FILES = {
     "takuhai": "sagawa_kanto.json",
     "rosen": "nittsu_tsumiawase.json",
     "jitbox": "yamato_jitbox.json",
     "kashikiri": "mlit_standard_fare_kanto.json",
 }
+SAMPLE_FILES = {
+    "takuhai": "sample_parcel.json",
+    "rosen": "sample_ltl.json",
+    "jitbox": "sample_jitbox.json",
+}
+PRIVATE_DIR = "private"
 
 
 # 貸切の距離制運賃の運輸局別の表（SPEC §5.5 とその訂正）。既定は関東
@@ -64,11 +72,31 @@ def data_dir() -> Path:
     return Path(__file__).resolve().parents[2] / "data"
 
 
+def tariff_path(key: str, base: Path | None = None) -> tuple[Path, bool]:
+    """表のファイルの場所と、見本（架空の表）かどうか。private/ に実在の表があればそれを優先する。"""
+    root = (base or data_dir()) / "tariffs"
+    if key in SAMPLE_FILES:
+        private = root / PRIVATE_DIR / TARIFF_FILES[key]
+        if private.is_file():
+            return private, False
+        return root / SAMPLE_FILES[key], True
+    return root / TARIFF_FILES[key], False
+
+
 def load_tariff(key: str, base: Path | None = None) -> dict[str, Any]:
-    """key は TARIFF_FILES のキー（takuhai / rosen / jitbox / kashikiri）。"""
-    path = (base or data_dir()) / "tariffs" / TARIFF_FILES[key]
+    """key は TARIFF_FILES のキー（takuhai / rosen / jitbox / kashikiri）。
+    宅配・路線便・ボックス便で架空の見本を読んだときは、is_sample が True になる。"""
+    path, is_sample = tariff_path(key, base)
     with open(path, encoding="utf-8") as f:
-        return json.load(f)
+        t = json.load(f)
+    if key in SAMPLE_FILES:
+        t["is_sample"] = is_sample
+    return t
+
+
+def is_sample_tariff(key: str, base: Path | None = None) -> bool:
+    """その表が架空の見本かどうか。画面や出力で「架空の表」と示すのに使う。"""
+    return tariff_path(key, base)[1]
 
 
 def load_kashikiri(region: str = "関東", base: Path | None = None) -> dict[str, Any]:
@@ -121,6 +149,18 @@ def load_ferry_only(base: Path | None = None) -> dict[str, Any]:
     """道路で本州とつながっていない着地の一覧（data/geo/ferry_only_destinations.json）。"""
     with open((base or data_dir()) / "geo" / FERRY_ONLY_FILE, encoding="utf-8") as f:
         return json.load(f)
+
+
+def load_sample_tariffs(base: Path | None = None) -> dict[str, dict[str, Any]]:
+    """宅配・路線便・ボックス便を必ず架空の見本で読む（実在の表があっても使わない）。試験が、手元に実在の表があるかどうかに左右されないために使う。"""
+    out: dict[str, dict[str, Any]] = {}
+    for key in TARIFF_FILES:
+        if key in SAMPLE_FILES:
+            with open((base or data_dir()) / "tariffs" / SAMPLE_FILES[key], encoding="utf-8") as f:
+                out[key] = {**json.load(f), "is_sample": True}
+        else:
+            out[key] = load_tariff(key, base)
+    return out
 
 
 def load_all_tariffs(base: Path | None = None) -> dict[str, dict[str, Any]]:

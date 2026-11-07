@@ -1,0 +1,35 @@
+{
+  "carrier": "架空のボックス便会社C",
+  "service": "架空のチャーター便（ボックス1本）",
+  "source_url": "https://example.invalid/sample",
+  "applies_from": null,
+  "checked_on": "2026-11-07",
+  "tax": "税抜",
+  "scope_note": "架空の表。デモの3区間の形だけを真似た、20,000円・18,000円・40,000円。",
+  "source": "架空（試験と画面の説明のための値。実在の会社の運賃ではありません）",
+  "is_sample": true,
+  "box": {
+    "inner_mm": [
+      1040,
+      1040,
+      1700
+    ],
+    "max_kg": 500,
+    "volume_m3": 1.84
+  },
+  "routes": {
+    "kanto_kansai": {
+      "label": "東京→大阪府",
+      "fare_per_box": 20000
+    },
+    "kanto_tohoku": {
+      "label": "東京→宮城",
+      "fare_per_box": 18000
+    },
+    "sapporo_tokyo": {
+      "label": "道央→東京",
+      "fare_per_box": 40000
+    }
+  },
+  "verified_by": "架空の値のため照合なし"
+}

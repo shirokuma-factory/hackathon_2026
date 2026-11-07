@@ -164,10 +164,10 @@ def test_compare_lite_public_fare_range_and_cargo_paste():
         page.js("(function(){ const f = document.querySelector('#from'), t = document.querySelector('#to'); f.value = '東京都'; t.value = '大阪府'; document.querySelector('#km').value = '492'; renderRows(); render(); })()")
         _wait_for(page, "!!document.querySelector('#pub-range')", "公表運賃の幅")
         text = page.js("document.querySelector('#pub-range').textContent")
-        assert "14,000〜14,300 円" in text and "大手宅配の公開料金" in text   # 文言の直し 2026-11-07
+        assert "11,200〜11,500 円" in text and "架空の宅配の表" in text   # 文言の直し 2026-11-07
         cmp_text = page.js("document.querySelector('#cmp').textContent")
         assert "サガワ" not in cmp_text and "佐川" not in cmp_text and "ヤマト" not in cmp_text
-        assert "大手宅配の公開料金からの目安" in page.js("document.querySelector('tr[data-opt=\"takuhai\"]').textContent")
+        assert "架空の宅配の表からの例" in page.js("document.querySelector('tr[data-opt=\"takuhai\"]').textContent")
         # 関西あて以外は、幅を出さずに理由を出す
         page.js("document.querySelector('#to').value = '北海道'; document.querySelector('#to').dispatchEvent(new Event('change', {bubbles: true}));")
         assert page.js("!document.querySelector('#pub-range')")

@@ -6,9 +6,17 @@ import pytest
 
 from shipcompare.estimate import (
     ISSUE_LOADING, ISSUE_MULTI_DEST, ISSUE_OVER_1000KG, ISSUE_OVERSIZE, ISSUE_TAKUHAI_OVER,
-    ST_CHECK, ST_NOCALC, ST_OK, ST_UNUSABLE, estimate_all, summarize,
+    ST_CHECK, ST_NOCALC, ST_OK, ST_UNUSABLE, summarize,
 )
 from shipcompare.models import Item
+from shipcompare.estimate import estimate_all as _estimate_all
+from shipcompare.tariffs import load_sample_tariffs
+
+SAMPLE = load_sample_tariffs()  # 金額は架空の見本（data/tariffs/sample_*.json）から決まる値。実在の表の有無に左右されない
+
+
+def estimate_all(shipment, manual=None):
+    return _estimate_all(shipment, manual, tariffs=SAMPLE)
 
 from conftest import make_shipment, one, row_of
 
@@ -43,11 +51,11 @@ def test_takuhai_one_bad_piece_makes_row_unusable():
 
 
 def test_takuhai_dropoff_discount_100_incl_tax():
-    # 60 サイズ 1,040円。持込で 940円 → 税抜 855
+    # 60 サイズ 1,000円（架空の表）。持込で 900円 → 税抜 818
     r = row_of(rows([Item(1, 20, 20, 20, 1)], pickup="持込"), "takuhai")
-    assert r.amount == 855
+    assert r.amount == 818
     r = row_of(rows([Item(1, 20, 20, 20, 1)], pickup="集荷"), "takuhai")
-    assert r.amount == 945
+    assert r.amount == 909
 
 
 def test_takuhai_other_route_needs_input():
@@ -64,9 +72,9 @@ def rosen(kg, count=1, **kw):
 
 def test_rosen_band_boundary():
     r = rosen(250)
-    assert r.detail["weight_band_kg"] == 250 and r.amount == 8590
+    assert r.detail["weight_band_kg"] == 250 and r.amount == 9000
     r = rosen(250.01)
-    assert r.detail["weight_band_kg"] == 300 and r.amount == 10200
+    assert r.detail["weight_band_kg"] == 300 and r.amount == 10500
 
 
 def test_rosen_volume_decides_chargeable():
@@ -77,7 +85,7 @@ def test_rosen_volume_decides_chargeable():
 
 def test_rosen_1000kg_boundary():
     r = rosen(500, count=2)  # 1個500kgは2割増の対象外
-    assert r.amount == 32530
+    assert r.amount == 31500
     r = rosen(500.005, count=2)
     assert r.status == ST_NOCALC and r.amount is None
     assert ISSUE_OVER_1000KG in r.codes()
@@ -86,7 +94,7 @@ def test_rosen_1000kg_boundary():
 
 def test_rosen_min_max_plus_minus_10_percent():
     r = rosen(250)
-    assert r.low == 7731 and r.high == 9449
+    assert r.low == 8100 and r.high == 9900
 
 
 def test_rosen_oversize_surcharge_boundaries():
@@ -160,7 +168,7 @@ def test_destinations_unknown_is_check_not_ok():
 def test_jitbox_party_types():
     assert row_of(rows(one()), "jitbox").status == ST_OK
     r = row_of(rows(one(), sender_type="個人事業主"), "jitbox")
-    assert r.status == ST_CHECK and r.amount == 23100 and "要確認" in r.issues[-1].message
+    assert r.status == ST_CHECK and r.amount == 20000 and "要確認" in r.issues[-1].message
     r = row_of(rows(one(), receiver_type="個人"), "jitbox")
     assert r.status == ST_UNUSABLE and r.amount is None
 
@@ -217,7 +225,7 @@ def test_jitbox_piece_fit_by_any_orientation():
     assert row_of(rows([Item(1, 104, 170, 104, 10)]), "jitbox").status == ST_OK
     # 1辺でも内寸を超えたら要確認。額は出す
     r = row_of(rows([Item(1, 105, 105, 100, 10)]), "jitbox")
-    assert r.status == ST_CHECK and r.amount == 23100
+    assert r.status == ST_CHECK and r.amount == 20000
     assert any("1個がボックスの内寸を超えます" in x for x in r.reasons)
     r = row_of(rows([Item(1, 100, 100, 171, 10)]), "jitbox")
     assert r.status == ST_CHECK
