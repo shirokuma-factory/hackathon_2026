@@ -883,8 +883,11 @@ const Market = (() => {
     }
     if (!t) { tag.classList.remove('on'); return; }
     tag.innerHTML = `${m ? M3D.thumb(m, 64, 40, 'mth-tip') : ''}<b>${esc(t)}</b><span class="num">${esc(s)}</span>`;
-    tag.style.transform = `translate(${Math.min(innerWidth - 420, info.x + 18)}px, ${Math.max(8, info.y - 8)}px)`;
     tag.classList.add('on');
+    // 画面の内側に収める（狭い画面で左へはみ出したり、右端で切れたりしない）。幅と高さは中身を入れた後に測る
+    const tw = tag.offsetWidth || 240, th = tag.offsetHeight || 40;
+    const tx = Math.max(8, Math.min(innerWidth - tw - 8, info.x + 18)), ty = Math.max(8, Math.min(innerHeight - th - 8, info.y - 8));
+    tag.style.transform = `translate(${tx}px, ${ty}px)`;
   }
 
   function click(info) {

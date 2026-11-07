@@ -1704,3 +1704,46 @@ body.guided #map-credit, body.own-guided #map-credit { display: none !important;
 .home-terrain { display: none; }
 body.view-home .home-terrain { display: block; position: fixed; left: 12px; bottom: 6px; z-index: 101; margin: 0; padding: 2px 6px; border-radius: 4px; font-size: 11px; line-height: 1.5; color: #b4c0d4; background: rgba(5, 8, 14, .7); }
 .home-terrain a { display: inline-flex; align-items: center; min-height: 24px; min-width: 24px; color: #b4c0d4; text-decoration: underline; }
+
+/* ---------- 画面の見た目の直し（2026-11-08 の目視） ---------- */
+/* 最初の画面の左上の一行: 背景の映像の上で読めるよう、暗い下地を付けて白い字にする（下地 rgba(10,16,28,.78) を白に重ねても 4.5:1 以上） */
+.home-brand { padding: 8px 14px; border-radius: 12px; background: rgba(10, 16, 28, 0.78); }
+.home-brand .hb-tag { color: #fff; text-shadow: none; }
+
+/* 出典・利用条件を開いたとき: 不透明な下地を付け、左の欄（凡例）の右に置く。開閉の行は凡例より前に出す */
+@media (min-width: 601px) {
+  body.view-market #m-credits:has(#m-credits-d[open]) {
+    left: calc(var(--gutter) + 372px + 16px); z-index: 40; padding: 8px 14px 10px; color: #b4c0d4; text-shadow: none;
+    background: rgba(8, 13, 22, 0.98); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: var(--shadow);
+    max-height: calc(100vh - 120px); overflow: auto;
+  }
+  body.view-market #m-credits:has(#m-credits-d[open])::before { display: none; }
+  body.view-market #m-credits:has(#m-credits-d[open]) #m-credits-d > summary { color: #fff; }
+}
+@media (min-width: 601px) and (max-width: 1100px) {
+  body.view-market #m-credits:has(#m-credits-d[open]) { left: calc(var(--gutter) + 316px + 12px); right: 324px; }
+  body.view-market:not(.m-right-collapsed) #m-credits:has(#m-credits-d[open]) { right: 464px; }
+}
+
+/* 空きを探す: 地図の出典（右下）を右の便の一覧の左に寄せる（自社の運行は own.css で同じ扱い） */
+@media (min-width: 601px) {
+  body.view-find .maplibregl-ctrl-attrib { margin-right: calc(min(var(--m-w), 100vw - 356px) + 24px) !important; max-width: calc(100vw - min(var(--m-w), 100vw - 356px) - 40px - var(--gutter)) !important; }
+}
+
+/* 地図の上の説明の札: 狭い画面では画面の幅の内側で折り返す（位置は market.js で画面内に収める） */
+#hover-tag { max-width: calc(100vw - 16px); }
+@media (max-width: 600px) { #hover-tag { white-space: normal; } }
+
+/* 県のカード: 地名と短い言い回しは途中で折らない */
+.mp-title { flex-wrap: wrap; }
+.mp-title > span { white-space: nowrap; }
+.mp-stats { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
+.mp-stats span { white-space: nowrap; word-break: keep-all; }
+.mp-msg, .mp-notes li { word-break: keep-all; overflow-wrap: anywhere; line-break: strict; }
+#m-table td.c-pair { white-space: nowrap; }
+
+/* 狭い画面: 上の切り替えは 5 つ全部が見えるよう、ラベルを折り返して等分する */
+@media (max-width: 600px) {
+  html body #views button, html body #views .views-link { flex: 1 1 0; min-width: 0; white-space: normal; word-break: auto-phrase; overflow-wrap: anywhere; line-height: 1.15; font-size: 11px; padding: 0 2px; text-align: center; }
+  html body #views button .demo-tag { font-size: 9px; }
+}
