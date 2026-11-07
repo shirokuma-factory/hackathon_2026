@@ -325,7 +325,7 @@ def test_purpose_step_routes_and_keeps_g_in_the_address():
         page.js("document.querySelector('#role-carrier').click()")
         assert page.js("location.hash") == "#r=carrier"
         vis = _purposes(page)
-        assert vis == [["どの曜日の帰りが空いているか知りたい", "荷主に運賃や荷待ちを相談する文を作りたい", "荷待ちの時間を荷主に示す書面を作りたい", "ドライバーに荷待ちの時刻を記録してもらいたい"]], vis
+        assert vis == [["どの曜日の帰りが空いているか知りたい", "帰りの空車を荷主に案内する文を作りたい", "荷待ちの時間を荷主に示す書面を作りたい", "ドライバーに荷待ちの時刻を記録してもらいたい"]], vis
         assert page.js("document.getElementById('p-car-wait').getAttribute('href')") == "waiting.html#g"
         assert page.js("document.getElementById('p-car-driver').getAttribute('href')") == "driver.html"
         page.js("document.getElementById('p-car-propose').click()")

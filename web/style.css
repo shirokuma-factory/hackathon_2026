@@ -1671,12 +1671,24 @@ body.guided #mlg-traf { display: none; }
 #map-credit { display: none; position: fixed; z-index: 15; left: var(--gutter); bottom: 6px; right: calc(var(--m-w) + 40px); font-size: 10.5px; line-height: 1.5; color: #b4c0d4; text-shadow: 0 0 4px #05080e, 0 0 8px #05080e; pointer-events: none; }
 #map-credit a { display: inline-flex; align-items: center; min-height: 24px; min-width: 24px; padding: 0 3px; color: #b4c0d4; text-decoration: underline; pointer-events: auto; }
 #map-credit [hidden] { display: none; }
+#map-credit .mc-sep { display: none; }
+#map-credit .mc-jt { display: none; }
+body.view-market #map-credit .mc-jt:not([hidden]) { display: inline; }
 body.view-market #map-credit { display: block; }
 body.view-market #m-credits { bottom: 40px; }
 body.view-market { --cr-h: 62px; }
 body.view-market.cr-open { --cr-h: 144px; }
 @media (max-width: 600px) {
-  body:not(.view-home) #map-credit { display: block; top: 52px; bottom: auto; left: 8px; right: 8px; padding: 3px 6px; border-radius: 6px; background: rgba(5, 8, 14, .78); text-shadow: none; }
+  /* 地図の画面: 出典は 1 行だけにして、下のパネルのすぐ上（出典ボタンの上）に置く。上の操作と地図の中身に重ねない */
+  body:not(.view-home) #map-credit { display: block; top: auto; bottom: calc(var(--sheet-h) + 34px); left: 8px; right: 8px; width: max-content; max-width: calc(100vw - 16px); height: 24px; overflow: hidden; white-space: nowrap; font-size: 10px; line-height: 24px; padding: 0 6px; border-radius: 6px; background: rgba(5, 8, 14, .78); text-shadow: none; }
+  body:not(.view-home) #map-credit .mc-base { display: inline; }
+  body:not(.view-home) #map-credit .mc-long { display: none; }
+  body:not(.view-home) #map-credit .mc-sep { display: inline; }
+  body:not(.view-home) #map-credit a { min-height: 24px; padding: 0 1px; }
+  /* 市場を見る画面: 交通量 API の注記は折り返してよい。下のパネルのすぐ上に置く */
+  body.view-market #map-credit { bottom: calc(var(--sheet-h) + 4px); width: auto; height: auto; overflow: visible; white-space: normal; line-height: 1.5; padding: 2px 6px; }
+  body.view-market #map-credit .mc-base { display: block; line-height: 24px; white-space: nowrap; }
+  body.view-market #map-credit .mc-long { display: none; }
 }
 body.guided #map-credit, body.own-guided #map-credit { display: none !important; }
 
