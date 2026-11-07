@@ -106,6 +106,15 @@ def main() -> int:
     check(not hit_path, f"PC 固有のパス: {hit_path[:15] or 'なし'}{' ほか' if len(hit_path) > 15 else ''}（{len(hit_path)} 個）")
     check(not hit_name, f"作成者の呼び名・アカウント名: {hit_name or 'なし'}")
 
+    # 作業ツリーだけでなく、公開されるコミット（HEAD）の中身も調べる（作業ツリーで直しても未コミットなら公開に残る）
+    def head_hits(pat: str) -> list[str]:
+        r = subprocess.run(["git", "-C", str(ROOT), "-c", "core.quotepath=false", "grep", "-l", "-I", "-i", "-E", pat, "HEAD", "--"],
+                           capture_output=True)
+        return [x.split(":", 1)[1] for x in r.stdout.decode("utf-8", "replace").splitlines() if ":" in x]
+    head_path = head_hits(r"C:[\\/]+Users[\\/]+[^\\/ ]+")
+    head_name = head_hits("\u304a\u305f\u3064|tatsu" + "jpn")  # 呼び名。この行が自分に当たらないようエスケープで書く
+    check(not head_path and not head_name, f"コミット済み（HEAD）の PC 固有のパス・呼び名: {(head_path + head_name)[:10] or 'なし'}")
+
     junk = [f for f in files if "/" not in f and re.search(r"\.whl$|\.tar\.gz$|^\.edit_.*\.py$|^\.runtests\.sh$", f)]
     junk += [f for f in files if f.startswith("docs/assets6")]
     check(not junk, f"作業用のファイル: {junk or 'なし'}")

@@ -2,7 +2,7 @@
 
 回数は、手元の PC の 6 つのセッションの記録（`~/.claude/projects/` の jsonl）を `tools/submission/session_stats.py` で数えた値です（2026-11-07 21:30 の時点）。クラウドのセッションの分は入っていません。
 
-作成者 1 人が、5 日間（2026-11-03〜11-07）、Claude Code を開発の中心にして、アプリ・調査・3D・デモ動画を作った記録です。数字はすべてセッションの記録から数えた値で、確かめ方を各表に書きました。
+作成者 1 人が、6 日間（2026-11-03〜11-08）、Claude Code を開発の中心にして、アプリ・調査・3D・デモ動画を作った記録です。数字はすべてセッションの記録から数えた値で、確かめ方を各表に書きました。
 
 ## まとめ
 
@@ -13,16 +13,16 @@
 | サブエージェントの起動 | 226 回 | Agent の呼び出し |
 | サブエージェントの応答のうち Sonnet | 81%（Sonnet 21,208・Opus 4,935・Haiku 7） | サブエージェントの記録の model |
 | Workflow（複数の採点者を同時に動かす台本） | 11 回 | Workflow の呼び出し |
-| コミット | 214 | `git rev-list --count origin/claude/exciting-bell-uj2kvl` |
-| 自動試験 | 1,956 件 | `uv run pytest --collect-only -q` |
-| 採点・監査の記録 | 79 件 | `docs/reviews/*.md` |
+| コミット | 258 | `git rev-list --count origin/claude/exciting-bell-uj2kvl` |
+| 自動試験 | 2,083 件 | `uv run pytest --collect-only -q` |
+| 採点・監査の記録 | 94 件 | `docs/reviews/*.md` |
 | 一次資料の照合 | 111 件（不一致 0 件） | `docs/plan/2026-11-03_課題の出典.md` |
 
 ## Claude Code で可能になったこと
 
 | 1 人では難しいこと | Claude Code でどうしたか | 記録 |
 |---|---|---|
-| 5 日で、試験 1,897 件つきのアプリを作る | 本線が仕様と受入条件を書き、coder（Sonnet）を git worktree で最大 5 人同時に動かした。実行中の coder に SendMessage で直しを足した | `SPEC.md` の §1〜§53 |
+| 6 日で、試験 2,083 件つきのアプリを作る | 本線が仕様と受入条件を書き、coder（Sonnet）を git worktree で最大 5 人同時に動かした。実行中の coder に SendMessage で直しを足した | `SPEC.md` の §1〜§53 |
 | 自分の作ったものを、甘くない目で何度も採点する | 前の点を知らない新しい Opus に、審査員・配車担当・荷主の役で採点させ、点が頭打ちになったら基準を替えた（第 1〜8 部） | [試行錯誤の記録](試行錯誤の記録.md) |
 | 物流の実体験が無いまま、法令と統計で課題を確かめる | researcher（Opus）が一次資料を開いて照合し、ページと表の位置まで記録した | `docs/plan/2026-11-03_課題の出典.md`、`2026-11-04_自社データの形と記録義務の調査.md` |
 | 3D・画像・動画の編集を 1 人で回す | Blender・ComfyUI・DaVinci Resolve を MCP から動かし、仕上がりを画像の一覧で確かめた | `docs/LOCAL_AI.md`、`docs/video/` |
