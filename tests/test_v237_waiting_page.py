@@ -182,7 +182,7 @@ def test_page_ui_example_draft_and_csv_in_headless_edge():
           const sum = document.querySelector('#partners table.par tbody tr').textContent;
           const doc = document.querySelector('#wait-doc').textContent;
           const side = document.querySelector('#process').getBoundingClientRect(), d = document.querySelector('#wait-doc').getBoundingClientRect();
-          return {rows, sum, sentence: doc.includes('計 33,550 円（税抜）'), side: doc.includes('検品・仕分け'),
+          return {rows, sum, sentence: doc.includes('参考額は、33,550円（税抜）'), side: doc.includes('検品・仕分け'),
                   beside: side.left >= d.right - 1 && Math.abs(side.top - d.top) < 40, csv: typeof csvText === 'function' ? csvText() : '',
                   mine: S.res.rows.filter((r) => r.partner === S.partner).length, all: S.res.rows.length};
         })()""")

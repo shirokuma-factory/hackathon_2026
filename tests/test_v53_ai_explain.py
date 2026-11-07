@@ -104,8 +104,8 @@ def test_pipeline_runs_haiku_sonnet_opus_in_order_with_documented_params():
     res = run(c, events=events)
     assert [k["model"] for k in c.calls] == ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"]
     h, s, o = c.calls
-    assert [k["max_tokens"] for k in c.calls] == [2000, 4000, 6000]  # 思考の分を含む
-    assert h["output_config"]["effort"] == "low" and s["output_config"]["effort"] == "medium" and o["output_config"]["effort"] == "medium"
+    assert [k["max_tokens"] for k in c.calls] == [2000, 8000, 6000]  # 思考の分を含む
+    assert h["output_config"]["effort"] == "low" and s["output_config"]["effort"] == "low" and o["output_config"]["effort"] == "medium"
     assert h["output_config"]["format"]["type"] == "json_schema" and o["output_config"]["format"]["type"] == "json_schema"
     assert "format" not in s["output_config"]
     for sch in (h["output_config"]["format"]["schema"], o["output_config"]["format"]["schema"]):
@@ -556,3 +556,107 @@ def test_ui_file_url_shows_the_one_line_only():
         assert page.js("!document.querySelector('[data-ai=ask]')")
         assert page.js("document.querySelector('#ai-box').textContent.trim()") == "説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）"
         assert page.js("!document.querySelector('script[src*=ai_explain]')")
+
+
+# ---------------------------------------------------------------- 実運用の指摘（2026-11-07）への対策
+EXAMPLE = json.loads((ROOT / "tests" / "data" / "waiting_example_facts.json").read_text(encoding="utf-8"))  # waiting.html?example=1 の aiFacts()
+
+# 規則どおりに書いた下書き（一覧の数字だけ、約束・謝罪なし、算用数字、3 段落）
+DRAFT_EXAMPLE = (
+    "いつもお世話になっております。2026-10-01 から 2026-10-16 の期間に、荷待ちが 12 件ありました。待ちは合計で 682 分（11 時間 22 分）で、"
+    "そのうち 1 時間以上の待ちが 5 回、2 時間以上の待ちが 1 回です。\n\n"
+    "標準的運賃の告示の表に当てた参考額は 33,550 円（税抜）です。これは計算の目安であり、請求を決めるものではありません。\n\n"
+    "つきましては、今後の荷待ちを減らす方法について、一度ご相談の時間をいただけないでしょうか。どうぞよろしくお願いいたします。")
+
+
+def test_example_facts_pass_machine_check_and_reach_verify():
+    f = ax.clean_facts(EXAMPLE)
+    assert f["count"] == 12 and f["totals"]["amount_yen_ex_tax"] == 33550 and f["totals"]["from_reception"] is False
+    assert ax.draft_issues(DRAFT_EXAMPLE, f) == []
+    c = FakeClient()
+    c.plan[ax.MODEL_SONNET] = c.resp(DRAFT_EXAMPLE, tin=3000, tout=500)
+    res = ax.run_pipeline(f, c)
+    assert res["ok"] is True and res["draft"] == DRAFT_EXAMPLE and res["problems"] == []
+    sonnet, opus = c.calls[1], c.calls[2]
+    assert DRAFT_EXAMPLE in opus["messages"][0]["content"]  # 確かめの段に下書きが渡る
+    s_user = sonnet["messages"][0]["content"]
+    for needle in ("682 分（11 時間 22 分）", "33,550 円", "5 回", "1 回", "12 件", "2026-10-01 〜 2026-10-16", "着いた時刻（到着）から"):
+        assert needle in s_user, needle
+
+
+def test_figures_list_is_built_from_the_facts():
+    text = ax.figures_text(ax.clean_facts(EXAMPLE))
+    assert "件数（回数）: 12 件" in text and "合計の待ち: 682 分（11 時間 22 分）" in text and "参考額（税抜）: 33,550 円" in text
+    assert "1 時間以上の荷待ちの回数: 5 回" in text and "2 時間以上の荷待ちの回数: 1 回" in text
+
+
+def test_prompts_carry_the_rules_against_invented_promises_and_false_blank_alarms():
+    d = ax.SYS_DRAFT
+    for s in ("事実と『使ってよい数字の一覧』に書かれたことだけ", "約束・謝罪・記録の出来についての言及をしない", "空欄の任意欄", "相談のお願い" if "相談のお願い" in d else "丁寧な相談のお願い",
+              "450 字以内", "2〜3 つの短い段落", "配車課長", "添え書き", "『〜とします』", "3 文以上続けず", "漢数字"):
+        assert s in d, s
+    k = ax.SYS_CHECK
+    for s in ("任意欄の空欄", "受付", "指定の到着時刻", "荷役終了", "空欄そのものを理由にした指摘は 1 件も出さない", "必須欄"):
+        assert s in k, s
+    c = FakeClient()
+    run(c, EXAMPLE)
+    assert c.calls[1]["system"] == ax.SYS_DRAFT and c.calls[0]["system"] == ax.SYS_CHECK
+    # 点検の指摘は下書きの段に渡さない（記録の出来の文を誘わないため）
+    assert "荷役開始が到着より前" not in c.calls[1]["messages"][0]["content"]
+
+
+def test_truncated_draft_is_never_verified_and_is_logged():
+    c = FakeClient()
+    c.plan[ax.MODEL_SONNET] = c.resp("今回を一つの区切りとして、改善策や記録の確認方法を一緒に", stop="max_tokens", tout=8000)
+    res = run(c, EXAMPLE)
+    assert res["ok"] is False and res["fallback"] is True and res["draft"] is None
+    assert len(c.calls) == 2 and all(k["model"] != ax.MODEL_OPUS for k in c.calls)  # 確かめには回さない
+    st = res["steps"][1]
+    assert st["status"] == "failed" and "max_tokens" in st["detail"] and st["stop_reason"] == "max_tokens" and st["output_tokens"] == 8000
+
+
+def test_draft_ending_mid_sentence_or_too_long_is_rejected_without_cutting():
+    c = FakeClient()
+    c.plan[ax.MODEL_SONNET] = c.resp("参考額は 33,550 円です。改善策を一緒に")  # stop は end_turn でも、文の途中は出さない
+    res = run(c, EXAMPLE)
+    assert res["ok"] is False and len(c.calls) == 2 and "途中" in res["steps"][1]["detail"]
+    c2 = FakeClient()
+    c2.plan[ax.MODEL_SONNET] = c2.resp("あ" * 701 + "。")
+    res2 = run(c2, EXAMPLE)
+    assert res2["ok"] is False and len(c2.calls) == 2 and "長すぎ" in res2["steps"][1]["detail"]
+
+
+def test_numbers_in_the_allowed_list_pass_even_with_counters():
+    f = ax.clean_facts(EXAMPLE)
+    # 2 回・4 回は場所別の集計（consult）の回数、5 回・1 回は 1・2 時間を超えた回数
+    ok = "渋谷系の拠点で 2 回、別の時間帯で 4 回、5 回、1 回、12 件、682 分、11 時間 22 分、33,550 円、30 分ごとです。"
+    assert ax.draft_issues(ok, f) == [], ax.draft_issues(ok, f)
+    for bad, quote in (("7 回です。", "7 回"), ("999 円です。", "999 円"), ("13 件です。", "13 件"), ("11 時間 23 分です。", "23 分"), ("9 時間です。", "9 時間")):
+        iss = ax.draft_issues(bad, f)
+        assert iss and any(quote in i["quote"] for i in iss), bad
+
+
+def test_kanji_numerals_only_rejected_with_counters():
+    f = ax.clean_facts(EXAMPLE)
+    for ok in ("一緒に考えたく、一つ目の案を一度ご相談します。一方で、十分に配慮します。", "一緒に改善策を話し合いたいです。"):
+        assert ax.draft_issues(ok, f) == [], ok
+    for bad in ("参考額は三万円です。", "十二回の荷待ちです。", "二時間を超えました。", "三十分ごとです。", "1 万円です。"):
+        assert ax.draft_issues(bad, f), bad
+
+
+def test_issues_are_grouped_and_optional_blank_fields_are_dropped():
+    raw = [{"row": i, "field": "reception", "message": "受付時刻が空欄"} for i in range(1, 13)]
+    assert ax.group_issues(raw) == []  # 任意欄の空欄は指摘にしない
+    raw2 = [{"row": i, "field": "start", "message": "荷役開始が到着より前"} for i in (3, 4, 5)] + [{"row": 9, "field": "end", "message": "終了が開始より前"}]
+    g = ax.group_issues(raw2)
+    assert len(g) == 2 and g[0]["n"] == 3 and g[0]["rows"] == [3, 4, 5] and g[0]["row"] == 3 and g[1]["n"] == 1
+    # 空欄でも必須欄（開始）は残す
+    assert ax.group_issues([{"row": 1, "field": "start", "message": "荷役開始が空欄"}])
+    c = FakeClient({ax.MODEL_HAIKU: FakeClient().resp(json.dumps({"issues": raw}, ensure_ascii=False))})
+    res = run(c, EXAMPLE)
+    assert res["issues"] == [] and res["steps"][0]["count"] == 0
+
+
+def test_ui_groups_identical_issue_messages():
+    js = (ROOT / "web" / "ai_explain.js").read_text(encoding="utf-8")
+    assert "（${esc(i.n)} 件）" in js

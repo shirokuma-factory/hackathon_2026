@@ -182,9 +182,9 @@ def test_g106_copy_buttons_forget_two_step_and_csv_paste():
         page.js("Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: () => Promise.reject(new Error('denied'))}}); document.querySelector('#b-copydoc').click()")
         page.wait(lambda: page.js("document.querySelector('#copybox').hidden === false"), 10, "枠")
         text = page.js("document.querySelector('#copyta').value")
-        for need in ("荷待ち・荷役に関する協議のお願い（下書き）", "【記録の一覧】", "33,550 円", "【根拠】", "第 21 項", "架空 元請A物流 御中"):
+        for need in ("荷待ち時間についてのご相談", "拝啓", "敬具", "別紙1", "33,550", "第21項", "架空 元請A物流 物流ご担当者様"):   # 書面の作り直し 2026-11-07
             assert need in text, need
-        assert text.count("\n2026-10-") == 12  # 記録の一覧は、その相手（架空 元請A物流）の 12 行
+        assert text.count("\n10月") == 12  # 記録の表は、その相手（架空 元請A物流）の 12 行
         assert page.js("document.activeElement.id") == "copyta"
         # 許されたら、コピーしたと出る
         page.js("window.__copied = null; Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: (t) => { window.__copied = t; return Promise.resolve(); }}}); document.querySelector('#b-copycsv').click()")

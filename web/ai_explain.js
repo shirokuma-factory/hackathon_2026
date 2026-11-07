@@ -83,7 +83,7 @@
     }
     const chk = (res.steps || []).find((s) => s.step === 'check');
     const checkFailed = !!chk && chk.status === 'failed';
-    parts.push(`<p><b>記録の点検</b></p>${checkFailed ? '<p class="small">点検できませんでした。</p>' : (res.issues || []).length ? `<ul>${res.issues.map((i) => `<li>${esc(i.row)} 行目 ${esc(i.field)}: ${esc(i.message)}</li>`).join('')}</ul>` : '<p class="small">指摘はありませんでした。</p>'}`);
+    parts.push(`<p><b>記録の点検</b></p>${checkFailed ? '<p class="small">点検できませんでした。</p>' : (res.issues || []).length ? `<ul>${res.issues.map((i) => `<li>${(i.n || 1) > 1 ? `${esc(i.field)}: ${esc(i.message)}（${esc(i.n)} 件）` : `${esc(i.row)} 行目 ${esc(i.field)}: ${esc(i.message)}`}</li>`).join('')}</ul>` : '<p class="small">指摘はありませんでした。</p>'}`);
     if ((res.steps || []).some((s) => s.status === 'failed')) parts.push('<div class="bar"><button type="button" data-ai="retry">もう一度試す</button><span class="small">失敗した回も、もう一度押すと新しく送ります。</span></div>');
     if (tot) parts.push(`<p class="ai-cost">合計 入力 ${tot.input_tokens} / 出力 ${tot.output_tokens} トークン、${usd(tot.cost_usd)}（目安）。金額は概算です。</p>`);
     return parts.join('');

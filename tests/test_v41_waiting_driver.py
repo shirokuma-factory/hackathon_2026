@@ -238,15 +238,15 @@ def test_document_for_the_receiving_shipper_shows_fault_column_early_split_and_n
                            defaults: document.querySelector('#defaults-box').textContent, ask: document.querySelector('#ask-box').textContent,
                            askDoc: !!document.querySelector('#ask-doc'), process: document.querySelector('#process').textContent,
                            sum: document.querySelector('#partners table.par tbody tr').textContent})""")
-        assert "荷主等の都合" in doc["head"]
+        assert "待機（分）" in doc["head"]   # 書面の作り直し 2026-11-07: 荷主等の都合の列は注記に移した
         t = doc["text"]
-        assert "荷主等の都合の欄が貼り付けの記録に無かったため" in t and "該当 3 行" in t
+        assert "荷主等の都合の欄が貼り付けの記録に無かったため" in t and "該当3行" in t
         # 受付の時刻がある回は受付から数えた額が主な額（SPEC §43）。受付があるので「早着の疑いを除くと」は出さない
-        assert "受付から数えた数字" in t and "受付の時刻がある 3 回" in t and "早く着いた可能性（時刻の指定なし）" in t  # 文言の直し 2026-11-07
+        assert "受付から数えた数字" in t and "受付の時刻がある3回" in t and "早く着いた可能性（時刻の指定なし）" in t  # 文言の直し 2026-11-07
         assert "早着の疑いを分けた数字" not in t and "を除くと 0 円" not in t
-        assert "指定の到着時刻が無く、到着が 05:00 から 07:59 までの回" in t
-        assert "車種が記入されていない 3 行は『中型』の単価で計算しています" in t
-        assert "運転者が荷役をして荷役の方法が記入されていない 1 行は『手積み』の単価" in t
+        assert "指定の到着時刻が無く、到着が05:00から07:59までの回" in t
+        assert "車種が記入されていない3行は『中型』の単価で計算しています" in t
+        assert "運転者が荷役をして荷役の方法が記入されていない1行は『手積み』の単価" in t
         assert "受付の時刻から数えた額" in doc["sum"]  # 文言の直し 2026-11-07 and "を除くと" not in doc["sum"]
         assert "車種が空欄の 3 行は『中型』" in doc["defaults"] and "積み降ろしの方法が空欄の 1 行" in doc["defaults"]  # 文言の直し 2026-11-07
         assert "運送を頼んできた会社として読みました" in doc["ask"] and doc["askDoc"]

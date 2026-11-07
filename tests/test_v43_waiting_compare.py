@@ -114,7 +114,7 @@ def test_waiting_page_memo_paste_document_main_figure_and_pdf_table_cross_check(
         assert got["bad"] == 0 and got["errs"] == "", got
         assert "「あいう」は日付" in got["note"] and "表に入れていません" in got["note"]
         doc = got["doc"]
-        assert "受付から数えた数字" in doc and "受付の時刻がある 2 回" in doc and "受付の時刻から数えると" in doc
+        assert "受付から数えた数字" in doc and "受付の時刻がある2回" in doc and "受付の時刻から数えると" in doc
         assert "を除くと 0 円" not in doc and "を除くと" not in doc
         assert "参考額の合計" in doc and "受付の時刻がある回は受付から数えた額" in doc
         # 荷主として使う: 受付記録を貼り、紙・PDF の表（空白で区切った列）を照合に貼る
