@@ -53,6 +53,12 @@ def main() -> int:
     shots = {s["id"]: s for s in json.loads((ROOT / plan["shots"]).read_text(encoding="utf-8"))["shots"]}
     words = [w for w in json.loads((Path(a.review) / "transcript.json").read_text(encoding="utf-8"))["words"]
              if w.get("type") == "word" and w["text"].strip() and not re.fullmatch(r"[、。，．,.!?！？…・\s]+", w["text"])]
+    # 文字起こしは英語の語（BackFull）の前の無音や句点まで 1 語に含め、始まりが 1〜2 秒早く付くことがある。
+    # 英字を含む語は、終わりから 1 文字 0.08 秒（最大 0.8 秒）で始まりを付け直す
+    for w in words:
+        n = len(re.findall(r"[A-Za-z]", w["text"]))
+        if n:
+            w["start"] = max(w["start"], w["end"] - min(0.8, 0.08 * n))
     total = edl["total"]
     errs: list[str] = []
     warn: list[str] = []

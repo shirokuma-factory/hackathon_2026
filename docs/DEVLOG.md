@@ -469,3 +469,20 @@
 - 2026-11-08 07:03 `9b3aaac` Waiting: bug-hunt fixes (duplicates, CSV re-import, year crossing, title rows, mode, mixed handlers, LINE text)
 - 2026-11-08 07:05 `071080b` Map compare: bug-hunt fixes; AI check field names in Japanese
 - r19（作成者の指摘 11/8 朝 2 回目）: ②などの地図の画面で 3D が 2 重に見える（3 か所）、書面を作る場面が実際に文章を作っている画面になっていない、さつま運輸の困りごとが抜けている、1:57〜2:00 は広く切り出す。困りごと 3 つを図にした（MGSAT_m、声の「帰りが」「荷待ちで」「言い出しにくい」に合わせて出す）。書面の場面を広く切り出した（W19_AI_L、送る内容 → 点検中 → 下書き中 → 確かめ中 → 一致と本文）。地図の 2 重は、録画の段階で県境・塗り・経路（deck.gl の層）が下の地図からずれていた。アプリのセッションに伝え、直し中（画素比 2 で地図と deck の解像度比が食い違う疑い）。直ったら地図の場面を撮り直す。
+- 2026-11-08 07:12 `ffd2870` Video r19: Satsuma's three problems as a figure, wider AI generation shot
+- 2026-11-08 07:13 `47e9acd` Compare lite: bug-hunt and grader fixes
+- 2026-11-08 07:18 `0c81241` Map: keep the deck.gl overlay at the map's real pixel ratio (no doubled Japan at DPR 2)
+- 2026-11-08 07:21 `56afd91` Own fleet: return weekday is the return trip's own day; km-free judging; header-less CSV
+- 2026-11-08 07:22 `f76c2b9` README: own-fleet example on Saturday (unified weekday); refresh counts
+- 2026-11-08 07:28 `5f300fa` Parcel 160 size weight limit: 25 kg (author's decision)
+- 2026-11-08 07:33 `bae8a7e` Video r20: sync check tool, re-record map shots after the overlay fix
+- 2026-11-08 07:35 `e310f2f` Commit generation log and the i2i style workflow
+- 2026-11-08 07:35 `a029fa6` Fix grader r4 findings: usage counts at one time point, tracked-only test count
+- 2026-11-08 07:36 `c9deecc` Docs: LOCAL_AI describes what each in-app Claude feature sends; third real run
+- 2026-11-08 07:36 `43f04e2` README: add skills/hooks and the working pattern with the author (grader r4e)
+- 2026-11-08 07:39 `cafa549` README: retake screenshots on the current build; add a shipper-side figure
+- 2026-11-08 07:39 `bdc74e5` README: state where the Claude usage counts come from (grader r4b)
+- 2026-11-08 07:42 `2a2edce` Commit grader records r1-r4 and the score history; rights doc counts and ranges
+- r20〜r21（作成者の指示 11/8: 撮ったものが出力に入り意図どおりに動くかを毎回確かめる。話し終わる前に終わる映像、内容とナレーションのずれは強く禁止）: `tools/video/check_sync.py` を作った。書き出した動画の文字起こしと EDL から、声より先に終わる画面（E2）、描き終わる前に切れる図（E4）、文の途中で消える図・字幕（E5・E6）、余韻（E7）、黒（E8）を数える。r17 で既知の欠け（ロゴが途中で切れる、声より先に終わる）を拾い、r19 は 0 件。文字起こしが英字の語（BackFull）の始まりを 1〜2 秒早く付けるので、英字の語は終わりから付け直す。
+- アプリのセッションが地図の層のずれを直した（0c81241、画素比 2 で MapLibre と deck.gl の解像度比が食い違い、層が 1.33 倍に拡大していた）。地図の場面を撮り直した（rec20、W20_*）。帰りの曜日はアプリ側で土曜にそろった。
+- r21: check_sync の注意（E3）で、S2 の最初の切り替えが「帰り便を|探すと」の途中だったので、読点の間（144.5 秒）に合わせ、続きの画面を同じ所から始める（W20_P9b_L・W20_P10b_L）。r21 は誤り 0 件、注意 3 件（「Backfull」と言う瞬間の切り替えで、意図どおり）。179.6 秒、-14.6 LUFS。r20 の mp4 は書き出し後に assembly から消えていた（原因不明、点検の材料は残っている）。
