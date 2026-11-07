@@ -463,3 +463,5 @@
 - 2026-11-08 06:48 `037ee54` Submission form r5 fixes; devlog hook now catches git -c ... commit
 - r18（作成者の指摘 11/8 朝）: 「Backfull です」と締めのロゴの動きが途中で切れていた。1.5 倍のロゴ（LOGO_F、2.5 秒で描き終わる）を最後まで出し、締めは描き終わってから約 1.4 秒残す。書面の場面を、Claude が説明文を作っている最中の画面（送る内容 → Haiku 点検中 → Sonnet 下書き中 → Opus 確かめ → 一致と本文）に替えた（W18_AI_L、待ちの間は 4.5 倍）。尺は声を 1.12 倍にして 179.6 秒。
 - 書き出し: MOV を作らず、Resolve から「YouTube - 1080p」の設定で mp4 を直接書き出す（H.264 High、7.2 Mbps）。API から画質も音量の正規化も指定できず、音は -20.4 LUFS だったので、`deliver_mp4.py --copy-video` で映像は写すだけにして音だけ -14.6 LUFS に直した。
+- 2026-11-08 06:51 `7da7b75` Video r18: full logo animations, live AI generation shot, direct mp4 from Resolve
+- 2026-11-08 06:52 `bb0cd6d` Rights doc matches HEAD; record history decisions; drop an unused untraced image
