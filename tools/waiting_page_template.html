@@ -223,6 +223,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   header.top { padding-bottom: 16px; }
   header.top h1 { font-size: var(--fs-5); letter-spacing: -0.01em; }
   main { grid-template-columns: 384px minmax(0, 1fr); gap: 40px; }
+  .col-in-w { grid-column: 1; grid-row: 1; align-self: stretch; min-width: 0; }   /* 入力の欄が貼り付く範囲を 1 行目だけにして、下の書面に重ならないようにする */
   .col-in { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: thin; padding: 0 4px 8px 0; margin-right: -4px; }
   #input { padding: 24px; }
   #result { background: none; border: 0; box-shadow: none; padding: 0; margin: 0; }
@@ -256,7 +257,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   /* 書面は右の列に収まらない（表が 13 列ある）ので、入力の欄の下も使って全幅に置く */
   .col-out, #result, #result-d, #result-d::details-content { display: contents; }
   #partners { grid-column: 2; grid-row: 1; min-width: 0; }
-  #draft-area { grid-column: 1 / -1; margin-top: 24px; padding-top: 40px; border-top: 1px solid var(--line-soft); min-width: 0; }
+  #draft-area { grid-column: 1 / -1; grid-row: 2; margin-top: 24px; padding-top: 40px; border-top: 1px solid var(--line-soft); min-width: 0; }
   #draft-area > h2 { font-size: var(--fs-4); margin: 0 0 16px; }
   #draft-area .wrap { justify-content: center; }
   #draft-area .wrap > #wait-doc { flex: 1 1 0; min-width: 0; max-width: 794px; }
@@ -264,25 +265,21 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   .side-col aside#process { position: static; flex: none; }
   .side-col .ai-box { margin: 0; }
 }
-/* ---------- 書面の用紙（書面の作り直し 2026-11-07）: どの配色でも白地に濃い文字。本文は明朝、表と注記はゴシック ---------- */
+/* ---------- メールのカード（2026-11-07）: どの配色でも白地に濃い文字。本文は読みやすいゴシック体 15〜16px、行の高さ 1.8 ---------- */
 #wait-doc { --text: var(--paper-text); --muted: var(--paper-muted); --line: var(--paper-line); --line-soft: var(--paper-soft); --row-line: var(--paper-soft); --head-bg: var(--paper-head); --card: var(--paper); --card-2: var(--paper-head); --hi: var(--paper-hi); --accent: var(--paper-accent); --warn: var(--paper-ng); --ok: var(--paper-ok); --chk: var(--paper-chk); --elev-1: none; --btn: var(--paper); --field: var(--paper);
-  color: var(--paper-text); background: var(--paper); border: 0; border-radius: 3px; box-shadow: var(--paper-shadow); min-height: 480px; position: relative;
-  padding: clamp(28px, 7vw, 64px) clamp(16px, 8vw, 72px) clamp(32px, 7vw, 72px);
-  font-family: "Noto Serif JP", "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "BIZ UDPMincho", "MS PMincho", serif; font-size: 15px; line-height: 1.8; }
+  color: var(--paper-text); background: var(--paper); border: 1px solid var(--paper-line); border-radius: 8px; box-shadow: var(--elev-1); min-height: 320px; position: relative;
+  padding: 0; overflow: hidden;
+  font-family: var(--font); font-size: 16px; line-height: 1.8; }
 #wait-doc .empty-state, #wait-doc table, #wait-doc .small, #wait-doc small, #wait-doc .main-amt, #wait-doc details summary, #wait-doc h4, #wait-doc h5 { font-family: var(--font); }
 #wait-doc .small, #wait-doc small { color: var(--paper-muted); font-size: 12.5px; line-height: 1.7; }
 #wait-doc p { margin: 0; }
-#wait-doc .letter p.l-body { margin: 0 0 0.9em; text-indent: 1em; }
-#wait-doc .letter p.l-last { margin-bottom: 0.4em; }
-#wait-doc .l-date { text-align: right; }
-#wait-doc .l-to { margin-top: 1.2em; font-size: 16px; }
-#wait-doc .l-from { margin: 1.2em 0 0; text-align: right; }
-#wait-doc h3.l-subject { margin: 1.6em 0 1.2em; text-align: center; font-size: 18px; font-weight: 700; letter-spacing: 0.08em; }
-#wait-doc .l-sign { text-align: right; margin-top: 0.4em; }
-#wait-doc .l-ki { text-align: center; margin: 1.6em 0 0.8em; letter-spacing: 1em; text-indent: 1em; }
-#wait-doc dl.l-items { display: grid; grid-template-columns: 6em 1fr; gap: 0 12px; margin: 0 0 12px; }
-#wait-doc dl.l-items dt { color: var(--paper-text); } #wait-doc dl.l-items dd { margin: 0; }
-#wait-doc .l-end { text-align: right; margin-top: 1em; }
+#wait-doc .m-head { margin: 0; padding: 14px clamp(16px, 4vw, 32px); display: grid; grid-template-columns: 3.2em 1fr; gap: 4px 12px; background: var(--paper-head); border-bottom: 1px solid var(--paper-line); font-size: 14px; line-height: 1.6; }
+#wait-doc .m-head dt { color: var(--paper-muted); } #wait-doc .m-head dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+#wait-doc .m-body { padding: clamp(18px, 4vw, 32px) clamp(16px, 4vw, 32px) clamp(22px, 4vw, 36px); }
+#wait-doc .m-body > p { margin: 0 0 1em; overflow-wrap: anywhere; }
+#wait-doc .m-body > p.m-close { margin-top: 1.4em; }
+#wait-doc .m-body > p.m-sign { margin: 1.4em 0 0; padding-top: 0.2em; color: var(--paper-text); line-height: 1.9; }
+#wait-doc .m-rule { color: var(--paper-muted); }
 #wait-doc .fill { padding: 0 4px; border-radius: 3px; background: var(--paper-fill); border-bottom: 1px dashed var(--paper-fill-line); cursor: text; }
 #wait-doc .fill.is-blank { color: var(--paper-fill-text); }
 #wait-doc .fill:focus { outline: 2px solid var(--paper-accent); outline-offset: 1px; background: var(--paper-fill-focus); }
@@ -299,8 +296,10 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 #wait-doc ol.rec-notes { list-style: none; margin: 8px 0 0; padding: 0; counter-reset: fn; }
 #wait-doc ol.rec-notes li { counter-increment: fn; padding-left: 2.4em; text-indent: -2.4em; }
 #wait-doc ol.rec-notes li::before { content: "※" counter(fn) " "; display: inline-block; width: 2.4em; text-indent: 0; }
-#wait-doc .l-attach { margin-top: 48px; padding-top: 32px; border-top: 1px dashed var(--paper-dash); font-size: 14px; line-height: 1.75; }
-#wait-doc .l-attach h4 { margin: 28px 0 8px; font-size: 15px; } #wait-doc .l-attach h4:first-child { margin-top: 0; }
+#wait-doc .l-attach { margin: 0; padding: 0 clamp(16px, 4vw, 32px) 20px; border-top: 1px dashed var(--paper-dash); font-size: 14px; line-height: 1.75; }
+#wait-doc .l-attach > summary { cursor: pointer; padding: 14px 0; font-weight: 700; font-size: 14px; color: var(--paper-text); }
+#wait-doc .l-attach[open] > summary { margin-bottom: 4px; }
+#wait-doc .l-attach h4 { margin: 24px 0 8px; font-size: 15px; } #wait-doc .l-attach > summary + h4 { margin-top: 8px; }
 #wait-doc .l-attach h5 { margin: 16px 0 4px; font-size: 13.5px; }
 #wait-doc .l-attach p { margin: 6px 0; }
 #wait-doc .l-attach ul.list { margin: 6px 0; padding-left: 1.4em; }
@@ -314,9 +313,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 @media (max-width: 760px) { #wait-doc .rec-hint { display: block; } }
 @media (max-width: 760px) { #draft-area .wrap > #wait-doc { flex: 0 0 auto; } }
 @media (max-width: 480px) { .heat-ax span { white-space: nowrap; } .heat-ax span:not(:nth-child(6n+1)) { visibility: hidden; } #partners .stat .stat-n { white-space: nowrap; font-size: 26px; } #partners .stat.hero .stat-n { font-size: 40px; } }
-@media (max-width: 600px) { #wait-doc { padding-left: 16px; padding-right: 16px; } }
-@media (max-width: 480px) { #wait-doc h3.l-subject { font-size: 16px; letter-spacing: 0.02em; } #wait-doc .l-from { font-size: 14px; } }
-@media (max-width: 600px) { #wait-doc { font-size: 15px; } #wait-doc dl.l-items { grid-template-columns: 5em 1fr; } }
+@media (max-width: 600px) { #wait-doc { font-size: 15px; } #wait-doc .m-head { grid-template-columns: 2.8em 1fr; font-size: 13.5px; } }
 /*PRINT-START*/
 @page { size: A4 portrait; margin: 12mm; }
 @media print {
@@ -326,18 +323,23 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   html, body { background: #fff; margin: 0; padding: 0; }
   header.top, .app-header, .protect, #selftest, .col-in, #partners, #ai-box, #draft-area > h2, #draft-area > .bar, #draft-area > .ask, aside#process { display: none !important; }
   main, .col-out, section.card, #draft-area, .wrap { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; width: auto; }
-  #wait-doc { border: 0; border-radius: 0; box-shadow: none; padding: 0; width: auto; max-width: none; min-height: 0; color: #000; background: #fff; font-size: 10.5pt; line-height: 1.8; }
+  #wait-doc { border: 0; border-radius: 0; box-shadow: none; padding: 0; width: auto; max-width: none; min-height: 0; color: #000; background: #fff; font-size: 10pt; line-height: 1.6; }
   #draft-area > .doc-hint { display: none !important; }
   #basis, #guide, #notes-fold { display: none !important; }
   section.card { box-shadow: none !important; }
   #draft-area { border: 0 !important; padding: 0 !important; margin: 0 !important; }
-  #wait-doc .l-ki { break-before: page; margin-top: 0; }
   #wait-doc tfoot { display: table-row-group; }
-  #wait-doc h3.l-subject { font-size: 14pt; margin: 1.4em 0 1em; }
+  #wait-doc .m-head { background: none; border: 0; border-bottom: 1px solid #000; padding: 0 0 6px; font-size: 10.5pt; }
+  #wait-doc .m-body { padding: 10px 0 0; }
+  #wait-doc .m-body > p { margin: 0 0 0.5em; }
+  #wait-doc .m-body > p.m-close, #wait-doc .m-body > p.m-sign { margin-top: 0.8em; }
+  #wait-doc { font-family: var(--font); }
+  #wait-doc .l-attach > summary { display: none; }
+  #wait-doc .l-attach::details-content { content-visibility: visible; display: block; }
   #wait-doc h4 { font-size: 10.5pt; margin: 10px 0 2px; break-after: avoid; }
   #wait-doc .rec-w { overflow: visible; }
   #wait-doc .rec-hint { display: none !important; }
-  #wait-doc table.rec { table-layout: auto; width: 100%; font-size: 8.5pt; }
+  #wait-doc table.rec { table-layout: auto; width: 100%; font-size: 8pt; line-height: 1.35; }
   #wait-doc table.rec th, #wait-doc table.rec td { white-space: normal; overflow-wrap: anywhere; padding: 2px 4px; color: #000; }
   #wait-doc table.rec th { text-align: left; }
   #wait-doc table.rec th.num { text-align: right; }
@@ -345,10 +347,10 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   #wait-doc thead { display: table-header-group; }
   #wait-doc .fill, #wait-doc .fill.is-blank { background: none; border: 0; padding: 0; color: #000; }
   #wait-doc small, #wait-doc .small, #wait-doc sup.fn { color: #000; font-size: 8.5pt; }
-  #wait-doc .l-attach { break-before: page; margin-top: 0; padding-top: 0; border-top: 0; font-size: 8.8pt; line-height: 1.55; }
+  #wait-doc .l-attach { break-before: page; margin-top: 0; padding: 0; border-top: 0; font-size: 8.8pt; line-height: 1.55; }
   #wait-doc .l-attach h4 { margin-top: 10px; }
   #wait-doc .l-attach p { margin: 3px 0; }
-  #wait-doc .l-attach h4:first-child { margin-top: 0; }
+  #wait-doc .l-attach > summary + h4 { margin-top: 0; }
   #wait-doc details.doc-alt::details-content { content-visibility: visible; display: block; }
   #wait-doc details.doc-alt > summary { display: none; }
   #wait-doc .sentence { border-left: 3px solid #000; background: none; break-inside: avoid; }
@@ -381,7 +383,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 </section>
 <div class="protect" id="protect"></div>
 <main>
-  <div class="col-in">
+  <div class="col-in-w"><div class="col-in">
     <section class="card" id="input">
       <h2 class="g-hide">荷待ち・荷役の記録を入れる</h2>
       <details class="fold" id="table-fold" open>
@@ -430,7 +432,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
       </div>
     </section>
     <section class="card basis" id="basis"></section>
-  </div>
+  </div></div>
   <div class="col-out">
     <section class="card res" id="result">
       <details id="result-d" open>
@@ -742,13 +744,15 @@ const arriveCell = (r) => `${esc(r.arrive)}${r.reception ? `<small>受付 ${esc(
 const arriveText = (r) => r.arrive + [r.reception ? `受付 ${r.reception}` : '', r.early_arrival === 'assumed' ? (r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）' : '早く着いた可能性（時刻の指定なし）') : '', r.early_arrival === 'designated' ? `指定 ${r.appointed} より前に着` : ''].filter(Boolean).map((x) => `（${x}）`).join('');
 
 // ---- 書面: 運送会社から荷主へ出す手紙（書面の作り直し 2026-11-07）。画面の HTML とコピーする文は、同じ部品（letterModel・recModel）から作る
-const SENDER = { company: '', person: '', contact: '' };   // 差出人の欄。書き換えた内容は、このページを開いている間だけ覚える（保存も送信もしない）
-const SENDER_HINT = { company: '（会社名）', person: '（担当者名）', contact: '（電話番号・メールアドレス）' };
-const SENDER_LABEL = { company: '会社名', person: '担当者名', contact: '連絡先' };
-const senderVal = (k) => SENDER[k] || SENDER_HINT[k];
-const SEASON_WORD = ['厳寒', '余寒', '早春', '春暖', '新緑', '初夏', '盛夏', '残暑', '初秋', '秋冷', '晩秋', '寒冷'];
-const LETTER_SUBJECT = '荷待ち時間についてのご相談';
-const CLAUSE_TITLE = '次回からの契約の書面（運送引受書）に入れていただきたい欄（案）';
+const SENDER = { company: '', person: '', phone: '', mail: '' };   // 差出人の欄。書き換えた内容は、このページを開いている間だけ覚える（保存も送信もしない）
+const SENDER_HINT = { company: '（会社名）', person: '（担当者名）', phone: '（電話番号）', mail: '（メールアドレス）' };
+const SENDER_LABEL = { company: '会社名', person: '担当者名', phone: '電話番号', mail: 'メールアドレス' };
+const SIGN_PERSON_HINT = '（部署・担当者名）';   // 署名の欄に出す案内。担当者名の欄と同じ値を共有する
+const senderVal = (k, hint) => SENDER[k] || hint || SENDER_HINT[k];
+const MAIL_SUBJECT = '荷待ち時間についてのご相談';
+const CLAUSE_TITLE = '参考：契約に入れていただきたい項目（案）';
+const CALC_TITLE = '参考：参考額の計算のしかた';
+const REF_TITLE = '添付・参考';
 const jdate = (iso, withYear = true) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? `${withYear ? m[1] + '年' : ''}${Number(m[2])}月${Number(m[3])}日` : String(iso || ''); };
 const jperiod = (a, b) => (a === b ? jdate(a) : `${jdate(a)}から${jdate(b, String(a).slice(0, 4) !== String(b).slice(0, 4))}まで`);
 const hmj = (m) => (m < 60 ? `${m}分` : `${Math.floor(m / 60)}時間${m % 60 ? `${m % 60}分` : ''}`);
@@ -803,26 +807,26 @@ function recModel(p) {
   return { head, body, notes, lead: head.length - 3, total: [String(mainWait(p)), String(p.handling_minutes), n0(mainAmt(p))] };
 }
 
-function letterModel(p) {
-  const t = TARIFF, now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+// メールの組み立て。件名・宛先・本文の段落・記録の表・結びは、ここで 1 回だけ作り、画面の HTML とコピーする文の両方が使う
+function mailPeriod(p) {
+  const y = String(new Date().getFullYear()), a = String(p.date_from), b = String(p.date_to);
+  const withYear = a.slice(0, 4) !== y || b.slice(0, 4) !== a.slice(0, 4);
+  return a === b ? jdate(a, withYear) : `${jdate(a, withYear)}〜${jdate(b, withYear)}`;
+}
+function mailModel(p) {
   const amt = mainAmt(p), wait = mainWait(p), spot = topSpot(p.partner);
-  const to = `${String(p.partner).replace(/\s*(御中|様)\s*$/, '')} 物流ご担当者様`;
-  const factText = `さて、${jperiod(p.date_from, p.date_to)}の間に貴社からご依頼をいただいた${p.count}回の運行について、当社の記録を整理いたしました。到着してから荷役が始まるまでにお待ちした時間は、合計で${hmj(wait)}でした。` +
-    (p.over_1h_count > 0 ? `このうち、1時間以上お待ちした回が${p.over_1h_count}回ございました。` : '') +
-    (spot ? `とくに${placeJa(spot.place)}では、${spot.band}に到着した${spot.count}回の待ち時間が平均${spot.avg_minutes}分、最長${spot.max_minutes}分となっております。` : '');
+  const name = String(p.partner).replace(/\s*(御中|様)\s*$/, '');
+  const period = mailPeriod(p);
   const paras = [
-    `拝啓　${SEASON_WORD[now.getMonth()]}の候、貴社におかれましてはますますご清栄のこととお慶び申し上げます。平素は格別のご高配を賜り、厚く御礼申し上げます。`,
-    factText,
-    'ドライバーの拘束時間には、荷待ちの時間も含まれます。2024年4月からは時間外労働の上限規制が適用され、拘束時間の基準（改善基準告示）も改正されましたので、荷待ちが長くなりますと、その日のほかの運行にも影響が及びます。当社としても、安全で無理のない運行を続けるために、この点を改善できないかと考えております。',
-    'つきましては、荷待ちを減らす方法を、貴社のご事情をうかがいながら一緒に検討させていただけないでしょうか。たとえば、到着時刻の調整や指定、受付の予約、荷役の分担や順番などが考えられます。ご都合のよい時期に、一度お打ち合わせの機会をいただければ幸いです。',
+    `今回は、${period}の間にご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。到着してから荷役が始まるまでにお待ちした時間は、合計で${hmj(wait)}でした。` +
+      (p.over_1h_count > 0 ? `そのうち、1時間以上お待ちした回が${p.over_1h_count}回ありました。` : ''),
+    (spot ? `とくに${placeJa(spot.place)}では、${spot.band}に到着した${spot.count}回の待ち時間が、平均${spot.avg_minutes}分、最長${spot.max_minutes}分でした。` : '') +
+      'ドライバーの拘束時間には荷待ちの時間も含まれます。2024年4月から時間外労働の上限規制が始まり、拘束時間の基準（改善基準告示）も改正されたため、荷待ちが長いと、その日のほかの運行にも影響が出ます。',
+    '荷待ちを減らす方法を、貴社のご事情をうかがいながら、一緒に考えさせていただければと思っております。一度、短いお打ち合わせのお時間をいただけないでしょうか。到着時刻の調整や受付の予約、荷役の分担などについてご相談できればと考えております。',
   ];
-  if (amt > 0) {
-    paras.push(`なお、今回の荷待ちと荷役を国の標準的運賃に当てはめた参考額は、${n0(amt)}円（税抜）でした。標準的運賃（${jdate(t.applies_from)}告示）の待機時間料${p.handling_minutes > 0 ? '、積込料・取卸料' : ''}の額を、記録の時間に当てはめて計算しています。` +
-      (hasRec(p) ? '受付の時刻の記録がある回は、受付の時刻から数えています。' : '') + 'これは請求書ではなく、荷待ちの大きさを共通の基準で見ていただくための目安です。計算のしかたは別紙1に記載しております。');
-  }
-  paras.push('ご多用のところ恐縮ですが、ご検討くださいますよう、お願い申し上げます。');
-  return { date: jdate(today), to, subject: LETTER_SUBJECT, paras, closing: '敬具', period: jperiod(p.date_from, p.date_to), count: `${p.count}回`, rec: recModel(p) };
+  if (amt > 0) paras.push(`なお、荷待ちと荷役を国の標準的運賃に当てはめた参考額は、${n0(amt)}円（税抜）でした。請求書ではなく、荷待ちの大きさを共通の基準で見ていただくための目安です。計算のしかたは、このメールの末尾に載せています。`);
+  return { subject: `${MAIL_SUBJECT}（${period}）`, to: `${name} 物流ご担当者様`, name, greet: 'いつもお世話になっております。', paras, lead: '記録の一覧を下に貼っておきます。', rec: recModel(p),
+    close: ['お忙しいところ恐れ入りますが、ご検討いただけますと幸いです。', 'よろしくお願いいたします。'] };
 }
 
 // 別紙1（参考額の計算のしかた）の文。画面もコピーする文も同じ文を使う
@@ -836,7 +840,7 @@ function calcModel(p) {
     source: `出典: 標準的運賃（${jdate(t.applies_from)}告示）の別紙の表。待機時間の数え方は国土交通省の Q&A 集 Q29、荷主側の荷役の時間を待機に含める扱いは貸切運賃料金適用方（参考例）第21項によります。${t.source_url}`,
   };
 }
-const fillSpan = (k) => `<span class="fill${SENDER[k] ? '' : ' is-blank'}" data-fill="${k}" contenteditable="plaintext-only" role="textbox" spellcheck="false" aria-label="差出人の${SENDER_LABEL[k]}（書き換えられます）">${esc(senderVal(k))}</span>`;
+const fillSpan = (k, hint) => `<span class="fill${SENDER[k] ? '' : ' is-blank'}" data-fill="${k}"${hint ? ` data-hint="${esc(hint)}"` : ''} contenteditable="plaintext-only" role="textbox" spellcheck="false" aria-label="差出人の${SENDER_LABEL[k]}（書き換えられます）">${esc(senderVal(k, hint))}</span>`;
 function recTableHtml(m) {
   const sup = (c) => (c.n ? `<sup class="fn">※${c.n}</sup>` : '');
   return `<p class="small rec-hint">表は横にスクロールできます。</p><div class="rec-w"><table class="rec"><thead><tr>${m.head.map((h, i) => `<th class="${i >= m.lead ? 'num' : 'nw'}">${esc(h)}</th>`).join('')}</tr></thead><tbody>` +
@@ -846,25 +850,26 @@ function recTableHtml(m) {
 }
 
 function draftHtml(p) {
-  const t = TARIFF, rows = partnerRows(p.partner), m = letterModel(p);
+  const t = TARIFF, rows = partnerRows(p.partner), m = mailModel(p);
   const classes = [...new Set(rows.map((r) => r.vehicle_class))];
   const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
   const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((x) => `<td class="num">${n0(t.handling[x].normal[c])} / ${n0(t.handling[x].over_2h[c])}</td>`).join('')}</tr>`).join('');
   const cl = consultSentences(p.partner), cm = calcModel(p);
-  const html = `<div class="letter">
-    <p class="l-date">${esc(m.date)}</p>
-    <p class="l-to">${esc(m.to)}</p>
-    <div class="l-from">${fillSpan('company')}<br>${fillSpan('person')}<br>${fillSpan('contact')}</div>
-    <h3 class="l-subject">${esc(m.subject)}</h3>
-    ${m.paras.map((x, i) => `<p class="l-body${i === m.paras.length - 1 ? ' l-last' : ''}">${esc(x)}</p>`).join('')}
-    <p class="l-sign">${esc(m.closing)}</p>
-    <p class="l-ki">記</p>
-    <dl class="l-items"><dt>対象期間</dt><dd>${esc(m.period)}</dd><dt>回数</dt><dd>${esc(m.count)}</dd></dl>
-    ${recTableHtml(m.rec)}
-    <p class="l-end">以上</p>
+  const html = `<div class="mail">
+    <dl class="m-head"><dt>件名</dt><dd id="mail-subject">${esc(m.subject)}</dd><dt>宛先</dt><dd id="mail-to">${esc(m.to)}</dd></dl>
+    <div class="m-body">
+      <p class="m-to">${esc(m.name)}<br>物流ご担当者様</p>
+      <p>${esc(m.greet)}${fillSpan('company')}の${fillSpan('person')}です。</p>
+      ${m.paras.map((x) => `<p>${esc(x)}</p>`).join('')}
+      <p>${esc(m.lead)}</p>
+      ${recTableHtml(m.rec)}
+      <p class="m-close">${m.close.map(esc).join('<br>')}</p>
+      <p class="m-sign"><span class="m-rule">――</span><br>${fillSpan('company')}<br>${fillSpan('person', SIGN_PERSON_HINT)}<br>${fillSpan('phone')}<br>${fillSpan('mail')}</p>
+    </div>
   </div>
-  <section class="l-attach" id="doc-attach">
-    <h4>別紙1　参考額の計算のしかた</h4>
+  <details class="l-attach" id="doc-attach">
+    <summary>${REF_TITLE}（計算のしかた・契約に入れていただきたい項目）</summary>
+    <h4>${CALC_TITLE}</h4>
     <p class="main-amt" id="doc-main">${esc(cm.mainHead)}<b class="big">${esc(cm.mainAmt)}</b>${esc(cm.mainTail)}</p>
     <p>${esc(cm.calc)}</p>
     <p id="doc-terms">${esc(cm.terms)}</p>
@@ -876,18 +881,18 @@ function draftHtml(p) {
     ${rows.some((r) => r.post_wait) ? `<p class="small">${esc(POST_WAIT_NOTE)}</p>` : ''}
     <div class="rec-w"><table class="rec rate"><thead><tr><th>使った車種の単価（税抜・円）</th><th class="num">待機時間料<small>${t.unit_minutes} 分までごと</small></th><th class="num">2 時間超</th>${methods.map((x) => `<th class="num">${esc(x)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
     <p class="small">${esc(cm.source)}</p>
-    ${cl.length ? `<h4>別紙2　${CONSULT_TITLE}</h4>
+    ${cl.length ? `<h4>参考：${CONSULT_TITLE}</h4>
     <ul class="list">${cl.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
     <p>${esc(CONSULT_CLOSE)}</p>
     <h5 id="doc-pm-title">${esc(PM_PARTNER_TITLE)}</h5>
     <p class="small">${esc(PM_DEF)}</p>
     <div class="rec-w"><table class="rec" id="doc-placemonth"><thead><tr><th>場所</th><th>月</th><th class="num">回数</th><th class="num">平均の荷待ち（分）</th><th class="num">1 時間以上の回数</th></tr></thead><tbody>${monthTable(p.partner).map((x) => `<tr><td>${esc(x.place)}</td><td>${esc(monthLabel(x.month))}</td><td class="num">${x.count}</td><td class="num">${x.avg_minutes}</td><td class="num">${x.over_1h_count}</td></tr>`).join('')}</tbody></table></div>
     <p>${esc(MONTH_CLOSE)}</p>` : ''}
-    <h4>${cl.length ? '別紙3' : '別紙2'}　${CLAUSE_TITLE}</h4>
+    <h4>${CLAUSE_TITLE}</h4>
     <ul class="list">${clauseList(t).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
     <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけないか、ご相談させてください。</p>
-    <p class="small" id="doc-cross-note">この書面を紙や PDF で受け取った荷主の方は、本文の記録の表の「日付・車番・到着・荷役開始」の列を、照らし合わせのページの「荷主として使う」の照合の欄に貼ると、自社の受付記録と照らし合わせられます。<br><b>照らし合わせのページ:</b> <span id="doc-url">${esc(letterPageAddress())}</span></p>
-  </section>`;
+    <p class="small" id="doc-cross-note">このメールを受け取った荷主の方は、記録の一覧の「日付・車番・到着・荷役開始」の列を、照らし合わせのページの「荷主として使う」の照合の欄に貼ると、自社の受付記録と照らし合わせられます。<br><b>照らし合わせのページ:</b> <span id="doc-url">${esc(letterPageAddress())}</span></p>
+  </details>`;
   return kc(html);
 }
 
@@ -927,18 +932,24 @@ function loadAi() {
 }
 /*LOCAL-ONLY-END*/
 
+// メールの文。draftSubject は件名の欄、draftText は本文の欄に貼る文（記録の表と、末尾の「添付・参考」まで）
+const draftSubject = (p) => kc(mailModel(p).subject);
+function mailTableText(rm) {
+  const mk = (c) => c.t + (c.n ? `※${c.n}` : '');
+  const k = rm.head.indexOf('荷役終了');   // 荷役終了の列は空欄（—）が多いので、コピーする文だけ省く（画面の表には残す）
+  const keep = (a) => a.filter((_, i) => i !== k);
+  const L = [keep(rm.head).join('｜'), ...rm.body.map((cells) => keep(cells.map(mk)).join('｜')), keep(['合計', ...Array(rm.lead - 1).fill(''), ...rm.total]).join('｜')];
+  if (rm.notes.length) L.push('', ...rm.notes.map((x, i) => `※${i + 1} ${x}`));
+  return L;
+}
 function draftText(p) {
-  const t = TARIFF, rows = partnerRows(p.partner), m = letterModel(p);
+  const t = TARIFF, rows = partnerRows(p.partner), m = mailModel(p);
   const classes = [...new Set(rows.map((r) => r.vehicle_class))];
   const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
-  const L = [m.date, '', m.to, '', senderVal('company'), senderVal('person'), senderVal('contact'), '', m.subject, '', ...m.paras.flatMap((x) => [x, '']), m.closing, '', '記', '',
-    `対象期間　${m.period}`, `回数　${m.count}`, ''];
-  const rm = m.rec;
-  const mk = (c) => c.t + (c.n ? `※${c.n}` : '');
-  L.push(rm.head.join('\t'), ...rm.body.map((cells) => cells.map(mk).join('\t')), ['合計', ...Array(rm.lead - 1).fill(''), ...rm.total].join('\t'));
-  if (rm.notes.length) L.push('', ...rm.notes.map((x, i) => `※${i + 1} ${x}`));
+  const L = [m.name, '物流ご担当者様', '', `${m.greet}${senderVal('company')}の${senderVal('person')}です。`, '', ...m.paras.flatMap((x) => [x, '']), m.lead, '', ...mailTableText(m.rec), '', ...m.close, '',
+    '――', senderVal('company'), senderVal('person', SIGN_PERSON_HINT), senderVal('phone'), senderVal('mail'), '', '', `■ ${REF_TITLE}`, '', CALC_TITLE];
   const cm = calcModel(p);
-  L.push('', '以上', '', '', '別紙1　参考額の計算のしかた', cm.mainHead + cm.mainAmt + cm.mainTail, cm.calc, cm.terms);
+  L.push(cm.mainHead + cm.mainAmt + cm.mainTail, cm.calc, cm.terms);
   if (hasRec(p)) L.push(`受付から数えた数字: ${receptionSentence(p)}`);
   if (earlyShown(p)) L.push(`${earlyWord(p.partner)}を分けた数字: ${earlySentence(p)}`);
   if (hasEarly(p)) L.push(earlyRule(p.partner));
@@ -950,10 +961,10 @@ function draftText(p) {
   L.push(cm.source);
   const cl = consultSentences(p.partner);
   if (cl.length) {
-    L.push('', `別紙2　${CONSULT_TITLE}`, ...cl.map((x) => `・${x}`), CONSULT_CLOSE, '', PM_PARTNER_TITLE, ['場所', '月', '回数', '平均の荷待ち（分）', '1 時間以上の回数'].join('\t'),
+    L.push('', `参考：${CONSULT_TITLE}`, ...cl.map((x) => `・${x}`), CONSULT_CLOSE, '', PM_PARTNER_TITLE, ['場所', '月', '回数', '平均の荷待ち（分）', '1 時間以上の回数'].join('\t'),
       ...monthTable(p.partner).map((x) => [x.place, monthLabel(x.month), x.count, x.avg_minutes, x.over_1h_count].join('\t')), MONTH_CLOSE);
   }
-  L.push('', `${cl.length ? '別紙3' : '別紙2'}　${CLAUSE_TITLE}`, ...clauseList(t).map((x) => `・${x}`), '',
+  L.push('', CLAUSE_TITLE, ...clauseList(t).map((x) => `・${x}`), '',
     '荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけないか、ご相談させてください。', '',
     `照らし合わせのページ: ${letterPageAddress()}`);
   return kc(L.join('\n'));
@@ -962,7 +973,11 @@ function draftText(p) {
 // 差出人の欄（書面の中の黄色の部分）。書き換えた内容は SENDER に覚え、コピーする文にも入る。空にするともとの案内の文字に戻る
 document.addEventListener('input', (e) => {
   const el = e.target.closest ? e.target.closest('[data-fill]') : null;
-  if (el) { SENDER[el.dataset.fill] = el.textContent.replace(/\s+/g, ' ').trim(); el.classList.toggle('is-blank', !SENDER[el.dataset.fill]); }
+  if (el) {
+    const k = el.dataset.fill;
+    SENDER[k] = el.textContent.replace(/\s+/g, ' ').trim(); el.classList.toggle('is-blank', !SENDER[k]);
+    document.querySelectorAll(`[data-fill="${k}"]`).forEach((o) => { if (o !== el) { o.textContent = SENDER[k] || o.dataset.hint || SENDER_HINT[k]; o.classList.toggle('is-blank', !SENDER[k]); } });   // 同じ内容の欄（あいさつと署名）をそろえる
+  }
 });
 document.addEventListener('focusin', (e) => {
   const el = e.target.closest ? e.target.closest('[data-fill].is-blank') : null;
@@ -970,7 +985,7 @@ document.addEventListener('focusin', (e) => {
 });
 document.addEventListener('focusout', (e) => {
   const el = e.target.closest ? e.target.closest('[data-fill]') : null;
-  if (el && !SENDER[el.dataset.fill]) { el.textContent = SENDER_HINT[el.dataset.fill]; el.classList.add('is-blank'); }
+  if (el && !SENDER[el.dataset.fill]) { el.textContent = el.dataset.hint || SENDER_HINT[el.dataset.fill]; el.classList.add('is-blank'); }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.closest && e.target.closest('[data-fill]')) { e.preventDefault(); e.target.blur(); } });
 document.addEventListener('paste', (e) => {
@@ -979,10 +994,10 @@ document.addEventListener('paste', (e) => {
 });
 
 // 書面の上の操作。Artifact の版では印刷と保存ができないので、文と CSV をコピーするボタンにする
+const COPY_BOX = '<div id="copybox" hidden><p class="small">自動でコピーできませんでした。下の枠の文を選んで、Ctrl+C（スマートフォンは長押し）でコピーしてください。</p><textarea id="copyta" rows="8" readonly aria-label="コピーする文"></textarea></div>';
 const docBar = () => (ARTIFACT
-  ? '<div class="bar"><button type="button" class="primary" id="b-copydoc">書面の文をコピー</button><button type="button" id="b-copycsv">CSV をコピー</button><span class="small" id="copymsg" role="status"></span></div>' +
-    '<div id="copybox" hidden><p class="small">自動でコピーできませんでした。下の枠の文を選んで、Ctrl+C（スマートフォンは長押し）でコピーしてください。</p><textarea id="copyta" rows="8" readonly aria-label="コピーする文"></textarea></div>'
-  : '<div class="bar"><button type="button" class="primary" id="b-print">書面を印刷する</button><button type="button" id="b-csv">この相手の記録を CSV で保存</button><span class="small" id="csv-scope"></span></div>');
+  ? '<div class="bar"><button type="button" id="b-copysubj">件名をコピー</button><button type="button" class="primary" id="b-copydoc">本文をコピー</button><button type="button" id="b-copycsv">CSV をコピー</button><span class="small" id="copymsg" role="status"></span></div>' + COPY_BOX
+  : '<div class="bar"><button type="button" id="b-copysubj">件名をコピー</button><button type="button" class="primary" id="b-copydoc">本文をコピー</button><button type="button" id="b-print">書面を印刷する</button><button type="button" id="b-csv">この相手の記録を CSV で保存</button><span class="small" id="csv-scope"></span><span class="small" id="copymsg" role="status"></span></div>' + COPY_BOX);
 
 const PROCESS_ROWS = ['まず: 次の契約に料金の欄を入れる', '過去の分: 請求するかは自社で決める', '困ったとき: 物流Gメンの窓口 https://truck-logistics-gmen.mlit.go.jp/s/', '早く着いた回: 指定の時刻から数える'];
 const processHtml = () => `<aside id="process" aria-label="相談の進め方"><details><summary>相談の進め方</summary><ul>${PROCESS_ROWS.map((x) => `<li>${x.includes('https://') ? esc(x.split('https://')[0]) + `<a href="https://${esc(x.split('https://')[1])}" target="_blank" rel="noopener">https://${esc(x.split('https://')[1])}</a>` : esc(x)}</li>`).join('')}</ul><details id="process-full"><summary>くわしい説明（文書）</summary><ul>${PROCESS.map((x) => `<li>${x.includes('https://') ? esc(x.split('https://')[0]) + `<a href="https://${esc(x.split('https://')[1])}" target="_blank" rel="noopener">https://${esc(x.split('https://')[1])}</a>` : esc(x)}</li>`).join('')}</ul></details></details></aside>`;
@@ -1029,7 +1044,7 @@ function renderResult() {
   const r = S.res;
   if (!r || !r.by_partner.length) {
     $('#partners').innerHTML = '<h2>契約の相手ごと</h2><div class="empty-state"><img class="ill ill-128" src="@@ILL:clock_wait:128@@" alt="" width="128" height="128"><p class="empty">まだ記録がありません。記録を貼るか、「例を入れる」を押してください。</p></div>';
-    $('#draft-area').innerHTML = `<h2>荷主に出す相談の書面（下書き）</h2><div class="wrap"><div id="wait-doc"><div class="empty-state"><img class="ill ill-128" src="@@ILL:document:128@@" alt="" width="128" height="128"><p class="empty">記録を入れると、ここに下書きが出ます。</p></div></div><div class="side-col">${processHtml()}</div></div>`;
+    $('#draft-area').innerHTML = `<h2>荷主に出す相談のメール（下書き）</h2><div class="wrap"><div id="wait-doc"><div class="empty-state"><img class="ill ill-128" src="@@ILL:document:128@@" alt="" width="128" height="128"><p class="empty">記録を入れると、ここに下書きが出ます。</p></div></div><div class="side-col">${processHtml()}</div></div>`;
     document.body.classList.add('no-rows');
     return;
   }
@@ -1045,10 +1060,10 @@ function renderResult() {
       <li><b>1 時間以上の荷待ち</b>: 待機（荷主側の荷役を含む）が 1 時間以上だった回数です。</li>
       <li><b>2 時間以上の荷待ち・荷役</b>: 待機と運転者の荷役の合計が 2 時間以上だった回数です。</li></ul></details>
     ${hotspotsHtml(r)}`;
-  $('#draft-area').innerHTML = `<h2>荷主に出す相談の書面（下書き）<img class="ill ill-64" src="@@ILL:document:128@@" alt="" width="64" height="64"></h2>
+  $('#draft-area').innerHTML = `<h2>荷主に出す相談のメール（下書き）<img class="ill ill-64" src="@@ILL:document:128@@" alt="" width="64" height="64"></h2>
     ${S.askPartner ? `<div class="errs ask" id="ask-doc"><b>相手の会社名を確かめてください。</b> 合っていれば「この相手のままにする」を押します。</div>` : ''}
     ${docBar()}
-    <p class="small doc-hint" id="doc-hint">書面の黄色の部分（会社名・担当者名・連絡先）は、そのまま書き換えられます。書き換えた内容はコピーする文にも入ります。</p>
+    <p class="small doc-hint" id="doc-hint">メールの黄色の部分（会社名・担当者名・電話番号・メールアドレス）は、そのまま書き換えられます。書き換えた内容はコピーする文にも入ります。</p>
     <div class="wrap"><article id="wait-doc">${draftHtml(p)}</article><div class="side-col">${processHtml()}${ARTIFACT ? '' : `<div id="ai-box" class="ai-box"><p class="small ai-off">${esc(AI_OFF_LINE)}</p></div>`}</div></div>`;
   mountAi(p);
   const cs = $('#csv-scope');
@@ -1678,7 +1693,8 @@ function init() {
         S.armed = true; t.textContent = 'もう一度押すと、保存した記録を消します'; clearTimeout(S.armTm); S.armTm = setTimeout(disarmForget, 6000);
       } else { disarmForget(); forgetRecords(); }
     }
-    else if (t.id === 'b-copydoc') { const p = S.res && S.res.by_partner.find((x) => x.partner === S.partner); if (p) copyOut(draftText(p), '書面の文'); }
+    else if (t.id === 'b-copydoc') { const p = S.res && S.res.by_partner.find((x) => x.partner === S.partner); if (p) copyOut(draftText(p), '本文'); }
+    else if (t.id === 'b-copysubj') { const p = S.res && S.res.by_partner.find((x) => x.partner === S.partner); if (p) copyOut(draftSubject(p), '件名'); }
     else if (t.id === 'b-copycsv') { if (S.res && S.res.rows.length) copyOut(csvText(), 'CSV'); }
     else if (t.id === 'b-csvpaste') csvPasteIn();
 /*LOCAL-ONLY-START*/

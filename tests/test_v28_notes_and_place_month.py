@@ -158,11 +158,11 @@ def test_g119_g121_notes_and_place_month_on_screen_and_in_document(path):
         assert PM_LEAD in screen and "場所ごと・月ごとの平均の荷待ち（分）" in screen
         # 書面: 相談の節の最後に表、続けて取り次ぎの 1 文
         assert [r[:2] for r in info["dpm"]] == [["X", "2026年10月"], ["Y", "2026年11月"], ["Z", "2026年10月"]]
-        consult = d.split("荷待ちを減らすためのご相談")[1].split("別紙3　次回からの契約の書面")[0]
+        consult = d.split("荷待ちを減らすためのご相談")[1].split("参考：契約に入れていただきたい項目")[0]
         assert consult.rstrip().endswith(PM_CLOSE) and consult.index("ご相談させてください") < consult.index("場所") < consult.index(PM_CLOSE)
         # コピーする文
-        assert "別紙2　荷待ちを減らすためのご相談" in info["copy"] and "Y\t2026年11月\t2\t75\t2" in info["copy"]
-        assert info["copy"].index("ご相談させてください") < info["copy"].index(PM_CLOSE) < info["copy"].index("別紙3　次回からの契約の書面")
+        assert "参考：荷待ちを減らすためのご相談" in info["copy"] and "Y\t2026年11月\t2\t75\t2" in info["copy"]
+        assert info["copy"].index("ご相談させてください") < info["copy"].index(PM_CLOSE) < info["copy"].index("参考：契約に入れていただきたい項目")
 
 
 @pytest.mark.parametrize("path", [PAGE, ART])

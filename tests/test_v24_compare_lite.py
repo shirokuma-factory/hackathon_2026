@@ -36,7 +36,7 @@ def test_g85_waiting_print_is_a4_portrait_and_not_cut(tmp_path):
     pdf = tmp_path / "test_waiting_print.pdf"
     pp.print_to_pdf(WAITING.as_uri() + "?example=1", pdf)
     pages = pp.pdf_page_count(pdf)
-    assert pages == 3, pages  # 書面の作り直し 2026-11-07: 1 枚目に手紙の本文、2 枚目に記録の表、3 枚目に別紙
+    assert pages == 2, pages  # 書面の作り直し 2026-11-07: 1 枚目にメール（本文・記録の表・署名）、2 枚目に添付・参考
     info = pp.pdf_info(pdf)
     if info is None:
         pytest.skip("pymupdf が使えません（ページ数だけ確かめました）")
