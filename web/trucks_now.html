@@ -2,111 +2,103 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>いまの大型車</title>
-<meta name="description" content="国土交通省の交通量 API をもとに、全国の直轄国道で大型車がどこをどれだけ通っているかを、およそ20分遅れで見る試作です。">
+<meta name="description" content="国土交通省の交通量 API をもとに、全国の直轄国道で大型車がどこをどれだけ通っているかを、24時間の動きとあわせて見る試作です。取得から画面までの流れも数字で確かめられます。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<style>
-:root {
-  --bg: #f6f7f8; --panel: #ffffff; --ink: #1f2933; --sub: #5f6b76; --line: #d9dee3;
-  --hue: #1d5e8c; --hue-light: #dbe9f3; --warn: #b4540a;
-}
-* { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
-body { font-family: 'Noto Sans JP', sans-serif; font-size: 14px; line-height: 1.6; color: var(--ink); background: var(--bg); }
-.app { display: grid; grid-template-columns: minmax(0, 65fr) minmax(360px, 35fr); height: 100vh; }
-.mapwrap { position: relative; min-height: 0; }
-#map { position: absolute; inset: 0; }
-.side { overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 16px 20px 24px; }
-.back { margin: 0 0 6px; font-size: 12px; }
-.back a { color: var(--sub); }
-h1 { margin: 0; font-size: 22px; font-weight: 700; }
-.sub { margin: 4px 0 0; color: var(--sub); font-size: 13px; }
-.nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
-.num { border-top: 2px solid var(--ink); padding-top: 6px; }
-.num .v { font-size: 26px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.num .v small { font-size: 12px; font-weight: 400; color: var(--sub); }
-.num .l { font-size: 12px; color: var(--sub); }
-h2 { margin: 18px 0 6px; font-size: 14px; font-weight: 700; }
-#chart { width: 100%; height: 190px; display: block; }
-#chart text { font-size: 10px; fill: var(--sub); font-family: inherit; }
-.legend-row { display: flex; gap: 14px; font-size: 12px; color: var(--sub); margin-top: 2px; flex-wrap: wrap; }
-.legend-row i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 4px; }
-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th, td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: right; font-weight: 400; }
-th:first-child, td:first-child { text-align: left; }
-th { font-size: 12px; color: var(--sub); position: sticky; top: 0; background: var(--panel); }
-tbody tr { cursor: pointer; }
-tbody tr:hover { background: var(--hue-light); }
-tbody tr.sel { background: var(--hue-light); font-weight: 700; }
-tbody tr:focus-visible { outline: 2px solid var(--hue); outline-offset: -2px; }
-.tablewrap { max-height: 360px; overflow-y: auto; border-top: 1px solid var(--line); }
-footer { margin-top: 18px; font-size: 12px; color: var(--sub); }
-footer p { margin: 0 0 4px; }
-details { margin-top: 8px; }
-summary { cursor: pointer; }
-details ul { margin: 6px 0 0; padding-left: 18px; }
-code { background: var(--bg); padding: 2px 6px; border-radius: 3px; font-size: 12px; }
-#tip { position: absolute; z-index: 5; pointer-events: none; background: rgba(255,255,255,0.97); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 12px; line-height: 1.5; box-shadow: 0 1px 4px rgba(0,0,0,0.15); display: none; max-width: 260px; font-variant-numeric: tabular-nums; }
-#legend { position: absolute; left: 12px; bottom: 28px; z-index: 4; background: rgba(255,255,255,0.95); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 11px; color: var(--sub); }
-#legend .bar { width: 160px; height: 8px; margin: 3px 0; background: linear-gradient(to right, #e3eef6, #1d5e8c); }
-#legend .ends { display: flex; justify-content: space-between; }
-#legend .dots { margin-top: 4px; }
-#legend .dots i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
-#err { display: none; margin: 12px 0; padding: 8px 10px; border: 1px solid var(--warn); color: var(--warn); border-radius: 4px; }
-@media (max-width: 800px) {
-  .app { display: block; height: auto; }
-  .mapwrap { height: 60vh; }
-  .side { border-left: 0; border-top: 1px solid var(--line); overflow: visible; padding: 14px 16px 24px; }
-  .nums { gap: 8px; }
-  #legend { left: auto; right: 8px; bottom: auto; top: 8px; }
-  .num .v { font-size: 21px; }
-}
-</style>
+<link rel="stylesheet" href="trucks_now.css">
 </head>
 <body>
-<div class="app">
-  <div class="mapwrap">
-    <div id="map"></div>
-    <div id="tip"></div>
-    <div id="legend"></div>
-  </div>
-  <main class="side">
+<div class="app" id="app">
+  <header class="top glass">
     <p class="back"><a href="./#v=market">地図の画面に戻る</a></p>
     <h1>いまの大型車</h1>
-    <p class="sub" id="sub">読み込み中です</p>
-    <div id="err" role="alert"></div>
-    <div class="nums">
-      <div class="num"><div class="v" id="n-obs">-</div><div class="l">観測できた地点</div></div>
-      <div class="num"><div class="v" id="n-avg">-</div><div class="l">全国の1地点あたり大型車</div></div>
-      <div class="num"><div class="v" id="n-week">-</div><div class="l">先週の同じ時刻との比</div></div>
+    <p class="fresh" id="fresh">読み込み中です</p>
+    <div class="poll" id="poll">
+      <span class="bar" aria-hidden="true"><i id="poll-bar"></i></span>
+      <span class="st" id="poll-st">自動更新の準備中</span>
+      <button type="button" id="poll-now">今すぐ確認</button>
     </div>
-    <h2>大型車の台数の推移（1地点あたり、台/時）</h2>
-    <svg id="chart" role="img" aria-label="24時間の大型車の台数の推移"></svg>
-    <div class="legend-row" id="chart-legend"></div>
-    <h2>都道府県別（1地点あたりの大型車が多い順）</h2>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>都道府県</th><th>1地点あたり 台/時</th><th>地点数</th><th>先週比</th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
+  </header>
+
+  <nav class="pipe glass" aria-label="データが画面に届くまでの流れ">
+    <div class="row" id="stages">
+      <button type="button" class="stage" data-stage="api" aria-pressed="false"><span class="lb">国土交通省 交通量 API</span><span class="vl" id="s-api">-</span><span class="sb" id="s-api2">&nbsp;</span></button>
+      <span class="arr" aria-hidden="true"></span>
+      <button type="button" class="stage" data-stage="fetch" aria-pressed="false"><span class="lb" id="s-fetch-lb">取得</span><span class="vl" id="s-fetch">-</span><span class="sb" id="s-fetch2">&nbsp;</span></button>
+      <span class="arr" aria-hidden="true"></span>
+      <button type="button" class="stage" data-stage="missing" aria-pressed="false"><span class="lb">欠測を除外</span><span class="vl" id="s-missing">-</span><span class="sb" id="s-missing2">&nbsp;</span></button>
+      <span class="arr" aria-hidden="true"></span>
+      <button type="button" class="stage" data-stage="agg" aria-pressed="false"><span class="lb">県ごとに集計</span><span class="vl" id="s-agg">-</span><span class="sb" id="s-agg2">&nbsp;</span></button>
+      <span class="arr" aria-hidden="true"></span>
+      <button type="button" class="stage" data-stage="map" aria-pressed="false"><span class="lb">地図</span><span class="vl" id="s-map">-</span><span class="sb" id="s-map2">&nbsp;</span></button>
     </div>
-    <footer>
-      <p id="attr1"></p>
-      <p id="attr2"></p>
-      <details><summary>数字の読み方と注意</summary><ul id="notes"></ul></details>
-      <details><summary>更新のしかた</summary>
-        <p>データは次のコマンドで更新します。20分以上の間隔であけて繰り返します。</p>
-        <p><code>uv run python tools/fetch_trucks_now.py --loop 20</code></p>
+    <p class="stage-note idle" id="stage-note" aria-live="polite">各段をクリックすると、その段に関わる地点が地図で光ります。</p>
+  </nav>
+
+  <div class="mapwrap">
+    <div id="map"></div>
+    <div id="tip" class="card" role="tooltip"></div>
+    <section id="legend" class="glass" aria-label="凡例">
+      <div class="sec">
+        <h2>道路の色<button type="button" class="toggle" id="lg-toggle" aria-expanded="false">詳しく</button></h2>
+        <div class="bins" id="lg-bins"></div>
+        <div class="basis">色は各地点のふだんの多さとの比（速度ではありません）</div>
+      </div>
+      <div class="collapsible">
+        <div class="sec">
+          <div class="k"><i class="line"></i><span>流れの帯は大型車の台数に比例し、混むほどゆっくり流れます（見せ方で、速度ではありません）。道路の左右 2 本は上り・下りで、それぞれの台数で数と色が変わります</span></div>
+          <div class="k"><i class="line grey"></i><span>観測点の間は、同じ道路の上で 2 つの観測点の値を距離に応じて混ぜて色を付けます。最後の観測点の先は 25 km まで延ばし、15 km を超えた区間は細く薄く描きます。灰青の細い線は観測点につながらない道路（データなし。0 台ではありません）</span></div>
+          <div class="k"><i class="ring"></i><span>輪（◯）は欠測の観測点</span></div>
+          <p class="calc">比 = その時間の台数 ÷ その地点の 24 時間の最大（最大が 20 台/時未満の地点は 20 で割る）。線の太さは道路の種類で、台数ではありません。</p>
+        </div>
+        <label class="chk"><input type="checkbox" id="show-pts"> 観測点を表示</label>
+      </div>
+    </section>
+  </div>
+
+  <section class="dock glass" aria-label="時間の操作">
+    <div class="hd"><span>全国の 1 地点あたり大型車（台/時）　<b id="sp-now"></b></span><span id="sp-range"></span></div>
+    <div class="ctl">
+      <button type="button" class="btn primary" id="play" aria-pressed="false">再生</button>
+      <div class="slidewrap">
+      <svg id="spark" role="img" aria-label="24時間の全国の大型車の推移。クリックかドラッグで時間を動かせます"></svg>
+        <input type="range" id="slider" min="0" max="23" step="0.01" value="23" aria-label="時間（24時間のうちどこを見るか）">
+        <div class="ticks" id="ticks" aria-hidden="true"></div>
+      </div>
+      <div id="hour" aria-live="off">-</div>
+      <button type="button" class="btn sm" id="latest">最新へ</button>
+    </div>
+    <p class="credit" id="credit"></p>
+  </section>
+
+  <aside class="side glass" id="side" aria-label="県ごとの順位と地点のカード">
+    <button type="button" class="handle" id="handle" aria-expanded="false">県ごとの順位と地点のカード<span>タップで開く</span></button>
+    <div class="body">
+      <div id="pin" class="card" hidden></div>
+      <h2>県ごとの大型車（1地点あたり）<button type="button" class="btn sm" id="rank-sort">並べ替え</button></h2>
+      <p class="hint" id="rank-hint"></p>
+      <div class="rank" id="rank"></div>
+    </div>
+    <div class="foot">
+      <details><summary>出典と注意</summary>
+        <p id="attr1"></p>
+        <p id="attr2"></p>
+        <p>道路の形: © OpenStreetMap contributors（ODbL）。高速道路と国道の線を間引いて使っています。</p>
+        <ul id="notes"></ul>
+        <p>データの更新: <code>uv run python tools/fetch_trucks_now.py --loop 20</code>（20分以上あけて繰り返します）。この画面は取得済みの JSON だけを読み、API には直接つなぎません。</p>
       </details>
-    </footer>
-  </main>
+    </div>
+  </aside>
+  <div id="err" role="alert"></div>
+  <div id="toast" role="status"></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
+<script src="trucks_now_core.js"></script>
 <script src="trucks_now.js"></script>
 </body>
 </html>
