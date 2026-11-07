@@ -240,7 +240,9 @@ def test_document_for_the_receiving_shipper_shows_fault_column_early_split_and_n
                            sum: document.querySelector('#partners table.par tbody tr').textContent})""")
         assert "待機（分）" in doc["head"]   # 書面の作り直し 2026-11-07: 荷主等の都合の列は注記に移した
         t = doc["text"]
-        assert "荷主等の都合の欄が貼り付けの記録に無かったため" in t and "該当3行" in t
+        assert "荷主等の都合の欄が貼り付けの記録に無かったため" not in t and "再計算してください" not in t   # 事務の指示はメールに入れない（2026-11-08）
+        assert "荷主等の都合の欄が貼り付けの記録に無かったため" in page.js("document.querySelector('#fault-box').textContent") and "該当 3 行" in page.js("document.querySelector('#fault-box').textContent")
+        assert "記録のすべての待ちを数えています" in t and "渋滞や当社側の遅れによる待ちは含めていません" not in t
         # 受付の時刻がある回は受付から数えた額が主な額（SPEC §43）。受付があるので「早着の疑いを除くと」は出さない
         assert "受付から数えた数字" in t and "受付の時刻がある3回" in t and "早く着いた可能性" not in t   # メールには書かない（画面の注意だけ。2026-11-08）  # 文言の直し 2026-11-07
         assert "早着の疑いを分けた数字" not in t and "を除くと 0 円" not in t
