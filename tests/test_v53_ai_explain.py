@@ -565,7 +565,7 @@ def test_page_files_keep_network_code_only_in_ai_explain_js():
     assert "/api/ai/" not in own and "AiExplain" in own  # own.js は通信を持たず、ai_explain.js に任せる
     js = (ROOT / "web" / "ai_explain.js").read_text(encoding="utf-8")
     assert "/api/ai/status" in js and "ANTHROPIC" not in js and "sk-ant" not in js
-    assert "Claude で説明文を作る" in js and "説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）" in page
+    assert "Claude で説明文を作る" in js and "説明文の自動作成: ファイルで開いたときは使えません（今は型どおりの書面です）" in page
     assert (ROOT / "web" / "index.html").read_text(encoding="utf-8").index("ai_explain.js") < (ROOT / "web" / "index.html").read_text(encoding="utf-8").index('src="own.js"')
 
 
@@ -663,7 +663,7 @@ def test_ui_file_url_shows_the_one_line_only():
         page.goto((ROOT / "web" / "waiting.html").as_uri() + "?example=1")
         page.wait(lambda: page.js("!!document.querySelector('#ai-box')"), 30, "欄")
         assert page.js("!document.querySelector('[data-ai=ask]')")
-        assert page.js("document.querySelector('#ai-box').textContent.trim()") == "説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）"
+        assert page.js("document.querySelector('#ai-box').textContent.trim()") == "説明文の自動作成: ファイルで開いたときは使えません（今は型どおりの書面です）"
         assert page.js("!document.querySelector('script[src*=ai_explain]')")
 
 
