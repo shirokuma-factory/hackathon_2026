@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from conftest import edge_path_or_skip
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -60,6 +61,7 @@ def _eval(page, expr):
 
 
 def test_charter_10t_and_takuhai_message_and_auto_km():
+    edge_path_or_skip()  # Edge の無い環境（GitHub Actions の Linux）では飛ばす
     cw = _edge()
     try:
         ctx = cw.edge_page(1280, 900)
@@ -95,6 +97,7 @@ def test_charter_10t_and_takuhai_message_and_auto_km():
 
 
 def test_item_table_becomes_cards_at_360():
+    edge_path_or_skip()  # Edge の無い環境（GitHub Actions の Linux）では飛ばす
     cw = _edge()
     try:
         ctx = cw.edge_page(360, 800)

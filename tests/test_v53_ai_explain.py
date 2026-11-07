@@ -19,6 +19,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from conftest import edge_path_or_skip
 
 from shipcompare import ai_explain as ax
 
@@ -599,6 +600,7 @@ def test_ui_button_only_when_available_and_progress_steps(monkeypatch):
         return FakeClient().resp(f"{facts['partner']} 様。参考額は {t['amount_yen_ex_tax']} 円（税抜）、待機は合計 {t['wait_total']} です。協議のお願いです。", tin=900, tout=200)
     c.plan["draft"] = sonnet
     monkeypatch.setattr(ax, "make_client", lambda: c)
+    edge_path_or_skip()  # Edge の無い環境（GitHub Actions の Linux）では飛ばす
     cw = _edge()
     httpd = serve_web.make_server(port=0)
     th = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -658,6 +660,7 @@ def test_ui_button_only_when_available_and_progress_steps(monkeypatch):
 
 
 def test_ui_file_url_shows_the_one_line_only():
+    edge_path_or_skip()  # Edge の無い環境（GitHub Actions の Linux）では飛ばす
     cw = _edge()
     with cw.edge_page(1280, 1000) as page:
         page.goto((ROOT / "web" / "waiting.html").as_uri() + "?example=1")
@@ -775,6 +778,7 @@ def test_ui_groups_identical_issue_messages():
 
 def test_ui_unavailable_reasons_are_visible_text(monkeypatch):
     """使えないとき、理由を本文に出す（吹き出しだけにしない）。ファイルで開いたときの 1 行はページ側の持ち分。"""
+    edge_path_or_skip()  # Edge の無い環境（GitHub Actions の Linux）では飛ばす
     cw = _edge()
     httpd = serve_web.make_server(port=0)
     th = threading.Thread(target=httpd.serve_forever, daemon=True)
