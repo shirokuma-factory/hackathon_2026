@@ -1,0 +1,45 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>HOOK_m</title><link rel="stylesheet" href="trailer_kit.css">
+<style>
+#fig{filter:drop-shadow(0 4px 18px rgba(0,0,0,.6))}
+#t1{left:0;width:1920px;top:408px;text-align:center;font-size:72px;font-weight:700;letter-spacing:.04em}
+#t2{left:0;width:1920px;top:468px;text-align:center;font-size:214px;font-weight:900;line-height:1.1;letter-spacing:.02em}
+</style></head><body data-duration="5.5">
+<div id="stage">
+ <div class="layer" id="bg"></div>
+ <div class="layer" id="fig"></div>
+ <div class="layer" id="txt">
+  <div class="abs sh" id="t1">積める量の</div>
+  <div class="abs sh" id="t2"><span id="a">6割が</span><span id="b" class="y">空</span></div>
+ </div>
+</div>
+<script src="trailer_kit.js"></script>
+<script>
+(function () {
+  var D = 5.5, svg = TK.svg('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, TK.$('fig'));
+  var T = TK.trailer(svg, { x: 522, y: 96, s: 0.9, sw: 4 });
+  var COLS = 20, ROWS = 5, FILL = 39, cells = [];
+  for (var c = 0; c < COLS; c++) for (var r = 0; r < ROWS; r++) {
+    var x = 20 + c * 33 + 3, y = 230 - (r + 1) * 42 + 3, idx = c * ROWS + r;
+    var full = idx < FILL, el;
+    if (full) el = TK.svg('rect', { x: x, y: y, width: 27, height: 36, rx: 6, fill: 'rgba(255,255,255,.85)' }, T.g);
+    else el = TK.svg('rect', { x: x, y: y, width: 27, height: 36, rx: 6, fill: 'none', stroke: 'rgba(159,176,193,.8)', 'stroke-width': 2 / 0.9, 'stroke-dasharray': '7 8', 'stroke-linecap': 'round' }, T.g);
+    el.style.opacity = 0; cells.push({ el: el, full: full, idx: idx, c: c });
+  }
+  var c1 = TK.split(TK.$('t1')), c2 = TK.split(TK.$('a')).concat(TK.split(TK.$('b')));
+  TK.run(D, function (s) {
+    TK.trailerDraw(T, s, 0.0);
+    cells.forEach(function (q) {
+      if (q.full) {
+        var t0 = 0.8 + q.idx * (0.62 / 38), k = TK.out(TK.pr(s, t0, t0 + 0.38));
+        q.el.style.opacity = Math.min(1, k * 2.5);
+        q.el.setAttribute('transform', 'translate(' + (-110 * (1 - k)) + ' 0)');
+      } else {
+        var t1 = 0.95 + q.c * 0.035, k2 = TK.out(TK.pr(s, t1, t1 + 0.4));
+        q.el.style.opacity = k2;
+      }
+    });
+    TK.reveal(c1, s, 1.95, 0.05, 0.55);
+    TK.reveal(c2, s, 2.15, 0.06, 0.62);
+  });
+})();
+</script></body></html>

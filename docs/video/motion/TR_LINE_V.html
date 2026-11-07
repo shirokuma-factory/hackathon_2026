@@ -1,0 +1,71 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>TR_LINE_V</title>
+<style>
+/* ブランドの切り替え。白い行きの線が走り、点線の帰りが右から戻って黄色で埋まり、暗い帯が全面を覆う。
+   0.5 秒で全面が覆われるので、その下でカットできる。1.0 秒。 */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1920px;height:1080px;background:transparent;overflow:hidden}
+#stage{position:absolute;left:-240px;top:-660px;width:2400px;height:2400px;transform:rotate(-12deg);transform-origin:50% 50%}
+.band{position:absolute;left:0;width:2400px;background:#05080c}
+#lines{position:absolute;left:0;top:0;width:2400px;height:2400px;filter:drop-shadow(0 0 7px rgba(255,255,255,.30))}
+.ln{position:absolute;height:6px;border-radius:3px}
+#w{background:#fff;top:1180px;left:0;width:0}
+#hot{position:absolute;top:1176px;width:140px;height:14px;margin-left:-120px;border-radius:7px;background:radial-gradient(closest-side,rgba(255,255,255,.9),rgba(255,255,255,0));opacity:0}
+#dg{position:absolute;left:0;top:1214px;width:2400px;height:6px;overflow:hidden}
+#d,#y{position:absolute;top:0;height:6px;width:0;border-radius:3px}
+#d{background:repeating-linear-gradient(270deg,#5a6b7e 0 14px,transparent 14px 30px)}
+#y{background:#f0c04a;box-shadow:0 0 12px rgba(240,192,74,.6)}
+</style></head><body data-duration="1.0">
+<div id="stage">
+ <div class="band" id="top"></div><div class="band" id="bot"></div>
+ <div id="lines"><div class="ln" id="w"></div><div id="hot"></div>
+  <div id="dg"><div id="d"></div><div id="y"></div></div></div>
+</div>
+<script>
+(function () {
+  var L = 2400, CY = 1200, GMAX = 780, X0 = 120, X1 = 2280, LEN = X1 - X0;
+  function bez(x1, y1, x2, y2) {
+    return function (t) {
+      if (t <= 0) return 0; if (t >= 1) return 1;
+      var lo = 0, hi = 1, m = 0.5;
+      for (var i = 0; i < 30; i++) {
+        m = (lo + hi) / 2;
+        var x = 3 * (1 - m) * (1 - m) * m * x1 + 3 * (1 - m) * m * m * x2 + m * m * m;
+        if (x < t) lo = m; else hi = m;
+      }
+      return 3 * (1 - m) * (1 - m) * m * y1 + 3 * (1 - m) * m * m * y2 + m * m * m;
+    };
+  }
+  var OUT = bez(0.16, 1, 0.3, 1), MOVE = bez(0.65, 0, 0.35, 1), IN = bez(0.7, 0, 0.84, 0);
+  var pr = function (s, a, b) { return Math.min(1, Math.max(0, (s - a) / (b - a))); };
+  var $ = function (i) { return document.getElementById(i); };
+  window.__seek = function (ms) {
+    var s = ms / 1000;
+    // 0.00-0.35 白い線が左から右へ走る
+    var headX = X0 + OUT(pr(s, 0, 0.35)) * LEN;
+    $('w').style.left = X0 + 'px';
+    $('w').style.width = Math.max(0, headX - X0) + 'px';
+    $('hot').style.left = headX + 'px';
+    $('hot').style.opacity = s <= 0 ? 0 : (s < 0.35 ? 1 : 1 - pr(s, 0.35, 0.5));
+    // 0.25-0.60 点線が右から左へ戻る
+    var dLen = MOVE(pr(s, 0.25, 0.6)) * LEN;
+    $('d').style.left = (X1 - dLen) + 'px';
+    $('d').style.width = dLen + 'px';
+    // 0.50-0.80 黄色が右から左へ埋める
+    var yLen = Math.min(dLen, MOVE(pr(s, 0.5, 0.8)) * LEN);
+    $('y').style.left = (X1 - yLen) + 'px';
+    $('y').style.width = yLen + 'px';
+    // 帯 0.30-0.50 線から縦に広がり、0.5 で全面。0.62-1.00 中央から割れて開く
+    var a = MOVE(pr(s, 0.3, 0.5)) * GMAX;
+    var b = MOVE(pr(s, 0.62, 1.0)) * (GMAX + 8);
+    var top = $('top'), bot = $('bot');
+    // 回した状態で継ぎ目に透けが出ないよう、内側へ 1px かぶせる
+    var ov = b < 1 ? 1 : 0;
+    top.style.top = (CY - a) + 'px'; top.style.height = Math.max(0, a - b + ov) + 'px';
+    bot.style.top = (CY + b - ov) + 'px'; bot.style.height = Math.max(0, a - b + ov) + 'px';
+    // 線は 0.8-0.98 で消える
+    $('lines').style.opacity = 1 - IN(pr(s, 0.8, 0.98));
+  };
+  window.__seek(0);
+  document.fonts.ready.then(function () { window.__seek(0); window.__ready = true; });
+})();
+</script></body></html>

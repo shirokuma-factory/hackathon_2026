@@ -1,0 +1,82 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>MG7_m</title><link rel="stylesheet" href="trailer_kit.css">
+<style>
+#blob{position:absolute;left:0;top:0;width:1920px;height:780px;background:radial-gradient(ellipse 64% 44% at 50% 40%,rgba(5,8,12,.66) 0%,rgba(5,8,12,.42) 55%,rgba(5,8,12,0) 100%)}
+#l1{left:96px;top:84px;font-size:44px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+#l2{left:96px;top:140px;font-size:96px;font-weight:900;line-height:1.2;letter-spacing:.02em}
+#big{left:96px;top:262px;display:flex;align-items:baseline;line-height:1.1}
+#big .n{font-size:240px;font-weight:900;color:var(--warn)}
+#big .u{font-size:108px;font-weight:900;color:var(--warn);margin-left:4px}
+#big .t{font-size:64px;font-weight:700;margin-left:44px}
+</style></head><body data-duration="5.0">
+<div id="stage">
+ <div class="layer" id="bg"><div id="blob"></div></div>
+ <div class="layer" id="fig"></div>
+ <div class="layer" id="txt">
+  <div class="abs sh" id="l1">このままでは</div>
+  <div class="abs sh" id="l2">2030年度</div>
+  <div class="abs sh tn" id="big"><span class="n" id="num">0</span><span class="u">%</span><span class="t" id="tx">荷物を運ぶ力が不足</span></div>
+ </div>
+</div>
+<script src="trailer_kit.js"></script>
+<script>
+(function () {
+  var D = 5.0, S = 0.17, X0 = 106, PITCH = 172, Y0 = 618, N = 10, SPAN = 974;
+  var svg = TK.svg('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, TK.$('fig'));
+  var bgsvg = TK.svg('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, TK.$('bg'));
+  var guide = TK.svg('path', { d: 'M96 590 H1824', fill: 'none', stroke: 'rgba(255,255,255,.14)', 'stroke-width': 4, 'stroke-linecap': 'round', 'stroke-dasharray': '14 16', pathLength: 1 }, bgsvg);
+  var defs = TK.svg('defs', {}, svg), icons = [];
+  var CABF = TK.CAB + ' Z ' + TK.WIN, LINE = 'M16 266 L974 266';
+  function solid(g) {
+    TK.svg('path', { d: TK.rr(0, 0, 700, 250, 18) }, g);
+    TK.svg('path', { d: CABF, 'fill-rule': 'evenodd' }, g);
+    TK.svg('path', { d: TK.rr(16, 256, 958, 14, 7) }, g);
+    [140, 240, 860].forEach(function (cx) { TK.svg('path', { d: TK.circ(cx, 300, 34) + ' ' + TK.circ(cx, 300, 12), 'fill-rule': 'evenodd' }, g); });
+  }
+  for (var i = 0; i < N; i++) {
+    var cut = i < 6 ? 1200 : i === 6 ? 0.6 * SPAN : -60;
+    var w = TK.svg('g', {}, svg);
+    var g = TK.svg('g', {}, w);
+    function clip(id, x0, x1) {
+      var cp = TK.svg('clipPath', { id: id }, defs);
+      TK.svg('rect', { x: x0, y: -60, width: x1 - x0, height: 480 }, cp);
+    }
+    clip('a' + i, -60, cut); clip('b' + i, cut, 1200);
+    var A = TK.svg('g', { 'clip-path': 'url(#a' + i + ')', fill: '#fff' }, g);
+    solid(A);
+    var B = null, DS = null;
+    if (i >= 6) {
+      B = TK.svg('g', { 'clip-path': 'url(#b' + i + ')', fill: '#fff' }, g);
+      solid(B);
+      DS = TK.svg('g', { 'clip-path': 'url(#b' + i + ')', fill: 'none', stroke: '#f0c04a', 'stroke-width': 2.6 / S, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-dasharray': (6 / S) + ' ' + (7 / S) }, g);
+      TK.svg('path', { d: TK.rr(0, 0, 700, 250, 18) }, DS);
+      TK.svg('path', { d: TK.CAB + ' Z' }, DS);
+      TK.svg('path', { d: LINE }, DS);
+      [140, 240, 860].forEach(function (cx) { TK.svg('path', { d: TK.circ(cx, 300, 34), 'stroke-dasharray': 'none' }, DS); });
+      DS.style.opacity = 0;
+    }
+    icons.push({ w: w, B: B, DS: DS, x: X0 + i * PITCH });
+  }
+  /* 欠ける分（3.4 台ぶん）の下に引く黄色の線 */
+  var xs = X0 + 6 * PITCH + 0.6 * SPAN * S, xe = X0 + 9 * PITCH + SPAN * S, by = Y0 + 334 * S + 30;
+  var br = TK.svg('path', { d: 'M' + xs + ' ' + (by - 12) + ' V' + by + ' H' + xe + ' V' + (by - 12), fill: 'none', stroke: '#f0c04a', 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', pathLength: 1 }, svg);
+  var l1 = TK.$('l1'), l2 = TK.$('l2'), num = TK.$('num'), big = TK.$('big'), tx = TK.split(TK.$('tx'));
+  TK.run(D, function (s) {
+    TK.draw(guide, TK.mov(TK.pr(s, 0.2, 1.4)));
+    TK.rise(l1, s, 0.1, 0.5, 14);
+    TK.rise(l2, s, 0.3, 0.6, 20);
+    TK.rise(big, s, 0.5, 0.5, 20);
+    num.textContent = String(Math.round(34 * TK.out(TK.pr(s, 0.6, 1.9))));
+    TK.reveal(tx, s, 1.1, 0.045, 0.55);
+    icons.forEach(function (q, i) {
+      var k = TK.out(TK.pr(s, 0.45 + i * 0.07, 0.45 + i * 0.07 + 0.6));
+      q.w.setAttribute('transform', 'translate(' + q.x + ' ' + (Y0 + 26 * (1 - k)) + ') scale(' + S + ')');
+      q.w.style.opacity = k;
+      if (q.B) {
+        var f = TK.mov(TK.pr(s, 2.2 + (9 - i) * 0.13, 2.2 + (9 - i) * 0.13 + 0.55));
+        q.B.style.opacity = 1 - f; q.DS.style.opacity = f;
+      }
+    });
+    TK.draw(br, TK.mov(TK.pr(s, 3.3, 3.9)));
+  });
+})();
+</script></body></html>
