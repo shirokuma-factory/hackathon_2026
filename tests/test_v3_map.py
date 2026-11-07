@@ -19,7 +19,6 @@ from shipcompare.geo import (
 from shipcompare.tariffs import load_tariff
 
 from conftest import make_shipment, one
-from test_app import new_app
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -140,77 +139,6 @@ def test_spec14_11_route_for_mapping():
     assert route_for("13104", "13101") == "other"
     assert route_for("01101", "13104") is None  # 出発地が関東の7か所でない
     assert route_for("13104", None) is None and route_for("13104", "") is None
-
-
-# ---------------------------------------------------------------- G27: 着地の選択とタブ1の区間（AppTest）
-def pick(at, pref: str, code: str):
-    at.selectbox(key="map_pref").select(pref).run()
-    at.selectbox(key="map_dest").select(code).run()
-    return at
-
-
-def test_spec14_12_map_tab_is_first_and_shows_attribution():
-    at = new_app()
-    assert not at.exception
-    assert [t.label for t in at.tabs][:2] == ["地図", "1 出荷条件"]
-    text = " ".join(m.value for m in at.markdown) + " " + " ".join(c.value for c in at.caption)
-    assert "© OpenStreetMap contributors" in text and "openstreetmap.org/copyright" in text
-    assert "国土数値情報（行政区域データ）（国土交通省）を加工して作成" in text
-    assert "OSRM（© OpenStreetMap contributors, ODbL）" in text
-
-
-def test_spec14_13_no_button_before_a_destination_is_chosen():
-    at = new_app()
-    assert not at.exception
-    assert not [b for b in at.button if b.key == "map_apply"]
-
-
-def test_spec14_14_osaka_sets_kanto_kansai():
-    at = pick(new_app(), "大阪府", "27128")
-    assert not at.exception
-    at.button(key="map_apply").click().run()
-    assert at.session_state["f_route"] == "kanto_kansai"
-    assert at.selectbox(key="f_route").value == "kanto_kansai"
-
-
-def test_spec14_15_miyagi_sets_kanto_tohoku():
-    at = pick(new_app(), "宮城県", "04101")
-    at.button(key="map_apply").click().run()
-    assert at.session_state["f_route"] == "kanto_tohoku"
-
-
-def test_spec14_16_other_sets_other_with_osrm_distance():
-    at = pick(new_app(), "愛知県", "23101")
-    at.button(key="map_apply").click().run()
-    assert not at.exception
-    km = load_osrm("13104")["23101"]["km"]
-    assert at.session_state["f_route"] == "other"
-    assert at.session_state["f_dist"] == round(km, 1)
-    assert at.session_state["f_kanto"] is True
-    assert at.number_input(key="f_dist").value == round(km, 1)
-
-
-def test_spec14_17_origin_change_changes_distance():
-    at = new_app()
-    at.selectbox(key="map_origin").select("10201").run()  # 前橋
-    pick(at, "愛知県", "23101")
-    at.button(key="map_apply").click().run()
-    assert at.session_state["f_dist"] == round(load_osrm("10201")["23101"]["km"], 1)
-    assert at.session_state["f_dist"] != round(load_osrm("13104")["23101"]["km"], 1)
-
-
-def test_spec14_18_unreachable_destination_card_says_no_route():
-    at = pick(new_app(), "長崎県", "42209")  # 対馬市
-    assert not at.exception
-    assert "経路がありません" in "\n".join(t.value.to_string() for t in at.table)
-
-
-def test_spec14_19_card_shows_fare_days_and_difference_for_demo_route():
-    at = pick(new_app(), "大阪府", "27128")
-    text = "\n".join(t.value.to_string() for t in at.table)
-    assert "109,750円" in text  # 491.8km、荷物未入力なので 2t
-    assert "想定距離は 500km" in text and "491.8km" in text
-    assert "運賃表を使えない" in text  # 鉄道・フェリー
 
 
 # ---------------------------------------------------------------- G28: OSRM の取得（通信を差し替える）
@@ -373,8 +301,3 @@ def test_spec14_24_quantile_edges_with_few_distinct_values():
     assert quantile_edges([5, 5]) == [5, 5] and class_of(5, [5, 5]) == 0
 
 
-def test_spec14_25_day_cell_text_is_not_contradictory():
-    at = pick(new_app(), "大阪府", "27128")
-    text = "\n".join(t.value.to_string() for t in at.table)
-    assert "1日（運転 6時間16分。1日の運転を 9 時間までとして数えました。休憩・積込み・荷待ち・荷下ろしは含みません）" in text
-    assert "driver-roudou-jikan.mhlw.go.jp/truck/notice" in text

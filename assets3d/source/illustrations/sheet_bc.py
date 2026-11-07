@@ -9,7 +9,7 @@ import sheet_c_merge
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 OUT = os.path.join(ROOT, "outputs", "illustrations_2026-11-07")
-MOCK = r"C:/Users/tatsu/.codex/visualizations/2026/11/05/01a1ac04-0efa-7f23-b06f-978b27c4a5ac/backfull-negotiation-screens.png"
+MOCK = os.environ.get("NEGOTIATION_MOCK_PNG", os.path.join(ROOT, "outputs", "backfull-negotiation-screens.png"))
 INK = (30, 40, 36)
 SUB = (90, 98, 94)
 
