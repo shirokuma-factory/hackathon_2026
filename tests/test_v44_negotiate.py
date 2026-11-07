@@ -222,8 +222,8 @@ def test_negotiate_logic(local_server):
         assert page.js("Negotiate.economics(Negotiate.emptyEcon()).state") == "none"
 
         # 条件の状態と状況
-        def P(load="unconfirmed", recv="unconfirmed", typ="commodity", hold=None, econ=None, wd="金"):
-            return {"type": typ, "fromMuni": "江東区", "toMuni": "加古川市", "weekday": wd, "load": {"state": load, "note": ""}, "recv": {"state": recv, "note": ""},
+        def P(load="unconfirmed", recv="unconfirmed", typ="commodity", hold=None, econ=None, wd="金", weekly=False):
+            return {"weekly": weekly, "type": typ, "fromMuni": "江東区", "toMuni": "加古川市", "weekday": wd, "load": {"state": load, "note": ""}, "recv": {"state": recv, "note": ""},
                     "hold": hold or {"action": "hold", "picks": []}, "econ": econ or Negotiate_empty}
         page.js("window.NE = Negotiate.emptyEcon()")
         Negotiate_empty = None
@@ -248,8 +248,12 @@ def test_negotiate_logic(local_server):
         assert "条件の確認のご連絡です" in th and "積込の日時を変えることは可能でしょうか" in th and "別の曜日の集荷であれば可能でしょうか" in th and "お見積りを比べていただく条件" not in th
         # 案内の形に 2026-11-07: 文の最初に、空きがあることと曜日を書く。お願い・ご相談の形にしない
         body = [x for x in t.split(chr(10)) if x and not x.startswith("【") and not x.startswith("突然")][0]
-        assert "金曜日" in body and "空きがあります" in body and "ご相談" not in t and "ご相談" not in call("buildDraft", P(typ="returnable"))
-        assert "江東区周辺から加古川市周辺へ戻る" in body and "江東区周辺から加古川市周辺へ戻る" in call("buildDraft", P(typ="returnable")) and "空きがあります" in call("buildDraft", P(typ="returnable"))
+        assert "金曜日" in body and "空きがありました" in body and "毎週" not in t and "ご相談" not in t and "ご相談" not in call("buildDraft", P(typ="returnable"))
+        assert "江東区周辺から加古川市周辺へ戻る" in body and "江東区周辺から加古川市周辺へ戻る" in call("buildDraft", P(typ="returnable")) and "空きがありました" in call("buildDraft", P(typ="returnable"))
+        # 2026-11-08: 毎週と書くのは、その曜日の帰りの便の 8 割以上が空車のときだけ。見積りの前提は荷主の依頼の言い方にしない
+        tw = call("buildDraft", P(weekly=True))
+        assert "毎週金曜日に、江東区周辺から加古川市周辺へ戻るトラックに空きがあります" in tw and "お見積りは、荷物の内容と日時を伺ってからお出しします。" in t
+        assert "同じ荷物・全量であること" not in t and "必要な台数" not in t and "見積の期限" not in t and "総額をお出しします" not in t
         assert "戻る便でお運びする件で" in th
         assert "条件が合わない点" in th and "お願い" not in th.replace("再確認させてください", "")
         assert call("buildDraft", P("ng", "ok", hold={"action": "skip", "picks": []})) == ""

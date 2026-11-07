@@ -189,3 +189,4 @@
 - 守り: `AI_EXPLAIN_ENABLED=1` が要る（既定は止）。公開版は `AI_EXPLAIN_PUBLIC=1` も要る。1 日 `AI_DAILY_LIMIT`（既定 100）、来訪者ごとに 1 時間 10 回、事実は 30 KB まで、同じ内容は再利用。キーは環境変数 `ANTHROPIC_API_KEY` だけで、`.env` は読まない。
 - 試験は SDK を差し替える（`tests/test_v53_ai_explain.py`）。本物の呼び出しは作成者の許可を得てから最初の 1 回を行う。
 - 自社の運行記録の列の整理（SPEC §53.1）: `claude-haiku-5-5` を 1 回、effort low、max_tokens 2,000、JSON スキーマ。送るのは列の見出しと値の形の要約だけで、セルの値は送らない。上限・有効化の条件は上と同じ。試験は `tests/test_v53_own_columns.py`（SDK を差し替え）。
+- 帰り便の案内文の整え（SPEC §53.2）: `claude-haiku-5-5` を 1 回、effort low、max_tokens 1,500、構造化出力なし。送るのは確認を取った案内文の本文だけ。戻りは【】・曜日・「…周辺」・数字・長さを Python で照合し、落ちた案は「確認が必要な案」として出す。1 回 約 $0.001 以下（仮定）。試験は `tests/test_v53_offer_polish.py`（SDK を差し替え）。
