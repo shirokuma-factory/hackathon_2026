@@ -1,0 +1,346 @@
+{
+ "_説明": "r8 の組み立ての表。r7 からの変更: アプリの場面（帰りが空く地図、始め方、自社の運行、掲示板の文、書面、荷主の比べる画面、帰り便）を、落ち着いた背景の上のブラウザーの窓（右）に入れ、字幕を左に置く（tools/video/browser_frame_ff.py）。作成者の指摘 11/7。冒頭 6 秒の MiniMax H3 の映像（地域の制限があるライセンス）を外し、流れの地図（自作）に替えた。AI 生成の表示も不要になったので外した",
+ "name": "r8",
+ "shots": "docs/video/shots_r7.json",
+ "voice_dir": "voice/tight_r7",
+ "voice_tag": "r7",
+ "layout": "docs/video/subs_r8_layout.json",
+ "kinetic_tool": "tools/video/make_kinetic3.py",
+ "blocks": [
+  {
+   "id": "H0",
+   "gap": 0,
+   "lead": 0.6,
+   "tail": 0.2,
+   "v1": [
+    {
+     "path": "motion/FLOW_JP.mov",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/HOOK_m.mov",
+     "at": {
+      "say": "ろくわり",
+      "land": 2.4
+     }
+    }
+   ]
+  },
+  {
+   "id": "P1",
+   "gap": 0,
+   "lead": 0.2,
+   "tail": 0.2,
+   "tr": true,
+   "v1": [
+    {
+     "path": "motion/FLOW_JP.mov",
+     "fill": true,
+     "off": 6.0
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/CHAIN_m.mov",
+     "off": 0.0,
+     "len": 4.2,
+     "at": {
+      "say": "トラックが運んで",
+      "land": 1.2
+     }
+    },
+    {
+     "track": 5,
+     "path": "motion/CHAIN_m.mov",
+     "off": 4.2,
+     "len": 5.6,
+     "at": {
+      "say": "運転手は",
+      "land": 0.6
+     }
+    },
+    {
+     "track": 5,
+     "path": "motion/CHAIN_m.mov",
+     "off": 9.8,
+     "len": 3.2,
+     "at": {
+      "say": "さんぶんのいち",
+      "land": 0.8
+     }
+    }
+   ],
+   "audio": [
+    {
+     "track": 4,
+     "path": "sfx/kit/land_soft.wav",
+     "at": {
+      "say": "トラックが運んで",
+      "land": 0.0
+     }
+    },
+    {
+     "track": 4,
+     "path": "sfx/kit/land_soft.wav",
+     "at": {
+      "say": "さんぶんのいち",
+      "land": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "id": "H1",
+   "gap": 0,
+   "lead": 0.1,
+   "tail": 0.3,
+   "v1": [
+    {
+     "path": "motion/FLOW_JP.mov",
+     "off": 6.0,
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/CHAIN_m.mov",
+     "off": 13.0,
+     "at": {
+      "say": "ろくわり",
+      "land": 1.7
+     }
+    }
+   ]
+  },
+  {
+   "id": "H2",
+   "gap": 0.4,
+   "lead": 0.3,
+   "tail": 0.3,
+   "v1": [
+    {
+     "path": "rec6/focus/P1h.mp4",
+     "until": "たとえば"
+    },
+    {
+     "path": "motion/FLOW_KAGO.mov",
+     "until": "どこで"
+    },
+    {
+     "path": "bframe/r8/F_LIVE_h.mp4",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/MG9_m.mov",
+     "at": {
+      "say": "荷を積まずに",
+      "land": 2.2
+     },
+     "until": "たとえば",
+     "scrim": true
+    }
+   ]
+  },
+  {
+   "id": "H3",
+   "gap": 0,
+   "lead": 0.3,
+   "tail": 0.3,
+   "tr": true,
+   "v1": [
+    {
+     "path": "stock/Crystal_Glass_With_Water_In_Red_Light_uhd_1276670.mp4",
+     "off": 1.0,
+     "until": "それをつなぐ"
+    },
+    {
+     "path": "motion/LOGO_B.mov",
+     "len": 4.6
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "H4",
+   "gap": 0.4,
+   "lead": 0.3,
+   "tail": 0.3,
+   "v1": [
+    {
+     "path": "bframe/r8/FLOW0h.mp4",
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "C1",
+   "gap": 0.5,
+   "lead": 0.3,
+   "tail": 0.3,
+   "chapter": "motion/CHM2.mov",
+   "v1": [
+    {
+     "path": "stock/office_comp.mp4",
+     "until": "そして"
+    },
+    {
+     "path": "stock/office_dive.mp4",
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "C2",
+   "gap": 0,
+   "lead": 0.2,
+   "tail": 0.3,
+   "v1": [
+    {
+     "path": "bframe/r8/F_OWNVIZ_h.mp4",
+     "until": "空いた便は"
+    },
+    {
+     "path": "bframe/r8/F_POST_h.mp4",
+     "until": "ドライバーは"
+    },
+    {
+     "path": "rec7/focus/F_DRIVER_h.mp4",
+     "until": "その記録から"
+    },
+    {
+     "path": "bframe/r8/F_NEGOTIATE_h.mp4",
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "S1",
+   "gap": 0.5,
+   "lead": 0.3,
+   "tail": 0.3,
+   "chapter": "motion/CHM3.mov",
+   "v1": [
+    {
+     "path": "stock/laptop_dive.mp4",
+     "len": 4.0
+    },
+    {
+     "path": "bframe/r8/P7h.mp4",
+     "until": "条件を入れると"
+    },
+    {
+     "path": "bframe/r8/P8h.mp4",
+     "len": 4.5
+    },
+    {
+     "path": "bframe/r8/F_QUOTE_h.mp4",
+     "until": "トラックを借り切る",
+     "off": 7.0
+    },
+    {
+     "path": "bframe/r8/P8h.mp4",
+     "off": 4.5,
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "S2",
+   "gap": 0.5,
+   "lead": 0.3,
+   "tail": 0.3,
+   "chapter": "motion/CHM4.mov",
+   "v1": [
+    {
+     "path": "bframe/r8/P9h.mp4",
+     "len": 2.63
+    },
+    {
+     "path": "bframe/r8/P10h.mp4",
+     "until": "さつま運輸の"
+    },
+    {
+     "path": "bframe/r8/P12h.mp4",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/MG5_m.mov",
+     "at": {
+      "say": "きゅうまんごせんえん",
+      "land": 4.5
+     },
+     "scrim": true
+    }
+   ]
+  },
+  {
+   "id": "HP",
+   "gap": 0.4,
+   "lead": 0.3,
+   "tail": 0.4,
+   "v1": [
+    {
+     "path": "stock/office_comp.mp4",
+     "off": 6.0,
+     "until": "荷主は"
+    },
+    {
+     "path": "stock/laptop_comp.mp4",
+     "off": 5.0,
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "R7",
+   "gap": 0.5,
+   "lead": 0.3,
+   "tail": 0.3,
+   "chapter": "motion/CHM5.mov",
+   "v1": [
+    {
+     "path": "rec/CC_rec_v2.mp4",
+     "len": 3.6
+    },
+    {
+     "path": "motion/CLAUDE_HUB_m.mov",
+     "fill": true
+    }
+   ],
+   "over": []
+  },
+  {
+   "id": "H8",
+   "gap": 0.5,
+   "lead": 0.3,
+   "tail": 0.3,
+   "v1": [
+    {
+     "path": "rec6/focus/P13h.mp4",
+     "until": "Backfull"
+    },
+    {
+     "path": "motion/LOGO_B.mov",
+     "len": 4.6
+    }
+   ],
+   "over": []
+  }
+ ]
+}
