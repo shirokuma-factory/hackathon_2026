@@ -439,3 +439,18 @@
 - H1 の一文（運ぶ人が足りないのに／運べる量の6割が使われていない）を画面の縦の中央へ。P1 の 2 文目が 2 枚に分かれて字幕の割り付けの数がずれ、白い箱の字幕に戻っていたので、割り付けに 1 枚足した。H1 の暗くする幕が遅れて地図が明るく見えたので、H1 の図を 0.3 秒早く出す。3 分に収めるため、ロゴを短く、章の見出しから声までを 1.3 秒に。
 - YouTube 用: Resolve の ProRes の元から `tools/video/deliver_mp4.py` で mp4 を作る（H.264 High、約 8 Mbps、AAC 48kHz、時刻のトラックなし、moov 先頭）。crf では画面がほぼ止まっているため 2〜3 Mbps まで下がり、YouTube の作り直しで文字が崩れやすいので平均 10 Mbps にした。
 - 公開リポジトリの片づけ（GitHub リポジトリ採点基準準備のセッションの依頼）: Resolve の台本はリポジトリの場所を ROOT_DIR か BACKFULL_ROOT から受け取る。r4 の表は相対パス。
+- 2026-11-08 01:03 `5aff3a7` AI explanation: pseudonymise, Haiku draft, show payload, cost and remaining
+- 2026-11-08 01:07 `5913f00` Waiting: keep table columns readable in every entry mode and width
+- 2026-11-08 01:18 `044da81` Map compare: describe cargo in words, Haiku proposes rows
+- 2026-11-08 01:21 `a021ccf` Compare chart: keep the short cost heading, explain the bar in a tooltip
+- 2026-11-08 01:21 `38df0cc` CLAUDE_USAGE: describe the four in-app Haiku features as they are now
+- 2026-11-08 01:23 `26d0d19` CLAUDE_USAGE: describe the in-app helpers as Haiku with machine checks
+- 2026-11-08 01:26 `3d7eac4` AI explanation: write for the email, no confessional phrasing; record real API run
+- 2026-11-08 01:31 `c256e8e` Video r16: live-app takes, continuous chain, timed MGs, Resolve guards
+
+## 2026-11-08 深夜 デモ動画 r15〜r17（タイミングの総点検、公式の審査の観点）
+
+- 作成者の指摘 11/8: タイミングが合っていない所が多い、章で間を置く前に説明が始まる、アプリの画面が変わったので今の画面を使う、参加者ガイドの「動画がピッチ」「根本的な課題・技術的なソリューション・実際の実装」「もっと見たい」と公式の審査の観点を動画で表す。採点基準を v2 にした（G1〜G4 と審査の観点の表）。
+- r15: タイミングだけを見る点検（`docs/reviews/2026-11-08_タイミングの点検_r15.md`、43 件）。r16 で直した: 録画を動いているアプリから取り直し（`record_live.py`、W16_*）、冒頭の連鎖図を 1 枚につなぐ、H3 を荷台に荷物が載る図に、S2 の金額を言葉に合わせて出す図、スマートフォンは 1.4 倍で「押すだけ」に押す瞬間を合わせる、章の見出しは新しい場面と一緒に出し声は 1.2 秒後。Resolve の取り込みで、上書きした WAV の古い長さを入れ直す。
+- r16 の採点（新しい Opus、`docs/reviews/2026-11-08_デモ動画の採点_r16.md`）: 44 点（素点 73、減点 −29）、P0 0 件・P1 7 件。指摘の多くは出典の行と架空の表示の抜け。本線がコマで確かめたもの: 電話の画面に字幕が重なる、締めの字幕がロゴの前の黒に残る。
+- r17 で直した: 上に重ねた図の出典を下の映像の出典より優先（19〜28 秒の「6割」の下に純流動調査が出ていた）、27 万円の画面と帰り便の図に「目安」「架空の例」の行（r16 の録画の名前が出典の表の鍵に無かった）、締めの字幕はロゴの場面の始まりで消しロゴは暗い入りを 0.3 秒飛ばす、電話の場面の字幕を右の列へ、Haiku 点検・Sonnet 下書き・Opus 確かめを字幕で示す、「約27万円（目安）」を言う時に出す。
