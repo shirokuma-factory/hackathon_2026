@@ -113,6 +113,7 @@ def edge_page(w: int = 1920, h: int = 1080):
         [edge, "--headless=new", f"--remote-debugging-port={dbg}", f"--window-size={w},{h}", f"--user-data-dir={profile}",
          "--hide-scrollbars", "--force-device-scale-factor=1", "--no-first-run", *cs.EDGE_CLEAN_FLAGS, "--allow-file-access-from-files", "about:blank"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    cs.bind_to_job(proc)
     try:
         targets = []
         for _ in range(60):
@@ -176,8 +177,8 @@ def compare_lite_shot(w: int, h: int) -> None:
 
 
 def serve(port: int) -> subprocess.Popen:
-    return subprocess.Popen([sys.executable, str(ROOT / "tools" / "serve_web.py"), "--port", str(port)],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return cs.bind_to_job(subprocess.Popen([sys.executable, str(ROOT / "tools" / "serve_web.py"), "--port", str(port)],
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
 
 
 # ---------------------------------------------------------------- S5 の筋書き（SPEC §15.4 G29）
@@ -467,6 +468,7 @@ def main() -> int:
          "--hide-scrollbars", "--force-device-scale-factor=1", "--no-first-run", "--enable-webgl", "--ignore-gpu-blocklist",
          "--enable-unsafe-swiftshader", *cs.EDGE_CLEAN_FLAGS, "about:blank"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    cs.bind_to_job(edge_proc)
     rc = 0
     try:
         targets = []
