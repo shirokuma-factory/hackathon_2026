@@ -19,7 +19,7 @@
 | 項目 | 選択 | 理由 |
 |---|---|---|
 | 言語 | Python 3.13、uv | 導入済み。Node は入っていない |
-| 画面 | Streamlit | 3日で入力・表・保存まで作れる。録画用に 1080p で表示できる |
+| 画面 | 地図の Web アプリ（`tools/serve_web.py` の標準ライブラリのサーバー、MapLibre + deck.gl）と、ファイル 1 枚で動くページ | 11/3 に地図を中心に作り直した（§14）。最初の版は Streamlit で作ったが、11/7 に消した（`docs/試行錯誤の記録.md`） |
 | 計算 | `src/shipcompare/` の純粋な関数 | 金額と判定を画面から切り離して試験する |
 | 試験 | pytest | |
 | 運賃データ | `data/tariffs/*.json`（出典・適用日・確認日つき） | 表の全体は持たない（審査照合の記録を参照） |
@@ -35,7 +35,8 @@ src/shipcompare/
   quotes.py      # 見積回答の比較
   request.py     # 見積依頼文と不足項目
   storage.py     # JSON の保存と読み込み
-app/main.py      # Streamlit の画面
+tools/serve_web.py  # 配信サーバーと API（11/3 の最初の版の app/main.py は 11/7 に削除）
+web/             # 地図の画面とファイル 1 枚のページ
 data/tariffs/    # 運賃の抜粋
 data/scenarios/  # 場面 S1〜S4（想定の荷主）
 tests/
@@ -1345,7 +1346,7 @@ Blender で作った glTF（`web/models/*.glb`）を、拡大したときだけ 
 
 ### 31.1 荷待ちの記録を外に送らない（#1）
 
-- 地図の荷待ちのタブの計算を、`web/waiting_calc.js` の JS だけでブラウザの中で行う。手元の版・公開版とも `/api/waiting/calc` を呼ばない（Python の `waiting.py` は試験表の照合と Streamlit のために残す）。足りない関数（行ごとの計算、相手ごとの集計など）は `waiting.html` の JS から `waiting_calc.js` に移し、`waiting.html` も同じものを使う。
+- 地図の荷待ちのタブの計算を、`web/waiting_calc.js` の JS だけでブラウザの中で行う。手元の版・公開版とも `/api/waiting/calc` を呼ばない（Python の `waiting.py` は試験表の照合のために残す）。足りない関数（行ごとの計算、相手ごとの集計など）は `waiting.html` の JS から `waiting_calc.js` に移し、`waiting.html` も同じものを使う。
 - 画面の「この PC の中だけで計算し、外に送りません」は、そのとおりになる。試験: 地図の荷待ちのタブで例を読み込み、表を出したあと、ネットワークの記録に `/api/waiting` が 0 件。数字は §30.9 G132 と同じ。
 
 ### 31.2 試算額と会社を結び付けない（#2）

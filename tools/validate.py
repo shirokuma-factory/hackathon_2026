@@ -26,8 +26,8 @@ SECRET_RES = [
 PATH_RES = [
     re.compile(r"[A-Za-z]:\\\\Users\\\\", re.I),
     re.compile(r"[A-Za-z]:\\Users\\", re.I),
-    re.compile(r"C:/Users/", re.I),
-    re.compile(r"/c/Users/", re.I),
+    re.compile(r"C:" + "/Users/", re.I),  # この行が自分に当たらないよう分けて書く
+    re.compile(r"/c/" + "Users/", re.I),
     re.compile("\u4f5c\u6210\u8005"),  # 呼び名。この行が自分に当たらないようエスケープで書く
 ]
 

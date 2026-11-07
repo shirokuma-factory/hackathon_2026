@@ -31,3 +31,6 @@ data/raw/p31/
 # P31 の画面用データ（SPEC §18.3）。build_web_data.py が作る。再配布不可なのでコミットしない
 web/data/local/
 *.blend1
+
+# サブエージェントの作業フォルダ（git worktree）
+.claude/worktrees/
