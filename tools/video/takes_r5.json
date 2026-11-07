@@ -1,0 +1,452 @@
+[
+ {
+  "id": "R1g",
+  "url_path": "/index.html#v=market&km=800",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+  "steps": [
+   {
+    "wait": 1.0
+   },
+   {
+    "click": "#m-rfold"
+   },
+   {
+    "wait": 1.2
+   },
+   {
+    "click": "#m-tbody tr[data-k=\"45-12\"]"
+   },
+   {
+    "wait": 2.0
+   },
+   {
+    "highlight": [
+     "#m-pair .mp-stats",
+     3.5
+    ]
+   },
+   {
+    "highlight": [
+     "#m-pair .mp-msg",
+     3
+    ]
+   },
+   {
+    "wait": 1.5
+   }
+  ]
+ },
+ {
+  "id": "R2g",
+  "url_path": "/index.html#v=market&km=800",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+  "steps": [
+   {
+    "wait": 1.0
+   },
+   {
+    "click": "#open-sum"
+   },
+   {
+    "wait": 1.5
+   },
+   {
+    "highlight": [
+     ".sum-gap .sum-row:first-child",
+     4
+    ]
+   },
+   {
+    "highlight": [
+     ".sum-tiles .sum-tile:first-child",
+     3
+    ]
+   },
+   {
+    "click": "#m-rfold"
+   },
+   {
+    "wait": 1.2
+   },
+   {
+    "click": "#m-tbody tr[data-k=\"45-12\"]"
+   },
+   {
+    "wait": 2.0
+   },
+   {
+    "highlight": [
+     "#m-pair .mp-stats",
+     4.5
+    ]
+   },
+   {
+    "highlight": [
+     "#m-pair .mp-msg",
+     3.5
+    ]
+   },
+   {
+    "wait": 1.5
+   }
+  ]
+ },
+ {
+  "id": "R3g",
+  "url_path": "/own_lite.html",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "!!document.querySelector('#drop')",
+  "steps": [
+   {
+    "wait": 1.5
+   },
+   {
+    "click": "[data-act=to-full]"
+   },
+   {
+    "wait": 1.2
+   },
+   {
+    "move": "#drop"
+   },
+   {
+    "wait": 0.6
+   },
+   {
+    "eval": "(function(){const dt=new DataTransfer(); for(const f of SAMPLE_FILES) dt.items.add(new File([f.text],f.name,{type:'text/csv'}));const d=document.querySelector('#drop');d.dispatchEvent(new DragEvent('dragenter',{dataTransfer:dt,bubbles:true,cancelable:true}));d.dispatchEvent(new DragEvent('dragover',{dataTransfer:dt,bubbles:true,cancelable:true}));setTimeout(()=>d.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true})),700);return 1})()"
+   },
+   {
+    "wait": 3.0
+   },
+   {
+    "eval": "(function(){const p=[...document.querySelectorAll('p')].find(x=>x.textContent.includes('帰りの便 53 本')); if(p){p.id='rec-53';}})()"
+   },
+   {
+    "move": "#rec-53"
+   },
+   {
+    "highlight": [
+     "#rec-53",
+     3.5
+    ]
+   },
+   {
+    "wait": 2.0
+   }
+  ]
+ },
+ {
+  "id": "R4g",
+  "url_path": "/own_lite.html",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){const w=window.__pre=window.__pre||{n:0}; if(w.n===0){w.n=1;(function(){const dt=new DataTransfer(); for(const f of SAMPLE_FILES) dt.items.add(new File([f.text],f.name,{type:'text/csv'}));const d=document.querySelector('#drop');d.dispatchEvent(new DragEvent('dragenter',{dataTransfer:dt,bubbles:true,cancelable:true}));d.dispatchEvent(new DragEvent('dragover',{dataTransfer:dt,bubbles:true,cancelable:true}));d.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true}));return 1})();return false;} const b=document.querySelector('[data-act=to-full]'); if(w.n===1){ if(!b) return false; w.n=2; b.click(); return false;}return document.body.innerText.includes('帰りの便 53 本');})()",
+  "steps": [
+   {
+    "wait": 1.0
+   },
+   {
+    "eval": "(function(){const p=[...document.querySelectorAll('p')].find(x=>x.textContent.includes('帰りの便 53 本')); if(p){p.id='rec-53';}})()"
+   },
+   {
+    "move": "#rec-53"
+   },
+   {
+    "highlight": [
+     "#rec-53",
+     4.5
+    ]
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "eval": "location.href='waiting.html'"
+   },
+   {
+    "wait_for": "#b-clear"
+   },
+   {
+    "wait": 1.5
+   },
+   {
+    "click": "#b-clear"
+   },
+   {
+    "wait": 1.0
+   },
+   {
+    "click": "#table-fold > summary"
+   },
+   {
+    "wait": 0.8
+   },
+   {
+    "paste": [
+     "#paste",
+     "日付\t車番\t車種\t契約の相手\t場所\t到着\t荷役開始\t荷役終了\t出発\t荷役をした人\t荷役の方法\t荷主等の都合の待機か\t指定の到着時刻\t附帯業務の内容\t附帯業務の分\n2026/10/1\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:25\t\t\t\t\tはい\t08:00\t\t\n2026/10/2\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:20\t\t\t\t\tはい\t08:00\t\t\n2026/10/5\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:30\t\t\t\t\tはい\t08:00\t\t\n2026/10/6\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:40\t\t\t\t\tはい\t08:00\t\t\n2026/10/7\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t10:15\t10:55\t11:05\t運転者\t手積み\tはい\t08:00\t検品・仕分け\t20\n2026/10/15\t\t中型\t架空 元請A物流\t江東区 地点07\t09:00\t09:30\t09:52\t10:00\t荷主側\t\tはい\t\t\t\n2026/10/8\t\t中型\t架空 元請A物流\t江東区 地点07\t10:05\t10:20\t\t\t\t\tはい\t\t\t\n2026/10/9\t\t中型\t架空 元請A物流\t江東区 地点07\t10:10\t10:25\t\t\t\t\tはい\t\t\t\n2026/10/13\t\t中型\t架空 元請A物流\t江東区 地点07\t10:15\t10:35\t\t\t\t\tはい\t\t\t\n2026/10/14\t\t中型\t架空 元請A物流\t江東区 地点07\t10:00\t10:10\t\t\t\t\tはい\t\t\t\n2026/10/8\t\t中型\t架空 元請A物流\t川崎市 地点12\t13:05\t13:45\t\t\t\t\tはい\t\t\t\n2026/10/16\t\t中型\t架空 元請A物流\t川崎市 地点12\t13:20\t14:00\t\t\t\t\tはい\t\t\t\n2026/10/2\t\t大型\t架空 B食品\t市川市 地点03\t08:00\t09:30\t\t\t\t\tはい\t08:00\t\t\n2026/10/5\t\t大型\t架空 B食品\t市川市 地点03\t08:00\t09:40\t\t\t\t\tはい\t08:00\t\t\n2026/10/9\t\t大型\t架空 B食品\t市川市 地点03\t08:00\t09:20\t\t\t\t\tはい\t08:00\t\t\n2026/10/13\t\t大型\t架空 B食品\t市川市 地点03\t10:10\t10:25\t\t\t\t\tはい\t\t\t\n2026/10/14\t\t大型\t架空 B食品\t市川市 地点03\t10:20\t10:35\t\t\t\t\tはい\t\t\t\n2026/10/15\t\t大型\t架空 B食品\t川崎市 地点12\t13:05\t13:20\t\t\t\t\tいいえ\t\t\t"
+    ]
+   },
+   {
+    "wait": 1.5
+   },
+   {
+    "click": "#b-paste"
+   },
+   {
+    "wait": 2.5
+   },
+   {
+    "eval": "(function(){const t=document.querySelector('#hotspots'); if(t) t.parentElement.id='rec-hot';})()"
+   },
+   {
+    "highlight": [
+     "#partners table",
+     3.5
+    ]
+   },
+   {
+    "move": "#rec-hot"
+   },
+   {
+    "highlight": [
+     "#rec-hot",
+     3.5
+    ]
+   },
+   {
+    "scroll": [
+     null,
+     1380
+    ]
+   },
+   {
+    "wait": 0.8
+   },
+   {
+    "move": "#doc-main"
+   },
+   {
+    "highlight": [
+     "#doc-main",
+     4
+    ]
+   },
+   {
+    "wait": 1.0
+   }
+  ]
+ },
+ {
+  "id": "R4_3xg",
+  "url_path": "/index.html#v=own",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "!!window.__app && (function(){const l=document.querySelector('#loading'); return !l || l.classList.contains('done');})()",
+  "steps": [
+   {
+    "wait_for": "#own-tabs"
+   },
+   {
+    "wait": 1.0
+   },
+   {
+    "click": "#own-tabs button[data-tab=wait]"
+   },
+   {
+    "wait_for": "[data-w=clear]"
+   },
+   {
+    "click": "[data-w=clear]"
+   },
+   {
+    "wait": 1.0
+   },
+   {
+    "paste": [
+     "#w-paste",
+     "日付\t車番\t車種\t契約の相手\t場所\t到着\t荷役開始\t荷役終了\t出発\t荷役をした人\t荷役の方法\t荷主等の都合の待機か\t指定の到着時刻\t附帯業務の内容\t附帯業務の分\n2026/10/1\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:25\t\t\t\t\tはい\t08:00\t\t\n2026/10/2\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:20\t\t\t\t\tはい\t08:00\t\t\n2026/10/5\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:30\t\t\t\t\tはい\t08:00\t\t\n2026/10/6\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t09:40\t\t\t\t\tはい\t08:00\t\t\n2026/10/7\t\t中型\t架空 元請A物流\t江東区 地点07\t08:00\t10:15\t10:55\t11:05\t運転者\t手積み\tはい\t08:00\t検品・仕分け\t20\n2026/10/15\t\t中型\t架空 元請A物流\t江東区 地点07\t09:00\t09:30\t09:52\t10:00\t荷主側\t\tはい\t\t\t\n2026/10/8\t\t中型\t架空 元請A物流\t江東区 地点07\t10:05\t10:20\t\t\t\t\tはい\t\t\t\n2026/10/9\t\t中型\t架空 元請A物流\t江東区 地点07\t10:10\t10:25\t\t\t\t\tはい\t\t\t\n2026/10/13\t\t中型\t架空 元請A物流\t江東区 地点07\t10:15\t10:35\t\t\t\t\tはい\t\t\t\n2026/10/14\t\t中型\t架空 元請A物流\t江東区 地点07\t10:00\t10:10\t\t\t\t\tはい\t\t\t\n2026/10/8\t\t中型\t架空 元請A物流\t川崎市 地点12\t13:05\t13:45\t\t\t\t\tはい\t\t\t\n2026/10/16\t\t中型\t架空 元請A物流\t川崎市 地点12\t13:20\t14:00\t\t\t\t\tはい\t\t\t\n2026/10/2\t\t大型\t架空 B食品\t市川市 地点03\t08:00\t09:30\t\t\t\t\tはい\t08:00\t\t\n2026/10/5\t\t大型\t架空 B食品\t市川市 地点03\t08:00\t09:40\t\t\t\t\tはい\t08:00\t\t\n2026/10/9\t\t大型\t架空 B食品\t市川市 地点03\t08:00\t09:20\t\t\t\t\tはい\t08:00\t\t\n2026/10/13\t\t大型\t架空 B食品\t市川市 地点03\t10:10\t10:25\t\t\t\t\tはい\t\t\t\n2026/10/14\t\t大型\t架空 B食品\t市川市 地点03\t10:20\t10:35\t\t\t\t\tはい\t\t\t\n2026/10/15\t\t大型\t架空 B食品\t川崎市 地点12\t13:05\t13:20\t\t\t\t\tいいえ\t\t\t"
+    ]
+   },
+   {
+    "wait": 1.5
+   },
+   {
+    "click": "[data-w=paste]"
+   },
+   {
+    "wait": 2.5
+   },
+   {
+    "highlight": [
+     ".w-par",
+     3
+    ]
+   },
+   {
+    "move": "#wm-map-sect"
+   },
+   {
+    "highlight": [
+     "#wm-map-sect",
+     4
+    ]
+   },
+   {
+    "eval": "document.querySelector('#wait-doc').scrollIntoView({block:'start'})"
+   },
+   {
+    "wait": 1.0
+   },
+   {
+    "highlight": [
+     "#wait-doc",
+     4
+    ]
+   },
+   {
+    "wait": 1.0
+   }
+  ]
+ },
+ {
+  "id": "R5ag",
+  "url_path": "/index.html#v=compare&o=13104&l=fare&d=46201",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){ if(!window.__app) return false; const l=document.querySelector('#loading'); if(l && !l.classList.contains('done')) return false; const s=window.__rs=window.__rs||{n:0,t:0}; const now=Date.now(); if(now-s.t<1500) return false; const open=()=>document.querySelector('#cargo-toggle').getAttribute('aria-expanded')==='true'; if(s.n===0){ s.t=now; s.n=1; return false; } if(s.n===1){ if(!open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=2; return false; } if(s.n===2){ const e=document.querySelector('#sc-select'); e.value='S6'; e.dispatchEvent(new Event('change',{bubbles:true})); s.t=now; s.n=3; return false; } if(s.n===3){ document.querySelector('#ed-confirm').click(); s.t=now; s.n=4; return false; } if(s.n===4){ if(Work.scenarioId()!=='S6'){ s.n=2; s.t=now; return false; } if(open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=5; return false; } return now-s.t>=4000 && !!document.querySelector('.cc-row'); })()",
+  "steps": [
+   {
+    "wait": 1.5
+   },
+   {
+    "eval": "(function(){const rs=[...document.querySelectorAll('.cc-row')]; const a=rs.find(x=>/貸切\\s*2t/.test(x.textContent)); if(a)a.id='rec-2t';const b=rs.find(x=>x.textContent.trim().startsWith('宅配')); if(b)b.id='rec-takuhai'; document.querySelector('.cc').scrollIntoView({block:'center'});})()"
+   },
+   {
+    "wait": 0.3
+   },
+   {
+    "move": "#rec-takuhai"
+   },
+   {
+    "highlight": [
+     "#rec-takuhai",
+     2.5
+    ]
+   },
+   {
+    "move": "#rec-2t"
+   },
+   {
+    "highlight": [
+     "#rec-2t",
+     4.5
+    ]
+   },
+   {
+    "wait": 1.5
+   }
+  ]
+ },
+ {
+  "id": "R5bg",
+  "url_path": "/compare_lite.html?example=1",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){const r=document.querySelector('table.res'); if(!r) return false; const s=window.__lk=window.__lk||{n:0,t:0}; const now=Date.now();if(s.n===0){const t=document.querySelector('#to'); t.value='鹿児島県'; t.dispatchEvent(new Event('change',{bubbles:true}));const k=document.querySelector('#km'); k.value='1345.5'; k.dispatchEvent(new Event('input',{bubbles:true})); k.dispatchEvent(new Event('change',{bubbles:true})); s.n=1; s.t=now; return false;}return now-s.t>1500 && /1,?34[56]/.test(document.querySelector('tr[data-opt=kashikiri_2t]').innerText); })()",
+  "steps": [
+   {
+    "wait_for": "table.res"
+   },
+   {
+    "wait": 0.8
+   },
+   {
+    "move": "tr[data-opt=takuhai]"
+   },
+   {
+    "highlight": [
+     "tr[data-opt=takuhai]",
+     2.0
+    ]
+   },
+   {
+    "move": "tr[data-opt=akabane]"
+   },
+   {
+    "highlight": [
+     "tr[data-opt=akabane]",
+     2.0
+    ]
+   },
+   {
+    "scroll": [
+     null,
+     520
+    ]
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "move": "tr[data-opt=kashikiri_2t]"
+   },
+   {
+    "highlight": [
+     "tr[data-opt=kashikiri_2t]",
+     3.5
+    ]
+   },
+   {
+    "wait": 1.0
+   }
+  ]
+ },
+ {
+  "id": "R5cg",
+  "url_path": "/index.html#v=compare&o=13104&l=fare&d=46201",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){ if(!window.__app) return false; const l=document.querySelector('#loading'); if(l && !l.classList.contains('done')) return false; const s=window.__rs=window.__rs||{n:0,t:0}; const now=Date.now(); if(now-s.t<1500) return false; const open=()=>document.querySelector('#cargo-toggle').getAttribute('aria-expanded')==='true'; if(s.n===0){ s.t=now; s.n=1; return false; } if(s.n===1){ if(!open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=2; return false; } if(s.n===2){ const e=document.querySelector('#sc-select'); e.value='S6'; e.dispatchEvent(new Event('change',{bubbles:true})); s.t=now; s.n=3; return false; } if(s.n===3){ document.querySelector('#ed-confirm').click(); s.t=now; s.n=4; return false; } if(s.n===4){ if(Work.scenarioId()!=='S6'){ s.n=2; s.t=now; return false; } if(open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=5; return false; } if(s.n===5){ if(now-s.t<4000 || !document.querySelector('.cc-row')) return false; App.setView('find'); s.n=6; s.t=now; return false; } return now-s.t>=3000 && !!document.querySelector('#f-list .f-card.ok'); })()",
+  "steps": [
+   {
+    "wait_for": "#f-list .f-card.ok"
+   },
+   {
+    "wait": 2.0
+   },
+   {
+    "move": "#f-list .f-card[data-t=T7]"
+   },
+   {
+    "highlight": [
+     "#f-list .f-card[data-t=T7]",
+     3.0
+    ]
+   },
+   {
+    "highlight": [
+     "#f-list .f-card[data-t=T7] .f-price",
+     3.5
+    ]
+   },
+   {
+    "move": "#f-list .f-card[data-t=T6] .f-why"
+   },
+   {
+    "highlight": [
+     "#f-list .f-card[data-t=T6] .f-why",
+     5
+    ]
+   },
+   {
+    "wait": 1.5
+   }
+  ]
+ }
+]
