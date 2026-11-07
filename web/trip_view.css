@@ -1,0 +1,44 @@
+/* TripView（web/trip_view.js）の見た目。この部品の中だけで色を決める。地図の画面の暗い配色（web/style.css の --glass-solid）に合わせた濃い地面に、明るい道路、選んだ運行はオレンジ */
+.tv {
+  --tv-ground: #0d141f; --tv-band: #162131; --tv-road: #5c6a82; --tv-road-edge: #2c384c;
+  --tv-route: #ff8f3d; --tv-ink: #e8eef8; --tv-muted: #a7b5cb; --tv-roof: #2b394f; --tv-roof-line: #5d6c86; --tv-door: #070b12;
+  box-sizing: border-box; width: 100%; max-width: 100%; overflow: hidden; border-radius: 12px; background: var(--tv-ground); color: var(--tv-ink);
+  font-family: "Noto Sans JP", system-ui, sans-serif; border: 1px solid rgba(255, 255, 255, .12);
+}
+.tv *, .tv *::before, .tv *::after { box-sizing: border-box; }
+.tv-svg { display: block; width: 100%; height: auto; }
+.tv-ground { fill: var(--tv-ground); }
+.tv-band { fill: var(--tv-band); }
+.tv-road-edge { fill: none; stroke: var(--tv-road-edge); stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; }
+.tv-road { fill: none; stroke: var(--tv-road); stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; }
+.tv-route { fill: none; stroke: var(--tv-route); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.tv-chev { fill: none; stroke: #fff; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.tv-wh-apron { fill: #1d2a3d; }
+.tv-wh-roof { fill: var(--tv-roof); stroke: var(--tv-roof-line); stroke-width: 1.2; }
+.tv-wh-gable { fill: #3a4a64; stroke: var(--tv-roof-line); stroke-width: 1.2; stroke-linejoin: round; }
+.tv-wh-cap { fill: #3a4a64; stroke: var(--tv-roof-line); stroke-width: 1; }
+.tv-wh-door { fill: var(--tv-door); stroke: #c98a3c; stroke-width: 1; }
+.tv-wh-slat { stroke: #c98a3c; stroke-width: .8; opacity: .8; }
+.tv-wh-pole { stroke: var(--tv-roof-line); stroke-width: 1.4; }
+.tv-wh-flag { fill: var(--tv-route); }
+.tv-wh-crate { fill: #c98a3c; stroke: #f0c987; stroke-width: .8; }
+.tv-role { font-size: 10.5px; fill: var(--tv-muted); font-weight: 500; }
+.tv-place { font-size: 12.5px; fill: var(--tv-ink); font-weight: 700; }
+.tv-cap { font-size: 10px; fill: var(--tv-muted); }
+.tv-schem-note { font-size: 12px; fill: var(--tv-ink); }
+.tv-schem-line { stroke: #8fa0ba; stroke-width: 3; }
+.tv-schem-head { fill: #8fa0ba; }
+.tv-veh-body { fill: #243247; stroke: #8fa0ba; stroke-width: 1.5; stroke-dasharray: 4 3; }
+.tv-veh-text { font-size: 13px; font-weight: 700; fill: var(--tv-ink); }
+.tv-veh-cls { font-size: 11px; fill: var(--tv-muted); font-weight: 500; }
+.tv-state-bg { fill: #1b2738; stroke: #5c6a82; stroke-width: 1; }
+.tv-state-text { font-size: 16px; font-weight: 700; fill: var(--tv-ink); }
+.tv-box { fill: #c98a3c; stroke: #f0c987; stroke-width: 1.5; }
+.tv-box-band { stroke: #f0c987; stroke-width: 1.5; }
+.tv-frame { fill: none; stroke: #8fa0ba; stroke-width: 2; stroke-dasharray: 4 3; }
+.tv-unk { fill: #1b2738; stroke: #8fa0ba; stroke-width: 2; }
+.tv-unk-q { font-size: 16px; font-weight: 700; fill: #c7d3e6; }
+.tv-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin: 0; padding: 10px 12px 12px; font-size: 12.5px; line-height: 1.5; }
+.tv-facts dt { color: var(--tv-muted); }
+.tv-facts dd { margin: 0; overflow-wrap: anywhere; font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { .tv, .tv * { animation: none !important; transition: none !important; } }

@@ -60,14 +60,14 @@ def test_index_loads_the_shared_scripts_before_own_js():
 
 
 def test_map_tab_links_to_the_waiting_page():
-    assert 'href="waiting.html"' in OWN_JS and "荷待ちのページを開く（1 枚で印刷・保存できる版）" in OWN_JS
+    assert 'href="waiting.html"' in OWN_JS and "荷待ちの書面を別の画面で開く" in OWN_JS  # 文言の直し 2026-11-07
 
 
 def test_waiting_page_has_a_back_link_and_the_artifact_has_text_only():
     assert "地図の画面に戻る" in TEMPLATE and '<a href="index.html">地図の画面に戻る</a>' in PAGE
     assert "index.html" not in ART
-    assert "地図の画面に戻る" in ART
-    assert not re.search(r"<a [^>]*href", ART.split("<main>")[0])  # 上部に外へ出るリンクが無い
+    assert "荷待ちの場所は、地図の画面の「自社の運行」で見られます。" in ART   # 文言の直し 2026-11-07
+    assert not re.search(r'<a [^>]*href="(?!#)', ART.split("<main>")[0])  # 上部に外へ出るリンクが無い（ページ内の # リンクは案内の操作なので許す）
 
 
 def test_unmatched_places_and_legend_texts_are_in_the_map_script():

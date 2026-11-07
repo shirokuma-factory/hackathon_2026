@@ -47,7 +47,7 @@ def test_4_contact_conditions_have_no_product_name():
 def test_5_rosen_amount_note_on_both_screens():
     for p in ("compare_lite.html", "publish/compare_lite_artifact.html"):
         h = (WEB / p).read_text(encoding="utf-8")
-        assert "路線便の試算は地図の画面だけにあり、区間の表を持つ区間に限ります" in h
+        assert "目安の額は出せません。契約単価を入れると額が出ます。" in h  # 文言の直し 2026-11-07
     src = (ROOT / "src" / "shipcompare" / "estimate.py").read_text(encoding="utf-8")
     assert "路線便の試算は、区間の表を持つ区間に限ります" in src
 

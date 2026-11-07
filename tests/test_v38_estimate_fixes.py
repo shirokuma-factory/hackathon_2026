@@ -61,9 +61,13 @@ def test_n1_card_amount_equals_map_fill_amount(web, origin, dest):
     assert est["kashikiri_basis"] == "road"  # 額の距離の基準は道路距離（デモの区間の組でも同じ）
 
 
-def test_n1_pair_not_in_demo_is_other_route_and_demo_pair_keeps_table_route(web):
+def test_n1_pair_not_in_demo_keeps_table_route_for_osaka_and_miyagi_and_demo_pair_keeps_table_route(web):
+    # r7b 指摘1: 大阪府・宮城県あては、デモの発地でなくても関東発の表の区間にする（宅配が「表がない」にならない）。貸切は道路距離で出す
     mito = _est(web, [Item(3, 120, 50, 50, 40)], "08201", "04101")
-    assert mito["demo_route"] is None and mito["shipment"]["route"] == "other"
+    assert mito["demo_route"] is None and mito["shipment"]["route"] == "kanto_tohoku"
+    assert mito["kashikiri_basis"] == "road"
+    other = _est(web, [Item(3, 120, 50, 50, 40)], "08201", "01101")
+    assert other["shipment"]["route"] == "other"
     tokyo = _est(web, [Item(3, 120, 50, 50, 40)], "13104", "04101")
     assert tokyo["demo_route"] == "kanto_tohoku" and tokyo["shipment"]["route"] == "kanto_tohoku"
     # 同じ着地でも発地が違えば額が違う（想定距離 350km 固定ではない）

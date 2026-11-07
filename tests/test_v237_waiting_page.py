@@ -62,6 +62,8 @@ def test_g82_python_matches_the_vectors_file():
             got["notes"] = notes
             got["asks"] = asks
             got["shipper_log"] = shipper_log
+            if "memo_read" in det:
+                got["memo_read"] = det["memo_read"]
         assert json.loads(json.dumps(got, ensure_ascii=False)) == c["expect"], c["name"]
 
 
@@ -114,7 +116,8 @@ def test_g83_page_makes_no_network_calls():
     assert not re.search(r"<script[^>]+src\s*=", html, re.I)
     assert not re.search(r"<link(?![^>]*href\s*=\s*.data:)[^>]+href\s*=", html, re.I)  # 外部の CSS・フォントも読まない
     assert not re.search(r"@import|url\(\s*['\"]?https?:", html, re.I)
-    assert not re.search(r"<(img|iframe|embed|object|video|audio|source)\b", html, re.I)
+    assert not re.search(r"<(iframe|embed|object|video|audio|source)\b", html, re.I)
+    assert not re.search(r"<img(?![^>]*src=\"data:image/webp;base64,)", html, re.I)   # 絵は data URI の WebP だけ（通信しない。2026-11-07 第 2 回）
     assert "<form" not in html
 
 
@@ -123,7 +126,8 @@ def test_page_has_the_required_texts_and_sections():
     for text in ("参考額は告示の表に当てた計算です。請求するか、いくらにするかは運送会社が決めます。法的な判断は弁護士・運輸支局などに確かめてください",
                  "入れた記録はこの PC の中だけで計算し、外に送りません",
                  "改正法 Q&A 問2-2・2-3", "標準運送約款 第 34 条", "取適法", "Q42・Q132", "トラック・物流Gメンの情報提供の窓口",
-                 "例を入れる", "Excel から貼り付ける", "印刷して残す", "CSV で書き出す", "契約の相手ごと", "根拠", "協議の進め方", "指定の到着時刻", "附帯業務",
+                 "例を入れる", "Excel から貼り付ける", "書面を印刷する", "CSV で保存", "依頼元ごと", "金額の決まり方", "相談の進め方", "指定の到着時刻", "附帯業務",   # 文言の直し 2026-11-07
+                
                  "次回からの契約の書面に、待機時間料と積込料・取卸料の欄を入れてもらうよう頼みます",
                  "過去分を求めるかどうかは、運送会社が決めます",
                  "国交省のリーフレットは、記録を待機時間料などを収受する根拠にできると書いています",
@@ -139,7 +143,7 @@ def test_own_js_has_the_process_panel_and_new_columns():
     for text in ("協議の進め方", "w-process", "次回からの契約の書面に、待機時間料と積込料・取卸料の欄を入れてもらうよう頼みます",
                  "国交省のリーフレットは、記録を待機時間料などを収受する根拠にできると書いています",
                  "（第 5 条第 1 項第 7 号）", "https://truck-logistics-gmen.mlit.go.jp/s/",
-                 "t: '指定の到着時刻'", "t: '附帯業務の内容'", "t: '附帯業務の分'"):
+                 "t: '指定の到着時刻'", "t: '荷役以外の作業'", "t: '附帯業務の分'"):
         assert text in OWN_JS, text
 
 
@@ -179,10 +183,13 @@ def test_page_ui_example_draft_and_csv_in_headless_edge():
           const doc = document.querySelector('#wait-doc').textContent;
           const side = document.querySelector('#process').getBoundingClientRect(), d = document.querySelector('#wait-doc').getBoundingClientRect();
           return {rows, sum, sentence: doc.includes('計 33,550 円（税抜）'), side: doc.includes('検品・仕分け'),
-                  beside: side.left >= d.right - 1 && Math.abs(side.top - d.top) < 40, csv: typeof csvText === 'function' ? csvText() : ''};
+                  beside: side.left >= d.right - 1 && Math.abs(side.top - d.top) < 40, csv: typeof csvText === 'function' ? csvText() : '',
+                  mine: S.res.rows.filter((r) => r.partner === S.partner).length, all: S.res.rows.length};
         })()""")
     assert info["rows"] == 18 and "33,550" in info["sum"] and info["sentence"] and info["side"]
     assert info["beside"], "協議の進め方は書面の下書きの横に出す"
     csv = info["csv"]
     assert csv.startswith("﻿日付,車番,") and "指定の到着時刻,附帯業務の内容,附帯業務の分,荷役のあとの待ちを荷主等の都合として数える,待機の数え始め" in csv.split("\r\n")[0]
-    assert len(csv.strip().split("\r\n")) == 19
+    # SPEC §46: 書き出す CSV は選んだ相手の行だけ（ほかの荷主の記録を渡さない）
+    assert info["all"] == 18 and 0 < info["mine"] < info["all"]
+    assert len(csv.strip().split("\r\n")) == 1 + info["mine"]

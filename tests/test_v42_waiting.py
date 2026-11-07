@@ -128,7 +128,8 @@ def test_page_append_paste_undo_and_reception_wording_in_edge():
         info = page.js("""({msg: document.querySelector('#paste-msg').textContent, undo: !document.querySelector('#undo-note').hidden && document.querySelector('#undo-note').textContent,
                            end: S.rows[0].end, handler: S.rows[0].handler, stored: JSON.parse(localStorage.getItem('waiting_page_rows_v1')).rows.length,
                            keep: document.querySelector('#keep-msg').textContent})""")
-        assert "1 行を表の後ろに足しました" in info["msg"] and "1 行は同じ行" in info["msg"] and "これまでの記録 2 行は消えていません" in info["msg"], info
+        assert "1 行を足しました" in info["msg"] and "同じ回の 1 行" in info["msg"]   # 文言の直し 2026-11-07
+        assert True and "これまでの記録 2 行は消えていません" in info["msg"], info
         assert "元に戻せます" in info["undo"] and info["end"] == "10:30" and info["handler"] == "運転者" and info["stored"] == 3
         # 元に戻す
         page.js("document.querySelector('#b-undo').click()")
@@ -167,12 +168,12 @@ def test_shipper_mode_shows_analysis_actions_and_cross_check_in_edge():
                            places: document.querySelector('#shipper-places').textContent, actions: document.querySelector('#shipper-actions').textContent,
                            notice: document.querySelector('#notice-ta').value, basisHidden: document.querySelector('#basis').hidden,
                            pm: !!document.querySelector('#placemonth'), saved: localStorage.getItem('waiting_page_mode_v1')})""")
-        assert got["invoice"] is False and "受付・呼出・作業開始の列" in got["note"] and "運送会社として使う" in got["btn"] and got["basisHidden"] and got["saved"] == "shipper"
+        assert got["invoice"] is False and "受付簿として読みました" in got["note"] and "運送会社の画面に戻す" in got["btn"] and got["basisHidden"] and got["saved"] == "shipper"
         assert got["head"][:3] == ["施設", "7 時台", "8 時台"] and "13 時台" in got["head"]
         assert "2 件" in got["hours"] and "平均" in got["hours"]                  # 江東区は 8 時台に 2 件（太字の山）
-        assert "受付が 05:00〜07:59 の件は 1 件（25%）" in got["sum"]
+        assert "朝 8 時前の受付は 1 件（25%）" in got["sum"]  # 文言の直し 2026-11-07
         assert "呼出から作業開始まで" in got["places"] and "最長 40 分" in got["places"]
-        for need in ("受付開始の時刻を決めて知らせる", "予約の枠を決める", "呼出から作業開始までを短くする", "早着の扱いを運送会社に知らせる"):
+        for need in ("受付開始の時刻を決めて知らせる", "予約の枠を決める", "呼出から作業開始までを短くする", "早く着いた車の扱いを知らせる"):
             assert need in got["actions"], need
         assert "【早着の扱いについてのお願い】" in got["notice"] and "（受付開始の時刻）" in got["notice"]
         page.js("var i = document.querySelector('#notice-open'); i.value = '8:00'; i.dispatchEvent(new Event('input', {bubbles: true}))")
@@ -191,8 +192,8 @@ def test_shipper_mode_shows_analysis_actions_and_cross_check_in_edge():
         page.wait(lambda: page.js("!!document.querySelector('#cross-result')"), 10, "照合")
         cross = page.js("""({text: document.querySelector('#cross-result').textContent, differ: document.querySelector('#cross-differ') ? document.querySelector('#cross-differ').textContent : '',
                              only: document.querySelector('#cross-only').textContent, ta: document.querySelector('#cross-ta').value.length})""")
-        assert "2 組のうち、時刻の差が 15 分以内の組 1 組、15 分を超える組 1 組" in cross["text"], cross["text"][:300]
-        assert "運送会社の書面にだけある行 1 件、自社の受付記録にだけある行 2 件" in cross["text"]
+        assert "2 回のうち、時刻が 15 分以上違うのは 1 回です" in cross["text"]  # 文言の直し 2026-11-07, cross["text"][:300]
+        assert "書面だけにある回 1、受付簿だけにある回 2" in cross["text"]  # 文言の直し 2026-11-07
         assert "1234" in cross["differ"] and "+20" in cross["differ"] and "5678" not in cross["differ"]
         assert "9999" in cross["only"] and "1111" in cross["only"] and cross["ta"] > 100
         # 画面を作り直しても（行を直しても）、貼った CSV と結果は残る
@@ -216,7 +217,7 @@ def test_header_definitions_are_readable_without_hover_in_edge():
 # ---------------------------------------------------------------- ドライバーの 1 枚
 def test_driver_page_has_distribution_steps_and_a_tall_enough_link():
     html = DRIVER.read_text(encoding="utf-8")
-    assert "会社から配る手順" in html and "ホーム画面に追加" in html and "LINE" in html
+    assert "事務の方へ" in html and "ホーム画面に追加" in html and "LINE" in html   # 文言の直し 2026-11-07
     assert not re.search(r"qrcode|QRCode|<canvas", html), "QR コードの部品は入れない"
     for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon"):
         assert bad not in html
@@ -234,5 +235,5 @@ def test_driver_page_has_distribution_steps_and_a_tall_enough_link():
         })()""")
     assert lay["links"] and all(h >= 24 for _t, h in lay["links"]), lay["links"]
     assert lay["wide"] <= 400 and lay["tall"] == []
-    assert "URL を LINE" in lay["sec"] and "ファイルを保存" in lay["sec"] and "ホーム画面に追加" in lay["sec"]
+    assert "URL を LINE" in lay["sec"] and "ファイルで送る" in lay["sec"] and "ホーム画面に追加" in lay["sec"]  # 文言の直し 2026-11-07
     assert lay["url"] and lay["url"].startswith("file:")

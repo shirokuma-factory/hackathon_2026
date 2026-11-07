@@ -51,7 +51,7 @@
 Python 3.13 + uv（理由は `SPEC.md` §2）。画面は地図の画面と、ファイル 1 枚で動く 2 枚のページ。
 
 ```bash
-uv run pytest
+uv run pytest -n 8          # 並列（pytest-xdist）。画面の試験も各プロセスで Edge を 1 つずつ使う。1 プロセスで流すなら -n 0
 uv run python tools/serve_web.py   # http://127.0.0.1:8600/（地図の画面）
 # web/waiting.html と web/compare_lite.html はブラウザで直接開く
 ```

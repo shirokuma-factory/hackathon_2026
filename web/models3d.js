@@ -57,9 +57,28 @@ const M3D = (() => {
     air_cargo_terminal: { f: 'air_cargo_terminal.glb', len: 200.6, px: 36 },
     port_crane: { f: 'port_crane.glb', len: 94.2, px: 30, anim: true },
     container_yard: { f: 'container_yard.glb', len: 150, px: 36, anim: true },
+    // v2（Blender の新しい乗り物、web/models/v2/）。案内の表示（傾けた 3D の地図）でだけ使う。小さく見えても形が読める大きさ（px）にしてある
+    v2_truck: { f: 'v2/truck_10t_empty.glb', len: 11.8, px: 44, v2: true },
+    v2_truck_loaded: { f: 'v2/truck_10t_loaded.glb', len: 11.8, px: 44, v2: true },
+    v2_truck_4t: { f: 'v2/truck_4t_empty.glb', len: 8.5, px: 40, v2: true },
+    v2_truck_4t_loaded: { f: 'v2/truck_4t_loaded.glb', len: 8.5, px: 40, v2: true },
+    v2_freight_train: { f: 'v2/freight_train.glb', len: 83.2, px: 78, v2: true },
+    v2_ferry: { f: 'v2/roro_ship.glb', len: 169.8, px: 62, v2: true },
+    v2_cargo_plane: { f: 'v2/cargo_plane.glb', len: 67.5, px: 66, v2: true },
   };
+  // 案内の表示では v2 の乗り物に置き換え、ズームに関係なく 3D だけで出す（傾けた地図では 2D の記号が地面に貼りつくだけで形が読めないため）
+  const SKIN = { on: false };
+  const V2_OF = { truck: 'v2_truck', truck_4t: 'v2_truck_4t', freight_train: 'v2_freight_train', ferry: 'v2_ferry', cargo_plane: 'v2_cargo_plane' };
+  const skin = (key) => (SKIN.on && V2_OF[key]) || key;
+  const V2_KEYS = Object.keys(MODELS).filter((k) => MODELS[k].v2);
   // 手段ごとの既定のモデル
   const MODE_MODEL = { truck: 'truck', rail: 'freight_train', ferry: 'ferry', air: 'cargo_plane' };
+  function setSkin(on) {
+    on = !!on && hasDeck();
+    if (SKIN.on === on) return;
+    SKIN.on = on;
+    if (on) for (const k of V2_KEYS) ensure(urlOf(k, false));   // 使うときまで読み込まない（案内の表示に入ったときに読む）
+  }
 
   // 向きの換算。YAW_SIGN, YAW_OFFSET は描いて決めた値（検証の記録は下の「向きの検証」）
   const YAW_SIGN = 1, YAW_OFFSET = 180;
@@ -134,7 +153,7 @@ const M3D = (() => {
 
   // 3D が使えるか（モデルのどれかが読み込めているか）。使えるまでは 2D アイコンのまま
   function modelReady(key) {
-    key = MODELS[key] ? key : MODE_MODEL[key];
+    key = skin(MODELS[key] ? key : MODE_MODEL[key]);
     if (!key || !MODELS[key]) return false;
     return ready(urlOf(key, false)) || (hasLo(key) && ready(urlOf(key, true)));
   }
@@ -163,6 +182,7 @@ const M3D = (() => {
   // 3D の濃さ（0 = 2D だけ、1 = 3D だけ）
   function mix(zoom) {
     if (!hasDeck()) return 0;
+    if (SKIN.on) return 1;
     return smooth(clamp01((zoom - Z_ON) / (Z_FULL - Z_ON)));
   }
   const iconAlpha = (zoom) => 1 - mix(zoom); // 2D アイコンに掛ける濃さ
@@ -208,6 +228,7 @@ const M3D = (() => {
     return url;
   }
   function layer(id, key, data, opts = {}) {
+    key = MODELS[key] ? skin(key) : key;
     if (!hasDeck() || !MODELS[key] || !data.length) return null;
     const m = MODELS[key], zoom = opts.zoom, op = opts.opacity ?? 1;
     if (op <= 0.01) return null;
@@ -242,7 +263,21 @@ const M3D = (() => {
 
   // 乗り物（経路の上を動くもの）。手段 mode か、モデル名 key で指定する
   function vehicles(id, modeOrKey, data, zoom, opts = {}) {
-    return layer(id, MODELS[modeOrKey] ? modeOrKey : MODE_MODEL[modeOrKey], data, { ...opts, zoom, opacity: mixFor(MODELS[modeOrKey] ? modeOrKey : MODE_MODEL[modeOrKey], zoom) * (opts.opacity ?? 1) });
+    const key = MODELS[modeOrKey] ? modeOrKey : MODE_MODEL[modeOrKey];
+    return layer(id, opts.loaded ? ({ v2_truck: 'v2_truck_loaded', v2_truck_4t: 'v2_truck_4t_loaded' }[skin(key)] || key) : key, data, { ...opts, zoom, opacity: mixFor(key, zoom) * (opts.opacity ?? 1) });
+  }
+
+  /* 影（案内の表示だけ）。deck.gl の影の効果は地図と重ねる描き方（interleaved）で使えないので、乗り物の真下に、光と反対側へずらした暗い楕円を置く。
+     地面の上の円なので、傾けた地図では自然につぶれて見える。 */
+  function shadow(id, modeOrKey, data, zoom, opts = {}) {
+    if (!SKIN.on || !hasDeck() || !data.length) return null;
+    const key = skin(MODELS[modeOrKey] ? modeOrKey : MODE_MODEL[modeOrKey]);
+    if (!MODELS[key] || !modelReady(key)) return null;
+    const len = sizeScale(key, zoom, opts.lat) * (opts.k ?? 1) * MODELS[key].len, off = (len * 0.12) / 111320;
+    return new deck.ScatterplotLayer({
+      id, data, getPosition: (d) => [d.p[0] + off, d.p[1] - off * 0.9, 0], radiusUnits: 'meters', getRadius: len * 0.34,
+      getFillColor: (d) => [0, 0, 0, Math.round(80 * (d.a ?? 1))], parameters: { depthCompare: 'always' }, updateTriggers: { getPosition: [Math.round(len)], getRadius: [Math.round(len)] },
+    });
   }
 
   // 便の車種名（「架空 4t ウイング」など）から、使うモデル名を選ぶ
@@ -307,7 +342,7 @@ const M3D = (() => {
      シェーダーが別になるので、それぞれ 1 つずつ描く。どちらも層の作りは layer() と同じ（_lighting、parameters、色の指定）にそろえる。
      lo: true で低ポリゴン版。読み込みが済んでいなければ null（先に warmNeed() で読み込みを始めておく） */
   // lo: true なら低ポリゴン版のあるモデルだけ。ANGLE（Windows の WebGL）は、頂点の並び（添字の型など）が違うと、初めて描くときに頂点シェーダーを作り直すので、モデルごとに 1 回ずつ描く
-  const warmKeys = (lo) => Object.keys(MODELS).filter((k) => MODELS[k].f && (lo ? hasLo(k) : true));
+  const warmKeys = (lo) => Object.keys(MODELS).filter((k) => MODELS[k].f && !MODELS[k].v2 && (lo ? hasLo(k) : true));
   function warmNeed(lo) {
     if (!hasDeck()) return true;
     let all = true;
@@ -331,5 +366,5 @@ const M3D = (() => {
     return out;
   }
 
-  return { cfg, mixFor, modelReady, preload, warmNeed, warmLayers, loadLod, ready, ensure, urlOf, hasLo, GL, LOD, capFor, MODELS, MODE_MODEL, Z_ON, Z_FULL, Z_FAC, MAXZ, CAP, mix, iconAlpha, facilityOn, sizeScale, mpp, yawOf, layer, vehicles, facility, inView, byVehicle, hasDeck, thumb, thumbAlt, THUMB_ALT };
+  return { cfg, setSkin, skin, mixFor, modelReady, preload, warmNeed, warmLayers, loadLod, ready, ensure, urlOf, hasLo, GL, LOD, capFor, MODELS, MODE_MODEL, Z_ON, Z_FULL, Z_FAC, MAXZ, CAP, mix, iconAlpha, facilityOn, sizeScale, mpp, yawOf, layer, vehicles, shadow, facility, inView, byVehicle, hasDeck, thumb, thumbAlt, THUMB_ALT };
 })();

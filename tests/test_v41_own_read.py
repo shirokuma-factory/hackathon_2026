@@ -130,8 +130,8 @@ def test_gosha_is_the_vehicle_column_only_when_there_is_no_other():
     rows = [["号車", "乗務員", "10/1(木)", "10/2(金)", "10/3(土)"], ["3", "架空 山田", "加古川→江東", "", ""]]
     lay = own.detect_haisha(rows)
     assert lay["kind"] == "wide" and lay["head"][lay["plate_col"]] == "号車"
-    r = own.read_haisha(rows, 2026)  # 「3」は 4 桁でないので、車番として読めない行になる
-    assert r["rows"] == [] and [u["reason"] for u in r["unreadable"]] == ["車番が読めません"]
+    r = own.read_haisha(rows, 2026)  # SPEC §47: 4 桁の車番がどこにも無いので、「3」はそのファイルの中の車の名前（3号車）として読む
+    assert len(r["rows"]) == 1 and r["rows"][0]["plate"] == "3号車" and r["unreadable"] == []
 
 
 def test_header_row_is_searched_in_the_first_ten_rows_and_blank_rows_are_skipped():
@@ -609,7 +609,7 @@ def test_analyze_mapping_cards_are_in_plain_japanese(calc):
 
 def test_analyze_over_max_message_uses_digits_that_differ(calc):
     t = "車番,車種,2026/10/1\n1234,大型,加古川→江東 10.04t\n"
-    d = _an(calc, [{"name": "h.csv", "text": t}])
+    d = _an(calc, [{"name": "h.csv", "text": t}], {"largeMaxLoadKg": 10000})
     card = [c for c in d["confirm"] if c["kind"] == "weight"][0]
     assert card["original"] == "配車表の重さ 10.04t が、最大積載量 10.00t を超えています"
     assert [i for i in d["insights"] if i["rule"] == 7][0]["evidence"][0]["text"] == "重さ 10.04t > 最大積載量 10.00t"

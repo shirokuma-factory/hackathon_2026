@@ -153,7 +153,7 @@ def test_return_load_revenue_estimate_is_shown_with_formula_and_matches_the_tari
     assert "帰り荷を取っても減らない費用" in cost, cost
     rev = page.js("document.querySelector('#own-rev').innerText")
     assert "帰り荷 1 便の売上の目安" in rev and "目安" in rev and "標準的運賃" in page.js("document.querySelector('#own-rev').textContent") and "×" in rev, rev
-    assert "全部の帰りに荷が付いた場合の上限" in rev, rev  # 合計は上限と書く
+    assert "車庫へ帰る便すべてに荷が付いたときの額" in rev, rev  # 合計は上限と書く
     d = json.loads(page.js("JSON.stringify(OwnMonth.revenue(Own.state.data))"))
     assert d["counted"] > 0 and d["perTrip"], d
     # 便ごとの車格（2t・4t・10t）と km の運賃。1 つの車格・中央値 1 つに全便を掛けない（P1-1）
@@ -192,7 +192,7 @@ def test_board_text_has_the_fields_and_leaves_the_contact_blank(app):
     txt = page.js("document.querySelector('#own-board-ta').value")
     for k in ("発地:", "着地:", "曜日・時刻:", "車格:", "空き:", "連絡先: （"):
         assert k in txt, txt
-    assert re.search(r"毎週.曜", txt) and "江東" in txt and "加古川" in txt
+    assert re.search(r"毎週.曜", txt) and "江東" in txt and "鹿屋" in txt
     assert not re.search(r"\d{2,4}-\d{2,4}-\d{3,4}", txt)  # 電話番号は入れない
     page.js("document.querySelector('[data-act=board-copy]').click()")
     page.wait(lambda: page.js("document.querySelector('#own-board-msg').textContent") != "", 10, "コピーの結果")
@@ -316,6 +316,7 @@ def test_columns_are_explained_in_plain_japanese(app):
     page = app
     _import_examples(page)
     page.js("Own.setTab('import')")
+    page.js("document.querySelectorAll('#own-body .o-det').forEach((d) => { d.open = true; })")  # 列の対応づけは閉じた欄に入れた（SPEC §45）
     body = page.js("document.querySelector('#own-body').innerText")
     cols = page.js("document.querySelector('.o-cols').innerText")
     assert "辞書" not in cols and "形 100%" not in cols and not re.search(r"0\.\d\d", cols), cols
@@ -338,9 +339,9 @@ def test_role_chooser_reruns_with_column_roles_and_remembers_the_choice(app):
         need = page.js("(Own.state.data.column_roles_needed || []).map(x => x.column)")
         assert "X9" in need, need
         txt = page.js("document.querySelector('#own-roles').innerText")
-        assert "X9" in txt and "選んでください" in txt
+        assert "X9" in txt and "選ぶと" in txt   # 文言の直し 2026-11-07
         labels = page.js("[...document.querySelectorAll('#own-roles select')][0].querySelectorAll('option') && [...[...document.querySelectorAll('#own-roles select')][0].querySelectorAll('option')].map(o => o.textContent)")
-        assert labels[0] == "役割を選んでください" and "使わない" in labels and "日付" in labels, labels
+        assert labels[0] == "この列の中身を選ぶ" and "使わない" in labels and "日付" in labels, labels
         assert not re.search(r"\b(skip|distance_km|loaded_flag|start_time)\b", txt), txt  # 英語の役割名は出さない
         assert page.js("document.querySelector('#own-roles select').value") == ""  # 黙って選ばない
         page.js("(function(){const s = document.querySelector('#own-roles select[data-role-col=\"X9\"]'); s.value = 'skip'; s.dispatchEvent(new Event('change', {bubbles: true}));})()")

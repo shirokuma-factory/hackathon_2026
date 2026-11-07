@@ -4,57 +4,219 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%231f4e79%27/%3E%3Cpath d=%27M6 20h20M8 20V11h11v9M19 14h4l3 3v3%27 stroke=%27white%27 stroke-width=%272%27 fill=%27none%27/%3E%3C/svg%3E">
-<title>送り方を比べる（荷主向け・ページ 1 枚）</title>
+<title>送り方を比べる（荷主向け）</title>
 <!-- このファイルは tools/build_compare_page.py が tools/compare_lite_template.html から作ります。直すときはテンプレートを直してください。 -->
+<script>/*LOCAL-ONLY-START*/
+if (!document.documentElement.hasAttribute('data-theme')) document.documentElement.setAttribute('data-theme', 'dark');
+/*LOCAL-ONLY-END*/</script>
 <style>
-:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #626b7c; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; --ok: #1a7a3c; --ok-bg: #e8f5ec; --chk: #8a5a00; --chk-bg: #fff4d6; --ng: #b3261e; --ng-bg: #fdecea; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #97a1b3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; --ok: #6fd08c; --ok-bg: #17301f; --chk: #f0c060; --chk-bg: #3a2e10; --ng: #ff9a90; --ng-bg: #3a1f1d; color-scheme: dark; } }
-:root[data-theme="dark"] { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #97a1b3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; --ok: #6fd08c; --ok-bg: #17301f; --chk: #f0c060; --chk-bg: #3a2e10; --ng: #ff9a90; --ng-bg: #3a1f1d; color-scheme: dark; }
+/* Backfull UI キット（デザインの作り直し 2026-11-07）
+   単独ページ（web/driver.html・web/compare_lite.html・web/waiting.html とその Artifact 版）に、ビルドのときに <style> の先頭へそのまま埋め込む。
+   通信しない約束のため、Web フォントは読み込まない。Noto Sans JP が端末にあればそれを使い、なければ端末の日本語ゴシックになる。
+   地図の画面（web/style.css）のホームと同じ、濃紺・ガラス風のパネル・Backfull の文字ロゴの見た目。
+   色: 積載（荷あり）= 青 --loaded、空車 = オレンジ --empty、成功 = --ok、要確認 = --chk、危険 = --ng。明るい配色は prefers-color-scheme か data-theme="light"。
+   旧ページとの互換のため、--card --muted --faint --hi --head-bg など旧名の変数も同じ値で持つ（--warn は旧名で危険の赤）。 */
+:root {
+  color-scheme: light;
+  --font: "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, system-ui, sans-serif;
+  /* 文字: 13 / 15 / 18 / 24 / 32 */
+  --fs-1: 13px; --fs-2: 15px; --fs-3: 18px; --fs-4: 24px; --fs-5: 32px;
+  /* 間隔: 8px を基本にする（4px は詰めたいところだけ） */
+  --sp-0: 4px; --sp-1: 8px; --sp-2: 16px; --sp-3: 24px; --sp-4: 32px; --sp-5: 48px;
+  --r-s: 8px; --r-m: 12px; --r-l: 16px; --r-pill: 999px; --radius: 14px;
+  /* 明るい配色（屋外のスマートフォン向け。コントラスト比は文字 4.5 以上） */
+  --bg: #f3f6fb; --card: #ffffff; --text: #172033; --muted: #4a5568; --faint: #626b7c; --card-2: #f7f9fc;
+  --line: #d5dbe6; --row-line: #e6eaf1; --line-soft: #e6eaf1;
+  --accent: #0b64b0; --accent-hover: #08508f; --on-accent: #ffffff; --loaded: #0b64b0; --empty: #ad5508;
+  --hi: #eaf3fc; --head-bg: #eceff4; --field: #ffffff; --placeholder: #8a93a3; --btn: #ffffff;
+  --ok: #0d7350; --ok-bg: #e3f4ec; --chk: #8a5700; --chk-bg: #fbf0d9; --ng: #b3261e; --ng-bg: #fdecea;
+  --danger: #b3261e; --warn: #b3261e; --warn-bg: #fdecea;
+  --none: transparent; --scrim: rgba(23, 32, 51, 0.55); --bar-bg: rgba(243, 246, 251, 0.88);
+  --elev-1: 0 1px 2px rgba(23, 32, 51, 0.08), 0 8px 24px rgba(23, 32, 51, 0.07);
+  --elev-2: 0 2px 4px rgba(23, 32, 51, 0.1), 0 16px 40px rgba(23, 32, 51, 0.14);
+  --ring: rgba(11, 100, 176, 0.35);
+  --page-glow: radial-gradient(900px 420px at 15% -8%, rgba(11, 100, 176, 0.09), transparent 62%);
+  /* 書面の用紙（どの配色でも白地に濃い文字） */
+  --paper: #ffffff; --paper-text: #1d2330; --paper-muted: #566074; --paper-faint: #5f6878; --paper-line: #cfd5e0; --paper-soft: #e6e9ef; --paper-head: #f1f3f7; --paper-hi: #eaf2fb; --paper-accent: #0b64b0; --paper-ng: #b3261e; --paper-ok: #0d7350; --paper-chk: #8a5700; --paper-dash: #9aa3b2;
+  --paper-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), 0 24px 56px rgba(0, 0, 0, 0.38);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #070b12; --card: #0d141f; --text: #e8eef8; --muted: #8f9db4; --faint: #8895ab; --card-2: #121b2a;
+    --line: rgba(255, 255, 255, 0.16); --row-line: rgba(255, 255, 255, 0.09); --line-soft: rgba(255, 255, 255, 0.09);
+    --accent: #5cc8ff; --accent-hover: #8ad8ff; --on-accent: #04131c; --loaded: #5cc8ff; --empty: #f49646;
+    --hi: rgba(92, 200, 255, 0.14); --head-bg: #131c2a; --field: #0a111b; --placeholder: #5f6e86; --btn: rgba(255, 255, 255, 0.06);
+    --ok: #55d6a6; --ok-bg: rgba(85, 214, 166, 0.14); --chk: #f0b64e; --chk-bg: rgba(240, 182, 78, 0.14); --ng: #ff6b6b; --ng-bg: rgba(255, 107, 107, 0.12);
+    --danger: #ff6b6b; --warn: #ff6b6b; --warn-bg: rgba(255, 107, 107, 0.12);
+    --none: transparent; --scrim: rgba(3, 8, 16, 0.62); --bar-bg: rgba(7, 11, 18, 0.88);
+    --elev-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.35);
+    --elev-2: 0 2px 6px rgba(0, 0, 0, 0.4), 0 18px 50px rgba(0, 0, 0, 0.5);
+    --ring: rgba(92, 200, 255, 0.45);
+    --page-glow: radial-gradient(900px 420px at 15% -8%, rgba(92, 200, 255, 0.1), transparent 62%);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #070b12; --card: #0d141f; --text: #e8eef8; --muted: #8f9db4; --faint: #8895ab; --card-2: #121b2a;
+  --line: rgba(255, 255, 255, 0.16); --row-line: rgba(255, 255, 255, 0.09); --line-soft: rgba(255, 255, 255, 0.09);
+  --accent: #5cc8ff; --accent-hover: #8ad8ff; --on-accent: #04131c; --loaded: #5cc8ff; --empty: #f49646;
+  --hi: rgba(92, 200, 255, 0.14); --head-bg: #131c2a; --field: #0a111b; --placeholder: #5f6e86; --btn: rgba(255, 255, 255, 0.06);
+  --ok: #55d6a6; --ok-bg: rgba(85, 214, 166, 0.14); --chk: #f0b64e; --chk-bg: rgba(240, 182, 78, 0.14); --ng: #ff6b6b; --ng-bg: rgba(255, 107, 107, 0.12);
+  --danger: #ff6b6b; --warn: #ff6b6b; --warn-bg: rgba(255, 107, 107, 0.12);
+  --none: transparent; --scrim: rgba(3, 8, 16, 0.62); --bar-bg: rgba(7, 11, 18, 0.88);
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --elev-2: 0 2px 6px rgba(0, 0, 0, 0.4), 0 18px 50px rgba(0, 0, 0, 0.5);
+  --ring: rgba(92, 200, 255, 0.45);
+  --page-glow: radial-gradient(900px 420px at 15% -8%, rgba(92, 200, 255, 0.1), transparent 62%);
+  color-scheme: dark;
+}
+
+/* ---------- 土台 ---------- */
 * { box-sizing: border-box; }
-body { margin: 0; padding-block: 0 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--bg); color: var(--text); font: 14px/1.6 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; overflow-wrap: anywhere; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; padding-block: 0 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--page-glow) no-repeat var(--bg); background-color: var(--bg); color: var(--text); font: 400 var(--fs-2)/1.7 var(--font); overflow-wrap: anywhere; -webkit-font-smoothing: antialiased; }
 [hidden] { display: none !important; }
+h1, h2, h3 { margin: 0; line-height: 1.4; letter-spacing: 0.01em; }
+h1 { font-size: var(--fs-4); font-weight: 700; }
+h2 { font-size: var(--fs-3); font-weight: 700; }
+h3 { font-size: var(--fs-2); font-weight: 700; }
+p { margin: var(--sp-0) 0; }
+a { color: var(--accent); text-underline-offset: 3px; }
+summary { min-height: 28px; box-sizing: border-box; }
+.small, small { font-size: var(--fs-1); color: var(--muted); }
+.muted { color: var(--muted); }
+.num, .tnum { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: 0 0 0 5px var(--ring); }
+
+/* ---------- アプリのヘッダー: Backfull の文字ロゴ + ページ名 + 手順 ---------- */
+.app-header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); padding: var(--sp-2) 0 var(--sp-1); }
+.wm { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-3); font-weight: 700; letter-spacing: 0.03em; color: var(--text); text-decoration: none; }
+.wm-mark { position: relative; width: 22px; height: 14px; flex: none; }   /* 荷あり（青）と空車（オレンジ）の 2 つの丸 */
+.wm-mark::before, .wm-mark::after { content: ""; position: absolute; top: 1px; width: 12px; height: 12px; border-radius: 50%; }
+.wm-mark::before { left: 0; background: var(--loaded); }
+.wm-mark::after { right: 0; background: var(--empty); mix-blend-mode: normal; opacity: 0.95; }
+.app-page { font-size: var(--fs-1); color: var(--muted); padding-left: var(--sp-2); border-left: 1px solid var(--line); line-height: 1.2; }
+.app-lead { margin: 0 0 var(--sp-2); color: var(--muted); font-size: var(--fs-1); }
+
+/* 手順の表示（色付きの番号ではなく、下線と太字で今の手順を示す） */
+.stepper { display: flex; gap: 0; margin: 0 0 var(--sp-2); padding: 0; list-style: none; border-bottom: 1px solid var(--line); }
+.stepper li { flex: 1 1 0; min-width: 0; }
+.stepper a, .stepper span.st { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 var(--sp-1); color: var(--muted); font-size: var(--fs-1); font-weight: 500; text-decoration: none; border-bottom: 3px solid var(--none); margin-bottom: -1px; white-space: nowrap; }
+.stepper .st-n { font-variant-numeric: tabular-nums; font-size: 12px; }
+.stepper li.is-done a, .stepper li.is-done span.st { color: var(--text); }
+.stepper li.is-done .st-n::before { content: "✓ "; color: var(--ok); }
+.stepper li.is-current a, .stepper li.is-current span.st { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
+
+/* ---------- カード・見出し ---------- */
+.card, section.card { background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius); box-shadow: var(--elev-1); padding: var(--sp-3); margin: 0 0 var(--sp-2); }
+.card-h, .sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-1) var(--sp-2); flex-wrap: wrap; margin: 0 0 var(--sp-2); }
+.card-h h2, .sec-h h2 { font-size: var(--fs-3); }
+.sec-aside { color: var(--muted); font-size: var(--fs-1); }
+
+/* 数字の大きいタイル */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-1); margin: 0 0 var(--sp-2); }
+.stat { padding: var(--sp-2); background: var(--card-2); border: 1px solid var(--line-soft); border-radius: var(--r-m); min-width: 0; }
+.stat-l { display: block; color: var(--muted); font-size: var(--fs-1); }
+.stat-n { display: block; font-size: var(--fs-5); font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.stat-u { font-size: var(--fs-1); font-weight: 500; color: var(--muted); margin-left: 3px; letter-spacing: 0; }
+.stat-d { display: block; margin-top: 2px; font-size: var(--fs-1); color: var(--muted); font-variant-numeric: tabular-nums; }
+.stat-d.up { color: var(--ng); } .stat-d.down { color: var(--ok); }
+.stat.is-loaded .stat-n { color: var(--loaded); } .stat.is-empty .stat-n { color: var(--empty); }
+
+/* 切り替え（2〜4 個から 1 つ） */
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--card-2); border: 1px solid var(--line); border-radius: var(--r-m); }
+.seg > button, .seg > label { min-height: 38px; padding: 0 var(--sp-2); border: 0; background: var(--none); border-radius: var(--r-s); color: var(--muted); font-size: var(--fs-1); font-weight: 500; cursor: pointer; }
+.seg > button[aria-pressed="true"], .seg > button.is-on { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+
+/* ---------- 入力: ラベル・補足つき ---------- */
+.f, label.f { display: block; font-size: var(--fs-1); color: var(--muted); font-weight: 500; }
+.f > .help, .help { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; color: var(--faint); line-height: 1.5; }
+input, select, textarea { font: inherit; font-size: var(--fs-2); color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: var(--r-s); padding: 8px 12px; min-height: 44px; }
+input[type=checkbox], input[type=radio] { min-height: 0; accent-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: var(--placeholder); }
+input:hover, select:hover, textarea:hover { border-color: var(--muted); }
+input:focus-visible, select:focus-visible, textarea:focus-visible { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 0; box-shadow: 0 0 0 4px var(--ring); }
+.f > input, .f > select { display: block; width: 100%; margin-top: 4px; }
+/* 数の増減（− 入力 +） */
+.nstep { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--field); }
+.nstep > button { min-width: 44px; min-height: 44px; padding: 0; border: 0; background: var(--none); font-size: var(--fs-3); border-radius: 0; box-shadow: none; }
+.nstep > input { width: 72px; border: 0; border-inline: 1px solid var(--line); border-radius: 0; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* ---------- ボタン: 主は 1 画面に 1 つ ---------- */
+button { font: inherit; font-size: var(--fs-1); font-weight: 500; min-height: 40px; padding: 0 var(--sp-2); color: var(--text); background: var(--btn); border: 1px solid var(--line); border-radius: var(--r-m); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+button:hover { background: var(--hi); border-color: var(--accent); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.primary, .btn-primary { min-height: 48px; padding: 0 var(--sp-3); font-size: var(--fs-2); font-weight: 700; color: var(--on-accent); background: var(--accent); border-color: var(--accent); box-shadow: 0 6px 18px -6px var(--ring); }
+button.primary:hover, .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-secondary { background: var(--btn); }
+.btn-ghost, button.ghost { background: var(--none); border-color: var(--none); color: var(--accent); }
+.btn-ghost:hover, button.ghost:hover { background: var(--hi); border-color: var(--none); }
+.btn-block { display: block; width: 100%; }
+
+/* 画面の下に貼り付く操作の帯（スマートフォン） */
+.actionbar { display: flex; flex-wrap: wrap; gap: var(--sp-1); align-items: center; }
+.actionbar.is-sticky { position: sticky; bottom: 0; z-index: 30; padding: var(--sp-1) var(--sp-2) calc(var(--sp-1) + env(safe-area-inset-bottom, 0px)); margin: 0 calc(var(--sp-2) * -1); background: var(--bar-bg); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
+.actionbar.is-sticky > .primary, .actionbar.is-sticky > .btn-primary { flex: 1 1 auto; }
+
+/* ---------- 表: しま模様なし・数字は右寄せ・桁をそろえる ---------- */
+.tbl, table.tbl { border-collapse: collapse; width: 100%; font-size: var(--fs-1); }
+.tbl th { text-align: left; font-weight: 500; color: var(--muted); padding: var(--sp-1) 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tbl td { padding: 12px; border-bottom: 1px solid var(--row-line); vertical-align: top; font-variant-numeric: tabular-nums; }
+.tbl .r, .tbl td.num, .tbl th.num { text-align: right; }
+.tbl tbody tr:last-child td { border-bottom: 0; }
+
+/* ---------- 状態の札: 色 + 記号（○ △ ×）で、色が見えなくても分かる ---------- */
+.chip, .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 0 10px; border-radius: var(--r-pill); font-size: var(--fs-1); font-weight: 700; white-space: nowrap; border: 1.5px solid currentColor; line-height: 1.2; }
+.chip.ok, .badge.ok { color: var(--ok); background: var(--ok-bg); border-style: solid; }
+.chip.check, .badge.check { color: var(--chk); background: var(--chk-bg); border-style: dashed; }
+.chip.ng, .badge.ng { color: var(--ng); background: var(--ng-bg); border-style: dotted; text-decoration: line-through; text-decoration-thickness: 1px; }
+.chip.ng > *, .badge.ng > * { text-decoration: none; }
+
+/* 進み具合・棒 */
+.prog { height: 8px; border-radius: var(--r-pill); background: var(--head-bg); overflow: hidden; }
+.prog > i { display: block; height: 100%; border-radius: inherit; background: var(--loaded); }
+
+/* ---------- お知らせ（トースト）・空の状態・折りたたみ・補足の吹き出し ---------- */
+.toast { position: fixed; left: 50%; bottom: calc(var(--sp-4) + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; max-width: min(92vw, 420px); padding: 12px var(--sp-2); background: var(--text); color: var(--bg); border-radius: var(--r-m); box-shadow: var(--elev-2); font-size: var(--fs-1); font-weight: 700; }
+.empty-state { display: grid; justify-items: center; gap: var(--sp-1); padding: var(--sp-4) var(--sp-2); text-align: center; color: var(--muted); }
+.empty-state h3 { color: var(--text); }
+.ill-slot { width: 96px; height: 96px; display: grid; place-items: center; border-radius: 50%; background: var(--hi); color: var(--accent); }   /* イラストの枠。web/img/ui/ の絵が出来たら中の svg と差し替える */
+.ill-slot svg { width: 52px; height: 52px; }
+details.disc { border-top: 1px solid var(--line-soft); }
+details.disc > summary, details.fold > summary, details.box > summary, details.inner > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: var(--sp-1); min-height: 44px; font-size: var(--fs-1); font-weight: 700; color: var(--text); }
+details > summary::-webkit-details-marker { display: none; }
+details.disc > summary::before, details.fold > summary::before, details.box > summary::before, details.inner > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform 0.15s; flex: none; margin: 0 4px 0 2px; }
+details[open].disc > summary::before, details[open].fold > summary::before, details[open].box > summary::before, details[open].inner > summary::before { transform: rotate(45deg); }
+[data-tip] { position: relative; cursor: help; border-bottom: 1px dotted var(--muted); }
+[data-tip]:hover::after, [data-tip]:focus-visible::after { content: attr(data-tip); position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 40; width: max-content; max-width: 260px; padding: 8px 12px; background: var(--text); color: var(--bg); border-radius: var(--r-s); font-size: 12px; font-weight: 400; line-height: 1.5; box-shadow: var(--elev-2); }
+
+/* ---------- 画面ごとの標準の幅 ---------- */
+.page { width: min(100% - 32px, 1280px); margin-inline: auto; }   /* 広い画面では最大 1280px を中央に置く */
+@media (min-width: 1100px) { .page { width: min(100% - 96px, 1280px); } }
+.page-narrow { width: min(100% - 32px, 560px); margin-inline: auto; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ---------- 第 2 回（2026-11-07）: イラスト・大きな数字・広い画面の組み ---------- */
+.ill { display: block; width: 96px; height: 96px; flex: none; object-fit: contain; -webkit-user-drag: none; user-select: none; pointer-events: none; }
+.ill-64 { width: 64px; height: 64px; } .ill-128 { width: 128px; height: 128px; } .ill-256 { width: 256px; height: 256px; }
+.sec-line { border: 0; border-top: 1px solid var(--line-soft); margin: var(--sp-3) 0; }
+.cap { font-size: 12px; font-weight: 500; letter-spacing: 0.04em; color: var(--muted); }
+.stat.hero { background: linear-gradient(135deg, var(--hi), var(--card-2) 70%); border-color: var(--line); }
+.stat.hero .stat-n { font-size: 48px; letter-spacing: -0.02em; }
 .col-in, .col-out { min-width: 0; }
 .scroll-x { overflow-x: auto; max-width: 100%; }
-header.top { padding: 14px 0 6px; }
-header.top h1 { margin: 0 0 4px; font-size: 20px; }
-header.top p { margin: 0; color: var(--muted); font-size: 13px; }
-.guard { margin: 6px 0 10px; padding: 8px 14px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; font-size: 13px; }
-main { display: grid; grid-template-columns: minmax(0, 620px) minmax(0, 1fr); gap: 16px; padding: 0; align-items: start; }
-@media (max-width: 1250px) { main { grid-template-columns: minmax(0, 1fr); } }
-section.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
-section.card h2 { margin: 0 0 6px; font-size: 15px; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; font-size: 13px; }
-.small { color: var(--muted); font-size: 12px; }
 .exnote { margin: 6px 0; padding: 6px 10px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; font-size: 12.5px; }
-button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--text); cursor: pointer; }
-button:hover { background: var(--hi); }
-select, input[type=text], input[type=number], textarea { font: inherit; font-size: 13px; color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; }
 table.in { border-collapse: collapse; width: 100%; font-size: 12.5px; }
 table.in th { text-align: left; font-weight: 500; font-size: 11.5px; color: var(--muted); padding: 3px 4px; border-bottom: 1px solid var(--line); }
 table.in td { padding: 2px; }
 table.in input { width: 100%; height: 26px; padding: 0 4px; }
 .del { border: 0; background: none; color: var(--faint); padding: 0 6px; min-width: 24px; min-height: 24px; }
-/* 押せる所は高さ 24px 以上（採点 r2） */
-select, summary { min-height: 24px; box-sizing: border-box; }
-summary { padding-block: 3px; }
 .ask-co a, #backmap a, #maplink a, #process a { display: inline-block; min-height: 24px; line-height: 24px; }
 
-label.f { display: block; font-size: 12px; color: var(--muted); }
-label.f select, label.f input { display: block; margin-top: 2px; color: var(--text); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 8px 0; }
 .errs { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--ng); border-radius: 8px; background: var(--ng-bg); color: var(--ng); font-size: 12.5px; }
-table.res { border-collapse: collapse; width: 100%; font-size: 13px; }
-table.res th { text-align: left; font-weight: 500; font-size: 12px; color: var(--muted); padding: 4px 8px; border-bottom: 1px solid var(--line); }
-table.res td { padding: 6px 8px; border-bottom: 1px solid var(--row-line); vertical-align: top; }
-table.res td.nm { font-weight: 700; white-space: nowrap; }
-.badge { display: inline-block; min-width: 4.8em; text-align: center; padding: 1px 8px; border-radius: 10px; font-weight: 700; font-size: 12.5px; white-space: nowrap; }
-.badge.ok { background: var(--ok-bg); color: var(--ok); }
-.badge.check { background: var(--chk-bg); color: var(--chk); }
-.badge.ng { background: var(--ng-bg); color: var(--ng); }
-ul.rs { margin: 0; padding-left: 16px; font-size: 12.5px; }
-ul.rs li { margin: 1px 0; }
-.amount { font-weight: 700; }
-.noamt { margin-top: 4px; font-weight: 700; font-size: 12.5px; color: var(--chk); }
 .ask { margin-top: 4px; font-size: 12.5px; }
 .ask a { color: var(--accent); }
 .ask .cond, .asks .cond { color: var(--muted); font-size: 11.5px; }
@@ -63,7 +225,7 @@ ul.rs li { margin: 1px 0; }
 .ask-co { padding: 6px 0; border-top: 1px solid var(--row-line); }
 .ask-co a { color: var(--accent); }
 .home { margin-top: 4px; padding: 4px 8px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; font-size: 12.5px; }
-.cmp { margin: 8px 0 10px; padding: 8px 12px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; background: var(--card); font-size: 13px; }
+.cmp { margin: 8px 0 10px; padding: 8px 12px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; background: var(--card); font-size: 13px; }
 .cmp h3 { margin: 0 0 4px; font-size: 14px; }
 .cmp p { margin: 4px 0; }
 .cmp .head { font-weight: 700; }
@@ -75,6 +237,8 @@ table.cmpt td.num { text-align: right; white-space: nowrap; font-weight: 700; }
 .cgrid label.f input, .cgrid label.f select { width: 100%; height: 28px; }
 @media (max-width: 640px) { .cgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 details.tabd { margin: 8px 0; }
+details.fold { margin: 8px 0; }
+details.fold > summary { cursor: pointer; font-weight: 700; }
 textarea.ctab { width: 100%; white-space: pre; overflow-x: auto; font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; }
 .sum { font-size: 12.5px; color: var(--muted); margin: 4px 0 8px; }
 textarea#quote { width: 100%; height: 190px; line-height: 1.55; }
@@ -82,39 +246,236 @@ textarea#quote { width: 100%; height: 190px; line-height: 1.55; }
 .empty { color: var(--muted); margin: 10px 2px; }
 #selftest { display: none; margin: 8px 0; padding: 8px 12px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; white-space: pre-wrap; }
 body.selftest #selftest { display: block; }
+.cmp .split-line { margin: 6px 0; padding: 6px 10px; border: 1px solid var(--accent); border-radius: 8px; background: var(--hi); font-size: 12.5px; }
+.terms { margin: 8px 0; font-size: 12px; color: var(--muted); }
+#ans-out table { margin-top: 8px; }
+#ans-out .best { font-weight: 700; }
+/* 600px 未満: 荷物の表は 1 行を 1 枚のカードにして、数字が切れず、見出しが 1 字ずつ折り返さないようにする（r4a 指摘10） */
+@media (max-width: 600px) {
+  table.in, table.in tbody { display: block; }
+  table.in thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table.in tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 8px; padding: 8px; margin: 6px 0; border: 1px solid var(--line); border-radius: 10px; position: relative; }
+  table.in td { padding: 0; min-width: 0; }
+  table.in td[data-l]::before { content: attr(data-l); display: block; font-size: 11.5px; color: var(--muted); margin-bottom: 2px; }
+  table.in input { height: 32px; font-size: 14px; }
+  table.in td:has(.psel) { grid-column: 1 / 3; }
+  table.in td:has(.del) { grid-column: 3; text-align: right; align-self: end; }
+}
 @media (max-width: 640px) { .grid2 { grid-template-columns: minmax(0, 1fr); } table.res td.nm { white-space: normal; } }
+/* ---------- 荷物の送り方比べ: 3 手順（荷物 → 行き先 → 結果）の画面（デザインの作り直し 2026-11-07） ---------- */
+body { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+.guard { margin: 0 0 16px; padding: 8px 16px; border: 1px solid var(--line-soft); border-left: 4px solid var(--chk); border-radius: var(--r-m); background: var(--card); font-size: var(--fs-1); font-weight: 500; }
+.stepper { max-width: 520px; }
+main { display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.col-out { position: sticky; top: 16px; }
+@media (max-width: 1099px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+  .col-in, .col-out { display: contents; }
+  .col-out { position: static; }
+  #input { order: 1; } #result { order: 2; } #extras-d { order: 3; }
+  body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  #copybar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0; padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--bar-bg); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
+  #copybar > button { flex: 1 1 auto; min-height: 56px; }
+  #copybar > .small { flex: 1 0 100%; text-align: center; }
+  #copybar > .small:empty { display: none; }
+}
+#copybar > .small:empty { display: none; }
+.step + .step { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line-soft); }
+.step .card-h { margin-bottom: 8px; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0; font-size: var(--fs-1); }
+.exnote { margin: 8px 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--hi); border-radius: 0 var(--r-s) var(--r-s) 0; font-weight: 500; font-size: var(--fs-1); }
+details.fold { margin: 8px 0; }
+details.fold > summary { color: var(--accent); }
+#input .grid2 { grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 8px; }
+.grid2 label.f select, .grid2 label.f input, .cgrid label.f input, .cgrid label.f select { width: 100%; min-height: 44px; height: auto; }
+table.in input { min-height: 36px; height: 36px; padding: 0 8px; }
+table.in th { padding: 4px; font-size: 12px; }
+.del { min-height: 36px; }
+.errs { border-radius: var(--r-s); }
+@media (max-width: 640px) { #input .grid2 { grid-template-columns: minmax(0, 1fr); } }
+#extras-d { margin: 0; }
+#extras-d > summary { min-height: 52px; padding: 0 16px; background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius); }
+#extras-d[open] > summary { margin-bottom: 16px; }
+
+/* 結果: 数字のタイル・額の棒・送り方ごとのカード（安い順） */
+#result .stat-grid { grid-template-columns: 1.4fr 1fr 1fr; }
+@media (max-width: 520px) { #result .stat-grid { grid-template-columns: 1fr 1fr; } #result .stat-grid .stat:first-child { grid-column: 1 / -1; } }
+.headline, .sum { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; white-space: nowrap; }   /* 数字のタイルと同じ内容なので、画面では隠し、読み上げと試験には残す */
+.bars-card { margin: 0 0 16px; padding: 16px; background: var(--card-2); border: 1px solid var(--line-soft); border-radius: var(--r-m); }
+.bars-card h3 { font-size: var(--fs-1); margin-bottom: 8px; }
+.bars-card h3 .small { display: none; }
+@media (min-width: 1100px) { .app-lead { display: none; } }   /* 横に広い画面は、手順の表示と見出しで足りるので説明の 1 行を出さない */
+ol.bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+ol.bars li { display: grid; grid-template-columns: minmax(64px, 96px) 1fr auto; gap: 8px; align-items: center; font-size: var(--fs-1); }
+.b-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.b-t { height: 12px; border-radius: var(--r-pill); background: var(--head-bg); overflow: hidden; }
+.b-t > i { display: block; height: 100%; border-radius: inherit; background: var(--accent); opacity: 0.45; }
+ol.bars li.min .b-t > i { opacity: 1; }
+.b-v { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+ol.bars li.min .b-v { color: var(--accent); }
+@media (max-width: 520px) { table.res td.nm { font-size: var(--fs-2); } table.res tr { padding: 12px; } .amount .yen { font-size: 22px; } }
+@media (max-width: 420px) { ol.bars li { grid-template-columns: 72px 1fr auto; } .b-v { font-size: 12px; } }
+table.res, table.res tbody, table.res tr, table.res td { display: block; }
+table.res { width: 100%; }
+table.res thead { display: none; }
+table.res tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "nm badge" "body body"; gap: 4px 12px; align-items: center; padding: 16px; margin: 0 0 8px; background: var(--card-2); border: 1px solid var(--line-soft); border-radius: var(--r-m); }
+table.res tr.o-ng { opacity: 0.78; }
+table.res td { padding: 0; border: 0; }
+table.res td.nm { grid-area: nm; font-size: var(--fs-3); font-weight: 700; white-space: normal; }
+table.res td:nth-child(2) { grid-area: badge; }
+table.res td:nth-child(3) { grid-area: body; min-width: 0; }
+.amount { font-size: var(--fs-1); color: var(--muted); font-weight: 500; margin-top: 4px; }
+.amount .yen { display: inline-block; font-size: var(--fs-4); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; margin: 0 2px; }
+table.res tbody tr:first-child .amount .yen { color: var(--accent); }
+.noamt { margin-top: 4px; font-weight: 700; font-size: var(--fs-1); color: var(--chk); }
+ul.rs { margin: 4px 0 0; padding-left: 18px; font-size: var(--fs-1); color: var(--muted); }
+ul.rs li { margin: 2px 0; }
+details.rs-more { border: 0; }
+details.rs-more > summary { min-height: 32px; color: var(--accent); font-weight: 500; }
+.ask { display: none; }   /* 各カードの「見積の頼み先は下に」は、下の一覧があるので画面では出さない */
+.home { margin-top: 8px; padding: 8px 12px; border-left: 4px solid var(--accent); border-radius: 0 var(--r-s) var(--r-s) 0; background: var(--hi); font-weight: 500; font-size: var(--fs-1); }
+.asks { margin-top: 24px; font-size: var(--fs-1); }
+.asks h3 { margin: 0 0 8px; }
+.ask-co { padding: 8px 0; border-top: 1px solid var(--row-line); }
+.ask-co .cond, .ask .cond { color: var(--muted); font-size: 12px; }
+.cmp { margin: 8px 0 16px; padding: 16px; border: 1px solid var(--line-soft); border-left: 4px solid var(--accent); border-radius: var(--r-m); background: var(--card-2); }
+.cmp h3 { margin: 0 0 8px; }
+table.cmpt { border-collapse: collapse; width: 100%; font-size: var(--fs-1); }
+table.cmpt th { text-align: left; font-weight: 500; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--line); }
+table.cmpt td { padding: 8px; border-bottom: 1px solid var(--row-line); font-variant-numeric: tabular-nums; }
+textarea#quote { min-height: 200px; }
+textarea { font-size: var(--fs-1); }
+.sources { box-shadow: none; background: none; padding: 0; border: 0; }
+.empty-state .empty { margin: 0; }
+@media (max-width: 600px) {
+  table.in tr { background: var(--card-2); }
+  table.in input { height: 44px; min-height: 44px; font-size: var(--fs-2); }
+}
+/* ---------- 第 2 回（2026-11-07）: 手順の表示は上の帯に入れる。入力の欄の絵。額の棒の状態の札 ---------- */
+.app-header .stepper { flex: 1 0 100%; margin: 0; max-width: none; }
+.step-h { flex-wrap: nowrap; align-items: center; }
+.step-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.step-h .ill { width: 56px; height: 56px; }
+.stat.hero { position: relative; padding-right: 88px; }
+.stat-ill { position: absolute; right: 16px; bottom: 16px; width: 56px; height: 56px; }
+.b-v { font-weight: 700; }
+ol.bars li .chip { min-height: 22px; padding: 0 8px; font-size: 12px; }
+@media (max-width: 699px) { ol.bars li .chip { display: none; } }
+.b-axis { display: none; }
+.empty-state .ill { margin: 0 auto; }
+.empty-state { padding: 48px 16px; }
+/* ---------- 広い画面（1100px 以上）: 左に入力の欄（貼り付いて動かない）、右に結果。結果の主役は額の棒 ---------- */
+@media (min-width: 1100px) {
+  body { padding-top: 0; background: radial-gradient(1000px 520px at 78% -6%, var(--hi), var(--none) 66%) no-repeat var(--bg); background-color: var(--bg); }
+  .app-header { flex-wrap: nowrap; padding: 24px 0 16px; }
+  .app-header .stepper { flex: 0 0 440px; margin-left: auto; border-bottom: 0; }
+  .guard { margin-bottom: 24px; min-height: 40px; }
+  main { grid-template-columns: 384px minmax(0, 1fr); gap: 40px; }
+  .col-in { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: thin; padding: 0 4px 8px 0; margin-right: -4px; }
+  .col-out { position: static; }
+  #input { padding: 24px; }
+  .step-h .ill { width: 72px; height: 72px; margin: -8px -4px -8px 0; }
+  #result { background: none; border: 0; box-shadow: none; padding: 0; margin: 0; }
+  #result > .card-h { margin-bottom: 24px; }
+  #result > .card-h h2 { font-size: var(--fs-4); }
+  #result .stat-grid { grid-template-columns: 1.7fr 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  #result .stat { padding: 32px 32px 28px; border-radius: var(--r-l); background: var(--card); box-shadow: var(--elev-1); }
+  #result .stat.hero { background: linear-gradient(135deg, var(--hi), var(--card) 75%); border-color: var(--line); padding-right: 128px; }
+  #result .stat.hero .stat-n { font-size: 48px; white-space: nowrap; }
+  #result .stat:not(.hero) .stat-n { font-size: 40px; }
+  .stat-ill { width: 80px; height: 80px; right: 20px; bottom: 20px; }
+  .stat-l { font-size: var(--fs-1); letter-spacing: 0.02em; }
+  .b-axis { display: grid; }
+  .bars-card { padding: 40px 32px 32px; margin-bottom: 32px; background: var(--card); box-shadow: var(--elev-1); border-radius: var(--r-l); }
+  .bars-card h3 { font-size: var(--fs-3); margin-bottom: 16px; }
+  .bars-card h3 .small { display: inline; font-weight: 400; margin-left: 8px; }
+  ol.bars { gap: 0; }
+  ol.bars li { grid-template-columns: 200px minmax(0, 1fr) 140px 96px; gap: 24px; min-height: 72px; font-size: var(--fs-3); border-top: 1px solid var(--row-line); }
+  ol.bars li:first-child { border-top: 0; }
+  .b-t { height: 24px; }
+  .b-t > i { opacity: 0.5; }
+  .b-v { font-size: var(--fs-3); }
+  .b-axis { display: grid; grid-template-columns: 200px minmax(0, 1fr) 140px 96px; gap: 24px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .b-axis .ticks { display: flex; justify-content: space-between; grid-column: 2; }
+  .b-axis .ticks i { font-style: normal; }
+  ol.bars li .chip { justify-self: end; }
+  #copybar { margin: 0 0 32px; }
+  #copybar > .small { order: 2; }
+  table.res tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+  table.res tr { margin: 0; padding: 32px; align-content: start; background: var(--card); box-shadow: var(--elev-1); border-radius: var(--r-l); }
+  table.res tbody tr:first-child { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--elev-1); }
+  table.res td.nm { font-size: var(--fs-3); }
+  .amount .yen { font-size: var(--fs-5); }
+  .asks { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-top: 32px; }
+  .asks h3 { grid-column: 1 / -1; font-size: var(--fs-3); }
+  .terms { margin-top: 24px; }
+  #extras-d > summary { min-height: 48px; }
+}
+/*PRINT-START*/
+@media print {
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] { --bg: #ffffff; --card: #ffffff; --text: #000000; --muted: #333333; --faint: #444444; --line: #999999; --accent: #1b5fbf; --on-accent: #ffffff; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #dddddd; --field: #ffffff; --ok: #1a7a3c; --ok-bg: #e8f5ec; --chk: #8a5a00; --chk-bg: #fff4d6; --ng: #b3261e; --ng-bg: #fdecea; --btn: #ffffff; --radius: 0; color-scheme: light; }
+  html, body { background: #fff; }
+  #contract-card, #quote-card, #answers-card, #sources, .bar, #selftest { display: none !important; }
+  main { display: block; }
+}
 </style>
 </head>
 <body>
-<header class="top">
-  <h1>荷物を送る方法を、条件から比べる</h1>
-  <p>荷主が自分で条件を入れて、宅配・家財・赤帽・軽貨物・路線便・貸切のどれが使えるかを見るページです。サーバーもインストールも要りません。ファイルを開くだけで動きます。</p>
+<div class="page">
+<header class="app-header">
+  <span class="wm"><i class="wm-mark" aria-hidden="true"></i>Backfull</span>
+  <span class="app-page">荷物の送り方を比べる</span>
+<ol class="stepper" id="stepper" aria-label="手順">
+  <li data-s="1" class="is-current"><span class="st"><span class="st-n">1</span>荷物</span></li>
+  <li data-s="2"><span class="st"><span class="st-n">2</span>行き先</span></li>
+  <li data-s="3"><span class="st"><span class="st-n">3</span>結果</span></li>
+</ol>
 </header>
-<p class="small" id="maplink"></p>
+<p class="app-lead">荷物と行き先を入れると、使える送り方と金額の目安が分かります。</p>
 <div class="guard" id="guard">目安です。最後は各社の見積で確かめてください</div>
 <main>
   <div class="col-in">
     <section class="card" id="input">
-      <h2>荷物</h2>
+      <div class="step" id="step-1">
+      <div class="card-h step-h"><div class="step-t"><h2>1　荷物</h2><span class="sec-aside" id="cargo-line" role="status"></span></div><img class="ill" src="data:image/webp;base64,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" alt="" width="72" height="72"></div>
       <p class="exnote" id="example-note" hidden>例の荷物が入っています（架空）。表を空にして、自分の荷物を入れてください</p>
-      <div class="scroll-x"><table class="in" aria-label="荷物の表"><thead><tr><th>個数</th><th>縦 cm</th><th>横 cm</th><th>高さ cm</th><th>1 個の重さ kg</th><th></th></tr></thead><tbody id="pbody"></tbody></table></div>
+      <details class="fold" id="cargo-d"><summary>荷物の表を開いて直す・貼る</summary>
+      <div class="scroll-x"><table class="in" aria-label="荷物の表"><thead><tr><th>個数</th><th>縦 cm</th><th>横 cm</th><th>高さ cm</th><th>1 個の重さ kg</th><th title="荷物の包み方">荷姿</th><th></th></tr></thead><tbody id="pbody"></tbody></table></div>
+      <details class="paste-cargo" id="cargo-paste-box"><summary>Excel の出荷予定を貼る</summary>
+        <ul class="small"><li>列: 個数・縦・横・高さ・重さ</li><li>寸法が1つの欄: 120×50×50 も可</li><li>見出しの行: あってもなくても可</li></ul>
+        <textarea id="cargo-paste" rows="4" spellcheck="false" aria-label="荷物の表の貼り付け欄" placeholder="個数&#9;縦&#9;横&#9;高さ&#9;重さ&#10;3&#9;120&#9;50&#9;50&#9;40"></textarea>
+        <div class="bar"><button type="button" id="b-cargopaste">荷物の表に入れる</button><span class="small" id="cargo-msg" role="status"></span></div></details>
       <div class="bar"><button type="button" id="b-add">行を足す</button><button type="button" id="b-example">例を入れる</button><button type="button" id="b-clear">表を空にする</button></div>
+      </details>
+      </div>
+      <div class="step" id="step-2">
+      <div class="card-h step-h"><div class="step-t"><h2>2　行き先</h2></div><img class="ill" src="data:image/webp;base64,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" alt="" width="72" height="72"></div>
       <div class="grid2">
         <label class="f">集荷する都道府県<select id="from"></select></label>
         <label class="f">届け先の都道府県<select id="to"></select></label>
-        <label class="f">道路の距離 km（集荷 → 届け先）<input type="number" id="km" min="0" step="1" placeholder="例 492"></label>
-        <label class="f">届け先<select id="recv"><option value="business">法人・店舗・事業所</option><option value="person">個人宅</option></select></label>
-        <label class="f">日の幅（届けばよい日数）<select id="flex"></select></label>
       </div>
-      <p class="small">距離は、地図アプリなどで集荷先から届け先までの道路距離を調べて入れてください。このページは通信をしないので、距離は自動では出ません。</p>
+      <details class="fold" id="more-d"><summary>距離・届け先・日数・フォークリフト</summary>
+      <div class="grid2">
+        <label class="f">集荷先から届け先までの道路の距離（km）<input type="number" id="km" min="0" step="1" placeholder="例 492"><span class="small" id="km-note" role="status"></span></label>
+        <label class="f">届け先<select id="recv"><option value="business">法人・店舗・事業所</option><option value="person">個人宅</option></select></label>
+        <label class="f">届くまで待てる日数<select id="flex"></select></label>
+        <label class="f">集荷先のフォークリフト（またはパワーゲート）<select id="fk-from"><option value="unknown">分からない</option><option value="yes">ある</option><option value="no">ない</option></select></label>
+        <label class="f">届け先のフォークリフト（またはパワーゲート）<select id="fk-to"><option value="unknown">分からない</option><option value="yes">ある</option><option value="no">ない</option></select></label>
+        <label class="f">集荷の希望の時刻（任意）<input type="time" id="pickup-time"></label>
+      </div>
+      <p class="small" id="handling-note">50kg を超える荷は人手で積み降ろしできません。両方にフォークリフトかパワーゲート（<span title="荷台の昇降機">?</span>）が要ります。</p>
+      <p class="small">県を選ぶと目安の距離が入ります。分かる距離があれば書き換えてください。</p>
+      </details>
       <div id="errs"></div>
+      </div>
     </section>
+    <details class="fold" id="extras-d"><summary>契約単価・見積依頼文・見積の回答</summary>
     <section class="card" id="contract-card">
       <h2>自社の契約単価（任意）</h2>
-      <p class="small">宅配や路線便の額は、公開の料金表がなく、契約や見積で決まります。ご自分の契約の単価を入れると、送り方を額の安い順に比べます。入れた値はこのブラウザの中だけに残ります（送信しません）。空欄のものは比べません。0 円と負の数は入れられません。</p>
-      <label class="f">1 社目の会社名（任意。複数の会社を並べるときに使います）<input type="text" class="cin" id="c-name" maxlength="20" placeholder="例 A社" autocomplete="off"></label>
+      <p class="small">契約している単価を入れると、安い順に並べます。入れた値は外に送りません。</p>
+      <label class="f">会社名（任意）<input type="text" class="cin" id="c-name" maxlength="20" placeholder="例 A社" autocomplete="off"></label>
       <div id="c-errs"></div>
-      <h3 class="small" style="margin:6px 0 2px">宅配（サイズごとの 1 個の単価。円、サイズは 3 辺合計 cm 以内）</h3>
+      <h3 class="small" style="margin:6px 0 2px">宅配のサイズごとの単価（円）</h3>
       <div class="cgrid" id="c-tk"></div>
       <h3 class="small" style="margin:6px 0 2px">路線便</h3>
       <div class="cgrid">
@@ -122,35 +483,59 @@ body.selftest #selftest { display: block; }
         <label class="f">単価（円）<input type="number" class="cin" id="c-r-rate" min="0" step="any" placeholder="契約の単価（0 より大きい）"></label>
         <label class="f">最低運賃（円）<input type="number" class="cin" id="c-r-min" min="0" step="any" placeholder="なければ空欄"></label>
       </div>
-      <details id="c-rtab-d" class="tabd"><summary>路線便の運賃表を Excel から貼り付ける（距離帯または届け先 × 重量帯）</summary>
-        <p class="small">1 行目に重量帯（〜50kg、〜100kg、〜200kg …）、1 列目に距離帯（〜100km、〜300km …）か届け先の都道府県（大阪府、兵庫県 …）を置いた表を、そのまま貼り付けてください。セルは円です。貼り付けた表があるときは、上の「単価」より表を使います（最低運賃は表の額にも掛けます）。</p>
+      <details id="c-rtab-d" class="tabd"><summary>路線便の運賃表を貼る</summary>
+        <ul class="small"><li>1 行目: 重さの区切り（〜50kg…）</li><li>1 列目: 距離か届け先の県</li><li>中の数字: 円</li><li>表があるとき: 単価より表を使う</li></ul>
         <textarea id="c-rtab" class="cin ctab" rows="6" spellcheck="false" aria-label="路線便の運賃表" placeholder="　&#9;〜50kg&#9;〜100kg&#9;〜200kg&#10;〜300km&#9;3500&#9;5200&#9;8800&#10;〜600km&#9;4200&#9;6400&#9;11000"></textarea>
         <div id="c-rtab-msg" class="small"></div></details>
-      <details id="c-ttab-d" class="tabd"><summary>宅配の運賃表を Excel から貼り付ける（届け先の地域 × サイズ）</summary>
-        <p class="small">1 行目にサイズ（60、80、100 … 3 辺合計 cm 以内）、1 列目に届け先の地域（関東、近畿、九州 …）か都道府県を置いた表を、そのまま貼り付けてください。地域の分け方は宅配会社ごとに違うため、ここでは一般的な分け方（北海道・北東北・南東北・関東・信越・北陸・中部・関西・中国・四国・九州・沖縄）と仮定しています。違うときは都道府県名で行を書いてください。貼り付けた表があるときは、上のサイズごとの単価より表を使います。</p>
+      <details id="c-ttab-d" class="tabd"><summary>宅配の運賃表を貼る</summary>
+        <ul class="small"><li>1 行目: サイズ（60、80…）</li><li>1 列目: 地域か都道府県</li><li title="北海道・北東北・南東北・関東・信越・北陸・中部・関西・中国・四国・九州・沖縄">地域: 一般的な12地域</li><li>表があるとき: 単価より表を使う</li></ul>
         <textarea id="c-ttab" class="cin ctab" rows="6" spellcheck="false" aria-label="宅配の運賃表" placeholder="　&#9;60&#9;80&#9;100&#10;関東&#9;900&#9;1100&#9;1300&#10;関西&#9;1000&#9;1200&#9;1400"></textarea>
         <div id="c-ttab-msg" class="small"></div></details>
       <div id="c-more"></div>
       <div class="bar"><button type="button" id="b-cclear">契約単価を消す</button><span class="small" id="c-msg"></span></div>
     </section>
     <section class="card" id="quote-card">
-      <h2>見積依頼文（下書き）</h2>
+      <h2>見積を頼む文（下書き）</h2>
       <p class="small">入れた条件から作った文です。値段は書いていません。コピーして、各社の見積の申し込みに貼り付けてください。</p>
       <textarea id="quote" readonly aria-label="見積依頼文"></textarea>
       <div class="bar"><button type="button" id="b-copy">文をコピーする</button><span class="small" id="copy-msg"></span></div>
     </section>
+    <section class="card" id="answers-card">
+      <h2>見積の回答を並べる（3 社まで）</h2>
+      <p class="small">各社から返ってきた見積の額を会社名つきで入れると、安い順に並べ、上の計算と見比べます。入れた値はこのブラウザの中だけに残ります（送信しません）。</p>
+      <div class="cgrid" id="ans-rows"></div>
+      <div id="ans-out"></div>
+      <div class="bar"><button type="button" id="b-ansclear">回答を消す</button><span class="small" id="ans-msg"></span></div>
+      <details class="tabd" id="hist-d"><summary>出荷の記録と月ごとの合計</summary>
+        <p class="small">出荷ごとに、日付・区間・選んだ送り方・額（税抜）を残します。月ごとの合計も出ます。送信はしません。</p>
+        <div class="cgrid">
+          <label class="f">日付<input type="date" class="hin" id="h-date"></label>
+          <label class="f">選んだ送り方<select class="hin" id="h-method"></select></label>
+          <label class="f">額（円・税抜）<input type="text" inputmode="numeric" class="hin" id="h-amt" maxlength="12" placeholder="例 98000" autocomplete="off"></label>
+        </div>
+        <div class="bar"><button type="button" id="b-hadd">記録する（今の区間で）</button><button type="button" id="b-hclear">記録を全部消す</button><span class="small" id="h-msg" role="status"></span></div>
+        <div id="h-out"></div></details>
+    </section>
+    </details>
   </div>
   <div class="col-out">
     <section class="card" id="result">
-      <h2>送り方ごとの判定</h2>
+      <div id="step-3" class="card-h"><h2>3　結果</h2><span class="sec-aside">安い順</span></div>
+      <div class="stat-grid" id="stats"></div>
+      <p class="headline" id="headline" role="status"></p>
+      <div id="bars"></div>
+      <div class="actionbar" id="copybar"><span class="small" id="copy-top-msg" role="status"></span><button type="button" id="b-copy-top" class="primary btn-primary" hidden>見積を頼む文をコピーする</button></div>
       <div id="sum" class="sum"></div>
-      <div id="cmpbox"></div>
       <div id="res"></div>
+      <details class="disc" id="res-d"><summary>最安の比べ方・数字の出どころ</summary>
+      <div id="cmpbox"></div>
       <p class="small" id="guard2"></p>
+      <section class="card sources" id="sources"></section>
+      </details>
     </section>
-    <section class="card sources" id="sources"></section>
   </div>
 </main>
+</div>
 <div id="selftest" role="status"></div>
 
 <script>
@@ -161,7 +546,9 @@ const TARIFFS = {"関東":{"carrier":"国土交通省","service":"標準的な�
 const VECTORS = {"cases":[{"expect":[{"amount":52300,"class":"2t","steps":0,"steps_over_500":0},{"amount":60360,"class":"4t","steps":0,"steps_over_500":0},{"amount":80110,"class":"10t","steps":0,"steps_over_500":0}],"kg":"1","km":"200","region":"関東"},{"expect":[{"amount":52300,"class":"2t","steps":0,"steps_over_500":0},{"amount":60360,"class":"4t","steps":0,"steps_over_500":0},{"amount":80110,"class":"10t","steps":0,"steps_over_500":0}],"kg":"400","km":"200","region":"関東"},{"expect":[{"amount":52300,"class":"2t","steps":0,"steps_over_500":0},{"amount":60360,"class":"4t","steps":0,"steps_over_500":0},{"amount":80110,"class":"10t","steps":0,"steps_over_500":0}],"kg":"2000","km":"200","region":"関東"},{"expect":[{"amount":60360,"class":"4t","steps":0,"steps_over_500":0},{"amount":80110,"class":"10t","steps":0,"steps_over_500":0}],"kg":"2001","km":"200","region":"関東"},{"expect":[{"amount":60360,"class":"4t","steps":0,"steps_over_500":0},{"amount":80110,"class":"10t","steps":0,"steps_over_500":0}],"kg":"3500","km":"200","region":"関東"},{"expect":[{"amount":60360,"class":"4t","steps":0,"steps_over_500":0},{"amount":80110,"class":"10t","steps":0,"steps_over_500":0}],"kg":"4000","km":"200","region":"関東"},{"expect":[{"amount":80110,"class":"10t","steps":0,"steps_over_500":0}],"kg":"4001","km":"200","region":"関東"},{"expect":[{"amount":56130,"class":"2t","steps":1,"steps_over_500":0},{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"1","km":"200.1","region":"関東"},{"expect":[{"amount":56130,"class":"2t","steps":1,"steps_over_500":0},{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"400","km":"200.1","region":"関東"},{"expect":[{"amount":56130,"class":"2t","steps":1,"steps_over_500":0},{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2000","km":"200.1","region":"関東"},{"expect":[{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2001","km":"200.1","region":"関東"},{"expect":[{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"3500","km":"200.1","region":"関東"},{"expect":[{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4000","km":"200.1","region":"関東"},{"expect":[{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4001","km":"200.1","region":"関東"},{"expect":[{"amount":56130,"class":"2t","steps":1,"steps_over_500":0},{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"1","km":"219.9","region":"関東"},{"expect":[{"amount":56130,"class":"2t","steps":1,"steps_over_500":0},{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"400","km":"219.9","region":"関東"},{"expect":[{"amount":56130,"class":"2t","steps":1,"steps_over_500":0},{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2000","km":"219.9","region":"関東"},{"expect":[{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2001","km":"219.9","region":"関東"},{"expect":[{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"3500","km":"219.9","region":"関東"},{"expect":[{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4000","km":"219.9","region":"関東"},{"expect":[{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4001","km":"219.9","region":"関東"},{"expect":[{"amount":56130,"class":"2t","steps":1,"steps_over_500":0},{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"1","km":"220","region":"関東"},{"expect":[{"amount":56130,"class":"2t","steps":1,"steps_over_500":0},{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"400","km":"220","region":"関東"},{"expect":[{"amount":56130,"class":"2t","steps":1,"steps_over_500":0},{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2000","km":"220","region":"関東"},{"expect":[{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2001","km":"220","region":"関東"},{"expect":[{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"3500","km":"220","region":"関東"},{"expect":[{"amount":64740,"class":"4t","steps":1,"steps_over_500":0},{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4000","km":"220","region":"関東"},{"expect":[{"amount":85960,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4001","km":"220","region":"関東"},{"expect":[{"amount":59960,"class":"2t","steps":2,"steps_over_500":0},{"amount":69120,"class":"4t","steps":2,"steps_over_500":0},{"amount":91810,"class":"10t","steps":2,"steps_over_500":0}],"kg":"1","km":"220.1","region":"関東"},{"expect":[{"amount":59960,"class":"2t","steps":2,"steps_over_500":0},{"amount":69120,"class":"4t","steps":2,"steps_over_500":0},{"amount":91810,"class":"10t","steps":2,"steps_over_500":0}],"kg":"400","km":"220.1","region":"関東"},{"expect":[{"amount":59960,"class":"2t","steps":2,"steps_over_500":0},{"amount":69120,"class":"4t","steps":2,"steps_over_500":0},{"amount":91810,"class":"10t","steps":2,"steps_over_500":0}],"kg":"2000","km":"220.1","region":"関東"},{"expect":[{"amount":69120,"class":"4t","steps":2,"steps_over_500":0},{"amount":91810,"class":"10t","steps":2,"steps_over_500":0}],"kg":"2001","km":"220.1","region":"関東"},{"expect":[{"amount":69120,"class":"4t","steps":2,"steps_over_500":0},{"amount":91810,"class":"10t","steps":2,"steps_over_500":0}],"kg":"3500","km":"220.1","region":"関東"},{"expect":[{"amount":69120,"class":"4t","steps":2,"steps_over_500":0},{"amount":91810,"class":"10t","steps":2,"steps_over_500":0}],"kg":"4000","km":"220.1","region":"関東"},{"expect":[{"amount":91810,"class":"10t","steps":2,"steps_over_500":0}],"kg":"4001","km":"220.1","region":"関東"},{"expect":[{"amount":63790,"class":"2t","steps":3,"steps_over_500":0},{"amount":73500,"class":"4t","steps":3,"steps_over_500":0},{"amount":97660,"class":"10t","steps":3,"steps_over_500":0}],"kg":"1","km":"250","region":"関東"},{"expect":[{"amount":63790,"class":"2t","steps":3,"steps_over_500":0},{"amount":73500,"class":"4t","steps":3,"steps_over_500":0},{"amount":97660,"class":"10t","steps":3,"steps_over_500":0}],"kg":"400","km":"250","region":"関東"},{"expect":[{"amount":63790,"class":"2t","steps":3,"steps_over_500":0},{"amount":73500,"class":"4t","steps":3,"steps_over_500":0},{"amount":97660,"class":"10t","steps":3,"steps_over_500":0}],"kg":"2000","km":"250","region":"関東"},{"expect":[{"amount":73500,"class":"4t","steps":3,"steps_over_500":0},{"amount":97660,"class":"10t","steps":3,"steps_over_500":0}],"kg":"2001","km":"250","region":"関東"},{"expect":[{"amount":73500,"class":"4t","steps":3,"steps_over_500":0},{"amount":97660,"class":"10t","steps":3,"steps_over_500":0}],"kg":"3500","km":"250","region":"関東"},{"expect":[{"amount":73500,"class":"4t","steps":3,"steps_over_500":0},{"amount":97660,"class":"10t","steps":3,"steps_over_500":0}],"kg":"4000","km":"250","region":"関東"},{"expect":[{"amount":97660,"class":"10t","steps":3,"steps_over_500":0}],"kg":"4001","km":"250","region":"関東"},{"expect":[{"amount":71450,"class":"2t","steps":5,"steps_over_500":0},{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"1","km":"299.5","region":"関東"},{"expect":[{"amount":71450,"class":"2t","steps":5,"steps_over_500":0},{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"400","km":"299.5","region":"関東"},{"expect":[{"amount":71450,"class":"2t","steps":5,"steps_over_500":0},{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"2000","km":"299.5","region":"関東"},{"expect":[{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"2001","km":"299.5","region":"関東"},{"expect":[{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"3500","km":"299.5","region":"関東"},{"expect":[{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"4000","km":"299.5","region":"関東"},{"expect":[{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"4001","km":"299.5","region":"関東"},{"expect":[{"amount":71450,"class":"2t","steps":5,"steps_over_500":0},{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"1","km":"300","region":"関東"},{"expect":[{"amount":71450,"class":"2t","steps":5,"steps_over_500":0},{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"400","km":"300","region":"関東"},{"expect":[{"amount":71450,"class":"2t","steps":5,"steps_over_500":0},{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"2000","km":"300","region":"関東"},{"expect":[{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"2001","km":"300","region":"関東"},{"expect":[{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"3500","km":"300","region":"関東"},{"expect":[{"amount":82260,"class":"4t","steps":5,"steps_over_500":0},{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"4000","km":"300","region":"関東"},{"expect":[{"amount":109360,"class":"10t","steps":5,"steps_over_500":0}],"kg":"4001","km":"300","region":"関東"},{"expect":[{"amount":94430,"class":"2t","steps":11,"steps_over_500":0},{"amount":108540,"class":"4t","steps":11,"steps_over_500":0},{"amount":144460,"class":"10t","steps":11,"steps_over_500":0}],"kg":"1","km":"401","region":"関東"},{"expect":[{"amount":94430,"class":"2t","steps":11,"steps_over_500":0},{"amount":108540,"class":"4t","steps":11,"steps_over_500":0},{"amount":144460,"class":"10t","steps":11,"steps_over_500":0}],"kg":"400","km":"401","region":"関東"},{"expect":[{"amount":94430,"class":"2t","steps":11,"steps_over_500":0},{"amount":108540,"class":"4t","steps":11,"steps_over_500":0},{"amount":144460,"class":"10t","steps":11,"steps_over_500":0}],"kg":"2000","km":"401","region":"関東"},{"expect":[{"amount":108540,"class":"4t","steps":11,"steps_over_500":0},{"amount":144460,"class":"10t","steps":11,"steps_over_500":0}],"kg":"2001","km":"401","region":"関東"},{"expect":[{"amount":108540,"class":"4t","steps":11,"steps_over_500":0},{"amount":144460,"class":"10t","steps":11,"steps_over_500":0}],"kg":"3500","km":"401","region":"関東"},{"expect":[{"amount":108540,"class":"4t","steps":11,"steps_over_500":0},{"amount":144460,"class":"10t","steps":11,"steps_over_500":0}],"kg":"4000","km":"401","region":"関東"},{"expect":[{"amount":144460,"class":"10t","steps":11,"steps_over_500":0}],"kg":"4001","km":"401","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"1","km":"491.8","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"400","km":"491.8","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2000","km":"491.8","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2001","km":"491.8","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"3500","km":"491.8","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4000","km":"491.8","region":"関東"},{"expect":[{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4001","km":"491.8","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"1","km":"492","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"400","km":"492","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2000","km":"492","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2001","km":"492","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"3500","km":"492","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4000","km":"492","region":"関東"},{"expect":[{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4001","km":"492","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"1","km":"499.9","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"400","km":"499.9","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2000","km":"499.9","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2001","km":"499.9","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"3500","km":"499.9","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4000","km":"499.9","region":"関東"},{"expect":[{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4001","km":"499.9","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"1","km":"500","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"400","km":"500","region":"関東"},{"expect":[{"amount":109750,"class":"2t","steps":15,"steps_over_500":0},{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2000","km":"500","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2001","km":"500","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"3500","km":"500","region":"関東"},{"expect":[{"amount":126060,"class":"4t","steps":15,"steps_over_500":0},{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4000","km":"500","region":"関東"},{"expect":[{"amount":167860,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4001","km":"500","region":"関東"},{"expect":[{"amount":119330,"class":"2t","steps":15,"steps_over_500":1},{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"1","km":"500.1","region":"関東"},{"expect":[{"amount":119330,"class":"2t","steps":15,"steps_over_500":1},{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"400","km":"500.1","region":"関東"},{"expect":[{"amount":119330,"class":"2t","steps":15,"steps_over_500":1},{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2000","km":"500.1","region":"関東"},{"expect":[{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2001","km":"500.1","region":"関東"},{"expect":[{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"3500","km":"500.1","region":"関東"},{"expect":[{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4000","km":"500.1","region":"関東"},{"expect":[{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4001","km":"500.1","region":"関東"},{"expect":[{"amount":119330,"class":"2t","steps":15,"steps_over_500":1},{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"1","km":"525","region":"関東"},{"expect":[{"amount":119330,"class":"2t","steps":15,"steps_over_500":1},{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"400","km":"525","region":"関東"},{"expect":[{"amount":119330,"class":"2t","steps":15,"steps_over_500":1},{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2000","km":"525","region":"関東"},{"expect":[{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2001","km":"525","region":"関東"},{"expect":[{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"3500","km":"525","region":"関東"},{"expect":[{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4000","km":"525","region":"関東"},{"expect":[{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4001","km":"525","region":"関東"},{"expect":[{"amount":119330,"class":"2t","steps":15,"steps_over_500":1},{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"1","km":"550","region":"関東"},{"expect":[{"amount":119330,"class":"2t","steps":15,"steps_over_500":1},{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"400","km":"550","region":"関東"},{"expect":[{"amount":119330,"class":"2t","steps":15,"steps_over_500":1},{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2000","km":"550","region":"関東"},{"expect":[{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2001","km":"550","region":"関東"},{"expect":[{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"3500","km":"550","region":"関東"},{"expect":[{"amount":137010,"class":"4t","steps":15,"steps_over_500":1},{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4000","km":"550","region":"関東"},{"expect":[{"amount":182480,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4001","km":"550","region":"関東"},{"expect":[{"amount":128910,"class":"2t","steps":15,"steps_over_500":2},{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"1","km":"550.1","region":"関東"},{"expect":[{"amount":128910,"class":"2t","steps":15,"steps_over_500":2},{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"400","km":"550.1","region":"関東"},{"expect":[{"amount":128910,"class":"2t","steps":15,"steps_over_500":2},{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2000","km":"550.1","region":"関東"},{"expect":[{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2001","km":"550.1","region":"関東"},{"expect":[{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"3500","km":"550.1","region":"関東"},{"expect":[{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4000","km":"550.1","region":"関東"},{"expect":[{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4001","km":"550.1","region":"関東"},{"expect":[{"amount":128910,"class":"2t","steps":15,"steps_over_500":2},{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"1","km":"556","region":"関東"},{"expect":[{"amount":128910,"class":"2t","steps":15,"steps_over_500":2},{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"400","km":"556","region":"関東"},{"expect":[{"amount":128910,"class":"2t","steps":15,"steps_over_500":2},{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2000","km":"556","region":"関東"},{"expect":[{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2001","km":"556","region":"関東"},{"expect":[{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"3500","km":"556","region":"関東"},{"expect":[{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4000","km":"556","region":"関東"},{"expect":[{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4001","km":"556","region":"関東"},{"expect":[{"amount":128910,"class":"2t","steps":15,"steps_over_500":2},{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"1","km":"600","region":"関東"},{"expect":[{"amount":128910,"class":"2t","steps":15,"steps_over_500":2},{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"400","km":"600","region":"関東"},{"expect":[{"amount":128910,"class":"2t","steps":15,"steps_over_500":2},{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2000","km":"600","region":"関東"},{"expect":[{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2001","km":"600","region":"関東"},{"expect":[{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"3500","km":"600","region":"関東"},{"expect":[{"amount":147960,"class":"4t","steps":15,"steps_over_500":2},{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4000","km":"600","region":"関東"},{"expect":[{"amount":197100,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4001","km":"600","region":"関東"},{"expect":[{"amount":138490,"class":"2t","steps":15,"steps_over_500":3},{"amount":158910,"class":"4t","steps":15,"steps_over_500":3},{"amount":211720,"class":"10t","steps":15,"steps_over_500":3}],"kg":"1","km":"650","region":"関東"},{"expect":[{"amount":138490,"class":"2t","steps":15,"steps_over_500":3},{"amount":158910,"class":"4t","steps":15,"steps_over_500":3},{"amount":211720,"class":"10t","steps":15,"steps_over_500":3}],"kg":"400","km":"650","region":"関東"},{"expect":[{"amount":138490,"class":"2t","steps":15,"steps_over_500":3},{"amount":158910,"class":"4t","steps":15,"steps_over_500":3},{"amount":211720,"class":"10t","steps":15,"steps_over_500":3}],"kg":"2000","km":"650","region":"関東"},{"expect":[{"amount":158910,"class":"4t","steps":15,"steps_over_500":3},{"amount":211720,"class":"10t","steps":15,"steps_over_500":3}],"kg":"2001","km":"650","region":"関東"},{"expect":[{"amount":158910,"class":"4t","steps":15,"steps_over_500":3},{"amount":211720,"class":"10t","steps":15,"steps_over_500":3}],"kg":"3500","km":"650","region":"関東"},{"expect":[{"amount":158910,"class":"4t","steps":15,"steps_over_500":3},{"amount":211720,"class":"10t","steps":15,"steps_over_500":3}],"kg":"4000","km":"650","region":"関東"},{"expect":[{"amount":211720,"class":"10t","steps":15,"steps_over_500":3}],"kg":"4001","km":"650","region":"関東"},{"expect":[{"amount":157650,"class":"2t","steps":15,"steps_over_500":5},{"amount":180810,"class":"4t","steps":15,"steps_over_500":5},{"amount":240960,"class":"10t","steps":15,"steps_over_500":5}],"kg":"1","km":"700.5","region":"関東"},{"expect":[{"amount":157650,"class":"2t","steps":15,"steps_over_500":5},{"amount":180810,"class":"4t","steps":15,"steps_over_500":5},{"amount":240960,"class":"10t","steps":15,"steps_over_500":5}],"kg":"400","km":"700.5","region":"関東"},{"expect":[{"amount":157650,"class":"2t","steps":15,"steps_over_500":5},{"amount":180810,"class":"4t","steps":15,"steps_over_500":5},{"amount":240960,"class":"10t","steps":15,"steps_over_500":5}],"kg":"2000","km":"700.5","region":"関東"},{"expect":[{"amount":180810,"class":"4t","steps":15,"steps_over_500":5},{"amount":240960,"class":"10t","steps":15,"steps_over_500":5}],"kg":"2001","km":"700.5","region":"関東"},{"expect":[{"amount":180810,"class":"4t","steps":15,"steps_over_500":5},{"amount":240960,"class":"10t","steps":15,"steps_over_500":5}],"kg":"3500","km":"700.5","region":"関東"},{"expect":[{"amount":180810,"class":"4t","steps":15,"steps_over_500":5},{"amount":240960,"class":"10t","steps":15,"steps_over_500":5}],"kg":"4000","km":"700.5","region":"関東"},{"expect":[{"amount":240960,"class":"10t","steps":15,"steps_over_500":5}],"kg":"4001","km":"700.5","region":"関東"},{"expect":[{"amount":167230,"class":"2t","steps":15,"steps_over_500":6},{"amount":191760,"class":"4t","steps":15,"steps_over_500":6},{"amount":255580,"class":"10t","steps":15,"steps_over_500":6}],"kg":"1","km":"800","region":"関東"},{"expect":[{"amount":167230,"class":"2t","steps":15,"steps_over_500":6},{"amount":191760,"class":"4t","steps":15,"steps_over_500":6},{"amount":255580,"class":"10t","steps":15,"steps_over_500":6}],"kg":"400","km":"800","region":"関東"},{"expect":[{"amount":167230,"class":"2t","steps":15,"steps_over_500":6},{"amount":191760,"class":"4t","steps":15,"steps_over_500":6},{"amount":255580,"class":"10t","steps":15,"steps_over_500":6}],"kg":"2000","km":"800","region":"関東"},{"expect":[{"amount":191760,"class":"4t","steps":15,"steps_over_500":6},{"amount":255580,"class":"10t","steps":15,"steps_over_500":6}],"kg":"2001","km":"800","region":"関東"},{"expect":[{"amount":191760,"class":"4t","steps":15,"steps_over_500":6},{"amount":255580,"class":"10t","steps":15,"steps_over_500":6}],"kg":"3500","km":"800","region":"関東"},{"expect":[{"amount":191760,"class":"4t","steps":15,"steps_over_500":6},{"amount":255580,"class":"10t","steps":15,"steps_over_500":6}],"kg":"4000","km":"800","region":"関東"},{"expect":[{"amount":255580,"class":"10t","steps":15,"steps_over_500":6}],"kg":"4001","km":"800","region":"関東"},{"expect":[{"amount":205550,"class":"2t","steps":15,"steps_over_500":10},{"amount":235560,"class":"4t","steps":15,"steps_over_500":10},{"amount":314060,"class":"10t","steps":15,"steps_over_500":10}],"kg":"1","km":"1000","region":"関東"},{"expect":[{"amount":205550,"class":"2t","steps":15,"steps_over_500":10},{"amount":235560,"class":"4t","steps":15,"steps_over_500":10},{"amount":314060,"class":"10t","steps":15,"steps_over_500":10}],"kg":"400","km":"1000","region":"関東"},{"expect":[{"amount":205550,"class":"2t","steps":15,"steps_over_500":10},{"amount":235560,"class":"4t","steps":15,"steps_over_500":10},{"amount":314060,"class":"10t","steps":15,"steps_over_500":10}],"kg":"2000","km":"1000","region":"関東"},{"expect":[{"amount":235560,"class":"4t","steps":15,"steps_over_500":10},{"amount":314060,"class":"10t","steps":15,"steps_over_500":10}],"kg":"2001","km":"1000","region":"関東"},{"expect":[{"amount":235560,"class":"4t","steps":15,"steps_over_500":10},{"amount":314060,"class":"10t","steps":15,"steps_over_500":10}],"kg":"3500","km":"1000","region":"関東"},{"expect":[{"amount":235560,"class":"4t","steps":15,"steps_over_500":10},{"amount":314060,"class":"10t","steps":15,"steps_over_500":10}],"kg":"4000","km":"1000","region":"関東"},{"expect":[{"amount":314060,"class":"10t","steps":15,"steps_over_500":10}],"kg":"4001","km":"1000","region":"関東"},{"expect":[{"amount":253450,"class":"2t","steps":15,"steps_over_500":15},{"amount":290310,"class":"4t","steps":15,"steps_over_500":15},{"amount":387160,"class":"10t","steps":15,"steps_over_500":15}],"kg":"1","km":"1200.4","region":"関東"},{"expect":[{"amount":253450,"class":"2t","steps":15,"steps_over_500":15},{"amount":290310,"class":"4t","steps":15,"steps_over_500":15},{"amount":387160,"class":"10t","steps":15,"steps_over_500":15}],"kg":"400","km":"1200.4","region":"関東"},{"expect":[{"amount":253450,"class":"2t","steps":15,"steps_over_500":15},{"amount":290310,"class":"4t","steps":15,"steps_over_500":15},{"amount":387160,"class":"10t","steps":15,"steps_over_500":15}],"kg":"2000","km":"1200.4","region":"関東"},{"expect":[{"amount":290310,"class":"4t","steps":15,"steps_over_500":15},{"amount":387160,"class":"10t","steps":15,"steps_over_500":15}],"kg":"2001","km":"1200.4","region":"関東"},{"expect":[{"amount":290310,"class":"4t","steps":15,"steps_over_500":15},{"amount":387160,"class":"10t","steps":15,"steps_over_500":15}],"kg":"3500","km":"1200.4","region":"関東"},{"expect":[{"amount":290310,"class":"4t","steps":15,"steps_over_500":15},{"amount":387160,"class":"10t","steps":15,"steps_over_500":15}],"kg":"4000","km":"1200.4","region":"関東"},{"expect":[{"amount":387160,"class":"10t","steps":15,"steps_over_500":15}],"kg":"4001","km":"1200.4","region":"関東"},{"expect":[{"amount":50270,"class":"2t","steps":0,"steps_over_500":0},{"amount":57350,"class":"4t","steps":0,"steps_over_500":0},{"amount":77370,"class":"10t","steps":0,"steps_over_500":0}],"kg":"1","km":"200","region":"近畿"},{"expect":[{"amount":50270,"class":"2t","steps":0,"steps_over_500":0},{"amount":57350,"class":"4t","steps":0,"steps_over_500":0},{"amount":77370,"class":"10t","steps":0,"steps_over_500":0}],"kg":"400","km":"200","region":"近畿"},{"expect":[{"amount":50270,"class":"2t","steps":0,"steps_over_500":0},{"amount":57350,"class":"4t","steps":0,"steps_over_500":0},{"amount":77370,"class":"10t","steps":0,"steps_over_500":0}],"kg":"2000","km":"200","region":"近畿"},{"expect":[{"amount":57350,"class":"4t","steps":0,"steps_over_500":0},{"amount":77370,"class":"10t","steps":0,"steps_over_500":0}],"kg":"2001","km":"200","region":"近畿"},{"expect":[{"amount":57350,"class":"4t","steps":0,"steps_over_500":0},{"amount":77370,"class":"10t","steps":0,"steps_over_500":0}],"kg":"3500","km":"200","region":"近畿"},{"expect":[{"amount":57350,"class":"4t","steps":0,"steps_over_500":0},{"amount":77370,"class":"10t","steps":0,"steps_over_500":0}],"kg":"4000","km":"200","region":"近畿"},{"expect":[{"amount":77370,"class":"10t","steps":0,"steps_over_500":0}],"kg":"4001","km":"200","region":"近畿"},{"expect":[{"amount":53950,"class":"2t","steps":1,"steps_over_500":0},{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"1","km":"200.1","region":"近畿"},{"expect":[{"amount":53950,"class":"2t","steps":1,"steps_over_500":0},{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"400","km":"200.1","region":"近畿"},{"expect":[{"amount":53950,"class":"2t","steps":1,"steps_over_500":0},{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2000","km":"200.1","region":"近畿"},{"expect":[{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2001","km":"200.1","region":"近畿"},{"expect":[{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"3500","km":"200.1","region":"近畿"},{"expect":[{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4000","km":"200.1","region":"近畿"},{"expect":[{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4001","km":"200.1","region":"近畿"},{"expect":[{"amount":53950,"class":"2t","steps":1,"steps_over_500":0},{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"1","km":"219.9","region":"近畿"},{"expect":[{"amount":53950,"class":"2t","steps":1,"steps_over_500":0},{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"400","km":"219.9","region":"近畿"},{"expect":[{"amount":53950,"class":"2t","steps":1,"steps_over_500":0},{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2000","km":"219.9","region":"近畿"},{"expect":[{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2001","km":"219.9","region":"近畿"},{"expect":[{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"3500","km":"219.9","region":"近畿"},{"expect":[{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4000","km":"219.9","region":"近畿"},{"expect":[{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4001","km":"219.9","region":"近畿"},{"expect":[{"amount":53950,"class":"2t","steps":1,"steps_over_500":0},{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"1","km":"220","region":"近畿"},{"expect":[{"amount":53950,"class":"2t","steps":1,"steps_over_500":0},{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"400","km":"220","region":"近畿"},{"expect":[{"amount":53950,"class":"2t","steps":1,"steps_over_500":0},{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2000","km":"220","region":"近畿"},{"expect":[{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"2001","km":"220","region":"近畿"},{"expect":[{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"3500","km":"220","region":"近畿"},{"expect":[{"amount":61530,"class":"4t","steps":1,"steps_over_500":0},{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4000","km":"220","region":"近畿"},{"expect":[{"amount":83020,"class":"10t","steps":1,"steps_over_500":0}],"kg":"4001","km":"220","region":"近畿"},{"expect":[{"amount":57630,"class":"2t","steps":2,"steps_over_500":0},{"amount":65710,"class":"4t","steps":2,"steps_over_500":0},{"amount":88670,"class":"10t","steps":2,"steps_over_500":0}],"kg":"1","km":"220.1","region":"近畿"},{"expect":[{"amount":57630,"class":"2t","steps":2,"steps_over_500":0},{"amount":65710,"class":"4t","steps":2,"steps_over_500":0},{"amount":88670,"class":"10t","steps":2,"steps_over_500":0}],"kg":"400","km":"220.1","region":"近畿"},{"expect":[{"amount":57630,"class":"2t","steps":2,"steps_over_500":0},{"amount":65710,"class":"4t","steps":2,"steps_over_500":0},{"amount":88670,"class":"10t","steps":2,"steps_over_500":0}],"kg":"2000","km":"220.1","region":"近畿"},{"expect":[{"amount":65710,"class":"4t","steps":2,"steps_over_500":0},{"amount":88670,"class":"10t","steps":2,"steps_over_500":0}],"kg":"2001","km":"220.1","region":"近畿"},{"expect":[{"amount":65710,"class":"4t","steps":2,"steps_over_500":0},{"amount":88670,"class":"10t","steps":2,"steps_over_500":0}],"kg":"3500","km":"220.1","region":"近畿"},{"expect":[{"amount":65710,"class":"4t","steps":2,"steps_over_500":0},{"amount":88670,"class":"10t","steps":2,"steps_over_500":0}],"kg":"4000","km":"220.1","region":"近畿"},{"expect":[{"amount":88670,"class":"10t","steps":2,"steps_over_500":0}],"kg":"4001","km":"220.1","region":"近畿"},{"expect":[{"amount":61310,"class":"2t","steps":3,"steps_over_500":0},{"amount":69890,"class":"4t","steps":3,"steps_over_500":0},{"amount":94320,"class":"10t","steps":3,"steps_over_500":0}],"kg":"1","km":"250","region":"近畿"},{"expect":[{"amount":61310,"class":"2t","steps":3,"steps_over_500":0},{"amount":69890,"class":"4t","steps":3,"steps_over_500":0},{"amount":94320,"class":"10t","steps":3,"steps_over_500":0}],"kg":"400","km":"250","region":"近畿"},{"expect":[{"amount":61310,"class":"2t","steps":3,"steps_over_500":0},{"amount":69890,"class":"4t","steps":3,"steps_over_500":0},{"amount":94320,"class":"10t","steps":3,"steps_over_500":0}],"kg":"2000","km":"250","region":"近畿"},{"expect":[{"amount":69890,"class":"4t","steps":3,"steps_over_500":0},{"amount":94320,"class":"10t","steps":3,"steps_over_500":0}],"kg":"2001","km":"250","region":"近畿"},{"expect":[{"amount":69890,"class":"4t","steps":3,"steps_over_500":0},{"amount":94320,"class":"10t","steps":3,"steps_over_500":0}],"kg":"3500","km":"250","region":"近畿"},{"expect":[{"amount":69890,"class":"4t","steps":3,"steps_over_500":0},{"amount":94320,"class":"10t","steps":3,"steps_over_500":0}],"kg":"4000","km":"250","region":"近畿"},{"expect":[{"amount":94320,"class":"10t","steps":3,"steps_over_500":0}],"kg":"4001","km":"250","region":"近畿"},{"expect":[{"amount":68670,"class":"2t","steps":5,"steps_over_500":0},{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"1","km":"299.5","region":"近畿"},{"expect":[{"amount":68670,"class":"2t","steps":5,"steps_over_500":0},{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"400","km":"299.5","region":"近畿"},{"expect":[{"amount":68670,"class":"2t","steps":5,"steps_over_500":0},{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"2000","km":"299.5","region":"近畿"},{"expect":[{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"2001","km":"299.5","region":"近畿"},{"expect":[{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"3500","km":"299.5","region":"近畿"},{"expect":[{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"4000","km":"299.5","region":"近畿"},{"expect":[{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"4001","km":"299.5","region":"近畿"},{"expect":[{"amount":68670,"class":"2t","steps":5,"steps_over_500":0},{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"1","km":"300","region":"近畿"},{"expect":[{"amount":68670,"class":"2t","steps":5,"steps_over_500":0},{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"400","km":"300","region":"近畿"},{"expect":[{"amount":68670,"class":"2t","steps":5,"steps_over_500":0},{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"2000","km":"300","region":"近畿"},{"expect":[{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"2001","km":"300","region":"近畿"},{"expect":[{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"3500","km":"300","region":"近畿"},{"expect":[{"amount":78250,"class":"4t","steps":5,"steps_over_500":0},{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"4000","km":"300","region":"近畿"},{"expect":[{"amount":105620,"class":"10t","steps":5,"steps_over_500":0}],"kg":"4001","km":"300","region":"近畿"},{"expect":[{"amount":90750,"class":"2t","steps":11,"steps_over_500":0},{"amount":103330,"class":"4t","steps":11,"steps_over_500":0},{"amount":139520,"class":"10t","steps":11,"steps_over_500":0}],"kg":"1","km":"401","region":"近畿"},{"expect":[{"amount":90750,"class":"2t","steps":11,"steps_over_500":0},{"amount":103330,"class":"4t","steps":11,"steps_over_500":0},{"amount":139520,"class":"10t","steps":11,"steps_over_500":0}],"kg":"400","km":"401","region":"近畿"},{"expect":[{"amount":90750,"class":"2t","steps":11,"steps_over_500":0},{"amount":103330,"class":"4t","steps":11,"steps_over_500":0},{"amount":139520,"class":"10t","steps":11,"steps_over_500":0}],"kg":"2000","km":"401","region":"近畿"},{"expect":[{"amount":103330,"class":"4t","steps":11,"steps_over_500":0},{"amount":139520,"class":"10t","steps":11,"steps_over_500":0}],"kg":"2001","km":"401","region":"近畿"},{"expect":[{"amount":103330,"class":"4t","steps":11,"steps_over_500":0},{"amount":139520,"class":"10t","steps":11,"steps_over_500":0}],"kg":"3500","km":"401","region":"近畿"},{"expect":[{"amount":103330,"class":"4t","steps":11,"steps_over_500":0},{"amount":139520,"class":"10t","steps":11,"steps_over_500":0}],"kg":"4000","km":"401","region":"近畿"},{"expect":[{"amount":139520,"class":"10t","steps":11,"steps_over_500":0}],"kg":"4001","km":"401","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"1","km":"491.8","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"400","km":"491.8","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2000","km":"491.8","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2001","km":"491.8","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"3500","km":"491.8","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4000","km":"491.8","region":"近畿"},{"expect":[{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4001","km":"491.8","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"1","km":"492","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"400","km":"492","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2000","km":"492","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2001","km":"492","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"3500","km":"492","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4000","km":"492","region":"近畿"},{"expect":[{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4001","km":"492","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"1","km":"499.9","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"400","km":"499.9","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2000","km":"499.9","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2001","km":"499.9","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"3500","km":"499.9","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4000","km":"499.9","region":"近畿"},{"expect":[{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4001","km":"499.9","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"1","km":"500","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"400","km":"500","region":"近畿"},{"expect":[{"amount":105470,"class":"2t","steps":15,"steps_over_500":0},{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2000","km":"500","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"2001","km":"500","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"3500","km":"500","region":"近畿"},{"expect":[{"amount":120050,"class":"4t","steps":15,"steps_over_500":0},{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4000","km":"500","region":"近畿"},{"expect":[{"amount":162120,"class":"10t","steps":15,"steps_over_500":0}],"kg":"4001","km":"500","region":"近畿"},{"expect":[{"amount":114680,"class":"2t","steps":15,"steps_over_500":1},{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"1","km":"500.1","region":"近畿"},{"expect":[{"amount":114680,"class":"2t","steps":15,"steps_over_500":1},{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"400","km":"500.1","region":"近畿"},{"expect":[{"amount":114680,"class":"2t","steps":15,"steps_over_500":1},{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2000","km":"500.1","region":"近畿"},{"expect":[{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2001","km":"500.1","region":"近畿"},{"expect":[{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"3500","km":"500.1","region":"近畿"},{"expect":[{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4000","km":"500.1","region":"近畿"},{"expect":[{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4001","km":"500.1","region":"近畿"},{"expect":[{"amount":114680,"class":"2t","steps":15,"steps_over_500":1},{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"1","km":"525","region":"近畿"},{"expect":[{"amount":114680,"class":"2t","steps":15,"steps_over_500":1},{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"400","km":"525","region":"近畿"},{"expect":[{"amount":114680,"class":"2t","steps":15,"steps_over_500":1},{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2000","km":"525","region":"近畿"},{"expect":[{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2001","km":"525","region":"近畿"},{"expect":[{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"3500","km":"525","region":"近畿"},{"expect":[{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4000","km":"525","region":"近畿"},{"expect":[{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4001","km":"525","region":"近畿"},{"expect":[{"amount":114680,"class":"2t","steps":15,"steps_over_500":1},{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"1","km":"550","region":"近畿"},{"expect":[{"amount":114680,"class":"2t","steps":15,"steps_over_500":1},{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"400","km":"550","region":"近畿"},{"expect":[{"amount":114680,"class":"2t","steps":15,"steps_over_500":1},{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2000","km":"550","region":"近畿"},{"expect":[{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"2001","km":"550","region":"近畿"},{"expect":[{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"3500","km":"550","region":"近畿"},{"expect":[{"amount":130500,"class":"4t","steps":15,"steps_over_500":1},{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4000","km":"550","region":"近畿"},{"expect":[{"amount":176250,"class":"10t","steps":15,"steps_over_500":1}],"kg":"4001","km":"550","region":"近畿"},{"expect":[{"amount":123890,"class":"2t","steps":15,"steps_over_500":2},{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"1","km":"550.1","region":"近畿"},{"expect":[{"amount":123890,"class":"2t","steps":15,"steps_over_500":2},{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"400","km":"550.1","region":"近畿"},{"expect":[{"amount":123890,"class":"2t","steps":15,"steps_over_500":2},{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2000","km":"550.1","region":"近畿"},{"expect":[{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2001","km":"550.1","region":"近畿"},{"expect":[{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"3500","km":"550.1","region":"近畿"},{"expect":[{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4000","km":"550.1","region":"近畿"},{"expect":[{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4001","km":"550.1","region":"近畿"},{"expect":[{"amount":123890,"class":"2t","steps":15,"steps_over_500":2},{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"1","km":"556","region":"近畿"},{"expect":[{"amount":123890,"class":"2t","steps":15,"steps_over_500":2},{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"400","km":"556","region":"近畿"},{"expect":[{"amount":123890,"class":"2t","steps":15,"steps_over_500":2},{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2000","km":"556","region":"近畿"},{"expect":[{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2001","km":"556","region":"近畿"},{"expect":[{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"3500","km":"556","region":"近畿"},{"expect":[{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4000","km":"556","region":"近畿"},{"expect":[{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4001","km":"556","region":"近畿"},{"expect":[{"amount":123890,"class":"2t","steps":15,"steps_over_500":2},{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"1","km":"600","region":"近畿"},{"expect":[{"amount":123890,"class":"2t","steps":15,"steps_over_500":2},{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"400","km":"600","region":"近畿"},{"expect":[{"amount":123890,"class":"2t","steps":15,"steps_over_500":2},{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2000","km":"600","region":"近畿"},{"expect":[{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"2001","km":"600","region":"近畿"},{"expect":[{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"3500","km":"600","region":"近畿"},{"expect":[{"amount":140950,"class":"4t","steps":15,"steps_over_500":2},{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4000","km":"600","region":"近畿"},{"expect":[{"amount":190380,"class":"10t","steps":15,"steps_over_500":2}],"kg":"4001","km":"600","region":"近畿"},{"expect":[{"amount":133100,"class":"2t","steps":15,"steps_over_500":3},{"amount":151400,"class":"4t","steps":15,"steps_over_500":3},{"amount":204510,"class":"10t","steps":15,"steps_over_500":3}],"kg":"1","km":"650","region":"近畿"},{"expect":[{"amount":133100,"class":"2t","steps":15,"steps_over_500":3},{"amount":151400,"class":"4t","steps":15,"steps_over_500":3},{"amount":204510,"class":"10t","steps":15,"steps_over_500":3}],"kg":"400","km":"650","region":"近畿"},{"expect":[{"amount":133100,"class":"2t","steps":15,"steps_over_500":3},{"amount":151400,"class":"4t","steps":15,"steps_over_500":3},{"amount":204510,"class":"10t","steps":15,"steps_over_500":3}],"kg":"2000","km":"650","region":"近畿"},{"expect":[{"amount":151400,"class":"4t","steps":15,"steps_over_500":3},{"amount":204510,"class":"10t","steps":15,"steps_over_500":3}],"kg":"2001","km":"650","region":"近畿"},{"expect":[{"amount":151400,"class":"4t","steps":15,"steps_over_500":3},{"amount":204510,"class":"10t","steps":15,"steps_over_500":3}],"kg":"3500","km":"650","region":"近畿"},{"expect":[{"amount":151400,"class":"4t","steps":15,"steps_over_500":3},{"amount":204510,"class":"10t","steps":15,"steps_over_500":3}],"kg":"4000","km":"650","region":"近畿"},{"expect":[{"amount":204510,"class":"10t","steps":15,"steps_over_500":3}],"kg":"4001","km":"650","region":"近畿"},{"expect":[{"amount":151520,"class":"2t","steps":15,"steps_over_500":5},{"amount":172300,"class":"4t","steps":15,"steps_over_500":5},{"amount":232770,"class":"10t","steps":15,"steps_over_500":5}],"kg":"1","km":"700.5","region":"近畿"},{"expect":[{"amount":151520,"class":"2t","steps":15,"steps_over_500":5},{"amount":172300,"class":"4t","steps":15,"steps_over_500":5},{"amount":232770,"class":"10t","steps":15,"steps_over_500":5}],"kg":"400","km":"700.5","region":"近畿"},{"expect":[{"amount":151520,"class":"2t","steps":15,"steps_over_500":5},{"amount":172300,"class":"4t","steps":15,"steps_over_500":5},{"amount":232770,"class":"10t","steps":15,"steps_over_500":5}],"kg":"2000","km":"700.5","region":"近畿"},{"expect":[{"amount":172300,"class":"4t","steps":15,"steps_over_500":5},{"amount":232770,"class":"10t","steps":15,"steps_over_500":5}],"kg":"2001","km":"700.5","region":"近畿"},{"expect":[{"amount":172300,"class":"4t","steps":15,"steps_over_500":5},{"amount":232770,"class":"10t","steps":15,"steps_over_500":5}],"kg":"3500","km":"700.5","region":"近畿"},{"expect":[{"amount":172300,"class":"4t","steps":15,"steps_over_500":5},{"amount":232770,"class":"10t","steps":15,"steps_over_500":5}],"kg":"4000","km":"700.5","region":"近畿"},{"expect":[{"amount":232770,"class":"10t","steps":15,"steps_over_500":5}],"kg":"4001","km":"700.5","region":"近畿"},{"expect":[{"amount":160730,"class":"2t","steps":15,"steps_over_500":6},{"amount":182750,"class":"4t","steps":15,"steps_over_500":6},{"amount":246900,"class":"10t","steps":15,"steps_over_500":6}],"kg":"1","km":"800","region":"近畿"},{"expect":[{"amount":160730,"class":"2t","steps":15,"steps_over_500":6},{"amount":182750,"class":"4t","steps":15,"steps_over_500":6},{"amount":246900,"class":"10t","steps":15,"steps_over_500":6}],"kg":"400","km":"800","region":"近畿"},{"expect":[{"amount":160730,"class":"2t","steps":15,"steps_over_500":6},{"amount":182750,"class":"4t","steps":15,"steps_over_500":6},{"amount":246900,"class":"10t","steps":15,"steps_over_500":6}],"kg":"2000","km":"800","region":"近畿"},{"expect":[{"amount":182750,"class":"4t","steps":15,"steps_over_500":6},{"amount":246900,"class":"10t","steps":15,"steps_over_500":6}],"kg":"2001","km":"800","region":"近畿"},{"expect":[{"amount":182750,"class":"4t","steps":15,"steps_over_500":6},{"amount":246900,"class":"10t","steps":15,"steps_over_500":6}],"kg":"3500","km":"800","region":"近畿"},{"expect":[{"amount":182750,"class":"4t","steps":15,"steps_over_500":6},{"amount":246900,"class":"10t","steps":15,"steps_over_500":6}],"kg":"4000","km":"800","region":"近畿"},{"expect":[{"amount":246900,"class":"10t","steps":15,"steps_over_500":6}],"kg":"4001","km":"800","region":"近畿"},{"expect":[{"amount":197570,"class":"2t","steps":15,"steps_over_500":10},{"amount":224550,"class":"4t","steps":15,"steps_over_500":10},{"amount":303420,"class":"10t","steps":15,"steps_over_500":10}],"kg":"1","km":"1000","region":"近畿"},{"expect":[{"amount":197570,"class":"2t","steps":15,"steps_over_500":10},{"amount":224550,"class":"4t","steps":15,"steps_over_500":10},{"amount":303420,"class":"10t","steps":15,"steps_over_500":10}],"kg":"400","km":"1000","region":"近畿"},{"expect":[{"amount":197570,"class":"2t","steps":15,"steps_over_500":10},{"amount":224550,"class":"4t","steps":15,"steps_over_500":10},{"amount":303420,"class":"10t","steps":15,"steps_over_500":10}],"kg":"2000","km":"1000","region":"近畿"},{"expect":[{"amount":224550,"class":"4t","steps":15,"steps_over_500":10},{"amount":303420,"class":"10t","steps":15,"steps_over_500":10}],"kg":"2001","km":"1000","region":"近畿"},{"expect":[{"amount":224550,"class":"4t","steps":15,"steps_over_500":10},{"amount":303420,"class":"10t","steps":15,"steps_over_500":10}],"kg":"3500","km":"1000","region":"近畿"},{"expect":[{"amount":224550,"class":"4t","steps":15,"steps_over_500":10},{"amount":303420,"class":"10t","steps":15,"steps_over_500":10}],"kg":"4000","km":"1000","region":"近畿"},{"expect":[{"amount":303420,"class":"10t","steps":15,"steps_over_500":10}],"kg":"4001","km":"1000","region":"近畿"},{"expect":[{"amount":243620,"class":"2t","steps":15,"steps_over_500":15},{"amount":276800,"class":"4t","steps":15,"steps_over_500":15},{"amount":374070,"class":"10t","steps":15,"steps_over_500":15}],"kg":"1","km":"1200.4","region":"近畿"},{"expect":[{"amount":243620,"class":"2t","steps":15,"steps_over_500":15},{"amount":276800,"class":"4t","steps":15,"steps_over_500":15},{"amount":374070,"class":"10t","steps":15,"steps_over_500":15}],"kg":"400","km":"1200.4","region":"近畿"},{"expect":[{"amount":243620,"class":"2t","steps":15,"steps_over_500":15},{"amount":276800,"class":"4t","steps":15,"steps_over_500":15},{"amount":374070,"class":"10t","steps":15,"steps_over_500":15}],"kg":"2000","km":"1200.4","region":"近畿"},{"expect":[{"amount":276800,"class":"4t","steps":15,"steps_over_500":15},{"amount":374070,"class":"10t","steps":15,"steps_over_500":15}],"kg":"2001","km":"1200.4","region":"近畿"},{"expect":[{"amount":276800,"class":"4t","steps":15,"steps_over_500":15},{"amount":374070,"class":"10t","steps":15,"steps_over_500":15}],"kg":"3500","km":"1200.4","region":"近畿"},{"expect":[{"amount":276800,"class":"4t","steps":15,"steps_over_500":15},{"amount":374070,"class":"10t","steps":15,"steps_over_500":15}],"kg":"4000","km":"1200.4","region":"近畿"},{"expect":[{"amount":374070,"class":"10t","steps":15,"steps_over_500":15}],"kg":"4001","km":"1200.4","region":"近畿"}],"note":"tools/build_compare_vectors.py が estimate.kashikiri_fares の出力から作る。手で直さない（SPEC §24 G88）"};
 const ARTIFACT = false;   // true のときは claude.ai の Artifact 用の版（navigator.clipboard でコピーし、断られたら枠の文を選ぶ）
 const DECKS = {"note":"貸切の車格ごとの荷台の寸法と最大積載量（公表例）。積付け（loadplan）、貸切の候補の絞り込み（estimate）、比べるページ（compare_lite）、空きを探す（spaceb）が同じ値を読む。数値を変えるときはこのファイルだけを直す（洗い出し N7）。","decks":[{"id":"box_2t_short","class":"2t","variant":"ショート","name":"2t 箱車（ショート）","length_mm":3000,"width_mm":1700,"height_mm":1700,"payload_kg":2000},{"id":"box_2t","class":"2t","variant":"標準（ロング）","name":"2t 箱車（標準）","length_mm":4200,"width_mm":1800,"height_mm":2000,"payload_kg":2000},{"id":"wing_4t","class":"4t","variant":"ウイング","name":"4t ウイング","length_mm":6200,"width_mm":2200,"height_mm":2400,"payload_kg":2700},{"id":"wing_10t","class":"10t","variant":"ウイング","name":"10t ウイング","length_mm":9600,"width_mm":2400,"height_mm":2600,"payload_kg":13500}],"tariff_class_deck":{"2t":"box_2t_short","4t":"wing_4t","10t":"wing_10t"},"tariff_class_deck_long":{"2t":"box_2t"},"tariff_4t_note":"公表例の 4t ウイング（約 2,700kg）には載りません。同じ 4t 車の区分でも、車によって最大積載量が違います"};   // 貸切の車の荷台の寸法（data/vehicle_decks.json。積付け・地図の画面・空きを探すと同じ値。ビルドのときに埋め込む）
+const PUBLIC_TAKUHAI = {"origin":"関東","dest":"関西","tax":"税込","checked_on":"2026-11-03","sizes":[{"size":60,"max_sum_cm":60,"max_kg":2,"fare":1040},{"size":80,"max_sum_cm":80,"max_kg":5,"fare":1340},{"size":100,"max_sum_cm":100,"max_kg":10,"fare":1630},{"size":140,"max_sum_cm":140,"max_kg":20,"fare":2310},{"size":160,"max_sum_cm":160,"max_kg":30,"fare":2570},{"size":170,"max_sum_cm":170,"max_kg":50,"fare":3360},{"size":180,"max_sum_cm":180,"max_kg":50,"fare":3660},{"size":200,"max_sum_cm":200,"max_kg":50,"fare":4480},{"size":220,"max_sum_cm":220,"max_kg":50,"fare":5240},{"size":240,"max_sum_cm":240,"max_kg":50,"fare":6830},{"size":260,"max_sum_cm":260,"max_kg":50,"fare":8420}],"dropoff_discount":100};   // 大手の宅配の公表運賃（関東発・関西あて、サイズごと、税込）。会社名と表への URL は載せない（ビルドのときに埋め込む。SPEC §47）
 const HOME_TRIP = {"weight_slack_kg":2000,"floor_free_m2":6.0,"max_piece_kg":300,"clear_height_mm":2100,"unit_footprint_mm":[6200,2200]};   // 地図の画面のデモの便 T7 の空き（data/demo/carriers.json。架空。重さの余り・床の空き・1個の上限・高さ・底面。ビルドのときに埋め込む）
+const PREFXY = {"北海道":[141.302,43.038],"青森県":[140.754,40.77],"岩手県":[141.269,39.746],"宮城県":[140.703,38.331],"秋田県":[140.232,39.71],"山形県":[140.369,38.246],"福島県":[140.388,37.787],"茨城県":[140.436,36.371],"栃木県":[139.887,36.597],"群馬県":[139.128,36.432],"埼玉県":[139.653,35.873],"千葉県":[140.133,35.585],"東京都":[139.709,35.701],"神奈川県":[139.656,35.431],"新潟県":[139.049,37.904],"富山県":[137.299,36.547],"石川県":[136.708,36.519],"福井県":[136.218,36.042],"山梨県":[138.588,35.697],"長野県":[138.102,36.644],"岐阜県":[136.765,35.448],"静岡県":[138.264,35.24],"愛知県":[136.905,35.164],"三重県":[136.367,34.66],"滋賀県":[135.912,35.088],"京都府":[135.747,35.01],"大阪府":[135.514,34.68],"兵庫県":[135.192,34.701],"奈良県":[135.891,34.675],"和歌山県":[135.199,34.242],"鳥取県":[134.158,35.43],"島根県":[133.069,35.468],"岡山県":[133.881,34.772],"広島県":[132.449,34.381],"山口県":[131.576,34.234],"徳島県":[134.524,34.05],"香川県":[134.054,34.267],"愛媛県":[132.813,33.874],"高知県":[133.508,33.58],"福岡県":[130.386,33.584],"佐賀県":[130.265,33.325],"長崎県":[129.828,32.784],"熊本県":[130.722,32.799],"大分県":[131.64,33.179],"宮崎県":[131.358,31.892],"鹿児島県":[130.506,31.578],"沖縄県":[127.684,26.21]};   // 都道府県庁の所在地の経度・緯度（data/geo/municipality_points.json の代表点。道路距離の既定値の計算用。ビルドのときに埋め込む）
 const CONTACTS = {"checked_on":"2026-11-03","contacts":{"takuhai":[{"name":"佐川急便 送る・物流改善に関するお問い合わせ（種別「見積りが欲しい」）","url":"https://www2.sagawa-exp.co.jp/contact/logistics/","condition":"法人・個人どちらも選べる。後日、営業担当から連絡","reading":"さがわきゅうびん"}],"rosen":[{"name":"日本通運 Webによるお問い合わせ（国内輸送「トラック輸送」）","url":"https://www.nipponexpress.com/jp/ja/contact/","condition":"法人のお客様が対象。個人あての配送はしていない","reading":"にっぽんつううん"},{"name":"名鉄NX運輸 当社物流サービスに関するご相談（「路線輸送」）","url":"https://www.meitetsuunyu.co.jp/meitetsu-nx/inquiry/luggage/","condition":"法人のお客様が対象。個人あての配送はしていない","reading":"めいてつえぬえっくすうんゆ"}],"jitbox":[{"name":"ヤマト運輸 JITBOXチャーター便 ご相談・お見積り依頼窓口","url":"https://pages.kuronekoyamato.co.jp/jitquotation_input.html","condition":"法人発→法人着。事前の契約が必要（法人・団体・個人事業主）","reading":"やまとうんゆ"}],"kashikiri":[{"name":"なし","url":null,"condition":"会社ごとに問い合わせます。国や業界団体の見積窓口はありません（窓口の確認が必要）","reading":""}]}};   // 各社の問い合わせ・申し込みページ（ビルドのときに埋め込む。ページは通信しない）
 
 const GUARD = '目安です。最後は各社の見積で確かめてください';
@@ -169,12 +556,13 @@ const PREFS = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', 
   '岐阜県', '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県',
   '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'];
 const KANTO = ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '山梨県'];
+const KANSAI = ['滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'];   // 宅配の公表運賃の表（関東発）の「関西」
 const KINKI = ['福井県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'];
 const FLEX_DAYS = [0, 1, 2, 3, 4, 5, 7, 10, 14];
 
 // 荷台の値は DECKS（data/vehicle_decks.json）から読む。2t は積付けと同じショート・標準（ロング）、4t はウイング
 const deckById = (id) => DECKS.decks.find((d) => d.id === id);
-const DECK_2T_SHORT = deckById(DECKS.tariff_class_deck['2t']), DECK_2T_LONG = deckById(DECKS.tariff_class_deck_long['2t']), DECK_4T = deckById(DECKS.tariff_class_deck['4t']);
+const DECK_2T_SHORT = deckById(DECKS.tariff_class_deck['2t']), DECK_2T_LONG = deckById(DECKS.tariff_class_deck_long['2t']), DECK_4T = deckById(DECKS.tariff_class_deck['4t']), DECK_10T = deckById(DECKS.tariff_class_deck['10t']);
 
 // 規則の数字。出典は下の SOURCES（公式ページの条件）
 const RULES = {
@@ -188,22 +576,21 @@ const RULES = {
   t2: { floorM2: DECK_2T_SHORT.length_mm * DECK_2T_SHORT.width_mm / 1e6, longest: DECK_2T_LONG.length_mm / 10, shortLen: DECK_2T_SHORT.length_mm / 10 },  // 2t のショート（荷台長・床）とロング（荷台長）。DECKS の値
   t4: { payloadKg: DECK_4T.payload_kg },                       // 4t ウイングの公表例の最大積載量（料金の 4t の区分は 4,000kg まで）
   homeFlexDays: 3,
+  handKg: 50,                                                  // 人手で積み降ろしできる 1 点の重さの目安。新しい数字は置かず、大手の宅配の大型サイズの上限（takuhaiL.kg = 50kg、公式ページで確認）を流用
 };
-const BOX_NOTE = '同じ名前のサービスを複数の会社が出している（条件は会社ごとに違う）';
+const BOX_NOTE = '同じ名前のサービスが複数あり、条件は会社ごとに違います。';
 const SOURCES = [
-  '宅配・赤帽・カゴ台車・路線便: 各社の公式ページに載っている荷物の条件（2026-11-04 に確認。会社名と各社の表は載せません）',
-  '大手の宅配の大型サイズ（3 辺合計 260cm・50kg）: 公式ページで確認（2026-11-05）',
-  '家財おまかせ便、軽貨物マッチング: 各社の公式ページ（2026-11-05 に確認。法人・店舗への配達、赤帽の荷台寸法は未確認）',
-  '2t・4t の荷台の寸法（2t ショート 3,000×1,700mm、2t 標準 4,200×1,800mm、4t ウイング 6,200×2,200mm、最大積載量 約 2,700kg）: 積付けの公表例（data/vehicle_decks.json）。地図の画面の積付けと同じ値',
-  '2t・4t の貸切の目安額: 国土交通省 標準的運賃（2024 年 3 月 22 日告示）の距離制運賃。関東運輸局・近畿運輸局の表。値は官報の告示本文（令和 6 年国土交通省告示第 209 号）と照合済み',
-  `見積を頼む先: 各社の公式の問い合わせ・申し込みページ（${CONTACTS.checked_on} に確認）。記録が無い送り方は、記録が無いと書いて、窓口を作り出していない`,
-  '容積重量（1m³ = 280kg）: 大手の路線便会社 2 社の公開の運賃・料金の案内（2025 年版）に載る換算。会社ごとに係数が違うことがあるので、契約している会社の表で確かめてください',
-  '帰り便: このサイトの地図の画面のデモ（架空の便）。デモの便 T7 は空きが重さ 2,000kg・床 6.0m²（車両は最大 2,700kg・床 13.64m²）。地図の画面の照合と同じく、空きに載るかで判定',
+  '荷物の条件: 各社の公式ページ',
+  '貸切の額: 国の標準的運賃（2024 年 3 月 22 日告示）',
+  '荷台の寸法: 公表例（data/vehicle_decks.json）。帰り便はデモの便 T7 の空き（重さ 2,000kg・床 6.0m²）で見ています',
+  '容積の換算: 路線便 2 社の案内（1m³=280kg）',
+  `確認日: 2026-11-04〜05（窓口は ${CONTACTS.checked_on}）`,
 ];
 
 /* ---------------------------------------------------------------- 貸切の運賃（kashikiri_fares と同じ） */
 const ceilInt = (x) => Math.ceil(Math.round(x * 1e9) / 1e9);
 function kashikiriFares(km, kg, t) {
+  if (!(km > 0)) throw new RangeError('距離は 0 km より大きい数で入れてください');   // estimate.kashikiri_fares と同じ
   let steps, over = 0;
   if (t.over_500_km == null || t.over_500_step_km == null || km <= t.over_500_km) steps = ceilInt((km - t.base_km) / t.step_km);
   else { steps = ceilInt((t.over_500_km - t.base_km) / t.step_km); over = ceilInt((km - t.over_500_km) / t.over_500_step_km); }
@@ -251,7 +638,7 @@ function parsePieces(rows) {
     if (vals.every((x) => !x)) return;
     const [n, l, w, h, kg] = vals.map(readNum);
     if (!(Number.isInteger(n) && n >= 1) || !(l > 0) || !(w > 0) || !(h > 0) || !(kg > 0)) { errs.push(`${i + 1} 行目: 個数は 1 以上の整数、寸法と重さは 0 より大きい数で入れてください（1e3 のような書き方は使えません）`); return; }
-    pieces.push({ n, l, w, h, kg, lS: vals[1], wS: vals[2], hS: vals[3], kgS: vals[4] });
+    pieces.push({ n, l, w, h, kg, lS: vals[1], wS: vals[2], hS: vals[3], kgS: vals[4], pk: r.pk === 'pallet' || r.pk === 'other' ? r.pk : 'box' });
   });
   return { pieces, errs };
 }
@@ -282,16 +669,20 @@ const deckDesc = (d) => `荷台 ${fmt(d.length_mm)}×${fmt(d.width_mm)}mm・高�
 
 const opt = (id, name, status, reasons, extra) => ({ id, name, status, reasons, ...(extra || {}) });
 
+// 大手の宅配に載るか（小さいサイズ便か、大きいサイズ便の上限のどちらかに収まる）
+function fitsCourier(p) {
+  const R = RULES;
+  if (p.pk === 'pallet') return false;   // パレット渡しは宅配の扱いではない
+  return (sum3(p) <= R.takuhaiS.sum3 && longest(p) <= R.takuhaiS.side && p.kg <= R.takuhaiS.kg) || (sum3(p) <= R.takuhaiL.sum3 && p.kg <= R.takuhaiL.kg);
+}
 function evalTakuhai(pieces) {
-  const R = RULES, bad = [];
+  const bad = [];
   let fit = 0, all = 0;
   for (const p of pieces) {
     all += p.n;
-    const y = sum3(p) <= R.takuhaiS.sum3 && longest(p) <= R.takuhaiS.side && p.kg <= R.takuhaiS.kg;
-    const s = sum3(p) <= R.takuhaiL.sum3 && p.kg <= R.takuhaiL.kg;
-    if (y || s) fit += p.n; else bad.push(`${pdesc(p)}（3 辺合計 ${sum3(p)}cm）は大手の宅配の上限（3 辺合計 260cm・50kg まで）を超える`);
+    if (fitsCourier(p)) fit += p.n; else bad.push(p.pk === 'pallet' ? `${pdesc(p)} はパレット渡しの荷で、宅配（段ボール等の荷）には載らない` : `${pdesc(p)}（3 辺合計 ${sum3(p)}cm）は大手の宅配の上限（3 辺合計 260cm・50kg まで）を超える`);
   }
-  if (fit === all) return opt('takuhai', '宅配便（大手の宅配）', 'ok', ['全部の荷が、大手の宅配の上限（3 辺合計 260cm・50kg まで）に収まる。小さいサイズ便は 200cm・30kg まで', '個数分の運賃がかかる']);
+  if (fit === all) return opt('takuhai', '宅配便（大手の宅配）', 'ok', ['全部の荷物が宅配に載ります（3 辺 260cm・50kg まで）。小さいサイズ便は 200cm・30kg までです。', '個数分の運賃がかかります。']);
   if (fit === 0) return opt('takuhai', '宅配便（大手の宅配）', 'ng', bad);
   return opt('takuhai', '宅配便（大手の宅配）', 'check', [`${fit} 点だけ宅配に載る（残り ${all - fit} 点は載らない）`, ...bad]);
 }
@@ -308,7 +699,7 @@ function evalKazai(pieces, recv) {
     if (p.h > K.height) why.push(`高さ ${p.h}cm は ${K.height}cm まで`);
     if (why.length) bad.push(`${pdesc(p)}: ${why.join('、')}`); else fit += p.n;
   }
-  const bizNote = '法人・店舗への配達ができるかは未確認（公式ページに書かれていない）';
+  const bizNote = '会社あての配達ができるかは分かっていません。';
   if (fit === 0) return opt('kazai', '家財おまかせ便', 'ng', bad);
   const reasons = [`1 点ずつの条件（150kg・3 辺 450cm・最長辺 250cm・高さ 200cm まで）を${fit === all ? '全部の荷が満たす' : `${fit} 点が満たす`}`];
   if (fit !== all) reasons.push(...bad);
@@ -316,14 +707,29 @@ function evalKazai(pieces, recv) {
   return opt('kazai', '家財おまかせ便', fit === all ? 'ok' : 'check', reasons);
 }
 
-function evalAkabane(t) {
-  if (overKg(t, RULES.akabane.kg)) return opt('akabane', '赤帽', 'ng', [`合計 ${fx(t.kg)}kg は軽トラック 1 台の最大積載 350kg を超える（${excKg(t, 350)}。台数を分けるなら要相談）`]);
-  return opt('akabane', '赤帽', 'check', [`合計 ${f1(t.kg)}kg は 350kg 以内`, '荷台の寸法は公式に確認できていない。長い荷・かさばる荷は事前に確かめる']);
+// 荷役の条件。パレットと 1 点 50kg 超の荷は、集荷先・届け先の両方にフォークリフトかパワーゲートが要る。
+// 戻り値の level: ok（条件なし、または両方ある）/ check（未確認）/ ng（どちらかがない、またはパレットで確認できていない）
+function handling(pieces, inp) {
+  const heavy = pieces.filter((p) => p.pk !== 'pallet' && p.kg > RULES.handKg), pal = pieces.filter((p) => p.pk === 'pallet');
+  if (!heavy.length && !pal.length) return { level: 'ok', why: [] };
+  const a = inp && inp.fkFrom || 'unknown', b = inp && inp.fkTo || 'unknown';
+  const what = pal.length ? `パレット渡しの荷（${pdesc(pal[0])}）` : `${RULES.handKg}kg を超える荷（${pdesc(heavy[0])}）`;
+  if (a === 'yes' && b === 'yes') return { level: 'ok', why: [`${what}は、集荷先と届け先のフォークリフトかパワーゲートで積み降ろす前提`], lift: true };
+  if (a === 'no' || b === 'no') return { level: 'ng', why: [`${what}は人手で積み降ろしできず、${a === 'no' && b === 'no' ? '集荷先も届け先も' : a === 'no' ? '集荷先' : '届け先'}にフォークリフト・パワーゲートがない`] };
+  return { level: pal.length ? 'ng' : 'check', why: [`${what}は、集荷先と届け先の両方にフォークリフトが要ります。「ある」を選ぶと結果が変わります。`] };
 }
 
-function evalKei(pieces, t) {
+function evalAkabane(t, pieces, inp) {
+  if (overKg(t, RULES.akabane.kg)) return opt('akabane', '赤帽', 'ng', [`合計 ${fx(t.kg)}kg は軽トラック 1 台の最大積載 350kg を超える（${excKg(t, 350)}。台数を分けるなら要相談）`]);
+  const hd = pieces ? handling(pieces, inp) : { level: 'ok', why: [] };
+  return opt('akabane', '赤帽', 'check', [`合計 ${f1(t.kg)}kg は 350kg 以内`, ...hd.why, '荷台の大きさは公表されていません。長い荷物は先に聞いてください。']);
+}
+
+function evalKei(pieces, t, inp) {
   const K = RULES.kei, bad = [];
   let seat = false, hard = false;
+  const hd = handling(pieces, inp);
+  if (hd.level === 'ng') { hard = true; bad.push(...hd.why); } else if (hd.level === 'check') { seat = true; bad.push(...hd.why); }
   if (overKg(t, K.kg)) { hard = true; bad.push(`合計 ${fx(t.kg)}kg は 350kg を超える（${excKg(t, 350)}）`); }
   if (t.m3 > K.m3) { hard = true; bad.push(`合計の容積 ${fx(t.m3)}m³ は荷台の約 2.8m³ を超える（${exc(t.m3, 2.8, 'm³')}）`); }
   for (const p of pieces) {
@@ -332,73 +738,90 @@ function evalKei(pieces, t) {
   }
   if (hard) return opt('kei', '軽貨物マッチング（ハコベル・PickGo）', 'ng', bad);
   if (seat) return opt('kei', '軽貨物マッチング（ハコベル・PickGo）', 'check', bad);
-  return opt('kei', '軽貨物マッチング（ハコベル・PickGo）', 'ok', [`350kg・約 2.8m³・荷台 130×120×180cm に収まる（合計 ${f1(t.kg)}kg、${f1(t.m3)}m³）`, '料金は会員登録して見積もる（公開の料金表なし）']);
+  return opt('kei', '軽貨物マッチング（ハコベル・PickGo）', 'ok', [`350kg・約 2.8m³・荷台 130×120×180cm に収まる（合計 ${f1(t.kg)}kg、${f1(t.m3)}m³）`, ...hd.why, '料金は会員登録して見積もります。']);
 }
 
 function evalJitbox(pieces, t, recv) {
   const J = RULES.jitbox;
-  if (recv === 'person') return opt('jitbox', 'カゴ台車 1 本単位', 'ng', ['法人発・法人着だけ。個人宛ては承っていない', BOX_NOTE]);
+  if (recv === 'person') return opt('jitbox', 'カゴ台車 1 本単位', 'ng', ['会社から会社へだけです。個人宅には送れません。', BOX_NOTE]);
   const bad = [];
   if (overKg(t, J.kg)) bad.push(`合計 ${fx(t.kg)}kg は 1 ボックス 500kg までを超える（${excKg(t, 500)}）`);
   if (t.m3 > J.m3) bad.push(`合計の容積 ${fx(t.m3)}m³ は 1 ボックス約 1.8m³ を超える（${exc(t.m3, 1.8, 'm³')}）`);
   for (const p of pieces) if (!fitsBox(p, J.box)) bad.push(`${pdesc(p)} は内寸 170×104×104cm に入らない`);
   if (bad.length) return opt('jitbox', 'カゴ台車 1 本単位', 'ng', [...bad, BOX_NOTE]);
-  return opt('jitbox', 'カゴ台車 1 本単位', 'check', ['1 ボックス（内寸 170×104×104cm、約 1.8m³、500kg）に収まる', '発送する側も法人であること。料金はボックス 1 個ごとに都道府県単位で決まる', BOX_NOTE]);
+  return opt('jitbox', 'カゴ台車 1 本単位', 'check', ['1 ボックス（内寸 170×104×104cm、約 1.8m³、500kg）に収まる', '送る側も会社に限ります。料金は 1 箱ごとに県で決まります。', BOX_NOTE]);
 }
 
 function evalRosen(t, recv) {
   const R = RULES.rosen, vw = t.m3 * R.kgPerM3, cw = Math.max(t.kg, vw);
-  const reasons = [`実重量 ${f1(t.kg)}kg、容積重量 ${f1(vw)}kg（容積 ${f1(t.m3)}m³ × 280kg/m³）。運賃に使う計算重量は大きいほうの ${f1(cw)}kg`, '容積重量とは、かさばる荷を「1m³ を 280kg」とみなして重さに直した値です。軽くてかさばる荷は、実重量より容積重量のほうが大きくなります。280 は大手の路線便会社 2 社の公開資料（2025 年版）に載る換算で、会社によって違うことがあります（出典の欄）'];
+  const reasons = [`運賃に使う重さは ${f1(cw)}kg です（実重量 ${f1(t.kg)}kg、容積重量 ${f1(vw)}kg の大きいほう）。容積重量は、かさを 1m³=280kg で重さに直した値です。`];
   if (recv === 'person') reasons.push('個人宅は配達担当店が日を打ち合わせて届ける。人手が足りないと作業員料金が別にかかることがある');
-  if (cw > R.quoteOverKg) { reasons.push('1,000kg を超えるので要見積'); return opt('rosen', '路線便（特別積合せ）', 'check', reasons, { cw }); }
+  if (cw > R.quoteOverKg) { reasons.push('1,000kg を超えるので、見積が要ります。'); return opt('rosen', '路線便', 'check', reasons, { cw }); }
   return opt('rosen', '路線便（特別積合せ）', 'ok', reasons, { cw });
 }
 
 function regionOf(pref) { return KANTO.includes(pref) ? '関東' : KINKI.includes(pref) ? '近畿' : null; }
 
 function evalKashikiri(cls, pieces, t, from, km) {
-  const name = `${cls} 貸切（標準的運賃の目安）`, id = `kashikiri_${cls}`;
-  const vmax = cls === '2t' ? 2000 : 4000;
+  const name = `${cls} 貸切（国の運賃の目安）`, id = `kashikiri_${cls}`;
+  const vmax = { '2t': 2000, '4t': 4000, '10t': 10000 }[cls];   // 標準的運賃の表の区分（kg）。10t は同じ告示の表の大型（10t 車、関東・近畿とも data/tariffs にある）
   if (overKg(t, vmax)) return opt(id, name, 'ng', [`合計 ${fx(t.kg)}kg は ${cls} の最大積載 ${fmt(vmax)}kg（表の区分）を超える（${excKg(t, vmax)}）`]);
   const bad = [];
   let status = 'ok';
   // 荷の高さと向き（地図の積付けと同じ。高さは立てたまま、底面の向きだけ変える）で荷台に入るか見る。2t はショートに入らなくてもロングなら入る可能性がある
-  const KEEP = '荷は倒さず、高さを立てたまま積む前提';
+  const KEEP = '荷物は倒さずに積むとして見ています。';
   if (cls === '2t') {
     const noLong = pieces.find((p) => !fitDeck(p, DECK_2T_LONG));
     if (noLong) return opt(id, name, 'ng', [`${pdesc(noLong)} は 2t ロング（${deckDesc(DECK_2T_LONG)}）にも入らない（${KEEP}）`]);
     const noShort = pieces.find((p) => !fitDeck(p, DECK_2T_SHORT));
-    if (noShort) { status = 'check'; bad.push(`${pdesc(noShort)} は 2t ショート（${deckDesc(DECK_2T_SHORT)}）に入らない。ロング（標準の 2t 箱車、${deckDesc(DECK_2T_LONG)}）なら入る可能性がある。車の種類の指定が要る（${KEEP}）`); }
-    if (t.floor > RULES.t2.floorM2) { status = 'check'; bad.push(`床面の合計 ${fx(t.floor)}m² は 2t ショートの床（約 ${fx(RULES.t2.floorM2)}m²）を超える（${exc(t.floor, RULES.t2.floorM2, 'm²')}）。積み重ねられるかは要確認`); }
+    if (noShort) { status = 'check'; bad.push(`${pdesc(noShort)} は 2t ショート（${deckDesc(DECK_2T_SHORT)}）には入りません。2t ロング（${deckDesc(DECK_2T_LONG)}）なら入ります。頼むときにロングと伝えてください。${KEEP}`); }
+    if (t.floor > RULES.t2.floorM2) { status = 'check'; bad.push(`床面の合計 ${fx(t.floor)}m² は 2t ショートの床（約 ${fx(RULES.t2.floorM2)}m²）を超えます（${exc(t.floor, RULES.t2.floorM2, 'm²')}）。積み重ねられるか確かめてください。`); }
   } else {
-    const noDeck = pieces.find((p) => !fitDeck(p, DECK_4T));
-    if (noDeck) return opt(id, name, 'ng', [`${pdesc(noDeck)} は 4t ウイング（${deckDesc(DECK_4T)}）に入らない（${KEEP}）`]);
+    const dk = cls === '10t' ? DECK_10T : DECK_4T;
+    const noDeck = pieces.find((p) => !fitDeck(p, dk));
+    if (noDeck) return opt(id, name, 'ng', [`${pdesc(noDeck)} は ${cls} ウイング（${deckDesc(dk)}）に入らない（${KEEP}）`]);
+    if (cls === '10t' && t.floor > DECK_10T.length_mm * DECK_10T.width_mm / 1e6) { status = 'check'; bad.push(`床面の合計 ${fx(t.floor)}m² は 10t ウイングの床を超える。積み重ねられるかは要確認`); }
   }
   if (cls === '4t' && overKg(t, RULES.t4.payloadKg)) { status = 'check'; bad.push(DECKS.tariff_4t_note); }   // SPEC §34.5: 料金の 4t の区分（〜4,000kg）と公表例の 4t ウイング（約 2,700kg）は別
   const region = regionOf(from);
   if (!(km > 0)) return opt(id, name, 'check', ['道路の距離 km を入れると、目安の額が出ます']);
-  if (!region) return opt(id, name, 'check', ['集荷が関東・近畿の外のため、この表（関東運輸局・近畿運輸局）では出せない。見積で確かめる']);
-  if (km < TARIFFS[region].base_km) return opt(id, name, 'check', [`距離 ${f1(km)}km は 200km 未満。このページは 200km 以上の表だけを持つ。見積で確かめる`]);
+  if (!region) return opt(id, name, 'check', ['集荷が関東・近畿の外なので、目安の額は出せません。見積で確かめてください。']);
+  if (km < TARIFFS[region].base_km) return opt(id, name, 'check', [`距離 ${f1(km)}km は 200km 未満なので、目安の額は出せません。見積で確かめてください。`]);
   const fare = kashikiriFares(km, Math.min(t.kg, vmax), TARIFFS[region]).find((x) => x.class === cls);
-  if (!fare) return opt(id, name, 'check', ['この重さに当たる車格が表にない']);
-  const reasons = [`${region}運輸局の表で ${f1(km)}km（200km まで基本額、以後 ${fare.steps} 区分${fare.steps_over_500 ? `＋500km 超 ${fare.steps_over_500} 区分` : ''}）`, ...bad, '国の目安で、実際の運賃は会社ごとに違う（税抜、高速代・待機料などは別）'];
+  if (!fare) return opt(id, name, 'check', ['この重さの車が表にありません。']);
+  const reasons = [`${region.replace('運輸局','')}の表で ${f1(km)}km の額です。`, ...bad, '国の目安です。実際の運賃は会社ごとに違います（税抜、高速代は別）。'];
   // 荷が車の大きさに対して小さいとき、貸切（1 台分の運賃）は過大。重さも床も 25% 未満なら注記する
-  const deckFloor = cls === '2t' ? RULES.t2.floorM2 : DECK_4T.length_mm * DECK_4T.width_mm / 1e6;
+  const dkF = cls === '10t' ? DECK_10T : DECK_4T, deckFloor = cls === '2t' ? RULES.t2.floorM2 : dkF.length_mm * dkF.width_mm / 1e6;
   const kgUse = t.kg / vmax, floorUse = t.floor / deckFloor;
   const excessive = kgUse < 0.25 && floorUse < 0.25;
   if (excessive) reasons.push(`この荷は ${cls} 車の重さの約 ${Math.max(1, Math.round(kgUse * 100))}%・床の約 ${Math.max(1, Math.round(floorUse * 100))}% しか使わず、貸切は過大です。貸切は荷の量に関わらず 1 台分の運賃がかかります`);
   return opt(id, name, status, reasons, { amount: fare.amount, excessive });
 }
 
+// 公表運賃からの宅配の目安の幅（会社名なし、100 円単位）。関東発・関西あての全部の荷が宅配に載るときだけ。上の端は集荷に来てもらう額、下の端は営業所へ持ち込んで 1 個ごとの減額を引いた額
+function publicTakuhai(pieces, from, to) {
+  const P = PUBLIC_TAKUHAI;
+  if (!P || !KANTO.includes(from) || !KANSAI.includes(to)) return null;
+  let gross = 0, cnt = 0;
+  for (const p of pieces) {
+    const z = P.sizes.find((x) => sum3(p) <= x.max_sum_cm && p.kg <= x.max_kg);
+    if (!z) return null;
+    gross += z.fare * p.n; cnt += p.n;
+  }
+  const r100 = (v) => Math.round(Math.round(v) / 100) * 100;
+  return { low: r100((gross - P.dropoff_discount * cnt) / 1.1), high: r100(gross / 1.1), checked_on: P.checked_on };
+}
+const rangeText = (x) => (x.low != null && x.low !== x.amount ? `${fmt(x.low)}〜${fmt(x.amount)} 円` : yen(x.amount));
+
 function evalHome(pieces, t, flex) {
   // 地図の画面の照合（/api/b/match）と同じ規則で、デモの便 T7 の「空き」に載るかを見る（車の大きさではなく、重さの余りと床の空き）
   const H = HOME_TRIP, name = '帰り便（空いた帰りのトラックに載せる）';
   const bad = [];
-  if (flex < RULES.homeFlexDays) bad.push(`日の幅が ${flex} 日。帰り便は 3 日以上の幅があるときに合いやすい`);
+  if (flex < RULES.homeFlexDays) bad.push(`待てる日数が ${flex} 日です。帰り便は 3 日以上待てると見つかりやすくなります。`);
   const heaviest = Math.max(...pieces.map((p) => p.kg));
   if (heaviest > H.max_piece_kg) bad.push(`1 個の重さ ${fx(heaviest)}kg がデモの便の上限 ${fmt(H.max_piece_kg)}kg を超える（${exc(heaviest, H.max_piece_kg, 'kg')}）`);
   const limitH = H.clear_height_mm - 50;
-  if (Math.max(...pieces.map((p) => p.h * 10)) > limitH) bad.push(`箱の高さがデモの便の空きの高さ − 50mm（${fmt(limitH)}mm）を超える`);
+  if (Math.max(...pieces.map((p) => p.h * 10)) > limitH) bad.push(`荷物が高すぎて、デモの便に入りません（${fmt(limitH)}mm まで）。`);
   const [fw, fd] = H.unit_footprint_mm;
   if (pieces.some((p) => !((p.l * 10 <= fw && p.w * 10 <= fd) || (p.w * 10 <= fw && p.l * 10 <= fd)))) bad.push(`箱の底面がデモの便の底面 ${fmt(fw)}×${fmt(fd)}mm に収まらない`);
   const slackN = capNano(H.weight_slack_kg), freeU = scaledBig(H.floor_free_m2, 10);
@@ -414,14 +837,19 @@ function evaluate(inp) {
   if (errs.length || !pieces.length) return { errs: errs.length ? errs : ['荷物を 1 行以上入れてください'], options: [], totals: null, pieces };
   const kmRaw = inp.km == null ? '' : String(inp.km).normalize('NFKC').trim();
   if (kmRaw !== '' && readNum(kmRaw) === null) return { errs: ['道路の距離は数字で入れてください（1e3・Infinity のような書き方は使えません）'], options: [], totals: null, pieces };
+  if (kmRaw !== '' && readNum(kmRaw) <= 0) return { errs: ['道路の距離は 0 km より大きい数で入れてください（0 や負の数では額を出せません）'], options: [], totals: null, pieces };
   const t = totals(pieces), km = kmOf(inp);
-  const options = [evalTakuhai(pieces), evalKazai(pieces, inp.recv), evalAkabane(t), evalKei(pieces, t), evalJitbox(pieces, t, inp.recv), evalRosen(t, inp.recv),
-    evalKashikiri('2t', pieces, t, inp.from, km), evalKashikiri('4t', pieces, t, inp.from, km), evalHome(pieces, t, Number(inp.flex) || 0)];
+  const options = [evalTakuhai(pieces), evalKazai(pieces, inp.recv), evalAkabane(t, pieces, inp), evalKei(pieces, t, inp), evalJitbox(pieces, t, inp.recv), evalRosen(t, inp.recv),
+    evalKashikiri('2t', pieces, t, inp.from, km), evalKashikiri('4t', pieces, t, inp.from, km), ...(t.kg > RULES.t4.payloadKg ? [evalKashikiri('10t', pieces, t, inp.from, km)] : []), evalHome(pieces, t, Number(inp.flex) || 0)];   // 10t は 4t ウイングの積載（約 2,700kg）を超える荷のときだけ並べる（小さな荷に大型の行を出さない）
+  const tk = options[0];
+  if (tk.status === 'ok') { const pub = publicTakuhai(pieces, inp.from, inp.to); if (pub) tk.pub = pub; }
   return { errs: [], options, totals: t, pieces };
 }
 
 /* ---------------------------------------------------------------- 自社の契約単価（任意。ブラウザの中だけに保存する） */
+const QKEY = 'compare_lite_quotes_v1';   // 見積の回答（会社名と額を 3 社まで。このブラウザの中だけ。SPEC §46）
 const CKEY = 'compare_lite_contract_v1';
+const HKEY = 'compare_lite_history_v1';   // 出荷の記録（日付・区間・送り方・額。このブラウザの中だけ）
 const PKEY = 'compare_lite_cargo_v1';   // 荷物の表と区間の入力（再読み込みしても残す。このブラウザの中だけ。SPEC §42）
 const TK_SIZES = [60, 80, 100, 120, 140, 160, 180, 200, 260];   // 3 辺合計 cm 以内のサイズ。単価は利用者が入れる（このページは実在の会社の料金を持たない）
 const CMAX = 10000000;
@@ -633,6 +1061,7 @@ function amountsOf(res, C, inp) {
     if (o.id === 'takuhai') {
       const a = takuhaiAmount(res.pieces, C, to);
       if (o.status === 'ok' && a.amount != null) out[o.id] = { amount: a.amount, src: '契約単価', note: a.note };
+      else if (o.status === 'ok' && o.pub && !hasContract(C)) out[o.id] = { amount: o.pub.high, low: o.pub.low, src: '大手宅配の公開料金からの目安', note: '安いほうは持ち込み、高いほうは集荷の額です。割増は入りません。' };
       else out[o.id] = { amount: null, why: o.status === 'ok' ? a.why : '載らない荷があるため、宅配だけでは運べません' };
     } else if (o.id === 'rosen') {
       const a = rosenAmount(o, res.totals, C, km, to);
@@ -644,9 +1073,25 @@ function amountsOf(res, C, inp) {
 }
 const yen = (n) => `${fmt(n)} 円`;
 // 契約単価を入れた会社ごとの額。1 社も入れていないときは、空の契約 1 つで目安の額（貸切など）だけ出す
+// 宅配に載る荷と載らない荷が混ざるとき（宅配が要確認）、載る荷は宅配、載らない荷は路線便に分けた合計。合計 = 宅配の単価 × 個数 + 路線便（運賃表か単価）（SPEC §46）
+function splitAmount(res, C, inp) {
+  const tk = res.options.find((o) => o.id === 'takuhai');
+  if (!tk || tk.status !== 'check') return null;
+  const fit = res.pieces.filter(fitsCourier), rest = res.pieces.filter((p) => !fitsCourier(p));
+  if (!fit.length || !rest.length) return null;
+  const to = inp ? inp.to : '', km = kmOf(inp);
+  const nFit = fit.reduce((s, p) => s + p.n, 0), nRest = rest.reduce((s, p) => s + p.n, 0);
+  const a = takuhaiAmount(fit, C, to);
+  if (a.amount == null) return { amount: null, why: `宅配に載る ${nFit} 個の額が出せません（${a.why}）` };
+  const t2 = totals(rest), ro = evalRosen(t2, inp ? inp.recv : 'business');
+  const b = rosenAmount(ro, t2, C, km, to);
+  if (b.amount == null) return { amount: null, why: `路線便に回す ${nRest} 個の額が出せません（${b.why}）` };
+  return { amount: a.amount + b.amount, nFit, nRest, courier: a.amount, rosen: b.amount, cw: ro.cw,
+    note: `宅配 ${nFit} 個 ${yen(a.amount)}（${fit.map((p) => `${pdesc(p)} × ${p.n}`).join('、')}）＋ 路線便 ${nRest} 個（計算重量 ${f1(ro.cw)}kg）${yen(b.amount)}` };
+}
 function perContracts(res, Cs, inp) {
   const act = Cs.filter(hasContract), list = act.length ? act : [Cs[0]];
-  return list.map((C) => ({ C, has: hasContract(C), label: cname(C, act.length > 1), am: amountsOf(res, C, inp) }));
+  return list.map((C) => ({ C, has: hasContract(C), label: cname(C, act.length > 1), am: amountsOf(res, C, inp), split: hasContract(C) ? splitAmount(res, C, inp) : null }));
 }
 // 宅配・路線便の額を、契約の会社の列に並べる。いちばん安い額を太字にする
 function sideBySide(per, byId) {
@@ -670,18 +1115,29 @@ function cmpHtml(res, Cs, inp) {
       else none.push(`${byId[id].name}${label ? `・${label}` : ''}（${v.why}）`);
     }
   });
+  const SPLIT = { name: '宅配と路線便に分ける', status: 'check' };
+  per.forEach((p) => {
+    if (!p.split) return;
+    if (p.split.amount != null) priced.push({ id: 'split', amount: p.split.amount, src: '契約単価', note: p.split.note, contract: true, label: p.label, o: SPLIT });
+    else none.push(`${SPLIT.name}${p.label ? `・${p.label}` : ''}（${p.split.why}）`);
+  });
   priced.sort((a, b) => a.amount - b.amount);
+  S.bestCalc = priced.length ? { amount: priced[0].amount, name: `${priced[0].o.name}${priced[0].label ? `（${priced[0].label}）` : ''}`, contract: priced[0].contract } : null;
   const nm = (x) => `${x.o.name}${x.label ? `（${x.label}）` : ''}`;
   if (!has) {
+    S.bestCalc = null;
     const ch = priced.filter((x) => !x.contract);
-    return `<div class="cmp" id="cmp"><h3>どれがいちばん安いか</h3><p class="head">まだ比べられません。宅配・路線便の額は、公開の料金表がなく、自社の契約単価か各社の見積がないと分かりません。</p><p class="small">左の「自社の契約単価」を入れると、額の安い順に並べます。契約している会社が複数あれば、3 社まで会社名つきで並べます。契約単価がなければ、下の見積依頼文を各社に送って、返ってきた額を比べてください。${ch.length ? '貸切の額は国の標準的運賃の目安（実際は会社ごとに違う）で、表の中に出ています。' : ''}</p></div>`;
+    const tkc = byId.takuhai && byId.takuhai.status === 'check' ? `<p class="split-line" id="split-hint">荷の一部（${res.pieces.filter(fitsCourier).reduce((s, p) => s + p.n, 0)} 個）は宅配に載り、残り（${res.pieces.filter((p) => !fitsCourier(p)).reduce((s, p) => s + p.n, 0)} 個）は載りません。載る荷は宅配、載らない荷は路線便に分けて送る方法があります。宅配の単価と路線便の運賃を入れると、合計（宅配の単価 × 個数 + 路線便）を出します。</p>` : '';
+    const pubx = priced.find((x) => x.id === 'takuhai' && x.low != null);
+    const pubLine = pubx ? `<p class="pub-line" id="pub-range"><b>大手宅配の公開料金からの目安:</b> 宅配は およそ ${rangeText(pubx)}（税抜）。安いほうは営業所に持ち込む額、高いほうは集荷の額です。</p>` : '';
+    return `<div class="cmp" id="cmp"><h3>どれがいちばん安いか</h3><p class="head">${pubx ? '契約単価での比べはまだできません。宅配だけ、公表運賃からの目安の幅を出しています。' : 'まだ比べられません。宅配・路線便の額は、公開の料金表がなく、自社の契約単価か各社の見積がないと分かりません。'}</p>${pubLine}<p class="small">「自社の契約単価」を入れると、安い順に並べます。${ch.length ? '貸切の額は国の標準的運賃の目安（実際は会社ごとに違う）で、表の中に出ています。' : ''}</p>${tkc}</div>`;
   }
-  const rows = priced.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(nm(x))}</td><td class="num">${yen(x.amount)}</td><td>${esc(x.src)}${x.note ? `<div class="small">${esc(x.note)}</div>` : ''}</td><td><span class="badge ${x.o.status}">${LABEL[x.o.status]}</span></td></tr>`).join('');
+  const rows = priced.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(nm(x))}</td><td class="num">${rangeText(x)}</td><td>${esc(x.src)}${x.note ? `<div class="small">${esc(x.note)}</div>` : ''}</td><td><span class="badge ${x.o.status}">${LABEL[x.o.status]}</span></td></tr>`).join('');
   let head;
   if (!priced.length) head = '額が出せた送り方がありません。単価の未入力の欄を確かめてください。';
   else {
     const c = priced[0];
-    head = `契約単価と目安で比べると、${none.length ? '額が出せた送り方の中では、' : ''}いちばん安いのは「${nm(c)}」で およそ ${yen(c.amount)}${c.o.status === 'check' ? '（要確認の項目あり）' : ''}。`;
+    head = `契約単価と目安で比べると、${none.length ? '額が出せた送り方の中では、' : ''}いちばん安いのは「${nm(c)}」で およそ ${rangeText(c)}${c.o.status === 'check' ? '（要確認の項目あり）' : ''}。`;
   }
   const lines = [];
   const tk = byId.takuhai;
@@ -697,19 +1153,22 @@ function cmpHtml(res, Cs, inp) {
     const cheaper = priced.find((y) => y.id !== x.id && y.contract && y.amount < x.amount);
     lines.push(`${x.o.name.slice(0, 2)}の貸切は、この荷には過大です${cheaper ? `。「${nm(cheaper)}」の ${yen(cheaper.amount)} に対し、貸切の目安は ${yen(x.amount)} です` : ''}。`);
   }
-  return `<div class="cmp" id="cmp"><h3>どれがいちばん安いか</h3><p class="head">${esc(head)}</p>${priced.length ? `<div class="scroll-x"><table class="cmpt"><thead><tr><th>順</th><th>送り方</th><th>額（税抜）</th><th>根拠</th><th>判定</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}${sideBySide(per, byId)}${lines.map((l) => `<p>${esc(l)}</p>`).join('')}${none.length ? `<p class="small">額を出せなかった送り方: ${esc(none.join('、'))}</p>` : ''}<p class="small">貸切は国の標準的運賃の目安（実際は会社ごとに違う）、宅配・路線便は入れた契約単価から出した額です。高速代・待機料・燃料割増・集荷料などは含みません。最後は各社の見積で確かめてください。</p></div>`;
+  return `<div class="cmp" id="cmp"><h3>どれがいちばん安いか</h3><p class="head">${esc(head)}</p>${priced.length ? `<div class="scroll-x"><table class="cmpt"><thead><tr><th>順</th><th>送り方</th><th>額（税抜）</th><th>金額の出どころ</th><th>使えるか</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}${sideBySide(per, byId)}${lines.map((l) => `<p>${esc(l)}</p>`).join('')}${none.length ? `<p class="small">額を出せなかった送り方: ${esc(none.join('、'))}</p>` : ''}<p class="small">貸切は国の標準的運賃の目安（実際は会社ごとに違う）、宅配・路線便は入れた契約単価から出した額です。高速代・待機料・燃料割増・集荷料などは含みません。最後は各社の見積で確かめてください。</p></div>`;
 }
 
 function quoteText(inp, res) {
   const t = res.totals;
   const lines = ['お世話になっております。下記の荷物の運送について、見積をお願いします。', '', '【荷物】'];
-  res.pieces.forEach((p) => lines.push(`・${p.l}×${p.w}×${p.h}cm、${p.kg}kg を ${p.n} 個`));
+  res.pieces.forEach((p) => lines.push(`・${p.l}×${p.w}×${p.h}cm、${p.kg}kg を ${p.n} 個${p.pk === 'pallet' ? '（パレット渡し）' : p.pk === 'other' ? '（段ボール以外の荷姿）' : ''}`));
   lines.push(`　合計 ${t.count} 個、約 ${f1(t.kg)}kg、約 ${f1(t.m3)}m³`);
   lines.push('', '【区間】');
   lines.push(`・集荷: ${inp.from || '（都道府県を書き入れてください）'}`);
   lines.push(`・届け先: ${inp.to || '（都道府県を書き入れてください）'}（${inp.recv === 'person' ? '個人宅' : '法人・店舗・事業所'}）`);
   if (kmOf(inp) > 0) lines.push(`・道路の距離: およそ ${f1(kmOf(inp))}km`);
+  const FK = { yes: 'フォークリフト・パワーゲートあり', no: 'フォークリフト・パワーゲートなし', unknown: 'フォークリフトの有無は確認中' };
+  lines.push(`・荷役: 集荷先は${FK[inp.fkFrom] || FK.unknown}、届け先は${FK[inp.fkTo] || FK.unknown}`);
   lines.push('', '【日程】');
+  if (inp.pickup) lines.push(`・集荷の希望の時刻: ${inp.pickup} ごろ`);
   lines.push(Number(inp.flex) > 0 ? `・日の幅があります（${inp.flex} 日の間で届けばよい）。希望の日（　月　日）` : '・日の幅はありません。希望の日（　月　日）');
   lines.push('', '【お願い】', '・上の条件で受けられるかどうかと、料金の見積をお知らせください。', '・荷降ろし・車上渡しなどの作業の有無、必要な作業員の数もあわせて教えてください。', '・集荷先・届け先の住所、時間帯は、あらためてお伝えします。');
   return lines.join('\n');
@@ -741,6 +1200,11 @@ function runSelftest() {
   n += 1; if (byp.jitbox.status !== 'ng' || byp.home.status !== 'ng') fails.push('個人宅はカゴ台車が ng、日の幅 1 日は帰り便が ng');
   const small = evaluate({ rows: [{ n: 1, l: 40, w: 30, h: 20, kg: 5 }], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 0 }), bys = Object.fromEntries(small.options.map((o) => [o.id, o]));
   n += 1; if (bys.takuhai.status !== 'ok' || bys.akabane.status !== 'check' || bys.kei.status !== 'ok') fails.push('小さな荷は宅配 ok、赤帽 check、軽貨物 ok');
+  const pal = (fk, fkT) => Object.fromEntries(evaluate({ ...s6, rows: [{ n: 1, l: 110, w: 110, h: 120, kg: 280, pk: 'pallet' }], fkFrom: fk, fkTo: fkT || fk }).options.map((o) => [o.id, o]));
+  n += 1; if (pal('unknown').kei.status !== 'ng' || pal('unknown').takuhai.status !== 'ng') fails.push('パレットはフォークリフト未確認だと軽貨物・宅配 ng');
+  n += 1; if (pal('no').kei.status !== 'ng' || pal('yes', 'no').kei.status !== 'ng') fails.push('パレットは片方でもフォークリフトなしなら軽貨物 ng');
+  n += 1; if (pal('yes').takuhai.status !== 'ng') fails.push('パレットは宅配 ng');
+  n += 1; if (evaluate({ ...s6, km: 0 }).errs.length !== 1 || evaluate({ ...s6, km: -5 }).errs.length !== 1) fails.push('距離 0 と負の数は誤り');
   // 4t の区分（〜4,000kg）でも、公表例の 4t ウイング（約 2,700kg）を超える荷は △ で、§34.5 の文を出す。2t の荷台は DECKS（積付けと共通）の値
   const heavy = evaluate({ rows: [{ n: 1, l: 100, w: 100, h: 100, kg: 3000 }], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 0 }), byh = Object.fromEntries(heavy.options.map((o) => [o.id, o]));
   n += 1; if (byh.kashikiri_4t.status !== 'check' || !byh.kashikiri_4t.reasons.includes(DECKS.tariff_4t_note)) fails.push('3,000kg の 4t は △ と §34.5 の文');
@@ -764,6 +1228,11 @@ function runSelftest() {
   n += 1; if (rosenAmount({ cw: 100 }, { count: 1 }, Ct).amount !== 5000) fails.push('路線便は最低運賃 5,000 円（10 円 × 100kg = 1,000 円より大きい）');
   n += 1; if (rosenAmount({ cw: 1500 }, { count: 1 }, Ct).amount !== null) fails.push('路線便 1,000kg 超は額を出さない');
   n += 1; { const sm = evaluate({ rows: [{ n: 1, l: 40, w: 30, h: 20, kg: 5 }], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 0 }); if (!sm.options.find((o) => o.id === 'kashikiri_4t').excessive) fails.push('小さな荷の貸切は過大の注記'); }
+  // Excel の荷物の表の貼り付け（SPEC §47）と、公表運賃からの宅配の幅（関東発・関西あて、会社名なし、100 円単位）
+  n += 1; { const c1 = parseCargoTable('個数\t縦\t横\t高さ\t重さ\n3\t120\t50\t50\t40\n1\t30cm\t20cm\t10cm\t2kg'); if (c1.rows.length !== 2 || c1.rows[0].n !== '3' || c1.rows[0].l !== '120' || c1.rows[1].kg !== '2') fails.push('Excel の荷物の表（見出しつき、単位つき）を読む'); }
+  n += 1; { const c2 = parseCargoTable('2\t120×50×50\t40'); if (c2.rows.length !== 1 || c2.rows[0].n !== '2' || c2.rows[0].h !== '50' || c2.rows[0].kg !== '40') fails.push('寸法が 1 つの欄の荷物の表を読む'); }
+  n += 1; { const c3 = parseCargoTable('個数\t寸法(mm)\t重量kg\n1\t1200x500x500\t40'); if (c3.rows.length !== 1 || c3.rows[0].l !== '120' || c3.rows[0].h !== '50') fails.push('mm の見出しは cm にして入れる'); }
+  n += 1; { const pb = publicTakuhai([{ n: 3, l: 120, w: 50, h: 50, kg: 40 }], '東京都', '大阪府'); if (!pb || pb.high !== 14300 || pb.low !== 14000 || publicTakuhai([{ n: 1, l: 30, w: 20, h: 10, kg: 2 }], '東京都', '北海道') !== null || publicTakuhai([{ n: 1, l: 200, w: 50, h: 50, kg: 40 }], '東京都', '大阪府') !== null) fails.push('公表運賃からの宅配の幅は、220 サイズ 3 個で 14,000〜14,300 円（関西あてだけ）'); }
   n += 1; if (exc(2700.01, 2700, 'kg') !== '+0.01kg') fails.push('超えた量は丸めて 0 にしない');
   // 重さの合計は 10 進の文字列から整数で足す（SPEC §43）。200.0001kg × 10 個は 2,000.001kg で、地図の照合と同じく帰り便にも 2t にも載らない。ちょうど 2,000kg は載る
   const w10 = (kg) => evaluate({ ...s6, rows: [{ n: 10, l: 100, w: 60, h: 50, kg }] }), by10 = (kg) => Object.fromEntries(w10(kg).options.map((o) => [o.id, o]));
@@ -791,19 +1260,77 @@ const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const S = { rows: [], res: null, exampleAuto: false };
 function endExampleAuto() { if (S.exampleAuto) { S.exampleAuto = false; const el = $('#example-note'); if (el) el.hidden = true; } }
-const blank = () => ({ n: '', l: '', w: '', h: '', kg: '' });
+const blank = () => ({ n: '', l: '', w: '', h: '', kg: '', pk: 'box' });
+const PACKS = [['box', '段ボール等'], ['pallet', 'パレット'], ['other', 'その他']];
 const LABEL = { ok: '使える ○', check: '要確認 △', ng: '使えない ×' };
 const COLS = [['n', '個数'], ['l', '縦 cm'], ['w', '横 cm'], ['h', '高さ cm'], ['kg', '1 個の重さ kg']];
 
-function renderRows() {
-  if (!S.rows.length) S.rows = [blank(), blank()];
-  $('#pbody').innerHTML = S.rows.map((r, i) => `<tr>${COLS.map(([k, t]) => `<td><input type="number" min="0" step="any" class="pin" data-i="${i}" data-k="${k}" value="${esc(r[k])}" aria-label="${t}"></td>`).join('')}<td><button type="button" class="del" data-del="${i}" aria-label="${i + 1} 行目を消す">×</button></td></tr>`).join('');
+// Excel から貼り付けた荷物の表（個数・縦・横・高さ・重さ）を行にする（SPEC §47）。1 行目が見出しなら見出しの言葉で列を決める（寸法 1 つの欄「120×50×50」も可）。見出しが無ければ 個数・縦・横・高さ・重さ の順。単位（cm・kg・個）は外す。見出しに mm があれば cm にする
+function parseCargoTable(text) {
+  const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n').filter((l) => l.trim());
+  const cut = (l) => (l.includes('\t') ? l.split('\t') : l.includes(',') ? l.split(',') : l.trim().split(/\s+/)).map((c) => String(c).normalize('NFKC').trim());
+  const DIM = /^([0-9.]+)\s*(?:cm|mm)?\s*[x×*]\s*([0-9.]+)\s*(?:cm|mm)?\s*[x×*]\s*([0-9.]+)\s*(?:cm|mm)?$/i;
+  const unit = (c) => c.replace(/(?:cm|kg|個|本|箱|口|ケース|枚|点)$/i, '').replace(/,/g, '').trim();
+  const isNum = (c) => NUM_RE.test(unit(c));
+  const rows = [], notes = [];
+  if (!lines.length) return { rows, notes: ['貼り付ける表が空です'] };
+  let map = null, mm = false, start = 0;
+  const first = cut(lines[0]);
+  if (!first.some((c) => isNum(c) || DIM.test(c))) {
+    map = first.map((c) => (/寸法|サイズ|3辺|三辺/.test(c) ? 'dim' : /個数|数量|口数|ケース数|入数|^n$/i.test(c) ? 'n' : /縦|長さ|奥行|^l$|^d$/i.test(c) ? 'l' : /横|幅|^w$/i.test(c) ? 'w' : /高さ|^h$/i.test(c) ? 'h' : /重|kg/i.test(c) ? 'kg' : null));
+    mm = first.some((c) => /mm/i.test(c));
+    start = 1;
+    if (!map.some(Boolean)) return { rows, notes: ['1 行目の見出しを読めません（個数・縦・横・高さ・重さ、または個数・寸法・重さ）'] };
+  }
+  const conv = (v) => { const x = Number(unit(v)); return mm ? String(Math.round(x) / 10) : String(x); };
+  lines.slice(start).forEach((ln, i) => {
+    const c = cut(ln), no = i + start + 1, r = blank();
+    const mark = (k, v) => { if (v !== undefined && v !== '' && isNum(v)) r[k] = conv(v); };
+    if (map) {
+      map.forEach((k, j) => {
+        if (!k || j >= c.length) return;
+        if (k === 'dim') { const m = DIM.exec(c[j]); if (m) { r.l = conv(m[1]); r.w = conv(m[2]); r.h = conv(m[3]); } }
+        else if (k === 'n') { if (isNum(c[j])) r.n = unit(c[j]); }
+        else mark(k, c[j]);
+      });
+    } else if (c.some((x) => DIM.test(x))) {
+      const di = c.findIndex((x) => DIM.test(x)), m = DIM.exec(c[di]), nums = c.filter((x, j) => j !== di && isNum(x));
+      r.l = m[1]; r.w = m[2]; r.h = m[3];
+      if (nums.length >= 2) { r.n = unit(nums[0]); r.kg = unit(nums[1]); } else if (nums.length === 1) r.kg = unit(nums[0]);
+    } else if (c.length >= 5) { r.n = unit(c[0]); mark('l', c[1]); mark('w', c[2]); mark('h', c[3]); mark('kg', c[4]); }
+    if (!r.n) r.n = '1';
+    if (!r.l || !r.w || !r.h || !r.kg) { notes.push(`${no} 行目は読めませんでした（縦・横・高さ・重さの数字が足りません）: ${ln.slice(0, 40)}`); return; }
+    rows.push(r);
+  });
+  if (rows.length > 200) { notes.push('荷物の行が 200 を超えるので、最初の 200 行だけ入れました'); rows.length = 200; }
+  return { rows, notes };
+}
+function cargoPaste() {
+  const ta = $('#cargo-paste'), msg = $('#cargo-msg');
+  const r = parseCargoTable(ta.value);
+  if (!r.rows.length) { msg.textContent = r.notes[0] || '読める行がありませんでした'; return; }
+  const keep = S.exampleAuto ? [] : S.rows.filter((x) => ['n', 'l', 'w', 'h', 'kg'].some((k) => String(x[k]).trim()));
+  S.rows = [...keep, ...r.rows];
+  endExampleAuto(); renderRows(); saveCargo(); render();
+  msg.textContent = `${r.rows.length} 行を荷物の表に入れました。${r.notes.length ? r.notes.join(' / ') : ''}`;
 }
 
-function inputs() { return { rows: S.rows, from: $('#from').value, to: $('#to').value, km: $('#km').value, recv: $('#recv').value, flex: $('#flex').value }; }
+function renderRows() {
+  if (!S.rows.length) S.rows = [blank(), blank()];
+  $('#pbody').innerHTML = S.rows.map((r, i) => `<tr>${COLS.map(([k, t]) => `<td data-l="${t}"><input type="number" min="0" step="any" class="pin" data-i="${i}" data-k="${k}" value="${esc(r[k])}" aria-label="${t}"></td>`).join('')}<td data-l="荷姿"><select class="psel" data-i="${i}" aria-label="${i + 1} 行目の荷姿">${PACKS.map(([v, t]) => `<option value="${v}"${(r.pk || 'box') === v ? ' selected' : ''}>${t}</option>`).join('')}</select></td><td><button type="button" class="del" data-del="${i}" aria-label="${i + 1} 行目を消す">×</button></td></tr>`).join('');
+}
+
+function inputs() { return { rows: S.rows, from: $('#from').value, to: $('#to').value, km: $('#km').value, recv: $('#recv').value, flex: $('#flex').value, fkFrom: $('#fk-from').value, fkTo: $('#fk-to').value, pickup: $('#pickup-time').value }; }
 
 const NO_ESTIMATES = {
-  rosen: '目安額は出せません（運賃表の全体を持っていないため）。自社の契約単価を入れると額を出します。路線便の試算は地図の画面だけにあり、区間の表を持つ区間に限ります',
+  // 宅配は理由を分ける: 区間の外か、区間の中でも宅配に載らない荷があるか（r7b 指摘7）
+  takuhai: (o, inp) => {
+    const inRoute = inp && KANTO.includes(inp.from) && KANSAI.includes(inp.to);
+    return inRoute
+      ? '宅配に載らない荷物があるので、宅配だけの額は出せません。載らない荷物は路線便か貸切の見積で確かめてください。'
+      : '公表運賃からの目安は、関東発・関西あて（滋賀・京都・大阪・兵庫・奈良・和歌山）の区間だけ持っています。この区間の額は、契約単価か各社の見積で確かめてください';
+  },
+  rosen: '目安の額は出せません。契約単価を入れると額が出ます。',
   kei: '目安額は出せません（軽貨物マッチングは会員登録して見積もる形で、公開の料金表がないため）。見積依頼文を使ってください',
 };
 
@@ -811,7 +1338,7 @@ const NO_ESTIMATES = {
 // 送り方の状態では絞らない（いつも同じ一覧）。URL は記録にあるものだけ
 function askHtml(o) {
   if (o.status === 'ng') return '';
-  return '<div class="ask"><b>見積を頼む先</b>: 下の「見積を頼む先」の欄</div>';
+  return '<div class="ask">見積の頼み先は下にあります</div>';
 }
 function asksSection(options) {
   if (!options.some((o) => o.status !== 'ng')) return '';
@@ -819,16 +1346,43 @@ function asksSection(options) {
     .sort((x, y) => String(x.reading || x.name).localeCompare(String(y.reading || y.name), 'ja'));
   const rows = list.map((c) => `<div class="ask-co"><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a><div class="cond">${esc(c.condition)}</div></div>`).join('');
   const home = options.some((o) => o.home && o.status !== 'ng') ? '<div class="ask-co"><span class="cond">地図の画面（デモ）の「空きを探す・つなぐ」の便は架空で、実在の運送会社への窓口はありません</span></div>' : '';
-  const other = '<div class="ask-co"><span class="cond">この一覧にない送り方（貸切、軽貨物のマッチングなど）は、公式の窓口を記録していません。各社のサイトの問い合わせ先から頼みます</span></div>';
+  const other = '<div class="ask-co"><span class="cond">貸切や軽貨物は、窓口を載せていません。各社のサイトから頼んでください。</span></div>';
   return `<div class="asks" id="asks"><h3>見積を頼む先</h3>${rows}${home}${other}</div>`;
 }
 
-function optRow(o, per) {
+// 言葉の説明（初出）。路線便の行が出ているときだけ
+const TERMS_HTML = '<p class="terms" id="terms"><b>言葉の説明:</b> 特別積合せ…複数の荷主の荷物を 1 台に積み合わせ、拠点を経由して運ぶ路線便の仕組みです（貸切のように 1 台を専有しません）。運賃は重さと距離（または届け先）の表で決まります。</p>';
+// 安い順（額が出ているものを先、使えないものを最後）
+const optKey = (o) => (o.status === 'ng' ? 3e15 : o.amount != null ? o.amount : o.pub ? o.pub.low : 2e15);
+const sortedOptions = (list) => list.map((o, i) => [o, i]).sort((a, b) => optKey(a[0]) - optKey(b[0]) || a[1] - b[1]).map((x) => x[0]);
+// 額の比べ（棒）と数字のタイル
+function barsHtml(res) {
+  const rows = sortedOptions(res.options).filter((o) => o.status !== 'ng' && (o.amount != null || o.pub)).map((o) => ({ name: short(o.name), v: o.amount != null ? o.amount : o.pub.low, txt: o.amount != null ? `${fmt(o.amount)} 円` : `${fmt(o.pub.low)}〜${fmt(o.pub.high)} 円`, st: o.status }));
+  if (!rows.length) return '';
+  const max = Math.max(...rows.map((r) => r.v));
+  return `<div class="bars-card" id="bars-in"><h3>額の比べ<span class="small">　税抜の目安</span></h3><ol class="bars">${rows.map((r, i) => `<li${i === 0 ? ' class="min"' : ''}><span class="b-n">${esc(r.name)}</span><span class="b-t" aria-hidden="true"><i style="width:${Math.max(3, Math.round(r.v / max * 100))}%"></i></span><b class="b-v">${r.txt}</b><span class="chip ${r.st}">${LABEL[r.st]}</span></li>`).join('')}</ol><div class="b-axis" aria-hidden="true"><span></span><span class="ticks"><i>0</i><i>${fmt(Math.round(max / 2))}</i><i>${fmt(max)} 円</i></span></div></div>`;
+}
+function statsHtml(res) {
+  const ok = res.options.filter((o) => o.status === 'ok').length, chk = res.options.filter((o) => o.status === 'check').length;
+  const priced = res.options.filter((o) => o.status !== 'ng' && o.amount != null).sort((a, b) => a.amount - b.amount);
+  const best = priced[0];
+  return `<div class="stat is-loaded hero"><img class="ill ill-64 stat-ill" src="data:image/webp;base64,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" alt="" width="64" height="64"><span class="stat-l">目安の最安</span><span class="stat-n">${best ? fmt(best.amount) : '—'}<span class="stat-u">円（税抜）</span></span><span class="stat-d">${best ? esc(short(best.name)) : '額の出る送り方なし'}</span></div>` +
+    `<div class="stat"><span class="stat-l">使える送り方</span><span class="stat-n">${ok + chk}<span class="stat-u">件</span></span><span class="stat-d">○ ${ok} 件・△ ${chk} 件</span></div>` +
+    `<div class="stat"><span class="stat-l">荷物</span><span class="stat-n">${res.totals.count}<span class="stat-u">個</span></span><span class="stat-d">${f1(res.totals.kg)}kg</span></div>`;
+}
+function setStepper(res) {
+  const has = !!res.totals, route = !!($('#from').value && $('#to').value);
+  const cur = !has ? 1 : !route ? 2 : 3;
+  document.querySelectorAll('#stepper li').forEach((li) => { const n = Number(li.dataset.s); li.classList.toggle('is-done', n < cur); li.classList.toggle('is-current', n === cur); if (n === cur) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); });
+}
+function optRow(o, per, inp) {
   const cas = per.filter((p) => p.has && p.am[o.id] && p.am[o.id].src === '契約単価' && p.am[o.id].amount != null);
-  const contractAmt = cas.map((p) => `<div class="amount">契約単価${p.label ? `（${esc(p.label)}）` : ''}で およそ ${fmt(p.am[o.id].amount)} 円（税抜）${p.am[o.id].note ? `<div class="small">${esc(p.am[o.id].note)}</div>` : ''}</div>`).join('');
-  const amt = o.amount != null ? `<div class="amount">目安 およそ ${fmt(o.amount)} 円（税抜）</div>` : contractAmt;
-  const home = o.home ? `<div class="home">${esc(o.reasons[0])}</div>` : `<ul class="rs">${o.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
-  const noamt = NO_ESTIMATES[o.id] && o.status !== 'ng' && o.amount == null && !cas.length ? `<div class="noamt">${NO_ESTIMATES[o.id]}</div>` : '';
+  const contractAmt = cas.map((p) => `<div class="amount">契約単価${p.label ? `（${esc(p.label)}）` : ''}で およそ <b class="yen">${fmt(p.am[o.id].amount)} 円</b>（税抜）${p.am[o.id].note ? `<div class="small">${esc(p.am[o.id].note)}</div>` : ''}</div>`).join('');
+  const pubAmt = o.pub && !cas.length ? `<div class="amount" id="pub-amount">大手宅配の公開料金からの目安 およそ <b class="yen">${fmt(o.pub.low)}〜${fmt(o.pub.high)} 円</b>（税抜）<div class="small">安いほうは営業所に持ち込む額、高いほうは集荷の額です。</div></div>` : '';
+  const amt = o.amount != null ? `<div class="amount">目安 およそ <b class="yen">${fmt(o.amount)} 円</b>（税抜）</div>` : (contractAmt || pubAmt);
+  const home = o.home ? `<div class="home">${esc(o.reasons[0])}</div>` : `<ul class="rs"><li>${esc(o.reasons[0] || '')}</li></ul>${o.reasons.length > 1 ? `<details class="disc rs-more"><summary>理由 ${o.reasons.length} 件</summary><ul class="rs">${o.reasons.slice(1).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}`;
+  const noText = typeof NO_ESTIMATES[o.id] === 'function' ? NO_ESTIMATES[o.id](o, inp) : NO_ESTIMATES[o.id];
+  const noamt = noText && o.status !== 'ng' && o.amount == null && !cas.length && !o.pub ? `<div class="noamt">見積が要ります: ${noText}</div>` : '';
   return `<tr class="o-${o.status}" data-opt="${esc(o.id)}"><td class="nm">${esc(o.name)}</td><td><span class="badge ${o.status}">${LABEL[o.status]}</span></td><td>${amt}${noamt}${home}${askHtml(o)}</td></tr>`;
 }
 
@@ -848,78 +1402,213 @@ function renderContractMsgs() {
   if (S.restoreNote) $('#c-msg').textContent = S.restoreNote;
 }
 
+// 最初の画面に出す 1 行ずつ。荷物の要約と、使える送り方の見出し（内訳は閉じた欄に入っている）
+const short = (n) => String(n).replace(/（[^）]*）/g, '');
+function headlineText(res) {
+  if (!res.totals) return '荷物と行き先を入れると、使える送り方が出ます。';
+  const ok = res.options.filter((o) => o.status !== 'ng');
+  if (!ok.length) return '使える送り方はありません。理由は内訳で見られます。';
+  const priced = ok.filter((o) => o.amount != null).sort((a, b) => a.amount - b.amount);
+  return `使える送り方: ${ok.map((o) => short(o.name)).join('・')}。` + (priced.length ? `目安の最安は${short(priced[0].name)}で、およそ ${fmt(priced[0].amount)} 円（税抜）です。` : '');
+}
 function render() {
   const inp = inputs(), res = evaluate(inp);
   S.res = res;
+  $('#cargo-line').textContent = res.totals ? `荷物 ${res.totals.count} 個・${f1(res.totals.kg)}kg` : '荷物が入っていません。';
+  setStepper(res);
+  $('#stats').innerHTML = res.totals ? statsHtml(res) : '';
+  $('#bars').innerHTML = res.totals ? barsHtml(res) : '';
+  $('#headline').textContent = headlineText(res);
+  $('#b-copy-top').hidden = !res.totals;
   $('#errs').innerHTML = res.errs.length && res.errs[0] !== '荷物を 1 行以上入れてください' ? `<div class="errs">${res.errs.map(esc).join('<br>')}</div>` : '';
   if (!res.totals) {
     $('#sum').textContent = '';
     $('#cmpbox').innerHTML = '';
-    $('#res').innerHTML = '<p class="empty">荷物を入れると、ここに送り方ごとの判定が出ます。「例を入れる」で試せます。</p>';
+    $('#res').innerHTML = '<div class="empty-state"><img class="ill ill-128" src="data:image/webp;base64,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" alt="" width="128" height="128"><p class="empty">荷物を入れると、ここに送り方ごとの判定が出ます。「例を入れる」で試せます。</p></div>';
     $('#quote').value = '';
   } else {
     const t = res.totals, Cs = readContracts(), per = perContracts(res, Cs, inp);
     $('#sum').textContent = `荷物の合計: ${t.count} 個、${f1(t.kg)}kg、${f1(t.m3)}m³、床面 ${f1(t.floor)}m²、最長辺 ${t.longest}cm`;
-    $('#res').innerHTML = `<div class="scroll-x"><table class="res"><thead><tr><th>送り方</th><th>判定</th><th>理由・目安額</th></tr></thead><tbody>${res.options.map((o) => optRow(o, per)).join('')}</tbody></table></div>${asksSection(res.options)}`;
+    $('#res').innerHTML = `<div class="scroll-x"><table class="res"><thead><tr><th>送り方</th><th>この荷物に使えるか</th><th>費用の目安（税抜）と理由</th></tr></thead><tbody>${sortedOptions(res.options).map((o) => optRow(o, per, inp)).join('')}</tbody></table></div>${res.options.some((o) => o.id === 'rosen' && o.status !== 'ng') ? TERMS_HTML : ''}${asksSection(res.options)}`;
     $('#cmpbox').innerHTML = cmpHtml(res, Cs, inp);
+    if (S.bestCalc && S.bestCalc.contract) $('#res-d').open = true;   // 契約単価を入れたときは、比べの文を最初から開く
     $('#quote').value = quoteText(inp, res);
   }
   renderContractMsgs();
-  $('#guard2').textContent = `${GUARD}。表の ○ は、公開されている条件に荷が当たるという意味で、受けてもらえる保証ではありません。`;
+  renderAnswers();
+  refreshHistoryMethods();
+  $('#guard2').textContent = `${GUARD}。○ は公開の条件に合うという意味です。引き受けの約束ではありません。`;
+}
+
+/* ---------------------------------------------------------------- 出荷の記録（このブラウザの中だけ。保存できなくても画面は動く） */
+function loadHistory() {
+  try {
+    const d = JSON.parse(localStorage.getItem(HKEY) || 'null');
+    if (!Array.isArray(d)) return [];
+    return d.slice(0, 500).filter((x) => x && typeof x === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(String(x.date)) && Number.isFinite(Number(x.amount)) && Number(x.amount) > 0)
+      .map((x) => ({ date: String(x.date), route: String(x.route == null ? '' : x.route).slice(0, 40), method: String(x.method == null ? '' : x.method).slice(0, 40), amount: Math.round(Number(x.amount)) }));
+  } catch (e) { return []; }
+}
+function saveHistory(list) { try { localStorage.setItem(HKEY, JSON.stringify(list)); return true; } catch (e) { return false; } }
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+let HIST_MEM = null;   // localStorage に書けなかったときの、このページを開いている間だけの記録
+const histList = () => HIST_MEM || loadHistory();
+function renderHistory() {
+  const el = $('#h-out');
+  if (!el) return;
+  const list = histList().slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  if (!list.length) { el.innerHTML = '<p class="small">まだ記録がありません。</p>'; return; }
+  const months = {};
+  list.forEach((x) => { const m = x.date.slice(0, 7); months[m] = (months[m] || 0) + x.amount; });
+  el.innerHTML = `<table class="cmpt" id="h-month"><thead><tr><th>月</th><th>運賃の合計（税抜）</th></tr></thead><tbody>${Object.keys(months).sort().reverse().map((m) => `<tr><td>${esc(m)}</td><td class="num">${yen(months[m])}</td></tr>`).join('')}</tbody></table>` +
+    `<div class="scroll-x"><table class="cmpt" id="h-list"><thead><tr><th>日付</th><th>区間</th><th>送り方</th><th>額（税抜）</th></tr></thead><tbody>${list.slice(0, 50).map((x) => `<tr><td>${esc(x.date)}</td><td>${esc(x.route)}</td><td>${esc(x.method)}</td><td class="num">${yen(x.amount)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function refreshHistoryMethods() {
+  const sel = $('#h-method');
+  if (!sel) return;
+  const cur = sel.value, names = (S.res && S.res.options ? S.res.options.filter((o) => o.status !== 'ng').map((o) => o.name) : []);
+  const all = [...new Set([...names, 'その他'])];
+  sel.innerHTML = all.map((n) => `<option>${esc(n)}</option>`).join('');
+  if (all.includes(cur)) sel.value = cur;
+}
+function addHistory() {
+  const msg = $('#h-msg'), raw = $('#h-amt').value.toString().normalize('NFKC').replace(/[,，\s円]/g, ''), v = raw === '' ? null : readNum(raw);
+  if (!(v !== null && v > 0 && v <= CMAX)) { msg.textContent = '額は 0 より大きい数で入れてください'; return; }
+  const date = $('#h-date').value || todayStr();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { msg.textContent = '日付を入れてください'; return; }
+  const from = $('#from').value, to = $('#to').value, route = from || to ? `${from || '?'} → ${to || '?'}` : '（区間なし）';
+  const list = histList().slice();
+  list.push({ date, route, method: $('#h-method').value, amount: Math.round(v) });
+  const kept = list.slice(-500), ok = saveHistory(kept);
+  HIST_MEM = ok ? null : kept;
+  msg.textContent = ok ? '記録しました' : '記録しました（このブラウザには保存できませんでした。ページを閉じると消えます）';
+  $('#h-amt').value = '';
+  renderHistory();
+}
+
+const ANS_N = 3;
+function readAnswers() {
+  return Array.from({ length: ANS_N }, (_, i) => {
+    const name = ($('#ans-name-' + i) ? $('#ans-name-' + i).value : '').trim().slice(0, 20);
+    const raw = $('#ans-amt-' + i) ? $('#ans-amt-' + i).value : '';
+    const amt = raw.toString().normalize('NFKC').replace(/[,，\s円]/g, '');
+    const v = amt === '' ? null : readNum(amt);
+    return { name, raw, amount: v !== null && v > 0 ? Math.round(v) : null, bad: amt !== '' && !(v !== null && v > 0) };
+  });
+}
+function saveAnswers() {
+  try { localStorage.setItem(QKEY, JSON.stringify(readAnswers().map((a) => ({ name: a.name, amount: a.raw })))); } catch (e) { /* 保存できなくても、画面は動く */ }
+}
+function loadAnswers() {
+  try {
+    const d = JSON.parse(localStorage.getItem(QKEY) || 'null');
+    if (!Array.isArray(d)) return;
+    d.slice(0, ANS_N).forEach((a, i) => {
+      if (!a || typeof a !== 'object') return;
+      $('#ans-name-' + i).value = String(a.name == null ? '' : a.name).slice(0, 20);
+      $('#ans-amt-' + i).value = String(a.amount == null ? '' : a.amount).slice(0, 12);
+    });
+  } catch (e) { /* 読めなければ空のまま */ }
+}
+function renderAnswers() {
+  const list = readAnswers().map((a, i) => ({ ...a, label: a.name || `${i + 1} 社目` })).filter((a) => a.amount != null).sort((x, y) => x.amount - y.amount);
+  const bad = readAnswers().filter((a) => a.bad);
+  const el = $('#ans-out');
+  if (!el) return;
+  let h = bad.length ? `<div class="errs">額は 0 より大きい数で入れてください（${bad.map((a) => esc(a.name || '空の会社名')).join('、')}）</div>` : '';
+  if (list.length) {
+    const low = list[0].amount, calc = S.bestCalc;
+    h += `<table class="cmpt" id="ans-table"><thead><tr><th>順</th><th>会社</th><th>回答の額（税抜）</th><th>最安との差</th></tr></thead><tbody>` +
+      list.map((a, i) => `<tr><td>${i + 1}</td><td>${esc(a.label)}</td><td class="num">${i === 0 ? `<b>${yen(a.amount)}</b>` : yen(a.amount)}</td><td class="num">${i === 0 ? '最安' : `+${yen(a.amount - low)}`}</td></tr>`).join('') + '</tbody></table>';
+    h += `<p class="best" id="ans-best">回答のうち最安は「${esc(list[0].label)}」の ${yen(low)} です。</p>`;
+    if (calc && calc.contract) h += `<p class="small" id="ans-vs">上の計算（契約単価）で最安は「${esc(calc.name)}」の ${yen(calc.amount)} でした。回答の最安との差は ${calc.amount > low ? `回答のほうが ${yen(calc.amount - low)} 安い` : calc.amount < low ? `計算のほうが ${yen(low - calc.amount)} 安い` : 'ありません'}です。高速代・待機料・燃料割増などで、回答の額は計算と食い違うことがあります。</p>`;
+    else if (calc) h += `<p class="small" id="ans-vs">契約単価が無いので、計算の額とは比べていません。</p>`;
+  } else if (!bad.length) h += '<p class="small">まだ回答が入っていません。</p>';
+  el.innerHTML = h;
 }
 
 function saveCargo() {
-  try { localStorage.setItem(PKEY, JSON.stringify({ rows: S.rows, from: $('#from').value, to: $('#to').value, km: $('#km').value, recv: $('#recv').value, flex: $('#flex').value })); } catch (e) { /* 保存できなくても、画面は動く */ }
+  try { localStorage.setItem(PKEY, JSON.stringify({ rows: S.rows, from: $('#from').value, to: $('#to').value, km: $('#km').value, recv: $('#recv').value, flex: $('#flex').value, fkFrom: $('#fk-from').value, fkTo: $('#fk-to').value, pickup: $('#pickup-time').value })); } catch (e) { /* 保存できなくても、画面は動く */ }
 }
 function loadCargo() {
   try {
     const d = JSON.parse(localStorage.getItem(PKEY) || 'null');
     if (!d || !Array.isArray(d.rows)) return;
-    const rows = d.rows.slice(0, 100).map((r) => Object.fromEntries(['n', 'l', 'w', 'h', 'kg'].map((k) => [k, String(r && r[k] != null ? r[k] : '').slice(0, 20)])));
-    if (!rows.some((r) => Object.values(r).some((v) => v.trim()))) return;
+    const rows = d.rows.slice(0, 100).map((r) => ({ ...Object.fromEntries(['n', 'l', 'w', 'h', 'kg'].map((k) => [k, String(r && r[k] != null ? r[k] : '').slice(0, 20)])), pk: r && (r.pk === 'pallet' || r.pk === 'other') ? r.pk : 'box' }));
+    if (!rows.some((r) => ['n', 'l', 'w', 'h', 'kg'].some((k) => r[k].trim()))) return;
     S.rows = rows;
     if (d.from === '' || PREFS.includes(d.from)) $('#from').value = d.from;
     if (d.to === '' || PREFS.includes(d.to)) $('#to').value = d.to;
     if (typeof d.km === 'string' && d.km.length < 12) $('#km').value = d.km;
     if (d.recv === 'business' || d.recv === 'person') $('#recv').value = d.recv;
     if (FLEX_DAYS.map(String).includes(String(d.flex))) $('#flex').value = String(d.flex);
+    if (['yes', 'no', 'unknown'].includes(d.fkFrom)) $('#fk-from').value = d.fkFrom;
+    if (['yes', 'no', 'unknown'].includes(d.fkTo)) $('#fk-to').value = d.fkTo;
+    if (typeof d.pickup === 'string' && /^\d{2}:\d{2}$/.test(d.pickup)) $('#pickup-time').value = d.pickup;
   } catch (e) { /* 読めなければ空のまま（例の荷物を出す） */ }
+}
+
+// 道路距離の既定値: 2 つの都道府県の県庁所在地の直線距離 × 1.25。実際の道路距離ではない目安で、手で入れた値が優先
+const KM_FACTOR = 1.25;
+function prefKm(a, b) {
+  const p = PREFXY[a], q = PREFXY[b];
+  if (!p || !q || a === b) return null;
+  const r = Math.PI / 180, dLat = (q[1] - p[1]) * r, dLon = (q[0] - p[0]) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(p[1] * r) * Math.cos(q[1] * r) * Math.sin(dLon / 2) ** 2;
+  return Math.max(1, Math.round(2 * 6371.0088 * Math.asin(Math.sqrt(h)) * KM_FACTOR));
+}
+function autoKm() {
+  const k = prefKm($('#from').value, $('#to').value), el = $('#km'), note = $('#km-note');
+  if (k == null) { if (S.kmAuto) { el.value = ''; S.kmAuto = false; } note.textContent = ''; return; }
+  if (el.value.trim() === '' || S.kmAuto) { el.value = String(k); S.kmAuto = true; }
+  note.textContent = S.kmAuto ? `県庁所在地の間の目安です（直線距離の1.25倍）。分かる距離があれば書き換えてください。` : `県庁所在地の間の目安は約 ${k}km（直線×1.25）。いまの欄は手で入れた値です`;
 }
 
 function example() {
   S.rows = [{ n: 2, l: 240, w: 60, h: 200, kg: 140 }, { n: 2, l: 100, w: 60, h: 80, kg: 60 }];
-  $('#from').value = '東京都'; $('#to').value = '大阪府'; $('#km').value = '492'; $('#recv').value = 'business'; $('#flex').value = '4';
+  $('#from').value = '東京都'; $('#to').value = '大阪府'; $('#km').value = '492'; S.kmAuto = false; autoKm(); $('#recv').value = 'business'; $('#flex').value = '4';
+  S.rows.forEach((r) => { r.pk = 'box'; });
   renderRows(); render();
 }
 
 function init() {
   $('#from').innerHTML = '<option value="">選んでください</option>' + PREFS.map((p) => `<option>${p}</option>`).join('');
   $('#to').innerHTML = '<option value="">選んでください</option>' + PREFS.map((p) => `<option>${p}</option>`).join('');
-  $('#flex').innerHTML = FLEX_DAYS.map((d) => `<option value="${d}">${d === 0 ? '幅なし（指定の日だけ）' : `${d} 日`}</option>`).join('');
+  $('#flex').innerHTML = FLEX_DAYS.map((d) => `<option value="${d}">${d === 0 ? '待てない（決めた日に届ける）' : `${d} 日`}</option>`).join('');
   // 地図の画面へのリンク。Artifact の版は 1 枚のページなので、リンクではなく文だけにする（SPEC §30.4）
-  $('#maplink').innerHTML = ARTIFACT ? '地図で送り方を比べる（地図の画面の「送り方を比べる」では、着地を選ぶと手段ごとの経路と額を見られます）' : '<a href="index.html">地図で送り方を比べる</a>';
-  $('#sources').innerHTML = `<h2>出典</h2><ul>${SOURCES.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  $('#sources').innerHTML = `<details><summary>数字の出どころ</summary><ul>${SOURCES.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details><p class="small" id="maplink">${ARTIFACT ? '地図で送り方を比べる（地図の画面の「送り方を比べる」では、着地を選ぶと手段ごとの経路と額を見られます）' : '<a href="index.html">地図で送り方を比べる</a>'}</p>`;
   $('#c-tk').innerHTML = TK_SIZES.map((z) => `<label class="f">${z} サイズ（円）<input type="number" class="cin" id="c-t-${z}" min="0" step="any" placeholder="契約の単価"></label>`).join('');
   $('#c-more').innerHTML = [2, 3].map(carrierBlock).join('');
+  $('#ans-rows').innerHTML = Array.from({ length: ANS_N }, (_, i) => `<label class="f">${i + 1} 社目の会社名<input type="text" class="ain" id="ans-name-${i}" maxlength="20" placeholder="例 A運輸" autocomplete="off"></label><label class="f">回答の額（円・税抜）<input type="text" inputmode="numeric" class="ain" id="ans-amt-${i}" maxlength="12" placeholder="例 98000" autocomplete="off"></label>`).join('');
   loadContract();
   loadCargo();
-  renderRows(); render();
+  { const k = prefKm($('#from').value, $('#to').value); S.kmAuto = k != null && $('#km').value === String(k); autoKm(); }
+  loadAnswers();
+  renderRows(); render(); renderHistory();
+  document.addEventListener('input', (e) => { if (e.target.id === 'km') { S.kmAuto = false; autoKm(); } });   // 手で書き換えたら自動の値ではなくなる
+  document.addEventListener('change', (e) => { if (e.target.id === 'from' || e.target.id === 'to') autoKm(); });   // 先に動かして、このあとの保存と再計算が新しい距離を使う
   document.addEventListener('input', (e) => {
     const t = e.target;
     if (t.classList && t.classList.contains('pin')) { endExampleAuto(); S.rows[Number(t.dataset.i)][t.dataset.k] = t.value; }
     if (t.classList && t.classList.contains('cin')) { saveContract(); render(); }
-    if ((t.classList && t.classList.contains('pin')) || t.id === 'km') { saveCargo(); render(); }
+    if (t.classList && t.classList.contains('ain')) { saveAnswers(); renderAnswers(); }
+    if ((t.classList && t.classList.contains('pin')) || t.id === 'km' || t.id === 'pickup-time') { saveCargo(); render(); }
   });
-  document.addEventListener('change', (e) => { if (String(e.target.id).startsWith('c-r-mode')) { saveContract(); render(); } if (['from', 'to', 'recv', 'flex', 'km'].includes(e.target.id)) endExampleAuto(); if (['from', 'to', 'recv', 'flex', 'km'].includes(e.target.id)) { saveCargo(); render(); } });
+  document.addEventListener('change', (e) => { if (e.target.classList && e.target.classList.contains('psel')) { endExampleAuto(); S.rows[Number(e.target.dataset.i)].pk = e.target.value; saveCargo(); render(); } if (String(e.target.id).startsWith('c-r-mode')) { saveContract(); render(); } if (['from', 'to', 'recv', 'flex', 'km', 'fk-from', 'fk-to', 'pickup-time'].includes(e.target.id)) endExampleAuto(); if (['from', 'to', 'recv', 'flex', 'km', 'fk-from', 'fk-to', 'pickup-time'].includes(e.target.id)) { saveCargo(); render(); } });
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (t.id === 'b-example') { endExampleAuto(); example(); }
-    else if (t.id === 'b-clear') { endExampleAuto(); S.rows = [blank(), blank()]; renderRows(); saveCargo(); render(); }
+    else if (t.id === 'b-clear') { endExampleAuto(); S.rows = [blank(), blank()]; renderRows(); saveCargo(); render(); $('#cargo-d').open = true; }
     else if (t.id === 'b-cclear') { document.querySelectorAll('.cin').forEach((el) => { el.value = ''; }); saveContract(); S.restoreNote = ''; $('#c-msg').textContent = '消しました'; render(); }
-    else if (t.id === 'b-add') { S.rows.push(blank()); renderRows(); }
-    else if (t.id === 'b-copy') {
+    else if (t.id === 'b-add') { S.rows.push(blank()); renderRows(); $('#cargo-d').open = true; }
+    else if (t.id === 'b-cargopaste') cargoPaste();
+    else if (t.id === 'b-hadd') addHistory();
+    else if (t.id === 'b-hclear') { HIST_MEM = null; saveHistory([]); $('#h-msg').textContent = '消しました'; renderHistory(); }
+    else if (t.id === 'b-ansclear') { document.querySelectorAll('.ain').forEach((el) => { el.value = ''; }); saveAnswers(); renderAnswers(); $('#ans-msg').textContent = '消しました'; }
+    else if (t.id === 'b-copy' || t.id === 'b-copy-top') {
       const q = $('#quote'), msg = $('#copy-msg');
-      const manual = () => { q.focus(); q.select(); msg.textContent = '自動でコピーできませんでした。枠の中の文を選んであります。Ctrl+C（スマートフォンは長押し）でコピーしてください'; };
+      if (t.id === 'b-copy-top') $('#extras-d').open = true;   // 閉じた欄の中の文は選べないので、先に開く
+      const manual = () => { $('#extras-d').open = true; q.focus(); q.select(); msg.textContent = '自動でコピーできませんでした。枠の中の文を選んであります。Ctrl+C（スマートフォンは長押し）でコピーしてください'; };
       if (ARTIFACT) {
         // クリックの中で navigator.clipboard.writeText を呼ぶ。断られたら、見える枠の文を選ぶ
         try {
@@ -943,7 +1632,10 @@ function init() {
     document.title = text.split('\n')[0];
   }
   if (qs.get('example') === '1') example();
-  else if (qs.get('selftest') !== '1' && !S.rows.some((r) => Object.values(r).some((v) => String(v).trim()))) { example(); S.exampleAuto = true; $('#example-note').hidden = false; }
+  else if (qs.get('selftest') !== '1' && !S.rows.some((r) => ['n', 'l', 'w', 'h', 'kg'].some((k) => String(r[k]).trim()))) { example(); S.exampleAuto = true; $('#example-note').hidden = false; }
+  // 荷物が入っているときは表を閉じて 1 行の要約だけにする。空のときは表を開く
+  $('#cargo-d').open = !S.rows.some((r) => ['n', 'l', 'w', 'h', 'kg'].some((k) => String(r[k]).trim()));
+  new MutationObserver(() => { $('#copy-top-msg').textContent = $('#copy-msg').textContent; }).observe($('#copy-msg'), { childList: true, characterData: true, subtree: true });
 }
 
 init();

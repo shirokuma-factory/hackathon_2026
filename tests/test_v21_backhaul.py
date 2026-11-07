@@ -1,6 +1,6 @@
 """帰り便で 1 件をつなぐ（SPEC §21、受入条件 G60〜G64）。
 
-場面 S6（木工所）と便 T7（播磨ライン運輸）で、照合の追加条件、仮予約の締切と床の残り、書面の下書きを確かめる。
+場面 S6（木工所）と便 T7（さつま運輸）で、照合の追加条件、仮予約の締切と床の残り、書面の下書きを確かめる。
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ def test_g60_s6_data_matches_the_spec():
     assert [(i["count"], i["length_cm"], i["width_cm"], i["height_cm"], i["weight_kg"]) for i in items] == [
         (2, 240, 60, 200, 140), (2, 100, 60, 80, 60)]
     bh = sc["backhaul"]
-    assert (bh["origin_code"], bh["dest_code"], bh["window_from"], bh["window_to"]) == ("13108", "27128", "2026-11-13", "2026-11-16")
+    assert (bh["origin_code"], bh["dest_code"], bh["window_from"], bh["window_to"]) == ("13108", "46201", "2026-11-13", "2026-11-16")
     assert len(bh["shipper"]["corporate_number"]) == 13 and bh["shipper"]["corporate_number"].isdigit()
     assert sc["shipment"]["route"] == "kanto_kansai"
     sh = s6_ship()
@@ -81,25 +81,25 @@ def test_g60_carrier_c4_and_trip_t7_fields():
     for k in ("terms", "insurance", "payment_options", "cancel_terms"):
         assert c4[k]
     t = t7()
-    assert t["carrier_id"] == "C4" and t["origin_code"] == "13108" and t["dest_code"] == "28210"
-    assert (t["depart_at"], t["arrive_at"]) == ("2026-11-13T17:00", "2026-11-14T12:30")
-    assert t["floor_free_m2"] == 6.0 and t["pickup_radius_km"] == 10 and t["accepts_unboxed"] is True
-    assert t["drop_points"] == ["27128", "27127", "27120", "28210"]
+    assert t["carrier_id"] == "C4" and t["origin_code"] == "13108" and t["dest_code"] == "46203"
+    assert (t["depart_at"], t["arrive_at"]) == ("2026-11-13T17:00", "2026-11-15T06:00")
+    assert t["floor_free_m2"] == 6.0 and t["pickup_radius_km"] == 15 and t["accepts_unboxed"] is True
+    assert t["drop_points"] == ["46201", "46203"]
 
 
 # ---------------------------------------------------------------- G61
 
 @pytest.mark.parametrize("wf,wt,ok", [
-    ("2026-11-14", "2026-11-16", True),   # 到着日ちょうどが幅の先頭
-    ("2026-11-10", "2026-11-14", True),   # 到着日ちょうどが幅の末尾
-    ("2026-11-15", "2026-11-16", False),  # 到着の翌日から
-    ("2026-11-10", "2026-11-13", False),  # 到着の前日まで
+    ("2026-11-15", "2026-11-16", True),   # 到着日ちょうどが幅の先頭
+    ("2026-11-10", "2026-11-15", True),   # 到着日ちょうどが幅の末尾
+    ("2026-11-16", "2026-11-17", False),  # 到着の翌日から
+    ("2026-11-10", "2026-11-14", False),  # 到着の前日まで
 ])
 def test_g61_window_by_arrive_date(wf, wt, ok):
     r_ok, reasons = spaceb.match(s6_ship(window_from=wf, window_to=wt), t7())
     assert r_ok is ok
     if not ok:
-        assert any("11/14 着" in r and "届けばよい日の幅" in r for r in reasons)
+        assert any("11/15 着" in r and "届けばよい日の幅" in r for r in reasons)
 
 
 def test_g61_pickup_distance_boundary():
@@ -113,9 +113,9 @@ def test_g61_pickup_distance_boundary():
     assert spaceb.match(sh, on)[0] is True
     ok, reasons = spaceb.match(sh, over)
     assert not ok and any("集荷の地点が便の空く地点から" in r and "km で、この便の上限" in r for r in reasons)
-    # 十分に遠い地点は T7 の 10km を超える
+    # 十分に遠い地点は T7 の 15km を超える
     ok, reasons = spaceb.match(s6_ship(origin_code="14104"), t7())
-    assert not ok and any("上限 10km" in r for r in reasons)
+    assert not ok and any("上限 15km" in r for r in reasons)
 
 
 def test_g61_floor_total_boundary():
@@ -259,8 +259,8 @@ def test_g63_contract_has_six_legal_items_and_ready_flag():
     assert d["ready"] is False
     assert d["missing"] == ["燃料サーチャージなどの料金", "支払方法"]
     by = {i["key"]: i["value"] for i in d["items"]}
-    assert "43,000円（税抜）" in by["transport"] and "江東区" in by["transport"] and "陳列棚" not in by["transport"]
-    assert "架空 播磨ライン運輸" in by["parties"] and "東雲木工（架空）" in by["parties"]
+    assert "95,000円（税抜）" in by["transport"] and "江東区" in by["transport"] and "陳列棚" not in by["transport"]
+    assert "架空 さつま運輸" in by["parties"] and "東雲木工（架空）" in by["parties"]
     assert "2 人" in by["handling"] and by["cancel"] and by["terms"] and by["insurance"] and "架空" in by["license"]
     assert by["corp_no"] == "1234567890123"
     # 選ぶと埋まる（「なし」も可）
@@ -314,7 +314,7 @@ def test_g64_fiction_and_not_a_party_notices_are_always_in_the_page():
     html = (WEB / "index.html").read_text(encoding="utf-8")
     js = (WEB / "find.js").read_text(encoding="utf-8")
     block = html[html.index('id="f-contract"'):html.index('<div id="hover-tag">')]
-    assert spaceb.CONTRACT_NOTICE in block  # 書面の画面に静的に置いてある（JS が失敗しても出る）
+    assert "この書面は運送会社と荷主が交わします。Backfull は運賃を受け取りません。" in block  # 書面の画面に静的に置いてある（JS が失敗しても出る）。文言の直し 2026-11-07: 画面は短い文、API の notice は元の文のまま
     assert "架空" in block
     assert "Backfull は運送の当事者ではなく、運賃を受け取りません" in spaceb.CONTRACT_NOTICE
     # 書面の画面は find-view の見方の中にだけあり、ほかの見方では隠れる
@@ -333,7 +333,7 @@ def test_g64_print_css_prints_only_the_contract():
 
 def test_g64_deadline_and_declined_card_links_to_request_text():
     js = (WEB / "find.js").read_text(encoding="utf-8")
-    assert "締切を過ぎました" in js and "送り方を比べるの見積依頼文で、ほかの手段に頼めます" in js
+    assert "締切を過ぎました" in js and "ほかの送り方でも見積を頼めます" in js   # 文言の直し 2026-11-07
     assert "運送会社が辞退しました" in js and "Work.openWork(1)" in js
 
 

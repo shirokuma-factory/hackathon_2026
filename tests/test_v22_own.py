@@ -87,7 +87,7 @@ def test_g66_wide_to_long_sample_matches_independent_reading():
     assert len({x["plate"] for x in r["rows"]}) == 8
     # 車番の書き方が 3 通り混ざっている
     raws = {x["plate_raw"] for x in r["rows"]}
-    assert "4t-1234" in raws and "9002" in raws and "神戸 100 か 9001" in raws
+    assert "4t-1234" in raws and "9002" in raws and "鹿児島 100 か 9001" in raws
 
 
 def test_g66_parse_cell():
@@ -397,7 +397,7 @@ def test_g70_rule6_boundaries():
 
 def test_g70_sample_fires_all_six_rules(sample):
     ins = sample["insights"]
-    assert sorted(i["rule"] for i in ins) == [1, 2, 3, 4, 5, 6]
+    assert sorted({i["rule"] for i in ins}) == [1, 2, 3, 4, 5, 6]  # 確認待ちの別名「辰巳」を当てないので、規則 3 は地点 07 と地点 08 の 2 件に分かれる
     by = {i["rule"]: i for i in ins}
     for i in ins:
         assert i["evidence"] and i["next"]["label"] and i["text"]
@@ -405,20 +405,21 @@ def test_g70_sample_fires_all_six_rules(sample):
     t = by[1]
     assert "木曜の夜" in t["text"] and "5 便の帰りがすべて空" in t["text"] and len(t["evidence"]) == 5
     assert t["next"]["action"] == "draft_backhaul" and t["next"]["payload"]["trips"] == 5 and t["next"]["payload"]["empty"] == 5
-    assert "11 回" in by[3]["text"] and "9.5 時間" in by[3]["text"]
+    r3 = [i["text"] for i in ins if i["rule"] == 3]  # 確認待ちの別名「辰巳」を当てないので、地点 07（江東区辰巳）と地点 08（辰巳）の 2 件に分かれる（合わせて 10 回・8.0 時間）
+    assert len(r3) == 2 and any("5 回" in t and "3.8 時間" in t for t in r3) and any("5 回" in t and "4.2 時間" in t for t in r3)
     assert "6 日" in by[4]["text"] and "週 3 回の週が 1 つ" in by[4]["text"] and "15 時間を超えた日はありません" in by[4]["text"]
     assert "4t の 2 台" in by[5]["text"]
-    assert by[6]["text"].startswith("区間の 17%")
+    assert by[6]["text"].startswith("区間の 16%")
 
 
 def test_g70_sample_spec_numbers_from_raw(sample):
-    """SPEC §22.1: 木曜発の帰りが 5 回とも空、30 分以上の停車 11 回 = 9.5 時間、確認待ち 7 件、読めない 3 行。"""
+    """SPEC §22.1: 木曜発の帰りが 5 回とも空、30 分以上の停車 10 回 = 8.0 時間、確認待ち 7 件、読めない 3 行。"""
     thu = [l for l in sample["legs"] if l["dir"] == "back" and l["cycle_wd"] == 3]
     assert len(thu) == 5 and all(l["kind"] == "empty" for l in thu)
     assert sorted(l["cycle_dep"][:10] for l in thu) == ["2026-10-01", "2026-10-08", "2026-10-15", "2026-10-22", "2026-10-29"]
     assert all(l["cycle_dep"][11:13] >= "18" for l in thu)  # 夜に出た
-    long = [s for s in sample["stops"] if s["place"] == "p07" and s["minutes"] >= 30]
-    assert len(long) == 11 and sum(s["minutes"] for s in long) == 570
+    long = [s for s in sample["stops"] if s["place"] in ("p07", bos.UNCONFIRMED_PID) and s["minutes"] >= 30]  # 「辰巳」は確定するまで別の地点（p08）
+    assert len(long) == 10 and sum(s["minutes"] for s in long) == 480
     assert {s["plate"] for s in long} == {"1234", "5678"}
     assert len(sample["confirm"]) == 7 and len(sample["unreadable"]) == 3
     assert {u["reason"] for u in sample["unreadable"]} == {"月が分かりません", "区間が読めません", "車番がありません"}  # SPEC §42: 時刻だけ読めないセルは区間を残すので、3 つ目は矢印の無いセル
@@ -439,7 +440,8 @@ def test_g70_sample_spec_numbers_from_raw(sample):
 
 def test_g70_sample_kpis(sample):
     k = sample["kpis"]
-    assert 0 < k["actual_rate"]["value"] < 1 and k["actual_rate"]["share"] == pytest.approx(1 - sample["counts"]["unknown_ratio"], abs=1e-3)
+    # 判定できた区間は、実車か空車かが分かり、距離もある区間（距離の無い区間は、不明でなくても入らない）
+    assert 0 < k["actual_rate"]["value"] < 1 and k["actual_rate"]["share"] <= 1 - sample["counts"]["unknown_ratio"] + 1e-3
     assert k["load_efficiency"]["value"] == pytest.approx(k["load_rate"]["value"] * k["large_actual_rate"]["value"])
     assert k["load_rate"]["legs"] < k["load_rate"]["of_large"]
     n = sample["national"]
@@ -503,10 +505,10 @@ def test_sample_files_use_lf_and_expected_columns():
 def test_sample_haisha_alias_and_digitaco_parse():
     rows = list(csv.DictReader(open(RAW / "digitaco_5678.csv", encoding="utf-8", newline="")))
     r = own.parse_digitaco(rows, lambda n: bos.resolve_place(n)[0], "5678")
-    assert len(r["runs"]) == 18 and len(r["stops"]) == 18 and r["errors"] == []
+    assert len(r["runs"]) == 28 and len(r["stops"]) == 14 and r["errors"] == []  # 1 運行 = 行きの走行 2 つ（途中で休息）+ 停車 + 帰りの走行 2 つ + 停車
     assert all(x["jk"] in (0, 1) for x in r["runs"])
-    assert {s["place"] for s in r["stops"]} == {"p01", "p07"}
-    assert bos.resolve_place("辰巳倉庫") == ("p07", "辰巳", True) and bos.resolve_place("江東区辰巳A棟")[2] is False
+    assert {s["place"] for s in r["stops"]} == {"p01", "p07", bos.UNCONFIRMED_PID}
+    assert bos.resolve_place("辰巳倉庫") == (bos.UNCONFIRMED_PID, "辰巳", True) and bos.resolve_place("江東区辰巳A棟")[2] is False
 
 
 # ---------------------------------------------------------------- 画面（HTML と JS の文言）
@@ -519,7 +521,8 @@ def test_ui_view_button_and_panels():
     assert html.index('<script src="own.js">') < html.index('<script src="app.js">')
     assert 'href="own.css"' in html
     # 常に出す文
-    for t in ("架空の会社のサンプルです", "自社の配車表・デジタコの CSV を落とすと、ブラウザの中だけで分析します（ファイルは外に送りません）", "列の対応づけの Claude の提案は、開発のときに作った記録です"):
+    for t in ("架空の会社のサンプルです", "配車表やデジタコの CSV をここに置くと、この画面の中だけで読みます。外には送りません。"   # 文言の直し 2026-11-07
+                   , "列の対応づけの Claude の提案は、開発のときに作った記録です"):
         assert t in html, t
     app = (WEB / "app.js").read_text(encoding="utf-8")
     assert "'own'" in app and "Own.enter" in app and "Own.layers" in app
@@ -527,10 +530,10 @@ def test_ui_view_button_and_panels():
 
 def test_ui_own_js_wording():
     js = (WEB / "own.js").read_text(encoding="utf-8")
-    assert "Claude の提案: 未作成" in js  # 提案が null のときの表示
+    assert "AI の案: まだありません" in js   # 文言の直し 2026-11-07  # 提案が null のときの表示
     assert "この版ではサンプルだけを扱います" not in js and "OwnCalc.analyze" in js  # ファイルを落とすと、JS で計算して表示する（SPEC §35）
     assert "11/13 の帰り便 T7 はこの下書きから登録した、という設定の架空の便です" in js
     assert "帰り便の下書きにする" in (WEB / "data" / "own_sample.json").read_text(encoding="utf-8")
     assert "Find.setRole('carrier')" in js and "App.setView('find')" in js
-    assert "PathLayer" in js and "市場の矢印を重ねる" in js and "Market.flowLayers" in (WEB / "app.js").read_text(encoding="utf-8")
+    assert "PathLayer" in js and "全国の荷の流れを地図に重ねる" in js and "Market.flowLayers" in (WEB / "app.js").read_text(encoding="utf-8")
     assert "紙の日報" in (WEB / "data" / "own_sample.json").read_text(encoding="utf-8")

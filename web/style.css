@@ -25,7 +25,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 body {
   font-family: "Noto Sans JP", system-ui, sans-serif;
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.7;
   font-feature-settings: "palt" 0;
   -webkit-font-smoothing: antialiased;
 }
@@ -94,7 +94,7 @@ select.ctl option { background: #101826; color: var(--text); }
 #layers {
   position: fixed; right: var(--gutter); top: 50%; transform: translateY(-50%); z-index: 15; padding: 6px; width: 92px;
   display: flex; flex-direction: column; gap: 4px;
-  transition: right .5s var(--ease);
+  transition: right .3s var(--ease);
 }
 body.has-detail #layers { right: calc(var(--gutter) + var(--detail-w) + 14px); }
 #layers .cap { font-size: 10.5px; color: var(--faint); padding: 4px 8px 2px; letter-spacing: .06em; }
@@ -108,10 +108,10 @@ body.has-detail #layers { right: calc(var(--gutter) + var(--detail-w) + 14px); }
   content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 3px; background: var(--accent);
 }
 #layers select.q-sel { text-align: left; padding: 0 22px 0 8px; font-size: 12px; background-position: right 6px center; }
-#home {
+#layers #home-jp {
   margin-top: 2px; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 10px; padding: 6px; font-size: 12px;
 }
-#home:hover { color: var(--text); background: rgba(255,255,255,.06); }
+#layers #home-jp:hover { color: var(--text); background: rgba(255,255,255,.06); }
 
 /* ---------- 凡例 ---------- */
 #legend { position: fixed; left: var(--gutter); bottom: 52px; z-index: 15; width: 344px; padding: 12px 14px 10px; transition: opacity .3s; }
@@ -119,7 +119,7 @@ body.has-detail #layers { right: calc(var(--gutter) + var(--detail-w) + 14px); }
 #legend .lg-title { font-weight: 700; font-size: 12.5px; }
 #legend .lg-unit { font-size: 11px; color: var(--muted); }
 #legend .lg-bar { display: flex; gap: 2px; height: 10px; }
-#legend .lg-bar i { flex: 1; border-radius: 3px; transition: background .5s; }
+#legend .lg-bar i { flex: 1; border-radius: 3px; transition: background .3s; }
 #legend .lg-ticks { display: flex; margin-top: 5px; font-size: 10.5px; color: var(--muted); }
 #legend .lg-ticks span { flex: 1; text-align: left; transform: translateX(-2px); white-space: nowrap; }
 #legend .lg-ticks.discrete span { text-align: center; transform: none; }
@@ -131,7 +131,7 @@ body.has-detail #layers { right: calc(var(--gutter) + var(--detail-w) + 14px); }
   position: fixed; right: 16px; top: 16px; bottom: 46px; width: var(--detail-w); z-index: 18;
   display: flex; flex-direction: column; overflow: hidden;
   transform: translateX(calc(100% + 40px)); opacity: 0; pointer-events: none;
-  transition: transform .55s var(--ease), opacity .35s;
+  transition: transform .3s var(--ease), opacity .3s;
 }
 body.has-detail #detail { transform: none; opacity: 1; pointer-events: auto; }
 #detail header { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); position: relative; }
@@ -161,7 +161,7 @@ body.has-detail #detail { transform: none; opacity: 1; pointer-events: auto; }
   border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px 9px; background: rgba(255, 255, 255, 0.035);
   opacity: 0; transform: translateY(10px); flex: none;
 }
-body.has-detail .card { animation: cardin .5s var(--ease) forwards; animation-delay: calc(var(--n) * 55ms + 220ms); }
+body.has-detail .card { animation: cardin .3s var(--ease) forwards; animation-delay: calc(var(--n) * 55ms + 220ms); }
 @keyframes cardin { to { opacity: 1; transform: none; } }
 .card.dim { background: transparent; }
 .card .top { display: flex; align-items: center; justify-content: space-between; }
@@ -182,7 +182,7 @@ body.has-detail .card { animation: cardin .5s var(--ease) forwards; animation-de
 .amt-none { order: 5; flex-basis: 100%; min-width: 0; font-size: 12.5px; color: var(--muted); white-space: normal; overflow-wrap: anywhere; } /* 全文を折り返して出す（レビュー F06） */
 .card.none { padding: 9px 14px 8px; }
 .bar { height: 5px; border-radius: 5px; background: rgba(255, 255, 255, 0.07); margin: 4px 0 6px; overflow: hidden; }
-.bar i { display: block; height: 100%; width: 0; border-radius: 5px; background: linear-gradient(90deg, #2d7fb0, var(--accent)); transition: width .9s var(--ease) .45s; }
+.bar i { display: block; height: 100%; width: 0; border-radius: 5px; background: linear-gradient(90deg, #2d7fb0, var(--accent)); transition: width .3s var(--ease) .1s; }
 .meta { display: flex; gap: 10px; font-size: 12px; margin-top: 4px; }
 .meta > span:first-child { color: var(--muted); flex: none; }
 .meta .v { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
@@ -208,7 +208,7 @@ body.has-detail .card { animation: cardin .5s var(--ease) forwards; animation-de
   position: fixed; left: 384px; right: var(--gutter); bottom: 52px; z-index: 16; height: 78px; padding: 10px 18px 8px 12px;
   display: flex; align-items: center; gap: 14px;
   transform: translateY(24px); opacity: 0; pointer-events: none;
-  transition: transform .55s var(--ease), opacity .35s, right .5s var(--ease);
+  transition: transform .3s var(--ease), opacity .3s, right .3s var(--ease);
 }
 body.has-detail #timebar { right: calc(var(--gutter) + var(--detail-w) + 14px); }
 body.has-route #timebar { transform: none; opacity: 1; pointer-events: auto; }
@@ -260,12 +260,12 @@ body.has-route #timebar { transform: none; opacity: 1; pointer-events: auto; }
 #toast {
   position: fixed; left: 50%; bottom: 150px; z-index: 40; transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
   padding: 11px 18px; border-radius: 12px; background: rgba(16, 24, 38, 0.95); border: 1px solid var(--line-strong); box-shadow: var(--shadow);
-  transition: opacity .3s, transform .4s var(--ease); font-size: 13px;
+  transition: opacity .3s, transform .3s var(--ease); font-size: 13px;
 }
 #toast.on { opacity: 1; transform: translate(-50%, 0); }
 #loading {
   position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--bg); color: var(--muted);
-  transition: opacity .6s; font-size: 13px;
+  transition: opacity .3s; font-size: 13px;
 }
 #loading.done { opacity: 0; pointer-events: none; }
 
@@ -274,7 +274,7 @@ body.has-route #timebar { transform: none; opacity: 1; pointer-events: auto; }
 .maplibregl-ctrl-attrib {
   background: transparent !important; color: var(--faint) !important; font-size: 10.5px !important; line-height: 1.5;
   max-width: min(640px, 56vw); text-align: right; padding: 0 10px 5px !important; margin: 0 !important;
-  transition: margin .5s var(--ease);
+  transition: margin .3s var(--ease);
 }
 body.has-detail .maplibregl-ctrl-attrib { margin-right: calc(var(--detail-w) + 16px) !important; }
 .maplibregl-ctrl-attrib a { color: var(--muted) !important; }
@@ -390,7 +390,7 @@ body.cargo-open #legend { opacity: 0; pointer-events: none; }
   position: fixed; right: 16px; top: 16px; bottom: 46px; width: var(--work-w); z-index: 22;
   display: flex; flex-direction: column; overflow: hidden; background: rgba(11, 17, 28, 0.88);
   transform: translateX(calc(100% + 40px)); opacity: 0; pointer-events: none;
-  transition: transform .55s var(--ease), opacity .35s;
+  transition: transform .3s var(--ease), opacity .3s;
 }
 body.has-work #work { transform: none; opacity: 1; pointer-events: auto; }
 body.has-work #detail { transform: translateX(calc(100% + 40px)); opacity: 0; pointer-events: none; }
@@ -492,7 +492,7 @@ body.has-work .maplibregl-ctrl-attrib { margin-right: calc(var(--work-w) + 16px)
 .cmp-top .tot b { font-size: 22px; color: var(--text); font-weight: 700; margin: 0 2px; }
 .cmp-top .tot small { margin-left: 6px; font-size: 11px; }
 .stack { display: flex; gap: 2px; height: 30px; border-radius: 7px; overflow: hidden; background: rgba(255,255,255,.04); }
-.stack i { display: flex; align-items: center; justify-content: center; font-style: normal; min-width: 3px; transform-origin: left center; animation: grow .8s var(--ease) both; }
+.stack i { display: flex; align-items: center; justify-content: center; font-style: normal; min-width: 3px; transform-origin: left center; animation: grow .3s var(--ease) both; }
 .stack .seg-b span { font-size: 11px; font-weight: 700; color: #07101a; white-space: nowrap; overflow: hidden; }
 .stack .seg-u { flex: 0 0 74px; border-radius: 4px; }
 .stack .seg-u span { font-size: 11px; color: var(--warn); }
@@ -628,7 +628,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 .m-rsub { font-size: 11.5px; color: var(--muted); }
 .m-public { margin: 4px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
 .m-rtot { font-size: 11.5px; color: var(--faint); margin-top: 3px; line-height: 1.5; }
-#m-pair { padding: 12px 18px 14px; border-bottom: 1px solid var(--line); overflow: auto; max-height: 68%; flex: none; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; animation: pairin .45s var(--ease); }
+#m-pair { padding: 12px 18px 14px; border-bottom: 1px solid var(--line); overflow: auto; max-height: 68%; flex: none; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; animation: pairin .3s var(--ease); }
 #m-pair[hidden] { display: none; }
 @keyframes pairin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .mp-top { display: flex; align-items: center; justify-content: space-between; }
@@ -792,8 +792,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 .f-when { font-size: 11.5px; color: var(--muted); }
 .f-bar { margin-top: 5px; }
 .f-track { position: relative; height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: visible; }
-.f-track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, #3189c0, #77c0ea); transition: width .5s var(--ease); }
-.f-track u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; border-radius: 1px; text-decoration: none; transition: left .4s var(--ease); }
+.f-track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, #3189c0, #77c0ea); transition: width .3s var(--ease); }
+.f-track u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; border-radius: 1px; text-decoration: none; transition: left .3s var(--ease); }
 .f-bar-txt { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
 .f-bar-txt b { color: var(--text); font-weight: 700; }
 .f-shelf { font-size: 11px; color: var(--faint); }
@@ -823,7 +823,9 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px 
 .btn-ghost.sm { height: 34px; padding: 0 16px; font-size: 13px; }
 .f-hhist { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 .f-hpast { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
-.f-detail { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); display: grid; gap: 3px; }
+.f-detail-d { margin-top: 8px; border-top: 1px dashed var(--line); }
+.f-detail-d > summary { cursor: pointer; padding: 6px 0; font-size: 12px; color: var(--muted); }
+.f-detail { margin-top: 2px; padding-top: 4px; display: grid; gap: 3px; }
 .f-detail > div { display: grid; grid-template-columns: 9.5em 1fr; gap: 8px; font-size: 12px; }
 .f-detail span { color: var(--muted); }
 .f-detail b { font-weight: 500; }
@@ -849,6 +851,9 @@ body:not(.view-find) .f-tag { display: none !important; }
   background: rgba(8, 13, 22, 0.9); border: 1px solid var(--line-strong); color: #fff;
 }
 .m-end.to { border-color: rgba(48, 214, 192, .6); }
+/* 案内の全国の物流傾向: 上位 5 区間の番号（左の表の番号と同じ）。選んだ区間は白地 */
+.m-num { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; line-height: 1; pointer-events: none; background: rgba(8, 13, 22, 0.92); border: 2px solid #5cc8ff; color: #fff; }
+.m-num.on { background: #fff; color: #08111c; border-color: #fff; }
 
 /* 鉄道・フェリーのカードの最寄りの拠点（SPEC §15.5） */
 .hubinfo { margin-top: 6px; padding-top: 7px; border-top: 1px dashed var(--line); }
@@ -905,9 +910,9 @@ button.rt-card:hover { background: rgba(255, 255, 255, 0.075); }
 .rt-legs .lg { display: inline-block; padding: 0 6px; border-radius: 6px; font-size: 10.5px; line-height: 1.6; border: 1px solid currentColor; white-space: nowrap; }
 .lg-truck { color: rgb(255, 152, 38); } .lg-rail { color: rgb(72, 214, 112); } .lg-ferry { color: rgb(58, 196, 255); } .lg-air { color: rgb(210, 192, 255); }
 .rt-note { margin: 8px 2px 0; font-size: 11px; color: var(--muted); }
-.rt-note.busy::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--accent); animation: rtpulse 1s ease-in-out infinite; }
+.rt-note.busy::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--accent); animation: rtpulse 2s ease-in-out infinite; }
 .rt-note.err { color: var(--warn); }
-@keyframes rtpulse { 50% { opacity: .25; } }
+@keyframes rtpulse { 50% { opacity: .5; } }
 .rt-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 0; padding: 4px 0 2px; margin-top: 4px; border-top: 1px solid var(--line); }
 .rt-legend .rt-lg-cap { grid-column: 1 / -1; }
 .rt-lg-cap { font-size: 10.5px; color: var(--faint); letter-spacing: .06em; padding: 2px 4px 0; }
@@ -968,7 +973,7 @@ body.cr-open { --cr-h: 112px; }
 .fac-msg { margin: 8px 2px 0; font-size: 12px; font-weight: 700; color: var(--warn); }
 
 /* 右の列: 市区町村の詳細 */
-#m-muni { padding: 12px 18px 14px; border-bottom: 1px solid var(--line); overflow: auto; max-height: 56%; flex: none; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; animation: pairin .45s var(--ease); }
+#m-muni { padding: 12px 18px 14px; border-bottom: 1px solid var(--line); overflow: auto; max-height: 56%; flex: none; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; animation: pairin .3s var(--ease); }
 #m-muni[hidden] { display: none; }
 .mu-pref { font-size: 12px; font-weight: 400; color: var(--muted); }
 .mu-est { margin: 4px 0 6px; font-size: 11.5px; color: var(--warn); }
@@ -1132,7 +1137,7 @@ body.m-right-collapsed .m-rsub { display: none; }
   html body.sheet-mode #layers .cap { flex: 0 0 100%; padding: 4px 6px 0; }
   html body.sheet-mode #layers .lyr { flex: 1 1 28%; padding: 7px 8px 7px 11px; font-size: 12px; }
   html body.sheet-mode #layers select.q-sel { flex: 1 1 40%; }
-  html body.sheet-mode #layers #home { flex: 1 1 40%; margin-top: 0; }
+  html body.sheet-mode #layers #home-jp { flex: 1 1 40%; margin-top: 0; }
   html body.sheet-mode #layers .rt-legend { flex: 0 0 100%; display: flex; flex-wrap: wrap; gap: 6px 12px; }
   html body.sheet-mode #timebar.sh-on { min-height: 78px; }
   html body.sheet-mode #m-left.sh-on { gap: 8px; }
@@ -1196,3 +1201,468 @@ summary { padding-block: 3px; }
 .maplibregl-ctrl-attrib a { display: inline-block; min-height: 24px; line-height: 24px; }
 /* 部品が読み込めなかった見方に出す理由（app.js の showViewMissing。SPEC §42） */
 .view-missing { margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--bad, #ff8a80); border-left-width: 4px; border-radius: 8px; font-size: 12.5px; line-height: 1.6; background: rgba(255, 138, 128, 0.12); }
+
+/* ---------- 最初の画面（SPEC §44）: 役割を2つ並べて選ぶ。地図と統計は選ばれるまで読み込まない ---------- */
+#home { display: none; }
+body.view-home { overflow: auto; }
+body.view-home #home { display: flex; position: fixed; inset: 0; z-index: 100; align-items: center; justify-content: center; padding: 24px 16px; background: var(--bg); overflow: auto; }
+body.view-home > *:not(#home):not(#toast):not(#load-notice):not(script) { display: none !important; }
+.home-wrap { width: min(760px, 100%); margin: auto; }
+.home-wrap h1 { margin: 0 0 20px; font-size: 22px; font-weight: 700; line-height: 1.4; outline: none; }
+.home-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
+.home-card { display: flex; flex-direction: column; gap: 10px; padding: 20px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--glass-solid); }
+.home-card h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.home-card p { margin: 0; font-size: 14px; line-height: 1.65; color: var(--text); flex: 1; }
+.home-card .btn-primary { height: 48px; font-size: 15px; }
+.home-national { padding: 10px 12px; font-size: 14px; }
+@media (max-width: 600px) {
+  body.view-home #home { align-items: flex-start; padding: 16px 12px; }
+  .home-wrap h1 { font-size: 18px; margin-bottom: 12px; }
+  .home-roles { grid-template-columns: 1fr; gap: 10px; }
+  .home-card { padding: 12px 14px; gap: 6px; }
+  .home-card h2 { font-size: 16px; }
+  .home-card p { font-size: 13px; line-height: 1.5; }
+  .home-card .btn-primary { height: 44px; font-size: 14px; }
+  .home-national { margin-top: 8px; padding: 8px 12px; }
+}
+
+/* 見出し・入力のヒント・最初の画面に戻る */
+.p-title { margin: 0 0 6px; font-size: 18px; font-weight: 700; line-height: 1.4; outline: none; }
+.p-title .m-tag { margin-left: 10px; font-size: 11.5px; }
+.home-back { display: block; margin: 0 0 6px; padding: 2px 0; font-size: 12.5px; color: var(--muted); }
+.field > .lbl .hint { display: block; margin: 1px 0 0; font-size: 11px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.p-next { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+body.has-detail .p-next { display: none; }
+#views button .demo-tag { display: block; font-size: 9.5px; font-weight: 400; color: var(--warn); line-height: 1.1; }
+#views button[data-view="find"] { line-height: 1.2; }
+
+/* 全国の物流傾向: いまの条件と選んだ区間（地図のそば）。全国の指標と区間の順位は選んだときだけ開く */
+#m-now { padding: 12px 16px 10px; }
+.m-now-cond, .m-now-sel { margin: 2px 0; font-size: 12.5px; line-height: 1.5; }
+.m-now-sel { font-weight: 700; }
+.m-opens { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.m-opens .btn-ghost.sm { flex: 1 1 auto; height: 34px; padding: 0 10px; font-size: 12.5px; }
+#m-now .m-public { margin-top: 8px; }
+body:not(.sheet-mode):not(.m-sum-open) #m-summary { display: none; }
+.home-wrap h1, .home-card h2, .p-title { color: var(--text); }
+.home-card p { font-weight: 400; }
+body.view-market.m-right-collapsed:not(.sheet-mode) #layers { top: 124px; transform: none; max-height: calc(100vh - 136px); overflow-y: auto; scrollbar-width: thin; }
+body.view-market:not(.sheet-mode) #m-left { overflow-y: auto; scrollbar-width: thin; }
+body.view-market:not(.sheet-mode) #m-left > #m-legend { flex: none; overflow: visible; }
+
+/* ---------- 案内の表示（SPEC §44 追記）: 目的から入ったとき、その目的に答えるものだけを出す。「全部を見る」で今までの画面 ---------- */
+#guide-bar, #m-guide { display: none; }
+body.guided #guide-bar { display: flex; position: fixed; left: 16px; top: 12px; z-index: 45; gap: 4px; padding: 2px 10px; }
+#guide-bar .btn-link { font-size: 12.5px; min-height: 28px; }
+body.guided :is(#views, #layers, #legend, #timebar, #sheet-tabs, .home-back, #truck-tag, #m-summary, #m-right, #hover-tag) { display: none !important; }
+body.guided #panel, body.guided #m-left, body.guided #find-view { top: 52px; }
+body.guided.view-market #m-guide { display: block; padding: 14px 16px 14px; }
+body.guided.view-market #m-left > :not(#m-guide) { display: none !important; }
+body.guided.view-market .maplibregl-ctrl-attrib { display: block; }
+.mg-sub { margin: 0 0 6px; font-size: 13px; }
+.mg-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 4px; }
+.mg-table th { text-align: left; font-weight: 400; font-size: 11px; color: var(--muted); padding: 2px 0; }
+.mg-table th:last-child, .mg-table td:last-child { text-align: right; }
+.mg-table td { padding: 4px 0; border-top: 1px solid var(--line); }
+.mg-src { margin: 4px 0 10px; font-size: 11px; line-height: 1.5; color: var(--muted); }
+#mg-next { height: auto; min-height: 44px; padding: 8px 12px; line-height: 1.4; }
+/* 荷主: 条件の入力 → 結果は上位 3 つの送り方と、選んだあとの 1 つのボタンだけ */
+body.guided.view-compare.has-detail #panel { display: none; }
+body.guided.view-compare :is(#detail .stats, #detail .route-note, #rt-details, .cc-long, .cc-ratio, .cc-only, .cc-why, .cards-note, .charter-only, .cc-head) { display: none !important; }
+.cc-unit { display: none; }
+body.guided .cc-unit { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--muted); }
+body.guided.view-compare .cc-rows .cc-row:nth-child(n+4) { display: none; }
+body.guided.view-compare #detail header { padding-bottom: 6px; }
+body.guided.view-compare .cc-row { grid-template-columns: 6.4em 5em minmax(0, 1fr) 7em; }
+@media (max-width: 600px) {
+  body.guided #guide-bar { left: 8px; top: 8px; }
+  body.guided #panel, body.guided #m-left, body.guided #find-view { top: auto; }
+}
+
+/* 最初の画面の 2 段目（目的の選択）と足もと */
+.home-purposes { display: flex; flex-direction: column; gap: 10px; }
+.purpose { display: block; width: 100%; padding: 16px 18px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--glass-solid); color: var(--text); font-size: 16px; font-weight: 500; line-height: 1.5; text-align: left; text-decoration: none; }
+.purpose:hover { border-color: var(--accent); background: var(--accent-soft); text-decoration: none; }
+.purpose:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#home-reselect { margin-top: 12px; }
+.home-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 24px; margin-top: 16px; }
+.home-foot .home-national { margin: 0; }
+.home-all { color: var(--muted); font-size: 12.5px; }
+.fg-sub { display: none; }
+body.guided.view-find .fg-sub { display: block; margin: 0 0 8px; font-size: 13px; }
+body.guided.view-find :is(#f-role, #find-view .f-grid, #find-view .f-checks, #find-view .f-hint, #f-bh, #own-draft, #find-view .f-foot, #find-notes, #f-pairbar, #f-rsub, #find-view .f-row .btn-link, #f-list > :not(.f-card):not(.f-zero), #f-list .f-card:not(.ok):not(.hold-mine), #f-list .f-card:is(.ok, .hold-mine) ~ .f-card:not(.hold-mine), #f-list:has(.f-card.hold-mine) .f-card:not(.hold-mine), #f-list .f-card .f-sub, #f-list .f-card .f-route, #f-list .f-card .f-bar, #f-list .f-card .f-arc) { display: none !important; }
+body.m-right-collapsed #m-right .m-public { display: none; }
+
+/* ---------- 地図を入口にする（最初の画面の行と、案内の全国の物流傾向）---------- */
+.home-map { display: flex; align-items: center; gap: 24px; width: 100%; max-width: 520px; margin: 0 auto; padding: 16px 24px; border: 0; border-radius: var(--radius); background: var(--glass-solid); color: var(--text); text-align: left; }
+.home-map:hover { background: rgba(255, 255, 255, 0.07); }
+.home-map:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.home-map img { flex: none; width: 104px; height: 94px; border-radius: 10px; object-fit: cover; background: #0b1119; }
+.home-map b { display: block; font-size: 16px; font-weight: 700; }
+.home-map small { display: block; margin-top: 4px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+.home-foot { flex-direction: column; align-items: center; gap: 16px; margin-top: 24px; }
+.mg-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.mg-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; width: 100%; padding: 8px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font-size: 14px; text-align: left; transition: background 0.25s ease-out; }
+.mg-no { flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; align-self: center; font-size: 12px; font-weight: 700; border: 2px solid #5cc8ff; line-height: 1; }
+.mg-pair { flex: 1 1 auto; }
+.mg-short { flex: 0 0 auto; font-size: 13px; }
+.mg-row:hover { background: rgba(255, 255, 255, 0.06); }
+.mg-row[aria-pressed="true"] { background: var(--accent-soft); font-weight: 700; }
+.mg-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.mg-sel { margin: 16px 0 0; min-height: 3.4em; font-size: 13px; line-height: 1.7; }
+body.guided #m-credits, body.guided #m-credits-d { display: none !important; }
+/* 落ち着いた間隔と動き（8px を基準。案内の画面と最初の画面）*/
+@keyframes calm-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+body.view-home #home .home-wrap > * { animation: calm-in 0.3s ease-out both; }
+body.view-home #home .home-wrap > :nth-child(2) { animation-delay: 0.06s; }
+body.view-home #home .home-wrap > :nth-child(3) { animation-delay: 0.12s; }
+body.guided.view-market #m-guide, body.guided.view-compare #panel, body.guided.view-find #find-view { animation: calm-in 0.3s ease-out both; }
+.home-wrap h1 { margin-bottom: 40px; }
+.home-roles { gap: 24px; }
+.home-card { padding: 32px; gap: 16px; border: 0; background: rgba(255, 255, 255, 0.04); }
+.home-card p, .purpose, .mg-sub, .mg-src, .mg-sel, .fg-sub { line-height: 1.75; }
+.home-card p { max-width: 20em; }
+.home-purposes { gap: 16px; }
+.purpose { padding: 24px; border: 0; background: rgba(255, 255, 255, 0.04); transition: background 0.25s ease-out; }
+body.guided.view-market #m-guide, body.guided.view-find #find-view { padding: 24px; }
+body.guided.view-compare #panel { padding: 24px; }
+body.guided #m-guide .p-title, body.guided #find-view .p-title, body.guided #panel .p-title { margin-bottom: 8px; }
+body.guided .mg-src { margin: 16px 0 24px; }
+@media (max-width: 600px) {
+  .home-card { padding: 16px; gap: 8px; }
+  .home-wrap h1 { margin-bottom: 16px; }
+  .home-map { padding: 8px 16px; gap: 16px; }
+  .home-map img { width: 64px; height: 58px; }
+  body.guided.view-market #m-guide, body.guided.view-find #find-view, body.guided.view-compare #panel { padding: 16px; }
+  .purpose { padding: 16px; }
+}
+/* ---------- 第 8 部 r1 の修正（2026-11-07）---------- */
+/* hidden が display の指定に負けないようにする（役割を選んだあとに 1 段目と別の役割の選択肢が残っていた） */
+#home [hidden] { display: none !important; }
+:is(.btn-primary, .btn-sm, .btn-ghost, .btn-link, .purpose, .home-map):focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(92, 200, 255, 0.55); }
+
+/* 最初の画面: 日本地図の絵を大きな背景にし、その上に役割の 2 枚を置く。絵は飾りで、押せる所と文字を増やさない */
+.home-hero { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: #1f2a44; pointer-events: none; }
+.home-hero img, .home-hero video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: var(--hero-pos-x, 50%) var(--hero-pos-y, 50%); }
+.home-hero video { opacity: 0; transition: opacity 0.3s ease-out; }
+.home-hero video.on { opacity: 1; }
+.home-hero canvas.hero3d { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.3s ease-out; display: block; }
+.home-hero canvas.hero3d.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .home-hero canvas.hero3d { display: none; } }
+.home-hero.no-img { background: radial-gradient(120% 90% at 30% 40%, #22304f 0%, var(--bg) 70%); }
+
+/* 案内の表示の上の帯: 最初の画面に戻る・全部を見る（自社の運行の案内でも同じ。上の切り替えは隠す） */
+body.own-guided #views { display: none !important; }
+body.own-guided #guide-bar { display: flex; position: fixed; left: 16px; top: 12px; z-index: 45; gap: 4px; padding: 2px 10px; }
+body.own-guided #own-view .home-back { display: none; }
+#g-steps { display: flex; gap: 16px; margin: 0 0 0 8px; padding: 0 0 0 16px; list-style: none; border-left: 1px solid var(--line-strong); font-size: 12.5px; color: var(--muted); align-items: center; white-space: nowrap; }
+#g-steps[hidden] { display: none; }
+#g-steps li[aria-current="step"] { color: var(--text); font-weight: 700; }
+#g-steps b { display: inline-block; min-width: 1.4em; text-align: center; font-weight: 700; }
+#guide-bar { align-items: center; flex-wrap: wrap; max-width: calc(100vw - 16px); }
+@media (max-width: 600px) {
+  body.own-guided #guide-bar { left: 8px; top: 8px; }
+  #g-steps { gap: 10px; padding-left: 10px; margin-left: 4px; font-size: 12px; }
+}
+
+/* 案内の地図の 1 行の凡例 */
+#g-legend { display: none; }
+body.guided #g-legend:not([hidden]) { display: flex; flex-wrap: wrap; gap: 4px 16px; position: fixed; z-index: 24; left: 440px; right: 24px; bottom: 52px; margin: 0; padding: 8px 16px; font-size: 12px; line-height: 1.6; color: var(--text); border-radius: 12px; }
+body.guided.has-detail #g-legend { right: calc(var(--detail-w) + 40px); }
+body.guided.has-work #g-legend { right: calc(var(--work-w) + 40px); }
+#g-legend .g-k { display: inline-flex; align-items: center; }
+#g-legend .sw { margin-right: 6px; }
+.sw-dash { display: inline-block; width: 18px; height: 0; margin-right: 6px; border-top: 3px dotted #f49646; }
+.sw-line { display: inline-block; width: 18px; height: 0; margin-right: 6px; border-top: 3px solid #5cc8ff; }
+@media (max-width: 600px) {
+  body.guided #g-legend:not([hidden]) { left: 8px; right: 8px; top: 44px; bottom: auto; padding: 6px 10px; font-size: 11px; line-height: 1.5; gap: 2px 10px; }
+  body.guided.has-detail #g-legend, body.guided.has-work #g-legend { right: 8px; }
+  /* 全国の物流傾向（案内）: 凡例は出典と同じ「凡例・出典」の開閉に入れる（押せる所を増やさない） */
+  body.guided.view-market #g-legend:not([hidden]) { display: none; }
+  body.guided.view-market.attr-open #g-legend:not([hidden]) { display: flex; }
+  body.guided.view-market .mg-src { display: none; }   /* 出典は「凡例・出典」の中に出す。地図を上の約 45% に取るため、欄を低くする */
+}
+/* 凡例の続き（白い縁・高さ・実際の便ではない注記・出典）は、「凡例・出典」を開いたときだけ出す（広い画面でも） */
+#g-legend :is(.g-more, .g-src) { display: none; }
+body.attr-open #g-legend :is(.g-more, .g-src) { display: inline-flex; }
+#g-legend .g-sw2 { margin-left: 14px; }
+.fg-repick { display: none; }
+body.guided.view-find .fg-repick { display: block; margin: 0 0 8px; padding: 4px 2px; font-size: 13px; }
+@media (min-width: 601px) {
+  body.guided:is(.view-market, .view-compare) #attr-toggle { display: block; position: fixed; left: 440px; bottom: 14px; z-index: 25; min-height: 28px; padding: 2px 12px; font: inherit; font-size: 13px; color: var(--text); background: var(--glass); border: 1px solid var(--line-strong); border-radius: 14px; cursor: pointer; }
+}
+
+/* 狭い画面: 出典は「出典」ボタンに畳み、日本地図の上に出さない（案内の全国の物流傾向でも） */
+body.guided.view-market .maplibregl-ctrl-attrib { display: none; }
+@media (min-width: 601px) { body.guided.view-market .maplibregl-ctrl-attrib { display: block; } }
+@media (max-width: 600px) {
+  body.guided.view-market #attr-toggle { display: block; }
+  body.guided.view-market.attr-open .maplibregl-ctrl-attrib { display: block; }
+}
+
+/* 地図やデータが読めなかったとき: 何が読めなかったかと、地図なしで答えに届く道 */
+.load-fail .load-fail-market { flex: 1 1 100%; margin-top: 12px; }
+.load-fail-market img { display: block; width: min(100%, 360px); height: auto; border-radius: 10px; margin-bottom: 10px; }
+.load-fail-market ol { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.load-fail-market li { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.lfm-h { margin: 0; font-weight: 700; font-size: 14px; }
+.lfm-s { margin: 6px 0 0; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.load-fail .load-fail-nav { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin-top: 4px; }
+.load-fail .fail-lite { font-size: 13px; color: var(--accent); }
+
+/* 見積の作業（案内）: 依頼文と「依頼文をコピー」だけを前に出し、ほかは「詳しく」に入れる */
+body.guided #work.w-s1 :is(#w-steps, footer) { display: none; }
+.w-primary { margin: 8px 0 16px; }
+.w-primary .btn-primary { width: 100%; height: 48px; font-size: 15px; }
+.w-more { margin-top: 8px; }
+.w-more > summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 8px 0; }
+.w-more[open] > summary { color: var(--text); }
+.w-more .w-steps-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+body.guided #work .req-text { max-height: 40vh; }
+@media (max-width: 600px) {
+  .steps { overflow-x: auto; scrollbar-width: none; }
+  .steps button { flex: none; white-space: nowrap; padding: 10px 12px 11px; }
+  .w-title { flex-wrap: wrap; gap: 2px 10px; }
+  .w-title b { white-space: nowrap; }
+  #work header { padding: 12px 14px 0; }
+  #w-body { padding: 12px 14px 16px; }
+}
+
+body.view-home #home .home-card p { max-width: none; }
+@media (max-width: 600px) {
+  .mg-row { padding: 5px 12px; }
+  body.guided .mg-src { margin: 8px 0 12px; }
+  .mg-sel { margin-top: 8px; min-height: 0; }
+  body.guided #m-guide .p-title { margin-bottom: 4px; }
+}
+@media (max-width: 600px) { .mg-sub-x { display: none; } }
+@media (max-height: 800px) and (min-width: 601px) {
+  body.view-home .home-wrap h1 { margin-bottom: 20px; }
+  body.view-home .home-card { padding: 20px 28px; gap: 10px; }
+  body.view-home .home-foot { margin-top: 12px; gap: 8px; }
+  body.view-home .home-map { padding: 10px 20px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------- 第 8 部 r2 の修正（2026-11-07）---------- */
+/* 地図は DOM の最後に置いた（Tab で案内の欄より後にするため）。重なりは z-index で決め、地図は 0（そのほかの欄は 14 以上） */
+#map { z-index: 0; }
+
+/* 最初の画面: 1 行の目的。360 では日本地図の絵を上に見せ、文字はその下の暗い部分に重ねる。ボタンの右の明るい帯は、すりガラスの端の描画だったので外して不透明度で見せる */
+.home-purpose { margin: -28px 0 28px; font-size: 15px; line-height: 1.7; color: var(--text); }
+@media (max-width: 600px) {
+  .home-purpose { margin: -4px 0 12px; font-size: 13px; line-height: 1.6; text-shadow: 0 1px 6px #070b12; }
+}
+
+/* 全国の物流傾向（案内）の主ボタン: 短い文言 + 「架空のデモ」の札（360 でも折れない） */
+#mg-next { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+#mg-next[hidden] { display: none; }   /* 区間を選ぶまでは押せない主ボタンを出さない（display が hidden に勝たないように） */
+#mg-next .mg-badge { display: block; font-size: 11px; font-weight: 700; color: rgba(5, 20, 40, 0.78); line-height: 1.2; letter-spacing: 0.02em; }
+
+/* 案内の地図: 傾けた 3D の地図の上の 1 行の凡例は、出典（右下）を隠さないよう、出典の分だけ上にする。右の欄の下にも入り込まない */
+@media (min-width: 601px) {
+  body.guided #g-legend:not([hidden]) { bottom: 84px; }
+  body.guided.view-find #g-legend { right: calc(var(--m-w) + 40px); }
+}
+@media (max-width: 600px) {
+  body.guided.view-find #g-legend { right: 8px; }
+}
+
+/* 送り方を比べる（案内）: 出発地の制限、結果と見積の欄は内容の高さに合わせる */
+.p-origin { margin: 6px 0 0; font-size: 12px; line-height: 1.7; color: var(--muted); }
+.p-origin a { color: var(--accent); }
+body.guided.view-compare:not(.has-detail) .p-origin { display: block; }
+body.guided.view-compare #detail, body.guided.view-compare #work { bottom: auto; max-height: calc(100vh - 80px); }
+body.guided.view-compare #detail #d-scroll { flex: 0 1 auto; min-height: 0; }
+body.guided.view-compare #detail footer { margin-top: 0; }
+@media (max-width: 600px) {
+  body.guided.view-compare #detail, body.guided.view-compare #work { bottom: 0; max-height: none; }
+}
+.w-need { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 8px 0 12px; padding: 12px; border-radius: 10px; background: rgba(255, 214, 150, 0.08); border: 1px solid rgba(255, 214, 150, 0.35); }
+.w-need > b { grid-column: 1 / -1; font-size: 13px; }
+.w-need .btn-sm { grid-column: 1 / -1; justify-self: start; }
+.req-text.w-peek { max-height: 9.5em; overflow: hidden; position: relative; -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent); mask-image: linear-gradient(180deg, #000 70%, transparent); transition: max-height 0.3s ease-out; }
+.req-text.w-peek.open { max-height: 40vh; overflow: auto; -webkit-mask-image: none; mask-image: none; }
+.w-peek-btn { margin: 4px 0 0; font-size: 12.5px; }
+
+/* 空きを探す: 選んだ区間に合う架空の便が無いとき（行き止まりにしない） */
+.f-nopair { margin: 8px 0; }
+.f-pairline { margin: 0 0 8px; font-size: 13px; font-weight: 700; line-height: 1.6; color: var(--text); }
+body.guided.view-find #find-right { bottom: auto; max-height: calc(100vh - 100px); }
+@media (max-width: 600px) { body.guided.view-find #find-right { max-height: none; } }
+.w-need .hint { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+body.guided.view-find .f-zero-why { display: none; }
+body.guided.view-find .f-zero-btns small { display: none; }
+.f-zero-h:has(+ .f-zero-why) { display: none; }
+
+/* 最初の画面から地図の画面へ移るときの 300ms の切り替え。動きを減らす設定では付けない */
+@keyframes view-fade { from { opacity: 0; } to { opacity: 1; } }
+body.view-fade { animation: view-fade 0.3s ease-out both; }
+@media (prefers-reduced-motion: reduce) { body.view-fade { animation: none; } }
+/* 役割を選んだあとの用途の画面では、最初の画面の目的の 1 行を繰り返さない */
+#home.home-step-2 .home-purpose { display: none; }
+/* 狭い画面の空きを探す（案内）: 説明の 1 文を外して、最初の画面の文字数を 300 字以内にする（タイトルの「架空のデモ」と選んだ区間の行で分かる） */
+@media (max-width: 600px) { body.guided.view-find .fg-sub { display: none; } }
+
+/* 案内の表示の本文・注記は 13px 以上（第 8 部 r4）。地図の札・番号は対象外 */
+body.guided :is(.btn-link, .g-k, .mg-src, .mg-sub, .mg-no, .m-tag, .cg-name, #f-cargo > *, .f-zero-h, .brand-sub, .hint, .cargo-btn .ver, #cargo-ver, .cc-unit, .f-hold-msg, .f-pairline, .f-detail span, #find-view .lbl, #panel .lbl, #p-origin, #p-next) { font-size: 13px; }
+body.guided #g-legend:not([hidden]), body.guided #g-steps, body.guided #mg-next .mg-badge { font-size: 13px; }
+@media (max-width: 600px) {
+  body.guided #g-legend:not([hidden]), body.guided #g-steps { font-size: 13px; }
+}
+
+/* ---------- 最初の画面を画面の中央に置く（第 9 部 r1, 2026-11-07）----------
+   背景は画面いっぱいのジオラマ。選択のパネルは 1 枚のすりガラスで、横は中央、上の端は画面の高さの 34%（900px 以上の高さでは 40%）。
+   背景の絵の位置は --hero-pos-x / --hero-pos-y で調整する（経路が上 12〜38% に来る絵に差し替えるとき用）。 */
+body.view-home #home { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; align-items: start; padding: 34vh 24px 24px; padding-top: 34svh; overflow: hidden; }
+@media (min-height: 900px) { body.view-home #home { padding-top: 40vh; padding-top: 40svh; } }
+.home-hero::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 70% 60% at 50% 62%, rgba(7, 11, 18, 0.55) 0%, rgba(7, 11, 18, 0.3) 55%, rgba(7, 11, 18, 0) 100%),
+              linear-gradient(180deg, rgba(7, 11, 18, 0.18) 0%, rgba(7, 11, 18, 0) 30%, rgba(7, 11, 18, 0.12) 100%); }
+body.view-home #home .home-wrap { position: relative; z-index: 1; box-sizing: border-box; width: min(720px, calc(100% - 48px)); margin: 0; padding: 36px 40px;
+  max-height: calc(100vh - 34vh - 24px); max-height: calc(100svh - 34svh - 24px); overflow-y: auto; overscroll-behavior: contain;
+  background: rgba(10, 16, 28, 0.9); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  word-break: keep-all; word-break: auto-phrase; line-break: strict; overflow-wrap: anywhere; text-align: center; color: var(--text); }
+@media (min-height: 900px) { body.view-home #home .home-wrap { max-height: calc(100vh - 40vh - 24px); max-height: calc(100svh - 40svh - 24px); } }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.view-home #home .home-wrap { background: rgba(10, 16, 28, 0.58); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); }
+}
+/* 入場: パネルが 400ms で 12px 浮き上がり、中身は 60ms ずつ遅れて続く。動きを減らす設定では付けない */
+@keyframes home-panel-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes home-step-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+body.view-home #home .home-wrap { animation: home-panel-in 0.4s ease-out both; }
+body.view-home #home .home-wrap > * { animation: home-step-in 0.4s ease-out both; }
+body.view-home #home .home-wrap > :nth-child(1) { animation-delay: 0.06s; }
+body.view-home #home .home-wrap > :nth-child(2) { animation-delay: 0.12s; }
+body.view-home #home .home-wrap > :nth-child(3) { animation-delay: 0.18s; }
+body.view-home #home .home-wrap > :nth-child(4) { animation-delay: 0.24s; }
+body.view-home #home .home-wrap > :nth-child(5) { animation-delay: 0.3s; }
+body.view-home #home #home-step1:not([hidden]), body.view-home #home #home-step2:not([hidden]) { animation: home-step-in 0.25s ease-out both; }
+body.view-home #home .home-wrap > #home-step1, body.view-home #home .home-wrap > #home-step2 { animation-delay: 0s; }
+@media (prefers-reduced-motion: reduce) { body.view-home #home .home-wrap, body.view-home #home .home-wrap > *, body.view-home #home .home-wrap > * > * { animation: none !important; } }
+
+body.view-home #home .home-wrap h1 { margin: 0 0 8px; font-size: 26px; font-weight: 700; line-height: 1.4; }
+body.view-home #home .home-purpose { margin: 0 0 24px; font-size: 14px; line-height: 1.7; color: #b9c4d6; text-shadow: none; }
+body.view-home #home .home-roles { grid-template-columns: 1fr 1fr; gap: 20px; }
+body.view-home #home .home-card { align-items: stretch; gap: 8px; padding: 24px; text-align: left; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05); -webkit-backdrop-filter: none; backdrop-filter: none; }
+body.view-home #home .home-card h2 { font-size: 18px; line-height: 1.4; }
+body.view-home #home .home-card p { max-width: none; margin: 0 0 8px; font-size: 14px; line-height: 1.7; color: #d3dbe8; }
+body.view-home #home #home-carrier-extra { display: none; }
+body.view-home #home .home-card .btn-primary { width: 100%; height: 48px; font-size: 15px; }
+/* 全国の物流傾向と「全部を見る」は、役割のボタンより静かに */
+body.view-home #home .home-foot { margin-top: 24px; padding-top: 16px; gap: 4px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+body.view-home #home .home-map { gap: 16px; max-width: none; width: auto; margin: 0 auto; padding: 8px 16px; border-radius: 12px; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+body.view-home #home .home-map:hover { background: rgba(255, 255, 255, 0.07); }
+body.view-home #home .home-map img { width: 56px; height: 50px; border-radius: 8px; }
+body.view-home #home .home-map b { font-size: 14px; font-weight: 500; }
+body.view-home #home .home-map small { margin-top: 0; font-size: 13px; color: #b9c4d6; line-height: 1.5; }
+body.view-home #home .home-all { color: #b9c4d6; font-size: 13px; }
+/* 2 段目: 同じパネルの中で入れ替わる。目的は幅いっぱいの静かなボタンの縦並び */
+body.view-home #home.home-step-2 .home-foot { display: none; }
+body.view-home #home.home-step-2 .home-wrap h1 { margin-bottom: 24px; }
+body.view-home #home .home-purposes { gap: 8px; }
+body.view-home #home .purpose { padding: 16px 20px; font-size: 15px; font-weight: 500; line-height: 1.5; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06); -webkit-backdrop-filter: none; backdrop-filter: none; }
+body.view-home #home .purpose:hover { background: var(--accent-soft); border-color: rgba(92, 200, 255, 0.5); }
+body.view-home #home #home-reselect { margin-top: 16px; color: #b9c4d6; font-size: 13px; }
+body.view-home #home #home-step2 { text-align: left; }
+body.view-home #home #home-step2 #home-reselect { display: block; margin-left: auto; margin-right: auto; }
+
+/* 1280×720 と 1366×768: 上の端を 34% にしたまま、余白を詰めてスクロールなしで収める */
+@media (max-height: 820px) and (min-width: 701px) {
+  body.view-home #home .home-wrap { padding: 28px 32px; }
+  body.view-home #home .home-wrap h1 { font-size: 24px; }
+  body.view-home #home .home-purpose { margin-bottom: 16px; }
+  body.view-home #home .home-roles { gap: 16px; }
+  body.view-home #home .home-card { padding: 20px; }
+  body.view-home #home .home-foot { margin-top: 16px; padding-top: 8px; }
+  body.view-home #home .purpose { padding: 12px 20px; }
+}
+
+/* 狭い画面（700px 以下）: 縦長の絵を上に見せ、パネルは下に寄せたボトムシートにする */
+@media (max-width: 700px) {
+  body.view-home #home { align-items: end; justify-items: center; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); padding-left: calc(16px + env(safe-area-inset-left, 0px)); padding-right: calc(16px + env(safe-area-inset-right, 0px)); }
+  .home-hero { inset: 0; height: auto; min-height: 0; }
+  .home-hero img, .home-hero video { object-position: 50% 0%; }
+  .home-hero::after { background: radial-gradient(ellipse 90% 45% at 50% 85%, rgba(7, 11, 18, 0.5) 0%, rgba(7, 11, 18, 0) 100%), linear-gradient(180deg, rgba(7, 11, 18, 0.15) 0%, rgba(7, 11, 18, 0) 35%); }
+  body.view-home #home .home-wrap { width: 100%; padding: 20px 16px; max-height: 62vh; max-height: 62svh; border-radius: 20px; }
+  body.view-home #home .home-wrap h1 { font-size: 20px; margin-bottom: 4px; }
+  body.view-home #home .home-purpose { margin-bottom: 12px; font-size: 13px; line-height: 1.6; }
+  body.view-home #home .home-roles { grid-template-columns: 1fr; gap: 8px; }
+  body.view-home #home .home-card { padding: 12px 16px; gap: 4px; }
+  body.view-home #home .home-card h2 { font-size: 16px; }
+  body.view-home #home .home-card p { margin-bottom: 4px; font-size: 13px; line-height: 1.55; }
+  body.view-home #home .home-card .btn-primary { height: 44px; font-size: 14px; }
+  body.view-home #home .home-foot { margin-top: 12px; padding-top: 8px; }
+  body.view-home #home .home-map { padding: 4px 8px; gap: 12px; }
+  body.view-home #home .home-map img { width: 48px; height: 43px; }
+  body.view-home #home .purpose { padding: 12px 16px; font-size: 14px; }
+  body.view-home #home.home-step-2 .home-wrap h1 { margin-bottom: 12px; }
+}
+/* 縦が 820px 以下の phone: パネルが画面の 62% に収まるよう、余白と補足の 1 行を詰める */
+@media (max-width: 700px) and (max-height: 820px) {
+  body.view-home #home .home-wrap { padding: 16px; }
+  body.view-home #home .home-card { padding: 10px 14px; gap: 2px; }
+  body.view-home #home .home-card p { margin-bottom: 2px; }
+  body.view-home #home .home-card .btn-primary { height: 42px; }
+  body.view-home #home .home-foot { margin-top: 8px; padding-top: 4px; }
+  body.view-home #home .home-map small { display: none; }
+}
+
+/* 最初の画面: 名前（左上）と、背景の映像に合わせた場面の字幕。どちらも飾りの絵の上に置くだけで、押せる所ではない */
+.home-brand { position: absolute; left: 32px; top: 24px; z-index: 2; display: flex; flex-direction: column; gap: 4px; pointer-events: none; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45); }
+.home-brand .hb-name { font-family: system-ui, -apple-system, "Segoe UI", "Yu Gothic UI", sans-serif; font-size: 22px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.2; color: rgba(255, 255, 255, 0.9); }
+.home-brand .hb-tag { font-size: 13px; line-height: 1.5; color: var(--muted); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7); }
+@media (max-width: 700px) {
+  .home-brand { left: 16px; top: 16px; padding: 8px 14px; border-radius: 12px; background: rgba(10, 16, 28, 0.62); }
+  .home-brand .hb-name { font-size: 20px; }
+  .home-brand .hb-tag { color: #fff; text-shadow: none; }
+}
+.home-cap { position: absolute; left: 0; top: 0; z-index: 1; display: flex; flex-direction: column; gap: 2px; max-width: 260px; padding: 8px 16px; border-radius: 16px; background: rgba(14, 20, 32, 0.55); border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #fff; pointer-events: none; opacity: 0; transition: opacity 0.3s ease-out; }
+.home-cap[hidden] { display: none; }
+.home-cap.on { opacity: 1; }
+.home-cap .hc-label { font-size: 14px; font-weight: 700; line-height: 1.5; }
+.home-cap .hc-line { font-size: 13px; line-height: 1.5; color: rgba(255, 255, 255, 0.85); }
+@media (max-width: 700px), (prefers-reduced-motion: reduce) { .home-cap { display: none !important; } }
+
+/* 地図で選んだ県・地点の詳細カード（文ではなく数字と小さな図。全国の物流傾向と自社の運行で共通） */
+.node-card { position: fixed; right: 24px; top: 96px; z-index: 40; width: 280px; max-height: calc(100vh - 160px); overflow: auto; padding: 16px; border-radius: 16px; color: var(--text); font-size: 13px; line-height: 1.6; animation: calm-in 0.3s ease-out both; }
+.node-card[hidden] { display: none; }
+.node-card .nc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.node-card .nc-title { font-size: 16px; font-weight: 700; }
+.node-card .nc-close { flex: none; width: 32px; height: 32px; border: 0; border-radius: 16px; background: rgba(255, 255, 255, 0.08); color: var(--text); font-size: 18px; line-height: 1; cursor: pointer; }
+.node-card .nc-close:hover { background: rgba(255, 255, 255, 0.16); }
+.node-card .nc-close:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.node-card .nc-nums { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0 0 8px; }
+.node-card .nc-nums dt { font-size: 12px; color: var(--muted); }
+.node-card .nc-nums dd { margin: 0; font-size: 15px; font-weight: 700; }
+.node-card .nc-cmp { display: grid; gap: 4px; margin: 0 0 16px; }
+.node-card .nc-bar { display: block; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.node-card .nc-bar i { display: block; height: 100%; border-radius: 4px; }
+.node-card .nc-out { background: #34dec6; }
+.node-card .nc-in { background: #fa9a48; }
+.node-card .nc-or { background: #f49646; }
+.node-card .nc-sub { display: flex; align-items: center; margin: 8px 0 4px; font-size: 12px; color: var(--muted); }
+.node-card .nc-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.node-card .nc-list li { display: grid; grid-template-columns: 5.5em 1fr auto; align-items: center; gap: 8px; }
+.node-card .nc-list li > .nc-n:only-child, .node-card .nc-list li:not(:has(.nc-bar)) { grid-template-columns: 1fr auto; }
+.node-card .nc-v { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.node-card .nc-wds { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 0 0 8px; padding: 0; list-style: none; }
+.node-card .nc-wd { display: flex; flex-direction: column; align-items: center; padding: 4px 0; border-radius: 8px; background: rgba(255, 255, 255, 0.06); }
+.node-card .nc-wd.has { background: rgba(244, 150, 70, calc(0.2 + 0.7 * var(--a))); color: #fff; }
+.node-card .nc-wd small { font-size: 11px; color: inherit; opacity: 0.8; }
+.node-card .nc-wd b { font-size: 13px; }
+@media (max-width: 700px) {
+  .node-card { left: 8px; right: 8px !important; top: 76px; width: auto; max-height: 40vh; padding: 12px; }
+}
+
+/* 全国の交通の流れ（粒子）の切り替え。案内の表示では常に出すので、切り替えは出さない */
+.mlg-sw { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 0; background: none; border: 0; color: var(--muted); font: inherit; font-size: 11.5px; text-align: left; cursor: pointer; }
+.mlg-sw-box { flex: none; width: 34px; height: 18px; border-radius: 9px; border: 1px solid var(--line, #3a4a66); background: rgba(255, 255, 255, 0.06); position: relative; transition: background 0.15s; }
+.mlg-sw-box::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #9fb0cc; transition: transform 0.15s, background 0.15s; }
+.mlg-sw[aria-checked="true"] .mlg-sw-box { background: rgba(120, 210, 255, 0.35); }
+.mlg-sw[aria-checked="true"] .mlg-sw-box::after { transform: translateX(16px); background: #d8f2ff; }
+.mlg-sw:focus-visible { outline: 2px solid #8fd0ff; outline-offset: 2px; }
+body.guided #mlg-traf { display: none; }
+@media (prefers-reduced-motion: reduce) { .mlg-sw-box, .mlg-sw-box::after { transition: none; } }

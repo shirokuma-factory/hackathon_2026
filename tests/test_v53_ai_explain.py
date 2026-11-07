@@ -1,0 +1,558 @@
+"""SPEC §53 荷待ち協議の書面の「Claude で説明文を作る」。SDK は全部差し替える（本物の API は呼ばない。キーも使わない）。
+
+- 3 段（Haiku → Sonnet → Opus）の順、モデル名、出力の指定（構造化出力・effort・thinking を送らない）
+- 断り（refusal）・確かめの失敗・数字の機械照合で、下書きを出さず型どおりに戻ること
+- 上限（1 日・来訪者ごと・大きさ）、状態、同じ入力の再利用、キーが応答にもログにも出ないこと
+- 画面: ボタンは使えるときだけ。進み具合の表示（ヘッドレス Edge と、差し替えた応答を返す手元のサーバー）
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+import sys
+import threading
+import urllib.error
+import urllib.request
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from shipcompare import ai_explain as ax
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+
+import serve_web  # noqa: E402
+
+SENTINEL = "sk-ant-TESTSENTINEL-0123456789"
+
+
+# ---------------------------------------------------------------- 差し替えの部品
+def facts_sample(n: int = 2) -> dict:
+    rows = [{"row": i + 1, "date": f"2026-10-{i + 1:02d}", "place": "江東区 地点07", "arrive": "09:00", "start": "10:30", "end": "11:00",
+             "handler": "運転者", "shipper_fault": "はい", "wait_min": 90, "handling_min": 30, "amount": 1680 + i,
+             "vehicle_no": "品川 100 あ 1234", "secret_note": "出さない"} for i in range(n)]
+    return {"partner": "架空 元請A物流", "period": "2026-10-01 〜 2026-10-02", "count": n, "rows": rows,
+            "totals": {"amount_yen_ex_tax": 3361, "wait_total": "3 時間 0 分", "handling_total": "1 時間 0 分"},
+            "basis": {"tariff_applies_from": "2024-05-15", "unit_minutes": 30, "free_minutes": 30, "quote": "告示の別紙の表に当てた額です"},
+            "raw_text": "貼り付けた元の文（送らない）"}
+
+
+DRAFT_OK = "架空 元請A物流 様。2026-10-01 から 2026-10-02 の 2 回で、待機は合計 3 時間 0 分、参考額は 3361 円（税抜）です。告示の表に当てた目安で、協議のお願いです。"
+
+
+class FakeClient:
+    """messages.create(**kw) だけを持つ。呼び出しを calls に残す。plan で段ごとの応答を変える。"""
+
+    def __init__(self, plan: dict | None = None):
+        self.plan = plan or {}
+        self.calls: list[dict] = []
+        self.messages = SimpleNamespace(create=self._create)
+
+    def _resp(self, text: str, stop: str = "end_turn", tin: int = 100, tout: int = 50):
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)], stop_reason=stop,
+                               usage=SimpleNamespace(input_tokens=tin, output_tokens=tout))
+
+    def _create(self, **kw):
+        self.calls.append(kw)
+        model = kw["model"]
+        p = self.plan.get(model)
+        if isinstance(p, Exception):
+            raise p
+        if callable(p):
+            return p(kw)
+        if p is not None:
+            return p
+        if model == ax.MODEL_HAIKU:
+            return self._resp(json.dumps({"issues": [{"row": 1, "field": "start", "message": "荷役開始が到着より前に見えます" * 3}]}, ensure_ascii=False), tin=300, tout=40)
+        if model == ax.MODEL_SONNET:
+            return self._resp(DRAFT_OK, tin=900, tout=200)
+        return self._resp(json.dumps({"ok": True, "problems": []}), tin=1200, tout=120)
+
+    def resp(self, *a, **k):
+        return self._resp(*a, **k)
+
+
+@pytest.fixture(autouse=True)
+def fresh(monkeypatch):
+    monkeypatch.setattr(ax, "LIMITER", ax.Limiter())
+    ax.CACHE.clear()
+    monkeypatch.setattr(ax, "_RUN_ASYNC", False)
+    for k in ("AI_EXPLAIN_ENABLED", "AI_EXPLAIN_PUBLIC", "AI_DAILY_LIMIT", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+
+
+def enable(monkeypatch, **extra):
+    monkeypatch.setenv("AI_EXPLAIN_ENABLED", "1")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", SENTINEL)
+    for k, v in extra.items():
+        monkeypatch.setenv(k, v)
+
+
+def run(client: FakeClient, facts: dict | None = None, events: list | None = None):
+    f = ax.clean_facts(facts or facts_sample())
+    return ax.run_pipeline(f, client, events.append if events is not None else None)
+
+
+# ---------------------------------------------------------------- 3 段の順と呼び出しの形
+def test_pipeline_runs_haiku_sonnet_opus_in_order_with_documented_params():
+    c = FakeClient()
+    events: list = []
+    res = run(c, events=events)
+    assert [k["model"] for k in c.calls] == ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"]
+    h, s, o = c.calls
+    assert [k["max_tokens"] for k in c.calls] == [2000, 4000, 6000]  # 思考の分を含む
+    assert h["output_config"]["effort"] == "low" and s["output_config"]["effort"] == "medium" and o["output_config"]["effort"] == "medium"
+    assert h["output_config"]["format"]["type"] == "json_schema" and o["output_config"]["format"]["type"] == "json_schema"
+    assert "format" not in s["output_config"]
+    for sch in (h["output_config"]["format"]["schema"], o["output_config"]["format"]["schema"]):
+        assert sch["additionalProperties"] is False and sch["required"]
+    for k in c.calls:
+        assert "thinking" not in k  # Opus 5.5 は常にオン。無効化を送らない
+        assert [m["role"] for m in k["messages"]] == ["user"]  # assistant の書き出しを使わない
+    assert res["ok"] is True and res["draft"] == DRAFT_OK and res["fallback"] is False
+    assert [st["step"] for st in res["steps"]] == ["check", "draft", "verify"]
+    assert all({"model", "input_tokens", "output_tokens", "ms", "cost_usd", "stop_reason"} <= set(st) for st in res["steps"])
+    assert [(e["event"], e["step"]) for e in events] == [("start", "check"), ("done", "check"), ("start", "draft"), ("done", "draft"), ("start", "verify"), ("done", "verify")]
+
+
+def test_only_known_fields_reach_the_model_and_no_raw_text():
+    c = FakeClient()
+    run(c)
+    sent = json.dumps([k["messages"] for k in c.calls], ensure_ascii=False)
+    assert "品川 100" not in sent and "secret_note" not in sent and "貼り付けた元の文" not in sent
+    assert "架空 元請A物流" in sent
+
+
+def test_check_issues_are_cut_to_30_chars_and_reported_with_count():
+    res = run(FakeClient())
+    assert len(res["issues"]) == 1 and len(res["issues"][0]["message"]) <= 30
+    assert res["steps"][0]["count"] == 1 and "指摘 1 件" in res["steps"][0]["detail"]
+
+
+def test_cost_estimate_uses_the_stated_prices():
+    assert ax.cost_usd(ax.MODEL_HAIKU, 1_000_000, 1_000_000) == pytest.approx(0.60)
+    assert ax.cost_usd(ax.MODEL_SONNET, 1_000_000, 1_000_000) == pytest.approx(12.0)
+    assert ax.cost_usd(ax.MODEL_OPUS, 1_000_000, 1_000_000) == pytest.approx(24.0)
+    t = ax.totals(run(FakeClient())["steps"])
+    assert t["input_tokens"] == 300 + 900 + 1200 and t["output_tokens"] == 40 + 200 + 120 and t["cost_usd"] > 0
+
+
+# ---------------------------------------------------------------- 失敗したら型どおりに戻る
+def test_refusal_at_draft_falls_back_to_template():
+    c = FakeClient()
+    c.plan[ax.MODEL_SONNET] = c.resp("", stop="refusal")
+    res = run(c)
+    assert res["ok"] is False and res["fallback"] is True and res["draft"] is None and "断りました" in res["message"]
+    assert len(c.calls) == 2  # Opus は呼ばない
+
+
+def test_refusal_at_verify_withholds_the_draft():
+    c = FakeClient()
+    c.plan[ax.MODEL_OPUS] = c.resp("", stop="refusal")
+    res = run(c)
+    assert res["ok"] is False and res["draft"] is None and res["fallback"] is True and res["problems"]
+
+
+def test_refusal_at_check_does_not_stop_the_rest():
+    c = FakeClient()
+    c.plan[ax.MODEL_HAIKU] = c.resp("", stop="refusal")
+    res = run(c)
+    assert res["steps"][0]["status"] == "failed" and res["ok"] is True and res["issues"] == []
+
+
+def test_verify_not_ok_returns_template_and_problems_not_the_draft():
+    c = FakeClient()
+    c.plan[ax.MODEL_OPUS] = c.resp(json.dumps({"ok": False, "problems": [{"quote": "3361 円", "reason": "合計が合わない"}]}, ensure_ascii=False))
+    res = run(c)
+    assert res["ok"] is False and res["fallback"] is True and res["draft"] is None
+    assert res["problems"][0]["reason"] == "合計が合わない"
+    assert res["steps"][-1]["status"] == "mismatch" and "要確認" in res["steps"][-1]["detail"]
+
+
+def test_numbers_not_in_the_facts_fail_even_if_the_model_says_ok():
+    c = FakeClient()
+    c.plan[ax.MODEL_SONNET] = c.resp(DRAFT_OK + " 追加で 987654 円も見込めます。")
+    res = run(c)
+    assert res["ok"] is False and res["draft"] is None
+    assert any("987654" in p["quote"] for p in res["problems"])
+
+
+def test_unmatched_numbers_helper():
+    f = ax.clean_facts(facts_sample())
+    assert ax.unmatched_numbers("2026-10-01 の 3,361 円、90 分は 1 時間 30 分", f) == []
+    assert ax.unmatched_numbers("777 円", f) == ["777"]
+
+
+def test_truncated_draft_and_invalid_json_fall_back():
+    c = FakeClient()
+    c.plan[ax.MODEL_SONNET] = c.resp("途中で", stop="max_tokens")
+    assert run(c)["fallback"] is True
+    c2 = FakeClient()
+    c2.plan[ax.MODEL_OPUS] = c2.resp("これは JSON ではない")
+    r2 = run(c2)
+    assert r2["ok"] is False and r2["draft"] is None
+
+
+def test_api_error_falls_back_with_class_name_only():
+    c = FakeClient()
+    c.plan[ax.MODEL_SONNET] = RuntimeError(f"upstream said key={SENTINEL}")
+    res = run(c)
+    assert res["fallback"] is True and SENTINEL not in json.dumps(res, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------- 入力の検め・上限
+def test_clean_facts_rejects_empty_and_oversize():
+    with pytest.raises(ax.AiError):
+        ax.clean_facts({"rows": []})
+    with pytest.raises(ax.AiError):
+        ax.clean_facts("x")
+    big = facts_sample()
+    big["rows"] = big["rows"] * 400
+    with pytest.raises(ax.AiError) as e:
+        ax.clean_facts(big)
+    assert e.value.status == 413
+
+
+def test_clean_facts_drops_unknown_keys():
+    f = ax.clean_facts(facts_sample())
+    assert "raw_text" not in f and "vehicle_no" not in f["rows"][0] and "secret_note" not in f["rows"][0]
+
+
+def test_daily_cap(monkeypatch):
+    enable(monkeypatch, AI_DAILY_LIMIT="2")
+    monkeypatch.setattr(ax, "make_client", lambda: FakeClient())
+    for i in range(2):
+        ax.start(facts_sample(i + 1), f"c{i}", False)
+    with pytest.raises(ax.AiError) as e:
+        ax.start(facts_sample(3), "c9", False)
+    assert e.value.status == 429 and e.value.code == "daily_cap"
+
+
+def test_daily_cap_resets_next_day(monkeypatch):
+    from datetime import date, timedelta
+    day = [date(2026, 11, 7)]
+    lim = ax.Limiter(today=lambda: day[0])
+    monkeypatch.setenv("AI_DAILY_LIMIT", "1")
+    lim.reserve("a")
+    with pytest.raises(ax.AiError):
+        lim.reserve("b")
+    day[0] += timedelta(days=1)
+    lim.reserve("b")
+
+
+def test_per_client_cap_is_10_per_hour():
+    t = [1000.0]
+    lim = ax.Limiter(clock=lambda: t[0])
+    for _ in range(10):
+        lim.reserve("me")
+    with pytest.raises(ax.AiError) as e:
+        lim.reserve("me")
+    assert e.value.code == "client_cap"
+    lim.reserve("other")  # 別の来訪者は数えない
+    t[0] += 3601
+    lim.reserve("me")
+
+
+def test_default_daily_limit_is_100(monkeypatch):
+    assert ax.daily_limit() == 100
+    monkeypatch.setenv("AI_DAILY_LIMIT", "abc")
+    assert ax.daily_limit() == 100
+
+
+# ---------------------------------------------------------------- 状態
+def test_status_disabled_by_default_and_without_key(monkeypatch):
+    assert ax.status(False)["available"] is False and ax.status(False)["reason"] == "disabled"
+    monkeypatch.setenv("AI_EXPLAIN_ENABLED", "1")
+    st = ax.status(False)
+    assert st["available"] is False and st["reason"] == "no_key"
+    monkeypatch.setenv("ANTHROPIC_API_KEY", SENTINEL)
+    st = ax.status(False)
+    assert st["available"] is True and st["limits"]["daily"] == 100 and st["limits"]["per_client_per_hour"] == 10
+    assert SENTINEL not in json.dumps(st)
+
+
+def test_status_public_needs_its_own_switch(monkeypatch):
+    enable(monkeypatch)
+    st = ax.status(True)
+    assert st["available"] is False and st["reason"] == "public_off"
+    monkeypatch.setenv("AI_EXPLAIN_PUBLIC", "1")
+    assert ax.status(True)["available"] is True
+
+
+def test_status_without_sdk_is_unavailable(monkeypatch):
+    enable(monkeypatch)
+    monkeypatch.setattr(ax.importlib.util, "find_spec", lambda name: None)
+    st = ax.status(False)
+    assert st["available"] is False and st["reason"] == "no_sdk" and ax.reason_text("no_sdk")
+
+
+def test_rejected_start_creates_no_job(monkeypatch):
+    enable(monkeypatch, AI_DAILY_LIMIT="1")
+    monkeypatch.setattr(ax, "make_client", lambda: FakeClient())
+    ax.start(facts_sample(1), "a", False)
+    n = len(ax.JOBS._d)
+    with pytest.raises(ax.AiError):
+        ax.start(facts_sample(2), "b", False)
+    assert len(ax.JOBS._d) == n
+
+
+def test_result_with_failed_check_is_not_cached(monkeypatch):
+    enable(monkeypatch)
+    c = FakeClient({ax.MODEL_HAIKU: RuntimeError("x")})
+    monkeypatch.setattr(ax, "make_client", lambda: c)
+    ax.start(facts_sample(), "c", False)
+    assert ax.CACHE.get(ax.cache_key(ax.clean_facts(facts_sample()))) is None
+    assert ax.start(facts_sample(), "c", False)["cached"] is False
+
+
+def test_client_uses_no_automatic_retry():
+    import inspect
+    assert "max_retries=0" in inspect.getsource(ax.make_client)
+
+
+@pytest.mark.parametrize("draft", ["参考額は合計 3 円です。", "2 回のうち、合計 5 回の荷待ちです。", "合計は十二回、参考額は三万円です。", "合計は１２回、参考額は３円です。"])
+def test_number_context_check_rejects_loose_numbers(draft):
+    f = ax.clean_facts(facts_sample())
+    assert ax.draft_issues(draft, f), draft
+    c = FakeClient()
+    c.plan[ax.MODEL_SONNET] = c.resp(draft)  # Opus が一致と言っても通さない
+    res = run(c)
+    assert res["ok"] is False and res["draft"] is None
+
+
+def test_number_context_check_accepts_the_facts_numbers():
+    f = ax.clean_facts(facts_sample())
+    assert ax.draft_issues("2 回の荷待ちで、参考額は 3,361 円、1 行目は 1680 円です。", f) == []
+    assert ax.draft_issues("参考額は３３６１円、２回です。", f) == []  # 全角は半角にそろえる
+
+
+def test_forwarded_client_counts_from_the_right():
+    fc = serve_web._forwarded_client
+    assert fc("1.1.1.1, 2.2.2.2, 3.3.3.3", True, {}) == "3.3.3.3"
+    assert fc("1.1.1.1, 2.2.2.2, 3.3.3.3", True, {"TRUSTED_PROXY_HOPS": "2"}) == "2.2.2.2"
+    assert fc("9.9.9.9", True, {"TRUSTED_PROXY_HOPS": "3"}) == ""
+    assert fc("1.1.1.1", False, {}) == "" and fc(None, True, {}) == ""
+
+
+def test_start_refuses_when_unavailable(monkeypatch):
+    monkeypatch.setattr(ax, "make_client", lambda: pytest.fail("呼んではいけない"))
+    with pytest.raises(ax.AiError) as e:
+        ax.start(facts_sample(), "c", False)
+    assert e.value.status == 403
+
+
+# ---------------------------------------------------------------- 同じ入力の再利用
+def test_identical_input_is_served_from_cache(monkeypatch):
+    enable(monkeypatch)
+    c = FakeClient()
+    monkeypatch.setattr(ax, "make_client", lambda: c)
+    j1 = ax.start(facts_sample(), "c", False)
+    n = len(c.calls)
+    assert n == 3 and j1["cached"] is False
+    j2 = ax.start(facts_sample(), "c", False)
+    assert j2["cached"] is True and len(c.calls) == n and "job" not in j2  # 仕事は作らず、結果をその場で返す
+    res = j2["result"]
+    assert res["cached"] is True and res["ok"] is True
+    assert ax.LIMITER.used_today() == 1  # 再利用は上限に数えない
+    k1 = ax.cache_key(ax.clean_facts(facts_sample()))
+    assert re.fullmatch(r"[0-9a-f]{64}", k1)
+    other = facts_sample()
+    other["rows"][0]["wait_min"] = 91
+    assert ax.cache_key(ax.clean_facts(other)) != k1
+
+
+# ---------------------------------------------------------------- HTTP
+@pytest.fixture
+def server(monkeypatch):
+    """手元の版のサーバーを 1 つ。終わりに必ず止める。"""
+    httpd = serve_web.make_server(port=0)
+    th = threading.Thread(target=httpd.serve_forever, daemon=True)
+    th.start()
+    try:
+        yield f"http://127.0.0.1:{httpd.server_address[1]}"
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        th.join(timeout=5)
+
+
+def http(base: str, path: str, body=None, ctype="application/json"):
+    data = None if body is None else (body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode("utf-8"))
+    req = urllib.request.Request(base + path, data=data, method="POST" if data is not None else "GET", headers={"Content-Type": ctype})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.status, r.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8")
+
+
+def test_http_status_and_post_when_disabled(server):
+    code, text = http(server, "/api/ai/status")
+    st = json.loads(text)
+    assert code == 200 and st["available"] is False and st["reason"] == "disabled" and st["reason_text"]
+    code, text = http(server, "/api/ai/waiting_explain", facts_sample())
+    assert code == 403 and json.loads(text)["code"] == "unavailable"
+
+
+def test_http_full_flow_and_key_never_leaks(server, monkeypatch, caplog):
+    enable(monkeypatch)
+    monkeypatch.setattr(ax, "_RUN_ASYNC", True)
+    c = FakeClient()
+    c.plan[ax.MODEL_HAIKU] = RuntimeError(f"echo {SENTINEL}")  # 点検が壊れても先へ進み、メッセージは出ない
+    monkeypatch.setattr(ax, "make_client", lambda: c)
+    caplog.set_level(logging.DEBUG)
+    seen = []
+    code, text = http(server, "/api/ai/status")
+    seen.append(text)
+    assert json.loads(text)["available"] is True
+    code, text = http(server, "/api/ai/waiting_explain", facts_sample())
+    seen.append(text)
+    assert code == 200
+    job = json.loads(text)["job"]
+    import time
+    res = None
+    for _ in range(100):
+        code, text = http(server, f"/api/ai/job?id={job}")
+        seen.append(text)
+        j = json.loads(text)
+        if j["state"] == "done":
+            res = j["result"]
+            break
+        time.sleep(0.1)
+    assert res and res["ok"] is True and res["draft"] == DRAFT_OK
+    assert res["steps"][0]["status"] == "failed"
+    assert SENTINEL not in "".join(seen) and SENTINEL not in caplog.text
+    code, text = http(server, "/api/ai/job?id=nope")
+    assert code == 404
+
+
+def test_http_rejects_oversize_bad_type_and_wrong_method(server, monkeypatch):
+    enable(monkeypatch)
+    monkeypatch.setattr(ax, "make_client", lambda: pytest.fail("呼んではいけない"))
+    big = facts_sample()
+    big["rows"] = big["rows"] * 400
+    code, text = http(server, "/api/ai/waiting_explain", big)
+    assert code == 413
+    code, _ = http(server, "/api/ai/waiting_explain", b"x", ctype="text/plain")
+    assert code == 400
+    code, _ = http(server, "/api/ai/waiting_explain")  # GET
+    assert code == 405
+
+
+def test_http_per_client_cap_returns_429(server, monkeypatch):
+    enable(monkeypatch)
+    monkeypatch.setattr(ax, "make_client", lambda: FakeClient())
+    codes = []
+    for i in range(11):
+        f = facts_sample(1)
+        f["rows"][0]["wait_min"] = 100 + i  # キャッシュに当たらないように変える
+        codes.append(http(server, "/api/ai/waiting_explain", f)[0])
+    assert codes[:10] == [200] * 10 and codes[10] == 429
+
+
+# ---------------------------------------------------------------- 静的な確認
+def test_page_files_keep_network_code_only_in_ai_explain_js():
+    page = (ROOT / "web" / "waiting.html").read_text(encoding="utf-8")
+    art = (ROOT / "web" / "publish" / "waiting_artifact.html").read_text(encoding="utf-8")
+    for html in (page, art):
+        assert "fetch(" not in html
+    assert "loadAi();" in page and "loadAi();" not in art  # 単独の版（Artifact）は読み込みを呼ばない
+    own = (ROOT / "web" / "own.js").read_text(encoding="utf-8")
+    assert "/api/ai/" not in own and "AiExplain" in own  # own.js は通信を持たず、ai_explain.js に任せる
+    js = (ROOT / "web" / "ai_explain.js").read_text(encoding="utf-8")
+    assert "/api/ai/status" in js and "ANTHROPIC" not in js and "sk-ant" not in js
+    assert "Claude で説明文を作る" in js and "説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）" in page
+    assert (ROOT / "web" / "index.html").read_text(encoding="utf-8").index("ai_explain.js") < (ROOT / "web" / "index.html").read_text(encoding="utf-8").index('src="own.js"')
+
+
+def test_env_example_has_names_only():
+    text = (ROOT / ".env.example").read_text(encoding="utf-8")
+    for name in ("ANTHROPIC_API_KEY=", "AI_EXPLAIN_ENABLED=", "AI_EXPLAIN_PUBLIC=", "AI_DAILY_LIMIT="):
+        assert re.search(rf"^#?\s*{name}\s*$", text, re.M), name
+
+
+# ---------------------------------------------------------------- 画面（ヘッドレス Edge）
+def _edge():
+    import capture_web as cw
+    return cw
+
+
+def test_ui_button_only_when_available_and_progress_steps(monkeypatch):
+    enable(monkeypatch)
+    monkeypatch.setattr(ax, "_RUN_ASYNC", True)
+    slow = threading.Event()
+
+    def haiku(kw):
+        slow.wait(5)  # 画面が「点検中」を出す間を作る
+        return FakeClient().resp(json.dumps({"issues": [{"row": 1, "field": "start", "message": "荷役開始が早すぎます"}]}, ensure_ascii=False), tin=300, tout=40)
+
+    c = FakeClient({ax.MODEL_HAIKU: haiku})
+    # ページの事実から出る数字（待機・金額）に合わせて、Sonnet は事実の数字だけを使った文を返す
+    def sonnet(kw):
+        user = kw["messages"][0]["content"]
+        facts = json.loads(user.split("事実（JSON）:\n", 1)[1].split("\n\n", 1)[0])
+        t = facts["totals"]
+        return FakeClient().resp(f"{facts['partner']} 様。参考額は {t['amount_yen_ex_tax']} 円（税抜）、待機は合計 {t['wait_total']} です。協議のお願いです。", tin=900, tout=200)
+    c.plan[ax.MODEL_SONNET] = sonnet
+    monkeypatch.setattr(ax, "make_client", lambda: c)
+    cw = _edge()
+    httpd = serve_web.make_server(port=0)
+    th = threading.Thread(target=httpd.serve_forever, daemon=True)
+    th.start()
+    base = f"http://127.0.0.1:{httpd.server_address[1]}"
+    try:
+        with cw.edge_page(1280, 1000) as page:
+            page.goto(base + "/waiting.html?example=1")
+            page.wait(lambda: page.js("!!document.querySelector('#wait-doc')"), 30, "書面")
+            page.wait(lambda: page.js("!!document.querySelector('#ai-box [data-ai=ask]')"), 15, "ボタン")
+            assert page.js("document.querySelector('#ai-box [data-ai=ask]').textContent") == "Claude で説明文を作る"
+            page.js("document.querySelector('#ai-box [data-ai=ask]').click()")
+            page.wait(lambda: page.js("!document.querySelector('.ai-confirm').hidden"), 5, "確認")
+            conf = page.js("document.querySelector('.ai-confirm').textContent")
+            assert "記録" in conf and "行" in conf and "送らないもの" in conf and "車番" in conf
+            assert page.js("!!document.querySelector('.ai-confirm [data-ai=send]') && !!document.querySelector('.ai-confirm [data-ai=cancel]')")
+            page.js("document.querySelector('.ai-confirm [data-ai=cancel]').click()")
+            assert page.js("document.querySelector('.ai-confirm').hidden")
+            assert c.calls == []  # やめたら何も送らない
+            page.js("document.querySelector('#ai-box [data-ai=ask]').click()")
+            page.js("document.querySelector('.ai-confirm [data-ai=send]').click()")
+            page.wait(lambda: "Haiku 5.5 が記録を点検中" in page.js("document.querySelector('.ai-steps').textContent"), 10, "点検中")
+            slow.set()
+            page.wait(lambda: page.js("!!document.querySelector('.ai-result') && !document.querySelector('.ai-result').hidden"), 20, "結果")
+            steps = page.js("document.querySelector('.ai-steps').textContent")
+            assert "Haiku 5.5 が記録を点検 → 完了（指摘 1 件）" in steps
+            assert "Sonnet 5.5 が説明文を下書き" in steps and "Opus 5.5 が数字と根拠を確かめ → 一致" in steps
+            assert "トークン" in steps and "目安" in steps
+            body = page.js("document.querySelector('.ai-result .ai-body').textContent")
+            assert "一致" in body and "参考額は" in body and "説明文をコピー" in body and "荷役開始が早すぎます" in body
+            assert page.js("document.querySelector('.ai-result').open")
+            # 送った事実に、車番などは入っていない
+            sent = json.dumps(c.calls[0]["messages"], ensure_ascii=False)
+            assert "vehicle_no" not in sent
+        # サーバーが使えないとき（キーなし）は、ボタンを出さず 1 行だけ
+        monkeypatch.delenv("ANTHROPIC_API_KEY")
+        with cw.edge_page(1280, 1000) as page:
+            page.goto(base + "/waiting.html?example=1")
+            page.wait(lambda: page.js("!!document.querySelector('#ai-box')"), 30, "欄")
+            page.js("new Promise(r => setTimeout(r, 1500))")
+            assert page.js("!document.querySelector('[data-ai=ask]')")
+            assert page.js("document.querySelector('#ai-box').textContent.trim()") == "説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）"
+    finally:
+        slow.set()
+        httpd.shutdown()
+        httpd.server_close()
+        th.join(timeout=5)
+
+
+def test_ui_file_url_shows_the_one_line_only():
+    cw = _edge()
+    with cw.edge_page(1280, 1000) as page:
+        page.goto((ROOT / "web" / "waiting.html").as_uri() + "?example=1")
+        page.wait(lambda: page.js("!!document.querySelector('#ai-box')"), 30, "欄")
+        assert page.js("!document.querySelector('[data-ai=ask]')")
+        assert page.js("document.querySelector('#ai-box').textContent.trim()") == "説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）"
+        assert page.js("!document.querySelector('script[src*=ai_explain]')")

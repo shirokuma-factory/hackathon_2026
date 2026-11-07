@@ -158,8 +158,8 @@ def test_compare_lite_contract_rates_in_headless_edge():
           const t = (id) => { const tr = document.querySelector('tr[data-opt=' + id + ']'); return tr ? tr.textContent : ''; };
           return {kei: t('kei'), rosen: t('rosen'), cmp: document.querySelector('#cmp').textContent};
         })()""")
-        assert "区間の表を持つ区間に限ります" not in got["kei"]
-        assert "区間の表を持つ区間に限ります" in got["rosen"]
+        assert "目安の額は出せません。契約単価を入れると額が出ます。" not in got["kei"]   # 文言の直し 2026-11-07
+        assert "目安の額は出せません。契約単価を入れると額が出ます。" in got["rosen"]
         assert "まだ比べられません" in got["cmp"] and "契約単価" in got["cmp"]
         # 小さな荷 1 個。宅配 100 サイズ 900 円、路線便 15 円/kg・最低 3,000 円
         page.js("""(function(){
@@ -174,7 +174,7 @@ def test_compare_lite_contract_rates_in_headless_edge():
         cmp_text = page.js("document.querySelector('#cmp').textContent")
         assert "いちばん安いのは" in cmp_text and "宅配便" in cmp_text
         kei = page.js("document.querySelector('tr[data-opt=kei]').textContent")
-        assert "区間の表を持つ区間に限ります" not in kei and "会員登録して見積もる" in kei
+        assert "目安の額は出せません。契約単価を入れると額が出ます。" not in kei and "会員登録して見積もります" in kei   # 文言の直し 2026-11-07
         order = page.js("Array.from(document.querySelectorAll('#cmp table.cmpt tbody tr td.num')).map((td) => Number(td.textContent.replace(/[^0-9]/g, '')))")
         assert order == sorted(order) and len(order) >= 2
         assert "過大" in page.js("document.querySelector('tr[data-opt=kashikiri_4t]').textContent")

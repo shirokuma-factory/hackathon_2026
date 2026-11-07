@@ -19,6 +19,11 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "tools" / "own_page_template.html"
 OWN_CALC = ROOT / "web" / "own_calc.js"
 OWN_MONTH = ROOT / "web" / "own_month.js"
+NEGOTIATE = ROOT / "web" / "negotiate.js"
+TRIP_VIEW = ROOT / "web" / "trip_view.js"
+TRIP_VIEW_CSS = ROOT / "web" / "trip_view.css"
+OWN_CSS = ROOT / "web" / "own.css"
+NEG_CSS_MARK = "/* ---- 帰り便の提案"
 MUNI_INDEX = ROOT / "web" / "data" / "index.json"
 MUNI_PT = ROOT / "web" / "data" / "muni.json"
 EXAMPLES = ROOT / "examples" / "own"
@@ -52,11 +57,32 @@ def _inline_js(path: Path) -> str:
     return path.read_text(encoding="utf-8").strip("\n").replace("</", "<\\/")
 
 
+def neg_css() -> str:
+    """own.css の末尾の「帰り便の提案」の部分を、1 枚版の配色（地図の画面と同じ暗い配色）に合わせた上書きつきで返す。"""
+    css = OWN_CSS.read_text(encoding="utf-8")
+    i = css.index(NEG_CSS_MARK)
+    over = "".join([
+        ".neg { --glass-solid: var(--card); } .neg-slot, #neg-slot { padding: 0; } .neg-head, .neg-box { background: var(--card); border-color: var(--line); }" + chr(10),
+        ".neg-bar { background: var(--line); } .neg-bar i { background: var(--accent); } .neg-tbl tr.neg-hit { background: var(--hi); }" + chr(10),
+        ".neg .btn-primary { background: linear-gradient(180deg, #7dd6ff, #4db9f2); color: var(--on-accent); border: 0; border-radius: var(--radius-sm); font-weight: 700; cursor: pointer; }" + chr(10),
+        ".neg .btn-sm { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer; }" + chr(10),
+        ".neg-lg { display: none; } /* この版には地図が無いので、地図の線の凡例は出さない */" + chr(10),
+        ".neg .ctl { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font: inherit; }" + chr(10),
+        ".neg textarea { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-family: inherit; }" + chr(10),
+        ".neg-warn, .neg-stale, .neg-status.warn { background: rgba(255,170,40,.14); } .neg-err { background: rgba(220,60,60,.1); } .neg-ok { background: rgba(40,160,90,.1); } .neg-y { color: var(--warn); }" + chr(10),
+    ])
+    return css[i:].rstrip() + chr(10) + over
+
+
 def _filled() -> str:
     html = TEMPLATE.read_text(encoding="utf-8")
     for key, val in (
         ("/*__OWN_CALC__*/", _inline_js(OWN_CALC)),
         ("/*__OWN_MONTH__*/", _inline_js(OWN_MONTH)),
+        ("/*__NEGOTIATE__*/", _inline_js(NEGOTIATE)),
+        ("/*__NEGOTIATE_CSS__*/", neg_css()),
+        ("/*__TRIP_VIEW__*/", _inline_js(TRIP_VIEW)),
+        ("/*__TRIP_VIEW_CSS__*/", TRIP_VIEW_CSS.read_text(encoding="utf-8").strip()),
         ("/*__MUNIS__*/null", _js(munis())),
         ("/*__SAMPLE_FILES__*/null", _js(sample_files())),
     ):

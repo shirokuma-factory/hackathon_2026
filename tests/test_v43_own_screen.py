@@ -123,7 +123,7 @@ def test_board_says_every_week_only_for_three_or_more_and_marks_hall_ward_places
     assert not re.search(r"毎週[月火水木金土日]曜", txt), txt
     assert re.search(r"\d+/\d+（[月火水木金土日]）", txt), txt
     # 市の名前だけで市役所のある区に置いた地点は、区を書かず、元の名前に「（区は確認）」を付ける
-    assert "名古屋（区は確認）" in txt and "中区" not in txt, txt
+    assert "名古屋（区を確かめてください）" in txt and "中区" not in txt, txt
     assert "兵庫県加古川市" in txt
     # 1 か月の配車表（例）: 同じ曜日が 3 回以上あるので「毎週」と書く。その曜日は、区間の空車の曜日別の便数で 3 以上
     _import(page, EX_FILES)
@@ -142,7 +142,7 @@ def test_unit_hall_ward_name(app):
     d = page.js("""(function(){const pl = { frm: { pref: '愛知県', muni: '名古屋市中区', label: '名古屋', short: '名古屋', note: '市役所のある区に置きました（区が分かれば直せます）' },
         to: { pref: '兵庫県', muni: '加古川市', label: '加古川', short: '加古川' } };
       return [OwnMonth.placeName(pl.frm), OwnMonth.placeName(pl.to), OwnMonth.isHallWard(pl.frm), OwnMonth.isHallWard(pl.to)];})()""")
-    assert d == ["愛知県名古屋（区は確認）", "兵庫県加古川市", True, False], d
+    assert d == ["愛知県名古屋（区を確かめてください）", "兵庫県加古川市", True, False], d
 
 
 # ---------------------------------------------------------------- 3. 明日の空きから作る
@@ -152,7 +152,7 @@ def test_tomorrow_form_makes_a_dated_single_trip_text(app, tmp_path):
     _import(page, [_write(tmp_path, "haisha_far.csv", FAR_HAISHA)])
     page.js("Own.setTab('insight')")
     assert page.js("!!document.querySelector('#own-tmr')")
-    assert "明日の空きから作る" in page.js("document.querySelector('#own-tmr').innerText")
+    assert "明日の空車の掲示文を作る" in page.js("document.querySelector('#own-tmr').innerText")
     v = json.loads(page.js("""JSON.stringify({date: document.querySelector('#own-tmr-date').value, frm: document.querySelector('#own-tmr-frm').value, to: document.querySelector('#own-tmr-to').value,
       cls: document.querySelector('#own-tmr-cls').value, kg: document.querySelector('#own-tmr-kg').value, time: document.querySelector('#own-tmr-time').value})"""))
     assert v["date"] == page.js("OwnMonth.tomorrowIso()") and v["frm"] and v["to"] and v["frm"] != v["to"], v  # 初期値は明日の日付と、いちばん多い空車の帰りの区間
@@ -200,7 +200,7 @@ def test_revenue_states_it_is_a_tariff_not_a_market_rate_and_takes_an_own_rate(a
     _import(page, EX_FILES)
     page.js("Own.state.rate = { kind: 'km', value: '' }; Own.setTab('import')")
     box = page.js("document.querySelector('#own-rev').innerText")
-    assert "国の標準的運賃（告示）で計算した額で、帰り荷の相場ではありません" in box, box
+    assert "国の標準的運賃で計算した額です" in box, box
     assert page.js("!!document.querySelector('#own-rate') && !!document.querySelector('#own-rate-kind')")
     assert not page.js("!!document.querySelector('#own-rev-own')")  # 入れるまでは自社の額を出さない
     back = json.loads(page.js("JSON.stringify(Own.state.data.legs.filter(l => l.dir === 'back' && l.kind === 'empty').map(l => l.km))"))
@@ -226,10 +226,10 @@ def test_revenue_states_it_is_a_tariff_not_a_market_rate_and_takes_an_own_rate(a
 def test_big_numbers_show_counts_alt_rate_and_the_print_sheet_has_both(app, tmp_path):
     page = app
     _import(page, [_write(tmp_path, "haisha_ret.csv", RETURN_HAISHA)])
-    tiles = json.loads(page.js("JSON.stringify([...document.querySelectorAll('#own-right .o-tile')].map(t => ({c: (t.querySelector('.o-tc') || {}).innerText || '', alt: (t.querySelector('.o-talt') || {}).innerText || ''})))"))
+    tiles = json.loads(page.js("JSON.stringify([...document.querySelectorAll('#own-right .o-tile')].map(t => ({c: (t.querySelector('.o-tc') || {}).innerText || '', alt: (t.querySelector('.o-talt') || {}).textContent || ''})))"))
     ar = page.js("Own.state.data.kpis.actual_rate.legs")
     assert tiles[0]["c"].startswith(f"{ar} 区間から"), tiles
-    assert ar < 5 and "参考（件数が少ない）" in tiles[0]["c"], tiles  # 4 便の配車表では参考
+    assert ar < 5 and "件数が少ないので参考です" in tiles[0]["c"], tiles  # 4 便の配車表では参考
     assert "空とした場合" in tiles[0]["alt"] and "%" in tiles[0]["alt"], tiles
     sheet = page.js("document.querySelector('#own-printsheet').textContent")
     assert "空とした場合" in sheet and "読めない行" in sheet and "不明の区間" in sheet and "参考" in sheet, sheet

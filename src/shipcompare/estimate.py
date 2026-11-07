@@ -391,6 +391,9 @@ def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
     row.amount = route["fare_per_box"] * boxes
     row.detail = {"boxes": boxes, "fare_per_box": route["fare_per_box"], "route_label": route["label"],
                   "boxes_by_weight": by_weight, "boxes_by_volume": by_volume, "boxes_by_pieces": by_pieces}
+    fare = route["fare_per_box"]
+    # 画面の 1 行（カゴ台車と貸切の額が近い理由）に使う本数と 1 本の運賃の言い方
+    row.detail["load_note"] = f"{boxes} 本分（{fare:,} 円 × {boxes}）" if boxes > 1 else f"1 本分（{fare:,} 円）"
     row.notes.append(f"最低 {boxes} 本の目安。積付けは要確認")
     if by_pieces > max(by_weight, by_volume):
         row.notes.append(f"重さと容積では {max(by_weight, by_volume)} 本ですが、荷の形（内寸に何個入るか）から {by_pieces} 本として数えています")
@@ -422,7 +425,10 @@ def kashikiri_fares(km: Decimal, weight_kg: Decimal, tariff: dict[str, Any]) -> 
     200km 超 500km までは step_km（20km）ごと、500km 超は over_500_step_km（50km）ごとに加算する。
     steps は 20km ごとの区分の数、steps_over_500 は 50km ごとの区分の数。
     表に 500km 超の定めがなければ steps_over_500 は 0 で、20km ごとのまま数える。
-    地域の表は tariffs.load_kashikiri(region) で選ぶ（既定は関東）。"""
+    地域の表は tariffs.load_kashikiri(region) で選ぶ（既定は関東）。
+    km が 0 以下のときは ValueError（距離なしの額を出さない）。"""
+    if km <= 0:
+        raise ValueError(f"距離は 0 km より大きい数で入れてください（{km}km は使えません）")
     over_km = tariff.get("over_500_km")
     over_step = tariff.get("over_500_step_km")
     if over_km is None or over_step is None or km <= over_km:

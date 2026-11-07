@@ -66,6 +66,8 @@ def test_closed_detail_panel_is_inert_and_open_one_is_not():
         p.wait(lambda: p.js("document.querySelector('#detail').getAttribute('aria-hidden') === 'false'"), 60, "詳細パネルが開く")
         time.sleep(0.3)
         assert p.js("document.querySelector('#detail').inert") is False
+        p.wait(lambda: p.js("!!document.querySelector('#cards input[name=cc-pick]')"), 60, "送り方の表")
+        p.js("document.querySelector('#cards input[name=cc-pick]').click()")   # 送り方を選ぶと、見積依頼文を作るボタンが出る（SPEC §44）
         p.js("document.querySelector('#make-request').focus()")
         assert p.js("document.activeElement === document.querySelector('#make-request')") is True
         # 閉じると、また inert
@@ -143,6 +145,8 @@ def test_item_waiting_record_and_site_schemas_accept_what_the_app_uses():
     own = _load(ROOT / "web" / "data" / "own_sample.json")
     site_schema = _load(schema_dir / "site.json")
     for pl in own["places"].values():
+        if pl["lon"] is None:  # 地図に置かない地点（確認待ちの別名、p08）は部品に渡さない（2026-11-07）
+            continue
         s = {"id": pl["id"], "name": pl["label"], "kind": "その他", "lon": pl["lon"], "lat": pl["lat"], "muni": pl["muni"], "code": pl["code"],
              "aliases": pl["aliases"], "basis": "仮定"}
         assert _errors({"sites": [s]}, site_schema) == [], pl["id"]

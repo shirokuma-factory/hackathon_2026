@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Backfull - 帰りの荷台を、中小の荷主の荷で埋める</title>
+<script>/* スタイルシートの読み込みに失敗したとき、1 回だけ読み直す（負荷時に compare.css などが読めず崩れたため） */(function(){window.addEventListener("error",function(e){var t=e.target;if(!t||t.tagName!=="LINK"||t.rel!=="stylesheet"||t.getAttribute("data-retry"))return;var l=document.createElement("link"),h=t.getAttribute("href");l.rel="stylesheet";l.setAttribute("data-retry",h);l.href=h+(h.indexOf("?")<0?"?":"&")+"retry="+Date.now();t.parentNode.insertBefore(l,t.nextSibling);},true);})();</script>
+<title>Backfull - 帰り便と中小の荷主の荷物をつなぐ</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23184a6b%27/%3E%3Cpath d=%27M7 21h14v-9H7zM21 15h4l2 3v3h-6z%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2711%27 cy=%2723%27 r=%272.4%27 fill=%27%2355d6a6%27/%3E%3Ccircle cx=%2723%27 cy=%2723%27 r=%272.4%27 fill=%27%2355d6a6%27/%3E%3C/svg%3E">
-<meta name="description" content="出発地から全国の市区町村への道路距離・運転日数・貸切の目安額を地図で見て、着地ごとの手段を比べる試作です。">
+<meta name="description" content="出発地から全国の市区町村への道路距離・運転日数・貸切の運賃を地図で見て、着地ごとの手段を比べる試作です。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
@@ -15,36 +16,89 @@
 <link rel="stylesheet" href="loadview.css">
 <link rel="stylesheet" href="own.css">
 <link rel="stylesheet" href="compare.css">
+<link rel="stylesheet" href="trip_view.css">
 </head>
-<body class="view-market">
-<div id="map"></div>
-
+<body class="view-home">
+<script>(function(){try{var p=new URLSearchParams(location.hash.slice(1)),v=p.get("v");if(["market","find","compare","own"].indexOf(v)<0)v=(p.get("o")||p.get("l")||p.get("d"))?"compare":null;if(v)document.body.className="view-"+v;}catch(e){}})();</script>
+<main id="home" aria-labelledby="home-h">
+  <div class="home-hero" aria-hidden="true">
+    <picture>
+      <source type="image/webp" media="(max-width: 700px)" srcset="img/hero/hero_portrait_720.webp">
+      <source type="image/webp" media="(max-width: 1500px)" srcset="img/hero/hero_1600.webp">
+      <img id="home-hero-img" src="img/hero/hero_1920.webp" alt="" width="1920" height="1080" decoding="async" fetchpriority="low" onerror="this.parentNode.parentNode.classList.add('no-img')">
+    </picture>
+  </div>
+  <div class="home-brand" id="home-brand"><span class="hb-name">Backfull</span><span class="hb-tag">帰りの荷台を、荷主の荷で埋める</span></div>
+  <div class="home-cap" id="home-cap" hidden aria-hidden="true"><span class="hc-label"></span><span class="hc-line"></span></div>
+  <div class="home-wrap">
+    <h1 id="home-h" tabindex="-1">どちらの作業をしますか</h1>
+    <p class="home-purpose" id="home-purpose">帰り便の空きを探して、荷待ちと運賃を減らすための画面です。</p>
+    <div id="home-step1" class="home-roles" data-choice-group="role">
+      <section class="home-card" aria-labelledby="hc-ship-h">
+        <h2 id="hc-ship-h">荷主の方</h2>
+        <p>荷物に合う送り方と費用の目安を比べられます。</p>
+        <button type="button" class="btn-primary" id="role-shipper" data-role="shipper">荷物の条件を入れる</button>
+      </section>
+      <section class="home-card" aria-labelledby="hc-carrier-h">
+        <h2 id="hc-carrier-h">運送会社の方</h2>
+        <p>自社の運行記録から、帰りが空車になりやすい行き先と曜日が分かります。<span id="home-carrier-extra">荷主への提案文の下書きも作れます。</span></p>
+        <button type="button" class="btn-primary" id="role-carrier" data-role="carrier">運行記録を見る</button>
+      </section>
+    </div>
+    <div id="home-step2" hidden>
+      <div class="home-purposes" data-for="shipper">
+        <button type="button" class="purpose" id="p-ship-compare" data-go="v=compare&amp;g=1">この荷物の送り方と費用の目安を知りたい</button>
+        <a class="purpose" id="p-ship-wait" href="waiting.html#g=shipper">運送会社から届いた荷待ちの記録を確かめたい</a>
+      </div>
+      <div class="home-purposes" data-for="carrier">
+        <button type="button" class="purpose" id="p-car-empty" data-go="v=own&amp;g=empty">どの曜日の帰りが空いているか知りたい</button>
+        <button type="button" class="purpose" id="p-car-propose" data-go="v=own&amp;g=propose">荷主に運賃や荷待ちを相談する文を作りたい</button>
+        <a class="purpose" id="p-car-wait" href="waiting.html#g">荷待ちの時間を荷主に示す書面を作りたい</a>
+        <a class="purpose" id="p-car-driver" href="driver.html">ドライバーに荷待ちの時刻を記録してもらいたい</a>
+      </div>
+      <button type="button" class="btn-link" id="home-reselect" data-home>最初から選ぶ</button>
+    </div>
+    <div class="home-foot">
+      <button type="button" class="home-map" id="role-national" data-go="v=market&amp;g=1"><img src="img/home_map.jpg" width="104" height="94" alt="" loading="lazy" decoding="async"><span><b>全国の物流傾向を見る</b><small>帰りが空きやすい区間を日本地図で見る</small></span></button>
+      <button type="button" class="btn-link home-all" id="role-all" data-go="v=market">すべての画面を開く</button>
+    </div>
+  </div>
+</main>
+<div id="guide-bar" class="glass" role="group" aria-label="案内の表示">
+  <button type="button" class="btn-link" data-home>最初の画面に戻る</button>
+  <button type="button" class="btn-link" id="g-toggle">全部を見る</button>
+  <ol id="g-steps" aria-label="いまの段" hidden></ol>
+</div>
+<p id="g-legend" class="glass" aria-label="地図の凡例" hidden></p>
 <nav id="views" class="glass" aria-label="見方の切り替え">
   <button data-view="market" aria-pressed="true">全国の物流傾向</button>
-  <button data-view="find" aria-pressed="false">空きを探す・つなぐ</button>
+  <button data-view="find" aria-pressed="false" aria-label="空いた帰り便を探す（例の便）">空きを探す・つなぐ<small class="demo-tag">架空のデモ</small></button>
   <button data-view="compare" aria-pressed="false">送り方を比べる</button>
   <button data-view="own" aria-pressed="false">自社の運行</button>
   <a class="views-link" href="trucks_now.html" title="全国の直轄国道の大型車の台数（国の観測点、約20分遅れ）">いまの大型車</a>
 </nav>
 
 <section id="panel" class="glass v-compare sh-panel" aria-label="条件">
-  <div class="brand"><b>Backfull</b><span>試作</span></div>
-  <p class="brand-sub">帰りの荷台を、中小の荷主の荷で埋める</p>
-  <label class="field"><span class="lbl">出発地</span>
+  <button type="button" class="btn-link home-back" data-home>最初の画面に戻る</button>
+  <h1 class="p-title" tabindex="-1">送り方を比べる</h1>
+  <p class="brand-sub">荷物と届け先を入れると、使える送り方と費用、日数が出ます。</p>
+  <label class="field"><span class="lbl">集荷地<small class="hint">荷物を出す市区町村を選びます</small></span>
     <select id="origin" class="ctl"></select>
   </label>
-  <div class="field"><label class="lbl" for="q">着地</label>
-    <input id="q" class="ctl" type="text" placeholder="市区町村名で探す（例: 大阪市中央区）" autocomplete="off"
+  <p class="p-origin" id="p-origin">集荷地は関東の 7 か所だけです。ほかの地域は<a href="compare_lite.html">地図なしの比べるページ</a>へ。</p>
+  <div class="field"><label class="lbl" for="q">届け先<small class="hint">市区町村名を入れて、候補から選んでください（必須）</small></label>
+    <input id="q" class="ctl" type="text" placeholder="例: 大阪市中央区" autocomplete="off" aria-describedby="p-next"
            role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list">
     <ul id="suggest" role="listbox"></ul>
   </div>
   <div class="cargo">
     <button id="cargo-toggle" class="cargo-btn" aria-expanded="false" aria-controls="cargo-editor">
-      <span class="lbl">荷物</span><span class="chip-cargo" id="cargo"></span><span class="ver num" id="cargo-ver"></span>
+      <span class="lbl">荷物</span><span class="chip-cargo" id="cargo"></span><span class="ver num" id="cargo-ver" title="荷物の条件を「この条件で確定」した回数です。変えるたびに増えます"></span>
       <svg class="caret" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5"/></svg>
     </button>
   </div>
   <div id="cargo-editor" hidden></div>
+  <p class="p-next" id="p-next">届け先を選ぶと、送り方ごとの費用と日数が出ます。</p>
   <button id="work-resume" class="resume" hidden></button>
 </section>
 
@@ -63,7 +117,7 @@
   <select id="quality" class="ctl xs q-sel" aria-label="画質">
     <option value="auto">自動</option><option value="high">高</option><option value="mid">中</option><option value="low">低</option>
   </select>
-  <button id="home" title="全国を表示">全国</button>
+  <button id="home-jp" title="全国を表示">全国</button>
 </nav>
 
 <section id="legend" class="glass v-compare sh-panel" aria-label="凡例">
@@ -76,7 +130,7 @@
 
 <aside id="detail" class="glass v-compare sh-panel" aria-label="着地の詳細" aria-hidden="true" inert>
   <header>
-    <button id="close" aria-label="閉じる">&#10005;</button>
+    <button id="close" type="button" class="btn-link back-cond">荷物と届け先を変える</button>
     <div class="rt"><div class="from">出発地 <b id="d-from"></b></div><div class="to" id="d-to"></div></div>
     <div class="stats">
       <div class="stat"><div class="k">道路距離</div><div class="v num" id="s-km"></div></div>
@@ -84,13 +138,13 @@
       <div class="stat"><div class="k">運転日数</div><div class="v num" id="s-days"></div></div>
     </div>
     <details class="route-note"><summary id="route-kind"></summary>
-      <p>OpenStreetMap の道路から計算した乗用車の経路です。大型車が通れるとは限りません。日数は 1 日の運転 9 時間までで数え、積込み・荷待ち・荷下ろしと休憩は含みません。</p></details>
+      <p></p></details>
   </header>
   <div id="d-scroll">
-    <div id="rt-modes" aria-label="送り方の経路"></div>
+    <details id="rt-details"><summary>送り方ごとの道を地図で見る</summary><div id="rt-modes" aria-label="送り方の経路"></div></details>
     <div id="cards"></div>
   </div>
-  <footer><button class="btn-primary" id="make-request">この着地で見積依頼文を作る</button></footer>
+  <footer><p id="pick-hint">送り方を1つ選ぶと、運送会社への見積の依頼文を作れます。</p><button class="btn-primary" id="make-request" type="button" hidden>見積の依頼文を作る</button></footer>
 </aside>
 
 <aside id="work" class="glass v-compare sh-panel" aria-label="見積の作業" aria-hidden="true" inert>
@@ -140,33 +194,50 @@
   </div>
   <div class="sum-tiles">
   <div class="sum-tile" title="営業用普通車・2025 年度（自動車輸送統計年報）"><div class="sum-num num"><span id="sum-load"></span><small>%</small></div>
-    <div class="sum-lbl"><span class="lb-full">積載効率（営業用普通車の範囲）</span><span class="lb-short">積載効率（普通車）</span></div>
+    <div class="sum-lbl"><span class="lb-full">積載効率（営業用の普通車）</span><span class="lb-short">積載効率（普通車）</span></div>
     <div class="sum-src">営業用普通車・2025 年度（自動車輸送統計年報）</div></div>
   <div class="sum-tile" title="営業用普通車・2025 年度（自動車輸送統計年報）。走った距離のうち荷を積んでいた割合"><div class="sum-num num"><span id="sum-rate"></span><small>%</small></div>
     <div class="sum-lbl"><span class="lb-full">実車率（営業用普通車。走った距離のうち荷を積んでいた割合）</span><span class="lb-short">実車率</span></div>
     <div class="sum-src">営業用普通車・2025 年度（自動車輸送統計年報）</div></div>
-  <div class="sum-tile" title="県をまたぐ荷で、逆向きに同じ量の荷が無い割合。営業用トラック・物流センサス 2021（e-Stat を加工）"><div class="sum-num num"><span id="sum-share"></span><small>%</small></div>
+  <div class="sum-tile" title="県をまたぐ荷で、逆向きに同じ量の荷が無い割合。営業用トラック"><div class="sum-num num"><span id="sum-share"></span><small>%</small></div>
     <div class="sum-lbl"><span class="lb-full">県をまたぐ荷で、逆向きに同じ量の荷が無い割合</span><span class="lb-short">逆向きに荷が無い割合</span></div>
-    <div class="sum-src">営業用トラック・物流センサス 2021（e-Stat を加工）</div></div>
+    <div class="sum-src">営業用トラック</div></div>
   </div>
 </section>
 
 <div id="m-left" class="v-market sh-panel">
-  <section id="m-ctl" class="glass" aria-label="表示する区間">
+  <section id="m-guide" class="glass" aria-labelledby="mg-h">
+    <h1 class="p-title" id="mg-h" tabindex="-1">全国の物流傾向</h1>
+    <p class="mg-sub">帰りが空きやすい向きの上位 5 つです。<span class="mg-sub-x">数字は、その向きに足りない荷の量です。</span></p>
+    <ol class="mg-list" id="mg-rows" aria-label="帰りが空きやすい区間の上位 5（営業用トラック）"></ol>
+    <p class="mg-sel" id="mg-sel" aria-live="polite">1 つ選ぶと、地図がその県の間を大きく出します。</p>
+    <button type="button" class="btn-primary" id="mg-next" data-go-view="find">この向きで帰り便を探す<small class="mg-badge">架空のデモ</small></button>
+  </section>
+  <section id="m-now" class="glass" aria-labelledby="m-now-h">
+    <button type="button" class="btn-link home-back" data-home>最初の画面に戻る</button>
+    <h1 class="p-title" id="m-now-h" tabindex="-1">全国の物流傾向</h1>
+    <p class="m-now-cond" id="m-now-cond"></p>
+    <p class="m-now-sel" id="m-now-sel"></p>
+    <div class="m-opens" role="group" aria-label="詳しい表示">
+      <button type="button" class="btn-ghost sm" id="open-sum" aria-expanded="false">全国の積載率と不足を見る</button>
+      <button type="button" class="btn-ghost sm" id="open-rank" aria-expanded="false">帰りが空く向きの順位を見る</button>
+    </div>
+  </section>
+  <section id="m-ctl" class="glass" aria-label="地図に出す向き">
     <div class="m-seg m-seg-scope" id="m-scope" role="group" aria-label="塗り分けの単位">
       <button data-scope="pref" aria-pressed="true">県</button>
       <button data-scope="muni" aria-pressed="false">市区町村（推定）</button>
     </div>
-    <div class="m-h">表示する区間</div>
+    <div class="m-h">地図に出す向き</div>
     <div class="m-seg" id="m-mode" role="group" aria-label="輸送手段">
       <button data-mode="truck" aria-pressed="true">営業用トラック</button>
       <button data-mode="ferry" aria-pressed="false">フェリー</button>
       <button data-mode="rail" aria-pressed="false">鉄道コンテナ</button>
     </div>
-    <p class="m-caveat" id="m-caveat" hidden>鉄道コンテナは 3 日間の標本が小さく、参考です。</p>
-    <label class="m-slider"><span class="lbl">表示する区間の数</span><output id="m-n-out" class="num"></output>
+    <p class="m-caveat" id="m-caveat" hidden>鉄道コンテナは調べた件数が少ないため、参考の数字です。</p>
+    <label class="m-slider"><span class="lbl">地図に出す向きの数</span><output id="m-n-out" class="num"></output>
       <input id="m-n" type="range" min="5" max="100" step="5" value="30"></label>
-    <label class="m-slider"><span class="lbl">直線距離の下限</span><output id="m-km-out" class="num"></output>
+    <label class="m-slider"><span class="lbl">これより近い県の間は出さない（直線）</span><output id="m-km-out" class="num"></output>
       <input id="m-km" type="range" min="0" max="800" step="50" value="200"></label>
     <p class="m-count" id="m-count"></p>
   </section>
@@ -190,20 +261,23 @@
     </div>
     <div id="mlg-scroll">
       <div class="mlg-sec" id="mlg-bal">
-        <div class="mlg-t"><span id="mlg-bal-t">県の出荷と入荷の差</span><small id="mlg-bal-u">出荷 − 入荷（トン、3 日間）</small></div>
+        <div class="mlg-t"><span id="mlg-bal-t">県の出荷と入荷の差</span><small id="mlg-bal-u">出荷 − 入荷（t）</small></div>
         <div class="mlg-bar" id="mlg-bar"></div>
         <div class="mlg-ticks" id="mlg-ticks"></div>
         <div class="mlg-cap"><span><i class="sw sw-in"></i>入荷が多い（荷を受け取る）</span><span><i class="sw sw-out"></i>出荷が多い（荷を送り出す）</span></div>
-        <div class="mlg-gray" id="mlg-gray" hidden><i class="sw sw-gray"></i><span>灰色 = 秘匿・数字なし（理由は触れると出ます）</span></div>
+        <div class="mlg-gray" id="mlg-gray" hidden><i class="sw sw-gray"></i><span>灰色は数字が公表されていない所です。</span></div>
       </div>
       <div class="mlg-sec" id="mlg-conc" hidden></div>
       <div class="mlg-sec" id="mlg-fac" hidden></div>
       <div class="mlg-sec" id="mlg-flow"><div class="mlg-t">動く線と乗り物<small>区間ごと</small></div>
         <div class="mlg-row"><svg class="mlg-ar" viewBox="0 0 60 14" aria-hidden="true"><path d="M2 7h40" stroke="#cfeaff" stroke-width="2" stroke-linecap="round"/><path d="M42 2l14 5-14 5z" fill="#eaf6ff"/></svg>
           <span>向き = 荷が多い向き（乗り物の進む向き） ／ 太さ = 不足量 ／ 明るさ = 偏りの比が小さいほど明るい ／ 下の細い線の色 = 手段</span></div></div>
+      <div class="mlg-sec" id="mlg-traf"><div class="mlg-t">交通の流れ<small>営業用トラックの量</small></div>
+        <button type="button" id="traf-toggle" class="mlg-sw" role="switch" aria-checked="true" aria-label="交通の流れを表示する"><span class="mlg-sw-box" aria-hidden="true"></span><span>粒子の数と明るさ = 量が多いほど多く・明るい</span></button>
+        <div class="mlg-note">道路の線をつないだ概算で、実際の便の位置ではありません。</div></div>
       <div class="mlg-sec" id="mlg-jartic"><div class="mlg-t"><span id="mlg-jartic-t">大型車の点</span><small>国の観測点（JARTIC）</small></div>
-        <div class="mlg-row"><i class="dot dot-up"></i><span>上りが多い</span><i class="dot dot-down"></i><span>下りが多い</span><span class="mlg-faint">濃いほど差が大きい。▲▼は多い側</span></div>
-        <div class="mlg-note">上り・下りは道路の定義で、区間の行き帰りとは一致しません。</div></div>
+        <div class="mlg-row"><i class="dot dot-up"></i><span>上りが多い</span><i class="dot dot-down"></i><span>下りが多い</span><span class="mlg-faint">色が濃いほど上りと下りの差が大きい所です。</span></div>
+        <div class="mlg-note">上り・下りは道路の決まりで、荷の行き帰りとは別です。</div></div>
       <div class="lg-hubs" hidden></div>
     </div>
     <div id="mlg-attr" aria-label="出典" hidden></div>
@@ -215,7 +289,6 @@
     <div class="m-rh"><b id="m-rtitle">帰りが空きやすい区間</b><span class="m-rsub num" id="m-rsub"></span>
       <button id="m-rfold" class="m-rfold" aria-expanded="true" aria-controls="m-table-wrap" aria-label="一覧を畳む・開く"><svg class="caret" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5"/></svg></button></div>
     <div class="m-rtot num" id="m-rtot"></div>
-    <p class="m-public">全国の物流傾向は公開統計の集計で、いま出ている案件ではありません</p>
   </header>
   <div id="m-muni" hidden></div>
   <div id="m-pair" hidden></div>
@@ -231,7 +304,11 @@
 <div id="find-sheet" class="sheet-wrap">
 <section id="find-view" class="glass v-find" aria-label="空きを探す・つなぐ">
   <div id="own-draft" class="own-draft" hidden><p class="od-text"></p><button type="button" class="btn-link od-close" aria-label="この説明を閉じる">閉じる</button></div>
-  <div class="m-h">空きを探す・つなぐ<span class="m-tag">架空のデモ</span></div>
+  <button type="button" class="btn-link home-back" data-home>最初の画面に戻る</button>
+  <h1 class="p-title" tabindex="-1">空きを探す・つなぐ<span class="m-tag">架空のデモ</span></h1>
+  <p class="fg-sub">例の運送会社の便から、荷物が載る帰り便を探します。</p>
+  <p class="f-pairline" id="f-pairline" role="status" hidden></p>
+  <button type="button" class="btn-link fg-repick" id="f-repick">行き先の県を選び直す</button>
   <div class="m-seg" id="f-role" role="group" aria-label="役">
     <button data-role="shipper" aria-pressed="true">荷主として探す</button>
     <button data-role="carrier" aria-pressed="false">運送会社として登録する</button>
@@ -239,7 +316,7 @@
   <div id="f-shipper">
     <div class="f-row"><span class="lbl">荷物</span><span class="chip-cargo" id="f-cargo"></span>
       <button type="button" class="btn-link" id="f-change-cargo">送り方を比べるで変える</button></div>
-    <div class="field"><label class="lbl" for="f-dest-q">受け取り場所</label>
+    <div class="field"><label class="lbl" for="f-dest-q">荷を降ろす場所</label>
       <input id="f-dest-q" class="ctl sm" type="text" autocomplete="off" placeholder="市区町村名（便の降ろせる地点を先に出します）"
              role="combobox" aria-expanded="false" aria-controls="f-sug" aria-autocomplete="list">
       <ul id="f-sug" class="f-sug" role="listbox"></ul></div>
@@ -248,7 +325,7 @@
       <label><span class="lbl">仮予約の締切</span><select id="f-holdmin" class="ctl sm"></select></label>
     </div>
     <div class="f-checks">
-      <label class="f-chk"><input type="checkbox" id="f-container"><span>容器に入れた荷</span></label>
+      <label class="f-chk"><input type="checkbox" id="f-container"><span>パレットやカゴに載せた荷物</span></label>
       <label class="f-chk"><input type="checkbox" id="f-fragile"><span>壊れ物</span></label>
       <label class="f-chk"><input type="checkbox" id="f-box" checked><span>段ボールなどの直方体の箱</span></label>
     </div>
@@ -256,20 +333,20 @@
   </div>
   <div id="f-carrier" hidden>
     <div id="f-dir" class="f-dir" hidden></div>
-    <label class="field"><span class="lbl">運送会社の役</span><select id="f-carrier-sel" class="ctl sm"></select></label>
+    <label class="field"><span class="lbl">運送会社として見る</span><select id="f-carrier-sel" class="ctl sm"></select></label>
     <div class="m-h f-sub-h">便の空きと料金を変える<span class="m-tag">画面の中だけ</span></div>
     <label class="field"><span class="lbl">便</span><select id="f-trip-sel" class="ctl sm"></select></label>
     <div class="f-grid">
-      <label><span class="lbl">重さの余り（kg）</span><input id="f-slack-in" class="ctl sm num" type="number" min="0" step="any"></label>
+      <label><span class="lbl">積める重さの残り（kg）</span><input id="f-slack-in" class="ctl sm num" type="number" min="0" step="any"></label>
       <label><span class="lbl">1口の料金（円・税抜）</span><input id="f-price-in" class="ctl sm num" type="number" min="0" step="any"></label>
     </div>
-    <div class="f-btns"><button type="button" class="btn-sm" id="f-apply">画面に反映する</button>
+    <div class="f-btns"><button type="button" class="btn-sm" id="f-apply">この値で便を並べ直す</button>
       <button type="button" class="btn-sm" id="f-dl" disabled>JSON をダウンロード</button></div>
     <p class="f-edit-note" id="f-edit-note"></p>
-    <p class="f-hint">変えた値はこのページの中にだけあり、サーバーには書きません。荷主側の照合にも使われません。</p>
-    <div id="f-formula" class="f-formula" aria-label="運送会社の役だけの欄"></div>
+    <p class="f-hint">変えた値は保存されません。</p>
+    <div id="f-formula" class="f-formula" aria-label="運送会社として見るだけの欄"></div>
   </div>
-  <div class="f-foot"><button type="button" class="btn-link" id="f-reset">仮予約と空きを最初の状態に戻す</button></div>
+  <div class="f-foot"><button type="button" class="btn-link" id="f-reset">仮押さえを消して最初に戻す</button></div>
 </section>
 
 <aside id="find-right" class="glass v-find" aria-label="便の一覧">
@@ -282,18 +359,19 @@
 
 <section id="find-notes" class="glass v-find" aria-label="注意と凡例">
   <p class="f-n1" id="f-fiction">架空の運送会社と便です。</p>
-  <p class="f-n2" id="f-booking">積むかどうか、どこにどう積むかは運送会社が決めます。受付で量って条件に合わないときは受け付けません。</p>
-  <p class="f-n3">決済、メール、通知の送信はしません。料金は運送会社が決めた架空の額（税抜）です。</p>
+  <p class="f-n2" id="f-booking">積むかどうかは運送会社が決めます。大きさや重さが違うと断られます。</p>
+  <p class="f-n3">お金のやり取りやメールの送信はしません。料金は例の額（税抜）です。</p>
   <div class="f-lg"><span><i class="f-l-on"></i>荷に合う便</span><span><i class="f-l-off"></i>合わない便・別の区間</span>
-    <span class="mlg-faint">細い線は帰りの空きやすさ（物流センサス 2021、e-Stat を加工）</span></div>
+    <span class="mlg-faint">細い線は帰りの空きやすさ</span></div>
   <div class="f-lg f-lg-modes"><span class="rt-legend rt-legend-row"></span></div>
 </section>
 </div>
 
 <div id="own-sheet" class="sheet-wrap">
 <section id="own-view" class="glass v-own" aria-label="自社の運行">
-  <div class="m-h">自社の運行<span class="m-tag">架空のサンプル</span></div>
-  <p class="o-co">架空 播磨ライン運輸（兵庫県加古川市・車両 8 台）の 2026 年 10 月</p>
+  <button type="button" class="btn-link home-back" data-home>最初の画面に戻る</button>
+  <h1 class="p-title" tabindex="-1">自社の運行<span class="m-tag">架空のサンプル</span></h1>
+  <p class="o-co">架空 さつま運輸（鹿児島県鹿屋市・車両 8 台）の 2026 年 10 月</p>
   <div class="m-seg" id="own-tabs" role="group" aria-label="表示する内容"></div>
   <div id="own-body"></div>
 </section>
@@ -302,15 +380,15 @@
 
 <section id="own-notes" class="glass v-own" aria-label="注意">
   <p class="f-n1">架空の会社のサンプルです</p>
-  <p class="f-n2">自社の配車表・デジタコの CSV を落とすと、ブラウザの中だけで分析します（ファイルは外に送りません）</p>
+  <p class="f-n2">配車表やデジタコの CSV をここに置くと、この画面の中だけで読みます。外には送りません。</p>
   <p class="f-n3">列の対応づけの Claude の提案は、開発のときに作った記録です</p>
-  <p class="f-n3">ここの数字は検索と集計のための写しです。法令で残す元の記録は、別に保管してください。</p>
+  <p class="f-n3">法令で残す運行記録は、元のファイルを保管してください。</p>
 </section>
 </div>
 
 <section id="f-contract" class="glass v-find" role="dialog" aria-label="書面の下書き" hidden>
   <div class="fc-head"><b>書面の下書き</b><span class="m-tag">架空のデモ</span></div>
-  <p class="fc-notice">この書面は運送会社と荷主の間で交わすものです。Backfull は運送の当事者ではなく、運賃を受け取りません。</p>
+  <p class="fc-notice">この書面は運送会社と荷主が交わします。Backfull は運賃を受け取りません。</p>
   <p class="fc-fiction">架空の運送会社・荷主・番号です。実在のものではありません。</p>
   <div id="fc-body"></div>
   <div class="fc-btns no-print">
@@ -348,9 +426,12 @@
   }, true);
 })();
 </script>
+<!-- 地図は最後に置く: キーボードの Tab で、案内の欄より先に地図と出典のリンクを通らないため。重なりは style.css の z-index で決める -->
+<div id="map"></div>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
 <script src="kit/kit.js"></script>
+<script src="map_fx.js"></script>
 <script src="perf.js"></script>
 <script src="work.js"></script>
 <script src="loadview.js"></script>
@@ -368,7 +449,11 @@
 <script src="waiting_map.js"></script>
 <script src="own_calc.js"></script>
 <script src="own_month.js"></script>
+<script src="trip_view.js"></script>
+<script src="negotiate.js"></script>
+<script src="ai_explain.js"></script>
 <script src="own.js"></script>
+<script src="hero3d.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

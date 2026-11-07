@@ -255,7 +255,7 @@ def test_js_over_max_weights_are_left_out_and_match_python(calc):
     head = ["車番", "車種", "2026/10/1", "2026/10/2", "2026/10/3", "2026/10/4"]
     cells = ["加古川→江東 12t", "加古川→江東 4600kg", "加古川→江東 -1t", "加古川→江東 6t"]
     files = [{"name": "haisha_w.csv", "text": _haisha(head, cells)}]
-    d = _an(calc, files)
+    d = _an(calc, files, {"largeMaxLoadKg": 10000})  # 最大積載量を決めたときは、決めた値のまま超える重さを数える（決めないときは仮定を上げる。tests/test_v48_own_r6.py）
     # -1t は読めない行（理由つき）。区間は 3 つ
     assert [u["reason"] for u in d["unreadable"]] == [own.WEIGHT_SIGN_ERR] and d["counts"]["legs"] == 3
     lr = d["kpis"]["load_rate"]
@@ -276,13 +276,13 @@ def test_js_over_max_weights_are_left_out_and_match_python(calc):
     strip = lambda c: {k: v for k, v in c.items() if k not in ("id", "key", "effect", "decision")}  # noqa: E731
     assert _same([strip(c) for c in py_cards], [strip(c) for c in cards]) is None
     # 決定: 修正で 4.6t にすると率に入る。読まないでは入らず、気づきも消える
-    fixed = _an(calc, files, {"decisions": {"weight:L001": {"act": "fix", "text": "4.6t"}}})
+    fixed = _an(calc, files, {"largeMaxLoadKg": 10000, "decisions": {"weight:L001": {"act": "fix", "text": "4.6t"}}})
     assert fixed["kpis"]["load_rate"]["over_max"] == 0 and fixed["kpis"]["load_rate"]["legs"] == 3
     assert not [i for i in fixed["insights"] if i["rule"] == 7]
     assert next(c for c in fixed["confirm"] if c["kind"] == "weight")["decision"]["applied"] is True
-    bad = _an(calc, files, {"decisions": {"weight:L001": {"act": "fix", "text": "-3t"}}})
+    bad = _an(calc, files, {"largeMaxLoadKg": 10000, "decisions": {"weight:L001": {"act": "fix", "text": "-3t"}}})
     assert bad["kpis"]["load_rate"]["over_max"] == 1 and next(c for c in bad["confirm"] if c["kind"] == "weight")["decision"]["applied"] is False
-    skipped = _an(calc, files, {"decisions": {"weight:L001": {"act": "skip", "text": ""}}})
+    skipped = _an(calc, files, {"largeMaxLoadKg": 10000, "decisions": {"weight:L001": {"act": "skip", "text": ""}}})
     assert skipped["kpis"]["load_rate"]["over_max"] == 0 and skipped["kpis"]["load_rate"]["legs"] == 2
     # 99t でも 500% にならない
     big = _an(calc, [{"name": "h.csv", "text": _haisha(head[:3], ["加古川→江東 99t"])}])
@@ -430,12 +430,15 @@ def test_ui_over_max_weight_is_shown_and_left_out_of_the_rates(app, tmp_path):
     page = app
     _to_sample(page)
     page.js("Own.setTab('import')")
+    page.js("Own.state.largeT = 10")  # 決めた値のまま超える重さを数える
     _set_files(page, [_write(tmp_path, "haisha_w.csv", WEIGHT_HAISHA)])
     page.wait(lambda: "自社のファイル: 1 件" in _src(page), 120, "取り込み")
     d = page.js("Own.state.data")
     assert d["kpis"]["load_rate"]["over_max"] == 1 and d["kpis"]["load_rate"]["legs"] == 2
     right = page.js("document.querySelector('#own-right').innerText")
-    assert "最大積載量を超える重さの記録 1 件は入れていません" in right and "53.0" in right  # 大型の積載率 (46% + 60%) / 2
+    # 注記は各数字の閉じた「詳しく」の中にある（SPEC §45）。閉じた中は innerText に出ないので textContent で読む
+    note = page.js("document.querySelector('#own-right').textContent")
+    assert "最大積載量を超える重さの記録 1 件は入れていません" in note and "53.0" in right  # 大型の積載率 (46% + 60%) / 2
     assert "記号つきは入れられません" in page.js("document.querySelector('#own-body').innerText")
     page.js("Own.setTab('confirm')")
     sel = '#own-body .o-card[data-key="weight:L001"]'

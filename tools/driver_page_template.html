@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>荷待ちの記録（ドライバー用）</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%231f4e79%27/%3E%3Cpath d=%27M6 20h20M8 20V11h11v9M19 14h4l3 3v3%27 stroke=%27white%27 stroke-width=%272%27 fill=%27none%27/%3E%3C/svg%3E">
+<!-- このファイルは tools/build_driver_page.py が tools/driver_page_template.html から作ります。直すときはテンプレートを直してください。 -->
+<!-- 1 ファイルで動きます。通信はしません。記録はこの端末のブラウザの中にだけ残ります。ここで作る文は web/waiting.html の貼り付け欄がそのまま読みます（SPEC §41）。 -->
+<style>
+/*__UI_KIT__*/
+
+/* ---------- ドライバーの 1 枚（デザインの作り直し 2026-11-07）: スマートフォンの縦 360〜430px が基本 ---------- */
+body { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+main { position: relative; max-width: 440px; margin: 0 auto; }
+.side-note { display: none; }
+.stage { display: block; }
+/* 広い画面: 左に説明とイラスト、右に端末の枠に入れた画面。スマートフォンではこの枠も説明も出ない */
+@media (min-width: 960px) {
+  body { padding: 0; background: radial-gradient(1100px 620px at 30% 20%, var(--hi), var(--none) 65%), var(--bg); }
+  .stage { display: flex; align-items: center; justify-content: center; gap: 80px; min-height: 100vh; padding: 24px 48px; max-width: 1280px; margin: 0 auto; }
+  .side-note { display: block; width: 340px; color: var(--muted); font-size: var(--fs-2); }
+  .side-note .ill { margin: 0 0 16px -12px; }
+  .side-note .cap { display: block; margin-bottom: 8px; }
+  .side-note h2 { font-size: var(--fs-5); line-height: 1.35; color: var(--text); margin: 0 0 16px; letter-spacing: -0.01em; }
+  .side-note p { margin: 0 0 8px; }
+  .device { flex: none; width: 408px; padding: 12px; border-radius: 52px; background: linear-gradient(160deg, var(--card-2), var(--card)); border: 1px solid var(--line); box-shadow: var(--elev-2), inset 0 0 0 2px var(--bg); position: relative; }
+  .device::before { content: ""; position: absolute; top: 20px; left: 50%; width: 72px; height: 6px; margin-left: -36px; border-radius: 4px; background: var(--line); z-index: 2; }
+  .device-screen { height: min(860px, calc(100vh - 72px)); min-height: 640px; overflow: auto; overscroll-behavior: contain; border-radius: 40px; background: var(--bg); padding: 0 16px; scrollbar-width: none; }
+  .device-screen::-webkit-scrollbar { display: none; }
+  .device-screen .app-header { padding-top: 32px; }
+}
+.app-header { padding-top: calc(16px + env(safe-area-inset-top, 0px)); }
+.app-header .grow { flex: 1; }
+.hdr-btn { min-height: 44px; }
+button { min-height: 44px; }   /* 手袋でも押せる高さ */
+.lead { margin: 0 0 12px; color: var(--muted); font-size: var(--fs-1); }
+
+/* 時刻のボタン: 2 列の大きなタイル。押した時刻が入る。今押すものは青い枠 */
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 16px; }
+.tiles > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+button.tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 4px; min-height: 88px; padding: 12px; text-align: left; background: var(--card-2); border: 1.5px solid var(--line); border-radius: var(--r-l); box-shadow: none; color: var(--text); }
+button.tile .tl { font-size: 15px; font-weight: 700; line-height: 1.35; }
+button.tile .tl small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+button.tile .t { font-size: var(--fs-4); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; color: var(--muted); letter-spacing: 0.01em; }
+button.tile .t:empty::before { content: "――"; color: var(--faint); font-weight: 500; }
+button.tile.next { border-color: var(--accent); background: var(--hi); box-shadow: 0 0 0 3px var(--ring); }
+button.tile.next .t:empty::before { content: "押す"; font-size: var(--fs-2); color: var(--accent); font-weight: 700; }
+button.tile.done { border-color: var(--ok); background: var(--ok-bg); box-shadow: none; }
+button.tile.done .t { color: var(--text); }
+button.tile.done::after { content: "✓"; position: absolute; bottom: 12px; right: 12px; font-size: var(--fs-2); font-weight: 700; color: var(--ok); }
+button.tile:active { transform: scale(0.985); }
+.setup-chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 48px; margin: 0 0 8px; padding: 0 16px; font-size: var(--fs-1); text-align: left; background: var(--none); border: 1px dashed var(--line); color: var(--muted); }
+.setup-chip::after { content: "直す"; flex: none; color: var(--accent); font-weight: 700; }
+.save-row { display: block; width: 100%; min-height: 44px; }
+.note { margin: 8px 0; padding: 8px 12px; border-left: 4px solid var(--warn); background: var(--card); font-size: var(--fs-1); }
+
+/* 今日の記録 */
+.card-h .tot { font-variant-numeric: tabular-nums; }
+ul.recs { list-style: none; margin: 0; padding: 0; }
+ul.recs li { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 8px; align-items: start; padding: 12px 0; border-top: 1px solid var(--row-line); }
+ul.recs li:first-child { border-top: 0; padding-top: 0; }
+ul.recs li.empty { display: block; }
+.rec-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.rec-h b { font-size: var(--fs-2); }
+.rec-h .tag { font-style: normal; font-size: 12px; font-weight: 700; padding: 0 8px; border: 1px dashed var(--chk); color: var(--chk); border-radius: var(--r-pill); }
+.rec-w { margin-left: auto; font-size: var(--fs-1); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--chk); }
+.rec-m { color: var(--muted); font-size: var(--fs-1); }
+.rec-t { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: var(--fs-1); font-variant-numeric: tabular-nums; }
+.rec-t time { white-space: nowrap; }
+.rec-t i { font-style: normal; color: var(--muted); margin-right: 4px; font-size: 12px; }
+button.x { min-width: 44px; min-height: 44px; padding: 0; font-size: 20px; color: var(--muted); background: var(--none); border-color: var(--none); }
+.empty-state { padding: 8px 8px 16px; }
+.empty-state .ill { margin: 0 auto; }
+button.tile.next { min-height: 104px; }
+button.tile.next .t:empty::before { font-size: var(--fs-3); }
+.msg { margin: 0; flex: 1 0 100%; order: -1; font-weight: 700; font-size: var(--fs-1); }
+.msg:empty { display: none; }
+.msg.bad { color: var(--warn); }
+.hint { color: var(--muted); font-size: var(--fs-1); margin: 4px 0; }
+textarea { width: 100%; min-height: 120px; font-size: var(--fs-1); }
+#copybar { margin-top: 8px; }
+#copybar #b-copy { min-height: 56px; }
+
+/* 折りたたみの中 */
+details.box { background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 0 16px; margin: 16px 0; box-shadow: var(--elev-1); }
+details.box[open] { padding-bottom: 16px; }
+details.box > summary { min-height: 52px; font-size: var(--fs-2); }
+details.inner { margin: 8px 0 0; }
+details.inner > summary { min-height: 44px; color: var(--muted); }
+.stamp { display: grid; grid-template-columns: minmax(0, 1fr) 112px 44px; gap: 8px; align-items: center; margin: 8px 0; }
+.stamp .lb { font-size: var(--fs-1); }
+.stamp input { margin: 0; text-align: center; padding: 8px 4px; }
+.stamp.done .lb { font-weight: 700; }
+.wide { width: 100%; }
+a.link { display: inline-block; min-height: 24px; line-height: 24px; }   /* 押せる所は高さ 24px 以上 */
+.back { margin: 8px 0 0; font-size: var(--fs-1); }
+.scroll { overflow-x: auto; max-width: 100%; }
+section.card h2 { margin-bottom: 8px; }
+table#sheet { border-collapse: separate; border-spacing: 0 4px; width: 100%; font-size: var(--fs-1); margin: 8px 0; }
+table#sheet th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 4px 8px; white-space: nowrap; }
+table#sheet td { padding: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; background: var(--card-2); }
+table#sheet td.num { text-align: right; font-weight: 700; }
+table#sheet td:first-child { border-radius: 8px 0 0 8px; }
+table#sheet td:last-child { border-radius: 0 8px 8px 0; }
+ol.steps { margin: 8px 0; padding-left: 20px; font-size: var(--fs-1); }
+ol.steps li { margin-bottom: 8px; }
+.print-only, .pc, tr.blank { display: none; }
+#more label { display: block; margin-top: 8px; }
+
+/* 設定のシート: スマートフォンでは下から出る */
+dialog.sheet { width: 100%; max-width: 560px; max-height: 92vh; margin: auto auto 0; padding: 0; border: 0; border-radius: 20px 20px 0 0; background: var(--card); color: var(--text); box-shadow: var(--elev-2); overflow: auto; }
+dialog.sheet::backdrop { background: var(--scrim); }
+@media (min-width: 600px) { dialog.sheet { margin: auto; border-radius: 20px; } }
+.sheet-in { padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.sheet-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.sheet-in label { display: block; margin-top: 12px; font-size: var(--fs-1); color: var(--muted); font-weight: 500; }
+.sheet-in label input, .sheet-in label select { display: block; width: 100%; margin-top: 4px; }
+
+@media print {
+  :root, :root:not([data-theme="light"]) { --bg: #ffffff; --card: #ffffff; --card-2: #ffffff; --text: #000000; --muted: #333333; --line: #999999; --line-soft: #999999; --accent: #000000; --field: #ffffff; --btn: #ffffff; --radius: 0; --page-glow: none; --elev-1: none; color-scheme: light; }
+  body { background: #fff; padding: 0; }
+  body > main > :not(#more), #more > :not(#report), #report button, #report .msg { display: none !important; }
+  #more { border: 0; padding: 0; margin: 0; box-shadow: none; }
+  section.card { border: 0; padding: 0; box-shadow: none; }
+  .print-only { display: block; }
+  th.pc, td.pc { display: table-cell; }
+  tr.blank { display: table-row; }
+  .print-head h2 { font-size: 16pt; margin: 0 0 6pt; }
+  .print-head p { font-size: 11pt; margin: 3pt 0; }
+  .print-head .fill { display: inline-block; min-width: 9em; border-bottom: 1px solid #000; }
+  table#sheet { border-collapse: collapse; width: 100%; font-size: 10.5pt; table-layout: fixed; }
+  table#sheet th, table#sheet td { border: 1px solid #000; padding: 6pt 5pt; color: #000; background: #fff; border-radius: 0; white-space: nowrap; overflow: hidden; }
+  table#sheet th { font-size: 10pt; font-weight: 700; }
+  table#sheet tr.blank td { height: 26pt; }
+  table#sheet td:nth-child(2), table#sheet td:nth-child(3) { white-space: normal; }
+  main { max-width: none; }
+  table#sheet th:nth-child(1) { width: 9%; } table#sheet th:nth-child(2), table#sheet th:nth-child(3) { width: 15%; } table#sheet th:nth-child(n+4):nth-child(-n+7) { width: 8.5%; } table#sheet th:nth-child(8) { width: 10%; } table#sheet th.pc { width: 16%; }
+  #report > h2, #report > .sub { display: none; }
+  .print-foot { font-size: 9pt; margin-top: 8pt; }
+  .scroll { overflow: visible; }
+}
+@media (max-width: 380px) { .stamp { grid-template-columns: minmax(0, 1fr) 96px 44px; } button.tile .t { font-size: 22px; } }
+</style>
+</head>
+<body>
+<div class="stage">
+<aside class="side-note"><span class="cap">ドライバーの方へ</span><img class="ill ill-256" src="@@ILL:phone_driver:256@@" alt="" width="256" height="256"><h2>着いたら押すだけで、荷待ちが残ります</h2><p>押した時刻はこの端末の中にだけ残ります。通信はしません。</p><p>記録は「LINE に貼る文」にして、事務所の荷待ちのページに貼ります。</p></aside>
+<div class="device"><div class="device-screen">
+<main>
+<header class="app-header">
+  <span class="wm"><i class="wm-mark" aria-hidden="true"></i>Backfull</span>
+  <span class="app-page">荷待ちの記録</span>
+</header>
+<p class="lead">着いたら押してください。押した時刻が入ります。</p>
+<p class="note" id="broken" hidden>保存した記録が読めませんでした（消していません）。</p>
+
+<section class="card" aria-label="いまの 1 回">
+  <div id="stamps" class="tiles"></div>
+  <button type="button" class="setup-chip" id="setup-sum">場所・荷主・車番</button>
+  <button type="button" class="save-row btn-secondary" id="b-save">この回を保存する</button>
+</section>
+
+<section class="card" aria-label="今日の記録">
+  <div class="card-h"><h2 id="list-title">今日の記録</h2><span class="sec-aside tot" id="list-tot"></span></div>
+  <ul class="recs" id="recs"></ul>
+  <div id="fallback" hidden>
+    <p class="hint">自動でコピーできませんでした。下の文を選んで、長押しか Ctrl+C でコピーしてください。</p>
+    <textarea id="ta" readonly aria-label="コピーする文"></textarea>
+  </div>
+</section>
+
+<div class="actionbar is-sticky" id="copybar">
+  <p class="msg" id="msg" role="status"></p>
+  <button type="button" class="primary btn-primary btn-block" id="b-copy">LINE に貼る文をコピー</button>
+</div>
+
+<details class="box" id="more"><summary>時刻の直し・日報・事務の方へ</summary>
+<p class="hint">押し直しても時刻は変わりません。保存前の回もコピーに入ります。事務所では、この文を<a class="link" href="waiting.html">荷待ちのページ</a>に貼ります。</p>
+<details class="inner" id="fix"><summary>時刻を直す・消す</summary><div id="fixes"></div></details>
+
+<details class="inner" id="days"><summary>ほかの日・記録を消す</summary>
+  <label>日を選ぶ<select id="day" aria-label="記録を見る日、コピーする日"></select></label>
+  <button type="button" id="b-clear">今日の記録を消す</button>
+  <p class="hint" id="older"></p>
+</details>
+
+<section class="card" aria-label="日報に写す表" id="report">
+  <div class="print-only print-head">
+    <h2>荷待ちの記録（乗務記録に添える表）</h2>
+    <p>記録の日: <b id="ph-day"></b>　車番: <b id="ph-vno"></b>　運転者名: <span class="fill"></span>　所属: <span class="fill"></span></p>
+  </div>
+  <h2>日報に写す表（選んだ日）</h2>
+  <p class="sub hint">紙の運転日報の荷待ちの欄に書き写す順（着・荷役開始・荷役終了・出発）です。コピーして Excel や LINE に貼るか、印刷して日報に添えます。</p>
+  <div class="scroll"><table id="sheet"><thead><tr><th>日付</th><th>場所</th><th>相手</th><th>着</th><th>荷役開始</th><th>荷役終了</th><th>出発</th><th>荷待ち（分）</th><th class="pc">荷主の確認（印）</th></tr></thead><tbody id="sheet-body"></tbody></table></div>
+  <button type="button" class="wide" id="b-copysheet">日報の表をコピー</button>
+  <button type="button" class="btn-ghost" id="b-printsheet">日報の表を印刷</button>
+  <p class="msg" id="sheetmsg" role="status" style="order:0"></p>
+  <p class="print-only print-foot">スマホで押した時刻の一覧です。乗務記録に書き写すか、添えてください。荷主の確認の欄は、もらえたときに書いてもらいます。</p>
+</section>
+
+<section class="card" aria-label="事務の方へ" id="distribute"><details class="disc">
+  <summary>事務の方へ: このページを配るには</summary>
+  <ol class="steps">
+    <li><b>おすすめ:</b> URL を LINE で送る。</li>
+    <li><b>ファイルで送る:</b> 開けない端末があります。</li>
+    <li><b>ホーム画面に追加:</b> 次から 1 回で開きます。</li>
+  </ol>
+  <label>いま開いているページの URL<input id="own-url" type="text" readonly aria-label="いま開いているページの URL" style="width:100%"></label>
+  <button type="button" id="b-copyurl" style="margin-top:8px">URL をコピー</button>
+  <p class="msg" id="urlmsg" role="status" style="order:0"></p>
+  <p class="hint" id="url-warn" hidden>この URL は、この端末の中のファイルを開いているので、ほかの端末では開けません。ページを置いている場所の URL を送るか、保存したファイルを送ってください。</p>
+</details></section>
+<p class="back"><a class="link" href="/" id="b-home">最初の画面に戻る</a></p>
+</details>
+
+<dialog class="sheet" id="setup" aria-label="場所・荷主・車番">
+  <div class="sheet-in">
+    <div class="sheet-h"><h2>場所・荷主・車番</h2><button type="button" class="btn-ghost" id="b-setup-close">閉じる</button></div>
+    <label>場所<input id="place" type="text" autocomplete="off" placeholder="例 江東区 ○○倉庫"></label>
+    <label>相手（荷主）<input id="partner" type="text" autocomplete="off" placeholder="例 ○○"></label>
+    <div class="two">
+      <label>車番<input id="vno" type="text" autocomplete="off" placeholder="例 1234"></label>
+      <label>車種<select id="vclass"><option value="">選ばない</option><option>小型</option><option>中型</option><option>大型</option><option>トレーラー</option></select></label>
+    </div>
+    <div class="two">
+      <label>荷役をした人<select id="handler"><option value="">分からない</option><option>運転者</option><option>荷主側</option></select></label>
+      <label>指定の到着時刻（あれば）<input id="appointed" type="time" step="60"></label>
+    </div>
+    <label>日付（月/日）<input id="date" type="text" inputmode="numeric" autocomplete="off" placeholder="例 11/10"></label>
+    <p class="hint">場所・荷主・車番・車種・荷役をした人は、次に開いたときも残ります。</p>
+  </div>
+</dialog>
+
+</main>
+</div></div>
+</div>
+
+<script>
+"use strict";
+/* 通信はしません。保存は localStorage だけで、使えなくても画面は動きます。
+   LINE に貼る文の形（1 件 = 1 行）:
+   荷待ち記録 11/10 江東区 ○○倉庫 着 7:50 受付 8:05 荷役開始 9:40 終了 10:30 出発 10:40 車番 1234 相手 ○○ [車種 中型] [指定 8:00] [荷役 運転者|荷主側]
+   読む側は web/waiting_calc.js の parseDriverText と src/shipcompare/waiting.py の parse_driver_text。 */
+const STAMPS = [['arrive', '着いた', '着'], ['reception', '受付した', '受付'], ['start', '荷役を始めた', '荷役開始'], ['end', '荷役が終わった（積み降ろしの作業）', '終了'], ['depart', '出発した', '出発']];
+const KEYWORDS = new Set(['着', '到着', '受付', '荷役開始', '積込開始', '開始', '終了', '荷役終了', '積込終了', '出発', '車番', '相手', '荷主', '車種', '指定', '指定時刻', '荷役', '荷待ち記録']);
+const K_SET = 'driver_settings_v1', K_CUR = 'driver_current_v1', K_REC = 'driver_records_v1';
+const SETTING_IDS = ['place', 'partner', 'vno', 'vclass', 'handler'];
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const S = { cur: null, recs: [], broken: false, clearArmed: false, day: '' };
+const ALL_DAYS = '__all';
+
+function load(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { S.broken = true; return null; }
+}
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (e) { return false; } }
+
+const today = () => { const d = new Date(); return `${d.getMonth() + 1}/${d.getDate()}`; };
+const nowHM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const shortTime = (v) => { const m = /^([0-9]{1,2}):([0-9]{2})/.exec(v || ''); return m ? `${Number(m[1])}:${m[2]}` : ''; };
+const blankCur = () => ({ date: today(), arrive: '', reception: '', start: '', end: '', depart: '' });
+const clean = (v) => String(v || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).map((t) => (KEYWORDS.has(t) ? `(${t})` : t)).join(' ');
+
+function settings() {
+  const o = {};
+  SETTING_IDS.forEach((id) => { o[id] = $(`#${id}`).value; });
+  o.appointed = $('#appointed').value;
+  return o;
+}
+
+// 1 件の文（上の形）。空の欄は書かない
+function recordLine(r) {
+  const p = ['荷待ち記録', r.date];
+  if (clean(r.place)) p.push(clean(r.place));
+  STAMPS.forEach(([k, , word]) => { if (shortTime(r[k])) p.push(word, shortTime(r[k])); });
+  if (clean(r.vno)) p.push('車番', clean(r.vno));
+  if (clean(r.partner)) p.push('相手', clean(r.partner));
+  if (r.vclass) p.push('車種', r.vclass);
+  if (shortTime(r.appointed)) p.push('指定', shortTime(r.appointed));
+  if (r.handler) p.push('荷役', r.handler);
+  return p.join(' ');
+}
+
+// 見ている日。夜中をまたいで入力中の回があるときは、その回の日付（着いた日）を初めに選ぶ。記録の日付は着いた日なので、日をまたいだ回も同じ日にまとまる
+const defaultDay = () => (S.cur && S.cur.arrive && S.cur.date && S.cur.date.trim() ? S.cur.date.trim() : today());
+const dayList = () => {   // 今日、入力中の回の日、保存した順に新しい日から（年をまたぐ 12/31 と 1/1 でも順が崩れない）
+  const out = [today()];
+  const add = (d) => { if (d && !out.includes(d)) out.push(d); };
+  if (S.cur && S.cur.arrive) add(S.cur.date.trim());
+  for (let i = S.recs.length - 1; i >= 0; i--) add(S.recs[i].date);
+  return out;
+};
+const todays = () => S.recs.filter((r) => r.date === today());   // 今日の分（試験が使う）。画面は日を選んで見る
+const viewDay = () => S.day || defaultDay();
+const dayRecs = () => (viewDay() === ALL_DAYS ? S.recs.slice() : S.recs.filter((r) => r.date === viewDay()));
+const dayWord = (d) => (d === ALL_DAYS ? '全部の日' : d === today() ? `今日（${d}）` : d);
+const curInView = () => !!S.cur.arrive && (viewDay() === ALL_DAYS || S.cur.date.trim() === viewDay());
+const curRecord = () => ({ ...settings(), ...S.cur });
+
+function persistCur() { save(K_CUR, S.cur); }
+function persistSettings() { const o = settings(); delete o.appointed; save(K_SET, o); }   // 指定の到着時刻はその回ごとなので覚えない
+
+function renderStamps() {
+  $('#stamps').innerHTML = STAMPS.map(([k, label]) => {
+    const m = /^([^（]+)（([^）]+)）$/.exec(label), main = m ? m[1] : label, hint = m ? `<small>${m[2]}</small>` : '';
+    return `<button type="button" class="tile${S.cur[k] ? ' done' : ''}" data-stamp="${k}"><span class="tl">${main}${hint}</span><span class="t">${S.cur[k] ? shortTime(S.cur[k]) : ''}</span></button>`;
+  }).join('');
+  markNext();
+  $('#fixes').innerHTML = STAMPS.map(([k, label]) => `<div class="stamp${S.cur[k] ? ' done' : ''}"><span class="lb">${label}</span>` +
+    `<input type="time" step="60" data-time="${k}" value="${S.cur[k] || ''}" aria-label="${label}の時刻">` +
+    `<button type="button" class="x" data-clear="${k}" aria-label="${label}の時刻を消す">×</button></div>`).join('');
+}
+// いま押すボタン（まだ時刻が入っていない、いちばん前のもの）に青い枠を付ける
+function markNext() {
+  const first = STAMPS.find(([k]) => !S.cur[k]);
+  document.querySelectorAll('#stamps [data-stamp]').forEach((b) => b.classList.toggle('next', !!first && b.dataset.stamp === first[0]));
+}
+// 時刻の欄を直したときは、欄を作り直さず(入力中の欄を壊さない)、上のボタンの表示だけ更新する
+function updateStampButton(k) {
+  const b = document.querySelector(`#stamps [data-stamp="${k}"]`);
+  if (!b) return;
+  b.classList.toggle('done', !!S.cur[k]);
+  b.querySelector('.t').textContent = S.cur[k] ? shortTime(S.cur[k]) : '';
+  markNext();
+}
+// 閉じている「場所と相手・設定」の見出しに、いま入っている場所・相手・車番を出す
+function renderSetupSummary() {
+  const bits = [clean($('#place').value), clean($('#partner').value), clean($('#vno').value) ? `車番 ${clean($('#vno').value)}` : ''].filter(Boolean);
+  $('#setup-sum').textContent = bits.length ? bits.join(' / ') : '場所・荷主・車番を入れる';
+}
+
+function renderDays() {
+  const sel = $('#day'), cur = viewDay();
+  sel.innerHTML = dayList().map((d) => `<option value="${d}"${d === cur ? ' selected' : ''}>${dayWord(d)}（${S.recs.filter((r) => r.date === d).length} 件）</option>`).join('') +
+    `<option value="${ALL_DAYS}"${cur === ALL_DAYS ? ' selected' : ''}>全部の日（${S.recs.length} 件）</option>`;
+}
+
+// 1 件の見た目。画面の文字は読みやすく分け、コピーする元の 1 行は隠した span に残す（#recs li span:first-child）
+function recHtml(r, pending) {
+  const wm = waitMin(r), who = [clean(r.partner), clean(r.vno) ? `車番 ${clean(r.vno)}` : ''].filter(Boolean).join('　');
+  const times = STAMPS.filter(([k]) => shortTime(r[k])).map(([k, , word]) => `<time><i>${word}</i>${shortTime(r[k])}</time>`).join('');
+  return `<div class="rec-body"><div class="rec-h"><b>${esc(clean(r.place) || '場所の入力なし')}</b>${pending ? '<em class="tag">保存前</em>' : ''}${wm !== '' ? `<strong class="rec-w">待ち ${wm} 分</strong>` : ''}</div>${who ? `<div class="rec-m">${esc(who)}</div>` : ''}<div class="rec-t">${times}</div></div>`;
+}
+function renderList() {
+  const list = dayRecs();
+  $('#list-title').textContent = `${viewDay() === today() ? '今日' : dayWord(viewDay())}の記録（${list.length} 件）`;
+  const pending = curInView() ? `<li><span class="rl" hidden>保存前: ${esc(recordLine(curRecord()))}</span>${recHtml(curRecord(), true)}<span class="spacer"></span></li>` : '';
+  $('#recs').innerHTML = list.map((r) => `<li><span class="rl" hidden>${esc(recordLine(r))}</span>${recHtml(r, false)}<button type="button" class="x" data-del="${r.id}" aria-label="この記録を消す">×</button></li>`).join('') + pending ||
+    '<li class="empty empty-state"><img class="ill" src="@@ILL:phone_driver:128@@" alt="" width="96" height="96"><p>まだ記録がありません。着いたら「着いた」を押してください。</p></li>';
+  const mins = list.map(waitMin).filter((v) => v !== '').reduce((a, v) => a + Number(v), 0).toLocaleString('ja-JP');
+  $('#list-tot').textContent = list.some((r) => waitMin(r) !== '') ? `荷待ち 合計 ${mins} 分` : '';
+  const older = S.recs.length - list.length;
+  $('#older').textContent = older > 0 ? `ほかの日の記録 ${older} 件は、この端末に残っています（上の「日を選ぶ」で切り替えられます）。` : '';
+  renderDays();
+  renderSheet();
+  renderSetupSummary();
+  $('#b-clear').textContent = viewDay() === ALL_DAYS ? '全部の記録を消す' : '選んだ日の記録を消す';
+}
+
+// 日報に写す表（SPEC §46）。選んだ日の記録を、紙の日報の荷待ちの欄の順（着・荷役開始・荷役終了・出発）に並べる。荷待ち = 荷役開始 − 着（日をまたぐときは翌日として数える）
+const toMin = (v) => { const m = /^([0-9]{1,2}):([0-9]{2})/.exec(v || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+function waitMin(r) {
+  const a = toMin(r.arrive), s = toMin(r.start);
+  if (a === null || s === null) return '';
+  return String(s >= a ? s - a : s + 1440 - a);
+}
+function sheetRows() {
+  const list = dayRecs().slice();
+  if (curInView()) list.push(curRecord());
+  return list.map((r) => [r.date, clean(r.place), clean(r.partner), shortTime(r.arrive), shortTime(r.start), shortTime(r.end), shortTime(r.depart), waitMin(r)]);
+}
+function renderSheet() {
+  const rows = sheetRows();
+  const esc = (v) => v.replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+  const blank = Math.max(0, 6 - rows.length);   // 印刷したときに手で書き足せるよう、6 行になるまで空の行を足す（画面には出さない）
+  $('#sheet-body').innerHTML = (rows.length ? rows.map((c) => `<tr>${c.map((v, i) => `<td${i === 7 ? ' class="num"' : ''}>${esc(v)}</td>`).join('')}<td class="pc"></td></tr>`).join('') : '<tr><td colspan="8">この日の記録はまだありません。</td></tr>') +
+    Array.from({ length: blank }, () => '<tr class="blank">' + '<td></td>'.repeat(8) + '<td class="pc"></td></tr>').join('');
+  $('#ph-day').textContent = viewDay() === ALL_DAYS ? '全部の日' : viewDay();
+  $('#ph-vno').textContent = clean($('#vno').value) || '（未入力）';
+}
+function sheetText() { return [['日付', '場所', '相手', '着', '荷役開始', '荷役終了', '出発', '荷待ち（分）'], ...sheetRows()].map((c) => c.join('\t')).join('\n'); }
+function copySheet() {
+  if (!sheetRows().length) { $('#sheetmsg').textContent = 'コピーする記録がありません。'; return; }
+  const text = sheetText();
+  const done = () => { $('#sheetmsg').textContent = '日報の表をコピーしました。Excel や LINE に貼れます。'; };
+  const fallback = () => {
+    const ta = $('#ta');
+    ta.value = text; $('#fallback').hidden = false; ta.focus(); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    $('#sheetmsg').textContent = ok ? '日報の表をコピーしました。' : '自動でコピーできませんでした。上の枠の文を選んでコピーしてください。';
+  };
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } catch (e) { fallback(); }
+}
+
+function setMsg(t, bad) { const el = $('#msg'); el.textContent = t; el.classList.toggle('bad', !!bad); }
+
+function stamp(k) {
+  if (S.cur[k]) { setMsg('もう入っています。直すときは下の「時刻を直す」を開いてください。'); return; }
+  S.cur[k] = nowHM();
+  persistCur(); renderStamps(); renderList(); setMsg('');
+}
+
+function saveCurrent() {
+  if (!S.cur.arrive) { setMsg('「着いた」の時刻がありません。先に「着いた」を押してください。', true); return; }
+  if (!/^[0-9]{1,2}\/[0-9]{1,2}$/.test(S.cur.date.trim())) { setMsg('日付は 11/10 のように、月/日で入れてください。', true); return; }
+  const rec = { id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...curRecord(), date: S.cur.date.trim() };
+  S.recs.push(rec);
+  S.recs = S.recs.slice(-300);
+  save(K_REC, S.recs);
+  S.cur = blankCur(); persistCur(); renderStamps(); S.day = rec.date; renderList();
+  $('#date').value = S.cur.date;
+  setMsg('保存しました。');
+}
+
+function copyAll() {
+  const lines = dayRecs().map(recordLine);
+  if (curInView()) lines.push(recordLine(curRecord()));
+  if (!lines.length) { setMsg('コピーする記録がありません。', true); return; }
+  const text = lines.join('\n');
+  const fallback = () => {
+    const ta = $('#ta');
+    ta.value = text; $('#fallback').hidden = false; ta.focus(); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    setMsg(ok ? `${lines.length} 件をコピーしました。LINE の入力欄に貼ってください。` : '', false);   // 失敗のときは下の説明の枠を見てもらう
+  };
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+    navigator.clipboard.writeText(text).then(() => { $('#fallback').hidden = true; setMsg(`${lines.length} 件をコピーしました。LINE の入力欄に貼ってください。`); }, fallback);
+  } catch (e) { fallback(); }
+}
+
+function clearToday() {
+  const btn = $('#b-clear');
+  const all = viewDay() === ALL_DAYS, word = all ? '全部の記録' : '選んだ日の記録';
+  if (!S.clearArmed) {
+    S.clearArmed = true; btn.textContent = `もう一度押すと、${word}を消します`;
+    setTimeout(() => { S.clearArmed = false; renderList(); }, 5000);
+    return;
+  }
+  S.clearArmed = false;
+  S.recs = all ? [] : S.recs.filter((r) => r.date !== viewDay());
+  S.day = '';
+  save(K_REC, S.recs); renderList(); setMsg(`${word}を消しました。`);
+}
+
+function copyUrl() {
+  const el = $('#own-url'), msg = $('#urlmsg');
+  el.focus(); el.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  const manual = 'コピーできませんでした。欄の URL を選んで、長押しか Ctrl+C でコピーしてください。';
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(el.value).then(() => { msg.textContent = 'URL をコピーしました。LINE に貼ってください。'; msg.classList.remove('bad'); }, () => { msg.textContent = ok ? 'URL をコピーしました。LINE に貼ってください。' : manual; }); return; }
+  } catch (e) { /* 下の表示へ */ }
+  msg.textContent = ok ? 'URL をコピーしました。LINE に貼ってください。' : manual;
+}
+
+function init() {
+  $('#own-url').value = location.href.split('#')[0];
+  $('#url-warn').hidden = !/^(file|about|blob|data):/.test(location.protocol + '');
+  const set = load(K_SET);
+  if (set && typeof set === 'object') {
+    SETTING_IDS.forEach((id) => { if (typeof set[id] === 'string') $(`#${id}`).value = set[id]; });
+  }
+  const cur = load(K_CUR);
+  S.cur = cur && typeof cur === 'object' && !Array.isArray(cur) ? { ...blankCur(), ...cur } : blankCur();
+  const recs = load(K_REC);
+  S.recs = Array.isArray(recs) ? recs.filter((r) => r && typeof r === 'object' && typeof r.date === 'string') : [];
+  $('#broken').hidden = !S.broken;
+  $('#date').value = S.cur.date;
+  renderStamps(); renderList();
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.stamp) stamp(t.dataset.stamp);
+    else if (t.dataset.clear) { S.cur[t.dataset.clear] = ''; persistCur(); renderStamps(); renderList(); }
+    else if (t.dataset.del) { S.recs = S.recs.filter((r) => r.id !== t.dataset.del); save(K_REC, S.recs); renderList(); }
+    else if (t.id === 'b-save') saveCurrent();
+    else if (t.id === 'b-copy') copyAll();
+    else if (t.id === 'b-copysheet') copySheet();
+    else if (t.id === 'b-printsheet') window.print();
+    else if (t.id === 'b-clear') clearToday();
+    else if (t.id === 'b-copyurl') copyUrl();
+    else if (t.id === 'setup-sum') { const d = $('#setup'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }
+    else if (t.id === 'b-setup-close') $('#setup').close();
+  });
+  $('#setup').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // 外側を押したら閉じる
+  $('#setup').addEventListener('close', renderSetupSummary);
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset && t.dataset.time) { S.cur[t.dataset.time] = t.value; persistCur(); t.closest('.stamp').classList.toggle('done', !!t.value); updateStampButton(t.dataset.time); renderList(); }
+    else if (t.id === 'day') { S.day = t.value; S.clearArmed = false; renderList(); setMsg(''); }
+    else if (t.id === 'date') { S.cur.date = t.value; persistCur(); renderList(); }
+    else if (SETTING_IDS.includes(t.id)) { persistSettings(); renderList(); }
+    else if (t.id === 'appointed') renderList();
+  });
+}
+// 日報の表は閉じた欄の中にある。印刷の間だけ開く
+let moreWas = null;
+window.addEventListener('beforeprint', () => { const d = $('#more'); moreWas = d.open; d.open = true; });
+window.addEventListener('afterprint', () => { if (moreWas !== null) { $('#more').open = moreWas; moreWas = null; } });
+init();
+</script>
+</body>
+</html>

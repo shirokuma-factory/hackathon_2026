@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>選んだ運行の図（試作）</title>
+<link rel="stylesheet" href="../../web/trip_view.css">
+<style>
+  body { margin: 0; padding: 12px 16px 24px; font-family: "Noto Sans JP", system-ui, sans-serif; background: #1b2230; color: #e8ecf3; }
+  h1 { font-size: 15px; margin: 0 0 8px; }
+  .pick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .pick button { font: inherit; font-size: 12px; padding: 5px 9px; border-radius: 8px; border: 1px solid #55627a; background: #26304a; color: inherit; cursor: pointer; }
+  .pick button[aria-pressed="true"] { background: #e8730c; border-color: #e8730c; color: #fff; }
+  #host { max-width: 480px; }
+  #host.w360 { max-width: 360px; }
+  #raw { font-size: 11px; color: #9aa5b8; margin-top: 8px; white-space: pre-wrap; word-break: break-all; max-width: 480px; }
+</style>
+</head>
+<body>
+<h1>選んだ運行の図（TripView の試作。自社の運行の画面にはまだ入れていません）</h1>
+<div class="pick" id="pick"></div>
+<div id="host"></div>
+<div id="raw"></div>
+<script src="../../web/own_calc.js"></script>
+<script src="../../web/trip_view.js"></script>
+<script>
+(async () => {
+  const sample = await (await fetch('../../web/data/own_sample.json')).json();
+  const legs = sample.legs;
+  const places = Object.assign({}, sample.places, { p02: { id: 'p02', short: '別の地点', pseudo: '地点 02' } }); // 経路データの無い組を試すための仮の地点
+  const ctx = { places, vehicles: sample.vehicles, route: sample.route, base: sample.base, dock: sample.dock, imgBase: '../../web/img/models/' };
+  const find = (f) => legs.find(f);
+  const PRESETS = {
+    loaded: ['荷物あり（帰り・経路あり）', () => find((l) => l.dir === 'back' && l.kind === 'loaded' && l.dep) || find((l) => l.dir === 'back' && l.kind === 'loaded')],
+    loaded_out: ['荷物あり（行き・実出発あり）', () => find((l) => l.dir === 'out' && l.kind === 'loaded' && l.dep)],
+    empty: ['空車（デジタコ・実出発あり）', () => find((l) => l.dir === 'back' && l.kind === 'empty' && l.dep)],
+    empty_haisha: ['空車（配車表の印・時刻なし）', () => find((l) => l.dir === 'back' && l.kind === 'empty' && !l.dep)],
+    unknown: ['荷の有無が不明（行き先も不明）', () => find((l) => l.dir === 'back' && l.kind === 'unknown')],
+    unknown_class: ['車種不明', () => Object.assign({}, find((l) => l.dir === 'back' && l.kind === 'empty' && l.dep), { plate: '0000' })],
+    no_route: ['経路なし（別の地点の組）', () => Object.assign({}, find((l) => l.dir === 'back' && l.kind === 'loaded'), { frm: 'p01', to: 'p02' })],
+    row: ['行の形（returnTrips）', () => OwnCalc.returnTrips(legs, sample.dock, sample.base, sample.base, sample.dock).rows.find((r) => r.kind === 'empty' && r.dt_basis === 'dep')],
+  };
+  const host = document.getElementById('host'), pick = document.getElementById('pick'), raw = document.getElementById('raw');
+  function show(key) {
+    const leg = PRESETS[key][1]();
+    TripView.render(host, leg, ctx);
+    raw.textContent = JSON.stringify(leg, (k, v) => (k === 'ref' || k === 'dref' ? undefined : v));
+    for (const b of pick.children) b.setAttribute('aria-pressed', String(b.dataset.key === key));
+    window.__preset = key;
+  }
+  for (const k in PRESETS) {
+    const b = document.createElement('button'); b.textContent = PRESETS[k][0]; b.dataset.key = k; b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => show(k)); pick.appendChild(b);
+  }
+  const q = new URLSearchParams(location.search);
+  if (q.get('w')) host.classList.add('w' + q.get('w'));
+  window.__show = show; window.__ready = true;
+  show(q.get('preset') || 'loaded');
+})().catch((e) => { window.__errs = (window.__errs || []).concat(String(e)); document.body.append('読み込み失敗: ' + e); });
+</script>
+</body>
+</html>

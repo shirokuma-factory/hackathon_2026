@@ -111,7 +111,7 @@ const WaitingShared = (() => {
     '出発': 'depart', '荷役をした人': 'handler', '荷役の方法': 'method', '荷主等の都合の待機か': 'shipper_fault', '荷主等の都合': 'shipper_fault',
     '指定の到着時刻': 'appointed', '附帯業務の内容': 'side_work', '附帯業務の分': 'side_min',
       '運行日': 'date', '年月日': 'date', '月日': 'date', '車両番号': 'vehicle_no', '車格': 'vehicle_class',
-      '荷主': 'partner', '元請': 'partner', '契約先': 'partner', '到着時刻': 'arrive', '着時刻': 'arrive',
+      '相手': 'partner', '相手先': 'partner', '荷主': 'partner', '元請': 'partner', '契約先': 'partner', '到着時刻': 'arrive', '着時刻': 'arrive',
       '積込開始': 'start', '積込開始時刻': 'start', '荷役開始時刻': 'start', '積込終了': 'end', '積込終了時刻': 'end', '荷役終了時刻': 'end',
       '出発時刻': 'depart', '発時刻': 'depart', '指定時刻': 'appointed', '指定到着': 'appointed',
       '作業日': 'date', '配送日': 'date', '納品日': 'date', 'トン数': 'vehicle_class', '車型': 'vehicle_class',
@@ -139,6 +139,8 @@ const WaitingShared = (() => {
       // ドライバーの手書きメモ・荷主の受付記録の言葉（SPEC §42）。driver.html のボタンは「呼ばれた（荷役開始）」
       '呼ばれ': 'start', '呼ばれた': 'start', '呼出': 'start', '呼出し': 'start', '呼び出し': 'start', '呼出時刻': 'start', '呼出時間': 'start', '呼び出し時刻': 'start',
       '作業開始': 'start', '作業開始時刻': 'start', '作業終了': 'end', '作業終了時刻': 'end',
+      '作業開始時間': 'start', '作業終了時間': 'end', '終了': 'end', '終了時刻': 'end', '終了時間': 'end', '終了日時': 'end', '荷役終わり': 'end',
+      '開始時刻': 'start', '開始時間': 'start', '開始日時': 'start', '開始': 'start',
       '行き先': 'place', '行先': 'place', '積地': 'place', '積み地': 'place', '積込地': 'place',
       // 荷主の受付記録の言葉（SPEC §43）。入場は呼ばれて構内に入った時刻（呼出と同じ扱い）、退場は出発
       '受付日': 'date', '入場日': 'date', '到着日': 'date', '日にち': 'date', '来場日': 'date',
@@ -163,6 +165,7 @@ const WaitingShared = (() => {
   // 元号の始まりの日。これより前の日付は読めない日付にする（令和元年 1 月 5 日は平成 31 年で、打ち間違い）
   const ERA_START = { '令和': '2019-05-01', 'r': '2019-05-01', '平成': '1989-01-08', 'h': '1989-01-08', '昭和': '1926-12-25', 's': '1926-12-25' };
   const YEARLESS = /^[0-9]{1,2}(?:\/|月)[0-9]{1,2}日?(?: ?\([月火水木金土日祝]+\))?$/;
+  const APPROX_TIME_NOTE = '「頃」「ごろ」と書かれた時刻は、その時刻として数えています（実際の時刻と違うときは直してください）';
   const LONG_WAIT_NOTE = '待ちが 1 日（24 時間）を超えています。日付と時刻を確かめてください';
   const MAX_ROWS = 5000;
   // 日時の欄（「2026/10/05 9:00」「10/5 9:00」「R8.10.5 9時00分」）の、時刻の前の日付の部分
@@ -199,7 +202,7 @@ const WaitingShared = (() => {
 
   // 時刻を分にする。9:00 / 9:00:00 / 09時00分 / 9時 / 0900 / 900（全角も可、日付つきも可）。読めなければ null
   function parseTime(text) {
-    const t = nz(text);
+    const t = nz(text).replace(/\s*(?:頃|ごろ|ころ)$/, '');   // 「8:00頃」は 8:00 として読む（行の注記は calcRow）
     let h, mi, sec;
     let m = new RegExp(`^${DT_PREFIX}([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?$`).exec(t);
     if (m) { h = Number(m[1]); mi = Number(m[2]); sec = Number(m[3] || 0); }
@@ -294,34 +297,68 @@ const WaitingShared = (() => {
   const MEMO_NO_PARTNER = '（相手未記入）';
   const MEMO_UNREADABLE = '読める形ではありませんでした（{shown}）。次のどれかの形で貼ってください: Excel の表（1 行目が見出し、列はタブ区切り）、'
     + 'ドライバーの 1 枚（driver.html）の文（荷待ち記録 11/10 …）、1 行 1 件のメモ（11/10 江東 着7:50 呼ばれ9:40 終わり10:30）';
-  const MEMO_KEYS = { '到着': 'arrive', '着': 'arrive', '受付': 'reception', '呼ばれた': 'call', '呼ばれ': 'call', '呼び出し': 'call', '呼出し': 'call', '呼出': 'call',
+  const MEMO_KEYS = { '到着': 'arrive', '着': 'arrive', '受付': 'reception', '受': 'reception', '呼ばれた': 'call', '呼ばれ': 'call', '呼び出し': 'call', '呼出し': 'call', '呼出': 'call', '呼': 'call',
     '荷役開始': 'start', '積込開始': 'start', '積み始め': 'start', '積始め': 'start', '開始': 'start',
-    '荷役終了': 'end', '積込終了': 'end', '積み終わり': 'end', '積み終り': 'end', '積終わり': 'end', '終わり': 'end', '終了': 'end',
+    '荷役終了': 'end', '積込終了': 'end', '積み終わり': 'end', '積み終り': 'end', '積終わり': 'end', '終わり': 'end', '終了': 'end', '積込終': 'end', '積終': 'end', '終': 'end',
     '出発': 'depart', '発': 'depart', '指定': 'appointed' };
-  const MEMO_TIME = '(?:[0-9]{1,2}:[0-9]{2}|[0-9]{1,2}時(?:[0-9]{1,2}分?|半)?)';
-  const memoRe = () => new RegExp('(' + Object.keys(MEMO_KEYS).sort((a, b) => b.length - a.length).join('|') + ')[ :]?(' + MEMO_TIME + ')', 'g');
+  // 「520」「1530」のように 3〜4 桁の数字だけの書き方は、言葉の隣にあるときだけ 時:分 として読む（5:20、15:30）。車番などの数字を時刻にしない
+  const MEMO_TIME = '(?:[0-9]{1,2}:[0-9]{2}|[0-9]{1,2}時(?:[0-9]{1,2}分?|半)?|(?<![0-9])[0-2]?[0-9][0-5][0-9](?![0-9:]))';
+  const MEMO_KEYS_RE = Object.keys(MEMO_KEYS).sort((a, b) => b.length - a.length).join('|');
+  // 「着7:50」（言葉が先）と「6:10着」（時刻が先。間に空白を入れない）の両方を、左から重ならないように拾う
+  const memoRe = () => new RegExp('(?:(' + MEMO_KEYS_RE + ')[ :]?(' + MEMO_TIME + ')|(' + MEMO_TIME + ')(' + MEMO_KEYS_RE + '))', 'g');
   const memoTextRe = () => /(車番|相手|荷主|車種) ?([^ ]+)/g;
+  const memoPlateRe = () => /車 ?([0-9][0-9-]*)/g;   // 「車1234」「車 1234」
+  const MEMO_CLASS_RE = /^(?:(?:大型|中型|小型)車?|トレーラー?車?|(?:10|2|4)(?:t|ton|トン)\S*)$/i;   // 「大型」「4t」だけでも車種
   const MEMO_DATE_RE = /^((?:[0-9]{4}[/.-])?[0-9]{1,2}[/\-月][0-9]{1,2}日?(?:\([月火水木金土日祝]+\))?)(?= |$)/;
   const MEMO_TEXT_COLS = { '車番': 'vehicle_no', '相手': 'partner', '荷主': 'partner', '車種': 'vehicle_class' };
+  const memoTimeNorm = (tm) => { const m = !tm.includes(':') && !tm.includes('時') ? /^([0-9]{1,2})([0-9]{2})$/.exec(tm) : null; return m ? `${Number(m[1])}:${m[2]}` : tm; };
+  const memoFound = (rest) => {
+    const found = {};
+    for (const k of rest.matchAll(memoRe())) {
+      const key = k[1] !== undefined ? k[1] : k[4], tm = memoTimeNorm(k[1] !== undefined ? k[2] : k[3]);
+      const col = MEMO_KEYS[key];
+      if (!has(found, col)) found[col] = tm;
+    }
+    return found;
+  };
+  const memoMinutes = (t) => {
+    let m = /^([0-9]{1,2}):([0-9]{2})$/.exec(t);
+    if (m) return Number(m[1]) * 60 + Number(m[2]);
+    m = /^([0-9]{1,2})時(?:([0-9]{1,2})分?|(半))?$/.exec(t);
+    if (m) return Number(m[1]) * 60 + (m[3] ? 30 : Number(m[2] || 0));
+    return null;
+  };
   const memoClip = (line) => { const a = Array.from(line); return a.length <= 36 ? line : a.slice(0, 36).join('') + '…'; };
 
   function parseMemoText(text) {
     const lines = nzLines(text);
     const isMemo = lines.some((ln) => { const m = MEMO_DATE_RE.exec(ln); return m && memoRe().test(ln.slice(m[0].length)); });
     if (!isMemo) return null;
-    const rows = [], bad = [];
+    const rows = [], bad = [], read = [];
     for (const ln of lines) {
       const m = MEMO_DATE_RE.exec(ln);
       if (!m) { bad.push([ln, '日付（11/10 のような形）で始まっていません']); continue; }
       const dateS = m[1].replace(/\([月火水木金土日祝]+\)$/, '');
       if (parseDate(dateS, 2000) === null) { bad.push([ln, `日付「${dateS}」を読めません`]); continue; }
       const rest = ln.slice(m[0].length);
-      const found = {};
-      for (const k of rest.matchAll(memoRe())) { const col = MEMO_KEYS[k[1]]; if (!has(found, col)) found[col] = k[2]; }
+      const found = memoFound(rest);
       const rest2 = rest.replace(memoRe(), ' ');
       const r = { date: dateS };
       for (const k of rest2.matchAll(memoTextRe())) { const col = MEMO_TEXT_COLS[k[1]]; if (!has(r, col)) r[col] = k[2]; }
-      const place = rest2.replace(memoTextRe(), ' ').replace(/\s+/g, ' ').trim();
+      let rem = rest2.replace(memoTextRe(), ' ');
+      for (const k of rem.matchAll(memoPlateRe())) { if (!has(r, 'vehicle_no')) r.vehicle_no = k[1]; }
+      rem = rem.replace(memoPlateRe(), ' ');
+      let toks = [];
+      for (const t of rem.split(/\s+/).filter(Boolean)) {
+        if (MEMO_CLASS_RE.test(t) && !has(r, 'vehicle_class')) r.vehicle_class = t; else toks.push(t);
+      }
+      let unread = [];
+      if (!has(r, 'partner') && toks.length >= 2) {
+        r.partner = toks[0];
+        unread = toks.slice(2);
+        toks = toks.slice(1, 2);
+      }
+      const place = toks.join(' ');
       if (place) r.place = place;
       if (!has(found, 'arrive')) { bad.push([ln, '着（到着）の時刻がありません']); continue; }
       if (!has(found, 'start') && !has(found, 'call')) { bad.push([ln, '呼ばれ（荷役開始・積み始め）の時刻がありません']); continue; }
@@ -330,9 +367,14 @@ const WaitingShared = (() => {
       if (has(found, 'start')) { r.start = found.start; if (has(found, 'call')) r.call = found.call; } else r.start = found.call;
       for (const col of ['end', 'depart', 'appointed']) if (has(found, col)) r[col] = found[col];
       if (r.end) r.handler = UNKNOWN_HANDLER;
+      const check = [];
+      const aMin = memoMinutes(found.arrive), rcMin = has(found, 'reception') ? memoMinutes(found.reception) : null;
+      if (aMin !== null && rcMin !== null && rcMin < aMin) check.push(`受付 ${found.reception} が到着 ${found.arrive} より前です`);
+      if (/[0-9]{1,2}:[0-9]{2}|[0-9]{1,2}時/.test(place)) check.push('場所に時刻のような文字が残っています');
       rows.push(r);
+      read.push({ line: memoClip(ln), partner: r.partner || '', vehicle_no: r.vehicle_no || '', vehicle_class: r.vehicle_class || '', place: r.place || '', unread, check });
     }
-    return { rows, bad };
+    return { rows, bad, read };
   }
 
   function parsePasteFull(text) {
@@ -355,7 +397,7 @@ const WaitingShared = (() => {
       if (memo !== null) {
         const mrows = memo.rows, mnotes = [], mdefaulted = [];
         if (mrows.length) {
-          mnotes.push(`スマホのメモの書き方で読みました（${mrows.length} 件）。『着』『受付』『呼ばれ』『積み始め』『終わり』『出発』の言葉の次の時刻を読んでいます`);
+          mnotes.push(`スマホのメモの書き方で読みました（${mrows.length} 件）。『着』『受付（受）』『呼ばれ（呼）』『積み始め』『終わり（終・積込終）』『出発』の言葉の前後の時刻を読んでいます（『6:10着』のように時刻が先でも読みます）。行ごとに読んだ相手・車番・車種・場所を下に出すので、違うときは表で直してください`);
           if (mrows.some((r) => !r.partner)) {
             mrows.forEach((r) => { if (!r.partner) r.partner = MEMO_NO_PARTNER; });
             mnotes.push(`契約の相手が書かれていない行は『${MEMO_NO_PARTNER}』としました。表の『契約の相手』を書き換えてください（メモに『相手 ○○』と書き足しても読みます）`);
@@ -368,7 +410,8 @@ const WaitingShared = (() => {
           const items = memo.bad.map(([ln, why]) => `「${memoClip(ln)}」は${why}`).join('、');
           mnotes.push(`読めなかった行は表に入れていません（${memo.bad.length} 行）: ${items}。1 行に『日付 場所 着7:50 呼ばれ9:40 終わり10:30』の形で書くか、ドライバーの 1 枚（driver.html）の文を使ってください`);
         }
-        return { rows: mrows, defaulted: mdefaulted, notes: mnotes, asks, shipper_log: false };
+        memo.read.forEach((rd) => { if (rd.check.length) mnotes.push(`確かめてください:「${rd.line}」は` + rd.check.join('、')); });
+        return { rows: mrows, defaulted: mdefaulted, notes: mnotes, asks, shipper_log: false, memo_read: memo.read };
       }
       const shown = nzLines(text).slice(0, 3).map((ln) => `「${memoClip(ln)}」`).join('、');
       return { rows: [], defaulted: [], notes: [MEMO_UNREADABLE.replace('{shown}', shown)], asks, shipper_log: false };
@@ -449,12 +492,26 @@ const WaitingShared = (() => {
     if (lines.length < 2) return null;
     const known = (cells) => cells.filter((c) => has(HEADER_ALIASES, headerKey(c))).length;
     if (lines.some((ln) => ln.includes('\t'))) return known(lines[0].split('\t')) >= 3 ? { tsv: lines.join('\n'), skipped: [] } : null;
-    const splitters = [(ln) => ln.normalize('NFKC').trim().split(/ {2,}/), (ln) => nz(ln).split(' ')];
+    // 空白 1 つ区切りでは、場所名や会社名に空白があると列がずれる。見出しより多く分かれた行は、場所（無ければ契約の相手）の欄に余りをまとめ、
+    // 到着・荷役開始などの時刻の欄が時刻の形になっているかで合っているかを確かめる（SPEC §47）
+    const TIME_KEYS_L = ['arrive', 'start', 'end', 'depart', 'appointed', 'reception', 'call'];
+    const mergeExtra = (toks, head) => {
+      if (toks.length <= head.length) return toks;
+      const keys = head.map((h) => HEADER_ALIASES[headerKey(h)]);
+      const extra = toks.length - head.length;
+      const tries = [keys.indexOf('place'), keys.indexOf('partner')].filter((i, k, a) => i >= 0 && a.indexOf(i) === k);
+      for (const idx of tries) {
+        const t = toks.slice(0, idx).concat([toks.slice(idx, idx + extra + 1).join(' ')], toks.slice(idx + extra + 1));
+        if (t.every((c, i) => !TIME_KEYS_L.includes(keys[i]) || c === '' || parseTime(c) !== null)) return t;
+      }
+      return toks;
+    };
+    const splitters = [(ln) => ln.normalize('NFKC').trim().split(/ {2,}/), (ln, head) => mergeExtra(nz(ln).split(' '), head || [])];
     for (const sp of splitters) {
       const head = sp(lines[0]);
       if (known(head) < 3) continue;
       const out = [head.join('\t')], skipped = [];
-      for (const ln of lines.slice(1)) { const c = sp(ln); if (c.length === head.length) out.push(c.join('\t')); else skipped.push(nz(ln)); }
+      for (const ln of lines.slice(1)) { const c = sp(ln, head); if (c.length === head.length) out.push(c.join('\t')); else skipped.push(nz(ln)); }
       return { tsv: out.join('\n'), skipped };
     }
     return null;
@@ -656,6 +713,7 @@ const WaitingShared = (() => {
     const handlingFee = hnUnits * hnRate + hoUnits * hoRate;
 
     const rowNotes = handler === UNKNOWN_HANDLER && end !== null ? [UNKNOWN_HANDLER_NOTE] : [];
+    if (['arrive', 'start', 'end', 'depart', 'appointed', 'reception', 'call'].some((k) => /(?:頃|ごろ|ころ)$/.test(nz(raw[k])))) rowNotes.push(APPROX_TIME_NOTE);
     if (receptionRaw && reception === null) rowNotes.push(`受付「${receptionRaw}」を読めなかったので、受付の時刻は書面に出していません`);
     // 早着（SPEC §41）。指定の到着時刻があって到着が指定より前: 指定の時刻から数えている。指定が無く 5:00〜7:59 の到着: 早着の疑い（別に数える）
     let early = '';
@@ -684,12 +742,32 @@ const WaitingShared = (() => {
         ...(rowNotes.length ? { notes: rowNotes } : {}),
     };
     // 受付の時刻があるとき: 受付から数えた待機も出す（SPEC §43）。到着が受付より前でも、荷主の受付から数える額が書面の主な額
-    if (reception !== null && norm(raw.arrive_src) !== 'reception' && reception - arrive >= 0 && reception - arrive <= REVERSE_MAX_MIN) {
-      const part = g.arrive ? datePart(g.arrive) : '';
-      const v = { ...raw, arrive: (part ? part + ' ' : '') + fmtTime(reception), reception: '' };
-      delete v.arrive_src;
-      const r2 = calcRow(n, v, year, tariff, defaults);
-      if (r2.res !== null) { res.reception_wait_min = r2.res.wait_min; res.reception_amount = r2.res.amount; }
+    if (reception !== null && norm(raw.arrive_src) !== 'reception') {
+      // 受付が到着より小さい時刻（23:50 着・受付 0:20）は夜中をまたいだ受付として +24 時間で数える。受付に日付があれば日付で差を取る
+      const rcPart = datePart(receptionRaw);
+      let rcDay = null;
+      if (rcPart) {
+        let rd = parseDate(rcPart, yr);
+        if (rd !== null && YEARLESS.test(nz(rcPart)) && ordOf(rd) < aDay - 180) rd = parseDate(rcPart, yr + 1);
+        rcDay = rd !== null ? ordOf(rd) : null;
+      }
+      let rcRel, rcDate;
+      if (rcDay !== null) {
+        rcRel = rcDay * 1440 + reception - aAbs;
+        rcDate = rcDay;
+      } else {
+        rcRel = reception - arrive;
+        if (rcRel < 0) rcRel += 1440;
+        rcDate = aDay + (arrive + rcRel >= 1440 ? 1 : 0);
+      }
+      if (rcRel >= 0 && rcRel <= REVERSE_MAX_MIN) {
+        const part = g.arrive ? datePart(g.arrive) : '';
+        const iso = new Date(rcDate * 86400000).toISOString().slice(0, 10);
+        const v = { ...raw, arrive: (part || rcDay !== null ? iso + ' ' : '') + fmtTime(reception), reception: '' };
+        delete v.arrive_src;
+        const r2 = calcRow(n, v, year, tariff, defaults);
+        if (r2.res !== null) { res.reception_wait_min = r2.res.wait_min; res.reception_amount = r2.res.amount; }
+      }
     }
     return { res, errs: [] };
   }
@@ -805,7 +883,8 @@ const WaitingShared = (() => {
         if (!byHour.has(h)) byHour.set(h, []);
         byHour.get(h).push(r);
       }
-      const hours = [...byHour.keys()].sort((a, b) => a - b).map((h) => ({ hour: h, count: byHour.get(h).length, avg_wait: avgOf(byHour.get(h).map((r) => r.report_wait_min)) }));
+      const maxDay = (xs) => { const c = new Map(); for (const r of xs) c.set(r.date, (c.get(r.date) || 0) + 1); return Math.max(...c.values()); };   // 1 日に同じ時間帯へ集まった件数の最多
+      const hours = [...byHour.keys()].sort((a, b) => a - b).map((h) => ({ hour: h, count: byHour.get(h).length, max_day: maxDay(byHour.get(h)), avg_wait: avgOf(byHour.get(h).map((r) => r.report_wait_min)) }));
       const peak = hours.slice().sort((a, b) => (b.count - a.count) || (a.hour - b.hour))[0];
       const arr = rs.map((r) => mm(r.arrive));
       const early = rs.filter((r) => mm(r.arrive) >= EARLY_FROM_MIN && mm(r.arrive) < EARLY_UNTIL_MIN);
@@ -826,6 +905,25 @@ const WaitingShared = (() => {
     return { n: rows.length, places, hours: hourSet, early_count: earlyAll, early_share: pct(earlyAll, rows.length), call_count: places.reduce((a, p) => a + p.call_count, 0) };
   }
   const hourLabel = (h) => `${h} 時台`;
+  // 予約の枠の提案。平均の待ちが最も長い時間帯から、平均の待ちが最も短い時間帯へ移す。枠は、その短い時間帯で実際にあった 1 日の最多の件数から決める。
+  // 長い時間帯の 1 日の最多がその枠以下なら、枠を決めても移す車が出ないので、枠は提案しない。
+  function slotBody(top) {
+    const days = Math.max(1, top.days);
+    const rc = top.reccall_avg !== null ? `受付から呼出までの平均は ${top.reccall_avg} 分です。` : '';
+    const hs = top.hours.filter((h) => h.avg_wait !== null);
+    if (hs.length < 2) return `${top.place}は待ちの記録がある時間帯が ${hs.length} つだけなので、時間帯ごとの待ちを比べられません。受付の時刻が違う記録を増やすと、予約の枠を決める材料になります。` + rc;
+    const src = hs.slice().sort((a, b) => (b.avg_wait - a.avg_wait) || (b.count - a.count) || (a.hour - b.hour))[0];
+    const others = hs.filter((h) => h.hour !== src.hour && h.avg_wait < src.avg_wait);
+    if (!others.length) return `${top.place}は、どの時間帯も平均の待ちは ${src.avg_wait} 分で同じです。時間帯をずらしても待ちは減らないので、枠の提案はありません。` + rc;
+    const best = Math.min(...others.map((h) => h.avg_wait));
+    const dests = others.filter((h) => h.avg_wait === best).sort((a, b) => (a.count - b.count) || (a.hour - b.hour)).slice(0, 2);
+    const cap = Math.max(1, ...dests.map((h) => h.max_day));
+    const dLabel = dests.map((h) => hourLabel(h.hour)).join('か ');
+    const perDay = Math.ceil((src.count / days) * 10) / 10;
+    const head = `${top.place}は ${hourLabel(src.hour)}の平均の待ちが最も長く（${src.avg_wait} 分、${src.count} 件）、${dLabel}が最も短い（${best} 分）です。`;
+    if (src.max_day <= cap) return head + `${hourLabel(src.hour)}は 1 日あたり平均 ${perDay} 件、最多の日でも ${src.max_day} 件で、短い時間帯の最多（${cap} 件）を超えないので、枠を決めても移す車は出ないので、枠の提案はありません。` + rc;
+    return head + `${hourLabel(src.hour)}の予約を 1 時間 ${cap} 件までにして（短い時間帯で実際にあった 1 日の最多に合わせた数です。この時間帯は 1 日あたり平均 ${perDay} 件、最多の日 ${src.max_day} 件）、超える分を ${dLabel}に移します。` + rc;
+  }
   // 荷主が取れる行動（記録の数字から作る提案。実行するかは荷主が決める）
   function shipperActions(sum) {
     const out = [];
@@ -834,13 +932,7 @@ const WaitingShared = (() => {
     out.push({ id: 'open', title: '受付開始の時刻を決めて知らせる',
       body: `${top.place}: 記録で最も早い受付は ${top.earliest}、8 時前の受付は ${top.count} 件中 ${top.early_count} 件（${top.early_share}%）です。` +
         '受付を始める時刻を決めて運送会社に知らせ、それより前に着いた車が待つ場所と順番も決めておきます。8 時前の受付が多いときは、受付を始める時刻を早めることも選べます。' });
-    const days = Math.max(1, top.days);
-    const perDay = Math.ceil((top.peak_count / days) * 10) / 10;
-    const slot = Math.max(1, Math.ceil(top.peak_count / days));
-    out.push({ id: 'slot', title: '予約の枠を決める',
-      body: `${top.place}の ${hourLabel(top.peak_hour)}に ${top.peak_count} 件（全体の ${top.peak_share}%）が集まっています。1 日あたり平均 ${perDay} 件です。` +
-        `この時間帯の予約を 1 時間 ${slot} 件までにして、超える分を ${hourLabel(top.peak_hour - 1)}か ${hourLabel(top.peak_hour + 1)}に振り分けます。` +
-        (top.reccall_avg !== null ? `受付から呼出までの平均は ${top.reccall_avg} 分です。` : '') });
+    out.push({ id: 'slot', title: '予約の枠を決める', body: slotBody(top) });
     if (sum.call_count) {
       const c = sum.places.filter((p) => p.call_count);
       const w = c.reduce((a, p) => a + p.call_avg * p.call_count, 0), n = c.reduce((a, p) => a + p.call_count, 0);
@@ -868,43 +960,70 @@ const WaitingShared = (() => {
   /* ---------------------------------------------------------------- 運送会社の書面の CSV と自社の受付記録を照らし合わせる（SPEC §42）。日付と車番（数字の下 4 桁）が同じ行を組にして、時刻の差を見る */
   const vehicleKey = (v) => { const t = nz(v).replace(/[\s\-ー]/g, ''); const d = t.replace(/\D/g, ''); return d.length >= 1 ? d.slice(-4) : t.toLowerCase(); };
   const sdiff = (a, b) => { const d = fwd(a, b); return d > 720 ? d - 1440 : d; };   // a から見た b の差（−720〜720 分）
+  // 照合の鍵は 3 通り。車番が両方にあれば日付と車番（数字の下 4 桁）。車番が片方でも空なら、日付と場所と到着の時刻（±30 分）。場所も空なら日付と到着の時刻（±30 分）。
+  // 候補が複数あって 1 組に決められない行は、組にせず candidates に並べる（推測で組にしない）
+  const FALLBACK_MIN = 30;
+  const placeKey = (v) => nz(v).replace(/\s+/g, '').toLowerCase();
+  const placeSame = (a, b) => { const x = placeKey(a), y = placeKey(b); return !!x && !!y && (x === y || (Math.min(x.length, y.length) >= 2 && (x.includes(y) || y.includes(x)))); };
   function crossCheck(carrierRows, shipperRows, thr) {
     const limit = thr == null ? 15 : thr;
-    const unmatchable = [];
-    const group = (rows, side) => {
-      const g = new Map();
-      for (const r of rows) {
-        const vk = vehicleKey(r.vehicle_no);
-        if (!vk) { unmatchable.push({ side, row: r }); continue; }
-        const k = `${r.date}|${vk}`;
-        if (!g.has(k)) g.set(k, []);
-        g.get(k).push(r);
-      }
-      return g;
+    const mkPair = (c, s, key) => {
+      const ad = sdiff(mm(c.arrive), mm(s.arrive)), sd = sdiff(mm(c.start), mm(s.start));
+      return { date: c.date, vehicle: c.vehicle_no || s.vehicle_no || '', key, carrier: c, shipper: s, arrive_diff: ad, start_diff: sd, differs: Math.abs(ad) > limit || Math.abs(sd) > limit };
     };
-    const gc = group(carrierRows, 'carrier'), gs = group(shipperRows, 'shipper');
-    const pairs = [], onlyCarrier = [], onlyShipper = [];
-    for (const k of new Set([...gc.keys(), ...gs.keys()])) {
-      const cs = (gc.get(k) || []).slice(), ss = (gs.get(k) || []).slice();
+    const pairs = [], ambiguous = [];
+    const usedC = new Set(), usedS = new Set();
+    // 1. 日付と車番が両方にある行
+    const gc = new Map(), gs = new Map();
+    const put = (g, r, i) => { const vk = vehicleKey(r.vehicle_no); if (!vk) return; const k = `${r.date}|${vk}`; if (!g.has(k)) g.set(k, []); g.get(k).push(i); };
+    carrierRows.forEach((r, i) => put(gc, r, i)); shipperRows.forEach((r, j) => put(gs, r, j));
+    for (const k of gc.keys()) {
+      if (!gs.has(k)) continue;
       const cand = [];
-      cs.forEach((c, i) => ss.forEach((s, j) => cand.push([Math.abs(sdiff(mm(c.arrive), mm(s.arrive))), i, j])));
+      gc.get(k).forEach((i) => gs.get(k).forEach((j) => cand.push([Math.abs(sdiff(mm(carrierRows[i].arrive), mm(shipperRows[j].arrive))), i, j])));
       cand.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
-      const uc = new Set(), us = new Set();
       for (const [, i, j] of cand) {
-        if (uc.has(i) || us.has(j)) continue;
-        uc.add(i); us.add(j);
-        const c = cs[i], s = ss[j];
-        const ad = sdiff(mm(c.arrive), mm(s.arrive)), sd = sdiff(mm(c.start), mm(s.start));
-        pairs.push({ date: c.date, vehicle: c.vehicle_no || s.vehicle_no, carrier: c, shipper: s, arrive_diff: ad, start_diff: sd, differs: Math.abs(ad) > limit || Math.abs(sd) > limit });
+        if (usedC.has(i) || usedS.has(j)) continue;
+        usedC.add(i); usedS.add(j); pairs.push(mkPair(carrierRows[i], shipperRows[j], 'vehicle'));
       }
-      cs.forEach((c, i) => { if (!uc.has(i)) onlyCarrier.push(c); });
-      ss.forEach((s, j) => { if (!us.has(j)) onlyShipper.push(s); });
     }
-    pairs.sort((a, b) => cmp(a.date, b.date) || cmp(String(a.vehicle), String(b.vehicle)));
+    // 2. 車番で組にならなかった行どうし。両方に違う車番があるときは組にしない
+    const poolC = carrierRows.map((r, i) => i).filter((i) => !usedC.has(i)), poolS = shipperRows.map((r, j) => j).filter((j) => !usedS.has(j));
+    const cand = new Map(), back = new Map();
+    for (const i of poolC) {
+      const c = carrierRows[i], cv = vehicleKey(c.vehicle_no);
+      for (const j of poolS) {
+        const s = shipperRows[j], sv = vehicleKey(s.vehicle_no);
+        if (c.date !== s.date || (cv && sv)) continue;
+        const ma = mm(c.arrive), sa = mm(s.arrive);
+        if (ma == null || sa == null || Math.abs(sdiff(ma, sa)) > FALLBACK_MIN) continue;
+        const hasPlace = !!placeKey(c.place) && !!placeKey(s.place);
+        if (hasPlace && !placeSame(c.place, s.place)) continue;
+        if (!cand.has(i)) cand.set(i, []);
+        cand.get(i).push({ j, key: hasPlace ? 'place' : 'time' });
+        if (!back.has(j)) back.set(j, []);
+        back.get(j).push(i);
+      }
+    }
+    const inAmbiguous = new Set(), ambC = new Set();
+    for (const [i, list] of cand) {
+      if (list.length === 1 && back.get(list[0].j).length === 1) {
+        usedC.add(i); usedS.add(list[0].j); pairs.push(mkPair(carrierRows[i], shipperRows[list[0].j], list[0].key));
+      } else {
+        ambC.add(i); list.forEach((x) => inAmbiguous.add(x.j));
+        ambiguous.push({ carrier: carrierRows[i], candidates: list.map((x) => shipperRows[x.j]) });
+      }
+    }
+    // 組にならなかった行に、別の書面の行から指された自社の行も、決められない行として扱う
+    const onlyCarrier = poolC.filter((i) => !usedC.has(i) && !ambC.has(i)).map((i) => carrierRows[i]);
+    const onlyShipper = poolS.filter((j) => !usedS.has(j) && !inAmbiguous.has(j)).map((j) => shipperRows[j]);
+    pairs.sort((a, b) => cmp(a.date, b.date) || cmp(String(a.vehicle), String(b.vehicle)) || cmp(a.carrier.arrive, b.carrier.arrive));
     const byDate = (a, b) => cmp(a.date, b.date) || cmp(a.arrive, b.arrive);
     onlyCarrier.sort(byDate); onlyShipper.sort(byDate);
-    return { limit, pairs, differ: pairs.filter((p) => p.differs), same: pairs.filter((p) => !p.differs).length, only_carrier: onlyCarrier, only_shipper: onlyShipper,
-      unmatchable_carrier: unmatchable.filter((u) => u.side === 'carrier').map((u) => u.row), unmatchable_shipper: unmatchable.filter((u) => u.side === 'shipper').map((u) => u.row) };
+    const keyCount = (k) => pairs.filter((p) => p.key === k).length;
+    return { limit, pairs, differ: pairs.filter((p) => p.differs), same: pairs.filter((p) => !p.differs).length, only_carrier: onlyCarrier, only_shipper: onlyShipper, ambiguous,
+      key_counts: { vehicle: keyCount('vehicle'), place: keyCount('place'), time: keyCount('time') },
+      unmatchable_carrier: [], unmatchable_shipper: [] };
   }
 
   return {

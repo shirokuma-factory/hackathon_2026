@@ -35,7 +35,9 @@
    "vehicle_type": "車種",
    "date": "日付",
    "loaded_km": "実車で走った距離（km）",
-   "empty_km": "空車で走った距離（km）"
+   "empty_km": "空車で走った距離（km）",
+   "wait_min": "荷待ちの時間",
+   "restraint": "拘束時間"
   }
  },
  "columns": [
@@ -155,7 +157,7 @@
    "claude_input": {
     "source": "デジタコ",
     "column": "KBN",
-    "row_count": 72,
+    "row_count": 78,
     "non_blank_ratio": 1.0,
     "shape_summary": {
      "小数まじりの数字": 1.0
@@ -185,7 +187,7 @@
    "claude_input": {
     "source": "デジタコ",
     "column": "ST_TIME",
-    "row_count": 72,
+    "row_count": 78,
     "non_blank_ratio": 1.0,
     "shape_summary": {
      "YYYY-MM-DD HH:MM の日時": 1.0
@@ -215,7 +217,7 @@
    "claude_input": {
     "source": "デジタコ",
     "column": "ED_TIME",
-    "row_count": 72,
+    "row_count": 78,
     "non_blank_ratio": 1.0,
     "shape_summary": {
      "YYYY-MM-DD HH:MM の日時": 1.0
@@ -245,8 +247,8 @@
    "claude_input": {
     "source": "デジタコ",
     "column": "ODO_KM",
-    "row_count": 72,
-    "non_blank_ratio": 0.5,
+    "row_count": 78,
+    "non_blank_ratio": 0.6667,
     "shape_summary": {
      "小数まじりの数字": 1.0
     }
@@ -275,8 +277,8 @@
    "claude_input": {
     "source": "デジタコ",
     "column": "JK_FLG",
-    "row_count": 72,
-    "non_blank_ratio": 0.5,
+    "row_count": 78,
+    "non_blank_ratio": 0.6667,
     "shape_summary": {
      "小数まじりの数字": 1.0
     }
@@ -289,9 +291,9 @@
    "dict_role": "place_name",
    "dict_label": "停車の地点名",
    "role_label_ja": "停車の地点名",
-   "reason_ja": "列の名前が「POS_NAME」なので、停車の地点名として読みます。 ただし、中身のうち「漢字・かなだけの名称」に見えるのは 78% だけなので、念のため確かめてください。",
+   "reason_ja": "列の名前が「POS_NAME」なので、停車の地点名として読みます。 ただし、中身のうち「漢字・かなだけの名称」に見えるのは 77% だけなので、念のため確かめてください。",
    "shape_expected": "漢字・かなだけの名称",
-   "shape_ratio": 0.7778,
+   "shape_ratio": 0.7692,
    "shape_best_role": null,
    "claude_proposal": {
     "role": "place_name",
@@ -299,17 +301,17 @@
    },
    "claude_note": "Claude の提案（開発のセッション）",
    "claude_agrees": true,
-   "confidence": 0.888888889,
+   "confidence": 0.884615385,
    "color": "yellow",
-   "formula": "列名で分かれば 1（今回 1）、値の形が合う割合 78% → 確かさ 0.89",
+   "formula": "列名で分かれば 1（今回 1）、値の形が合う割合 77% → 確かさ 0.88",
    "claude_input": {
     "source": "デジタコ",
     "column": "POS_NAME",
-    "row_count": 72,
-    "non_blank_ratio": 0.5,
+    "row_count": 78,
+    "non_blank_ratio": 0.3333,
     "shape_summary": {
-     "漢字・かなだけの名称": 0.7778,
-     "英数字をふくむ文字列": 0.2222
+     "漢字・かなだけの名称": 0.7692,
+     "英数字をふくむ文字列": 0.2308
     }
    }
   },
@@ -336,7 +338,7 @@
    "claude_input": {
     "source": "デジタコ",
     "column": "DRV_CD",
-    "row_count": 72,
+    "row_count": 78,
     "non_blank_ratio": 1.0,
     "shape_summary": {
      "英大文字 1 字と数字 2 桁": 1.0
@@ -366,8 +368,8 @@
    "claude_input": {
     "source": "デジタコ",
     "column": "X9",
-    "row_count": 72,
-    "non_blank_ratio": 0.5,
+    "row_count": 78,
+    "non_blank_ratio": 0.6667,
     "shape_summary": {
      "小数まじりの数字": 1.0
     }

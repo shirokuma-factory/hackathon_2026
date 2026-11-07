@@ -24,9 +24,13 @@ KINKI = ROOT / "data" / "tariffs" / "mlit_standard_fare_kinki.json"
 CONTACTS = ROOT / "data" / "contacts.json"
 DECKS = ROOT / "data" / "vehicle_decks.json"
 CARRIERS = ROOT / "data" / "demo" / "carriers.json"
+SAGAWA = ROOT / "data" / "tariffs" / "sagawa_kanto.json"
 VECTORS = ROOT / "tests" / "data" / "compare_lite_vectors.json"
 OUT_ARTIFACT = ROOT / "web" / "publish" / "compare_lite_artifact.html"
 TITLE = "荷物の送り方比べ"
+POINTS = ROOT / "data" / "geo" / "municipality_points.json"
+# 都道府県庁の所在地の代表点（市区町村コード）。道路距離の既定値（直線×1.25）の計算に使う
+PREF_CAPITAL_CODES = ["01101", "02201", "03201", "04101", "05201", "06201", "07201", "08201", "09201", "10201", "11107", "12101", "13104", "14104", "15103", "16201", "17201", "18201", "19201", "20201", "21201", "22101", "23106", "24201", "25201", "26104", "27128", "28110", "29201", "30201", "31201", "32201", "33101", "34101", "35203", "36201", "37201", "38201", "39201", "40133", "41201", "42201", "43101", "44201", "45201", "46201", "47201"]
 OUT = ROOT / "web" / "compare_lite.html"
 
 
@@ -36,7 +40,7 @@ def _js(obj: object) -> str:
 
 
 def _filled() -> str:
-    html = TEMPLATE.read_text(encoding="utf-8")
+    html = artifact_build.inline_kit(TEMPLATE.read_text(encoding="utf-8"))
     tariffs = {"関東": json.loads(KANTO.read_text(encoding="utf-8")), "近畿": json.loads(KINKI.read_text(encoding="utf-8"))}
     for t in tariffs.values():  # 照合の記録に、リポジトリの中の文書の節（「調査 §L」）が入っている。公開するページには載せない（SPEC §31.5 #17）
         if t.get("verified_by"):
@@ -55,7 +59,16 @@ def _filled() -> str:
     # 帰り便の目安は、地図の画面のデモの便 T7 の「空き」で判定する（/api/b/match と同じ。SPEC §39）
     t7 = next(t for t in json.loads(CARRIERS.read_text(encoding="utf-8"))["trips"] if t["id"] == "T7")
     home = {k: t7[k] for k in ("weight_slack_kg", "floor_free_m2", "max_piece_kg", "clear_height_mm", "unit_footprint_mm")}
-    for key, val in (("/*__HOME__*/null", _js(home)), ("/*__DECKS__*/null", _js(decks)), ("/*__TARIFFS__*/null", _js(tariffs)), ("/*__VECTORS__*/null", _js(vectors)), ("/*__CONTACTS__*/null", _js(contacts))):
+    # 宅配の公表運賃（関東発・関西あて）。会社名・商品名・表への URL は載せない。サイズ・寸法と重さの上限・運賃（税込）・持込の減額だけ（SPEC §47）
+    sg = json.loads(SAGAWA.read_text(encoding="utf-8"))
+    pub_takuhai = {"origin": sg["origin_region"], "dest": sg["dest_region"], "tax": sg["tax"], "checked_on": sg["checked_on"],
+                   "sizes": [{k: z[k] for k in ("size", "max_sum_cm", "max_kg", "fare")} for z in sg["sizes"]],
+                   "dropoff_discount": sg["rules"]["dropoff_discount_per_piece"]}
+    pts = json.loads(POINTS.read_text(encoding="utf-8"))["points"]
+    prefxy = {pts[c]["pref"]: [round(pts[c]["lon"], 3), round(pts[c]["lat"], 3)] for c in PREF_CAPITAL_CODES}
+    if len(prefxy) != 47:
+        raise SystemExit("県庁所在地の代表点が 47 件になりません")
+    for key, val in (("/*__PUBTAKUHAI__*/null", _js(pub_takuhai)), ("/*__HOME__*/null", _js(home)), ("/*__PREFXY__*/null", _js(prefxy)), ("/*__DECKS__*/null", _js(decks)), ("/*__TARIFFS__*/null", _js(tariffs)), ("/*__VECTORS__*/null", _js(vectors)), ("/*__CONTACTS__*/null", _js(contacts))):
         if html.count(key) != 1:
             raise SystemExit(f"テンプレートに {key} が 1 つありません")
         html = html.replace(key, val)

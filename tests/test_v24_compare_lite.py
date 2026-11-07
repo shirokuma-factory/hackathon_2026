@@ -114,18 +114,22 @@ def test_g89_page_makes_no_network_calls():
     for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts", "import(", "navigator.serviceWorker"):
         assert bad not in html, bad
     # 契約単価（CKEY）と荷物の表（PKEY）の保存だけ localStorage を使う（このブラウザの中だけ。送信はしない。v4.1・v4.2）
-    assert set(re.findall(r"localStorage\.(\w+)\(([A-Za-z_]+)", html)) == {("setItem", "CKEY"), ("getItem", "CKEY"), ("setItem", "PKEY"), ("getItem", "PKEY")}
+    # 見積の回答（QKEY、会社名と額を 3 社まで。SPEC §46）も同じ扱い
+    assert set(re.findall(r"localStorage\.(\w+)\(([A-Za-z_]+)", html)) == {("setItem", "CKEY"), ("getItem", "CKEY"), ("setItem", "PKEY"), ("getItem", "PKEY"), ("setItem", "QKEY"), ("getItem", "QKEY"), ("setItem", "HKEY"), ("getItem", "HKEY")}
+    # 出荷の記録（HKEY、日付・区間・送り方・額。このブラウザの中だけ）も同じ扱い
     assert not re.search(r"<script[^>]+src\s*=", html, re.I)
     assert not re.search(r"<link(?![^>]*href\s*=\s*.data:)[^>]+href\s*=", html, re.I)
     assert not re.search(r"@import|url\(\s*['\"]?https?:", html, re.I)
-    assert not re.search(r"<(img|iframe|embed|object|video|audio|source|form)\b", html, re.I)
+    assert not re.search(r"<(iframe|embed|object|video|audio|source|form)\b", html, re.I)
+    assert not re.search(r"<img(?![^>]*src=\"data:image/webp;base64,)", html, re.I)   # 絵は data URI の WebP だけ（通信しない。2026-11-07 第 2 回）
 
 
 def test_g90_page_has_the_required_texts():
     html = PAGE.read_text(encoding="utf-8")
-    for t in ("目安です。最後は各社の見積で確かめてください", "使える ○", "要確認 △", "使えない ×", "道路の距離 km", "法人・店舗・事業所", "個人宅", "日の幅",
-              "デモの帰り便の空き（重さの余り ", "見積依頼文", "出典",
-              "法人・店舗への配達ができるかは未確認", "荷台の寸法は公式に確認できていない", "1,000kg を超えるので要見積", "法人発・法人着", "容積 ", "× 280"):
+    for t in ("目安です。最後は各社の見積で確かめてください", "使える ○", "要確認 △", "使えない ×", "道路の距離（km）", "法人・店舗・事業所", "個人宅", "待てる日数",   # 文言の直し 2026-11-07
+              
+              "デモの帰り便の空き（重さの余り ", "見積を頼む文", "数字の出どころ",
+              "会社あての配達ができるかは分かっていません", "荷台の大きさは公表されていません", "1,000kg を超えるので、見積が要ります", "会社から会社へだけです", "容積重量", "280kg"):
         assert t in html, t
     for pref in ("北海道", "東京都", "大阪府", "沖縄県"):
         assert pref in html
@@ -139,7 +143,7 @@ def test_g91_selftest_and_s6_in_headless_edge():
         page.goto(PAGE.as_uri() + "?selftest=1")
         page.wait(lambda: page.js("document.querySelector('#selftest') && document.querySelector('#selftest').textContent.length > 0"), 30, "自己確認")
         text = page.js("document.querySelector('#selftest').textContent")
-        assert text == f"SELFTEST PASS {n + 42}/{n + 42}", text
+        assert text == f"SELFTEST PASS {n + 50}/{n + 50}", text
         page.goto(PAGE.as_uri() + "?example=1")
         page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")
         got = page.js("""(function(){

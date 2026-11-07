@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>説明用イラストの確認ページ</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../web/trip_view.css">
+<style>
+  :root { --teal: #1f6b5e; --ink: #26332f; --muted: #5d6570; --line: #d5dad6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px 40px; font-family: "Noto Sans JP", system-ui, sans-serif; color: var(--ink); background: #f4f5f3; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 32px 0 4px; padding-top: 14px; border-top: 2px solid var(--ink); }
+  h3 { font-size: 13px; margin: 18px 0 6px; color: var(--muted); font-weight: 700; }
+  p.note { font-size: 12px; color: var(--muted); margin: 2px 0 8px; max-width: 900px; }
+  .row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .row > .lab { flex: 0 0 100px; font-size: 12px; font-weight: 700; line-height: 1.5; }
+  .row > .lab small { display: block; font-weight: 400; color: var(--muted); }
+  .cells { display: flex; flex-wrap: wrap; gap: 12px; }
+  .tvbox.w360 { width: 360px; }
+  .tvbox.w480 { width: 480px; }
+  .tv-facts { display: none; }
+  .crop { overflow: hidden; border-radius: 12px; height: 88px; }
+  .crop .tv { border-radius: 0; border: 0; }
+  .crop .tv-svg { margin-top: -264px; }
+  .strip { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; }
+  .strip figure { margin: 0; text-align: center; font-size: 11px; color: var(--muted); }
+  .strip img { display: block; width: 64px; height: auto; margin: 0 auto 2px; background: #eef0ea; border-radius: 6px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 760px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .card h4 { margin: 0; font-size: 18px; }
+  .card p { margin: 0; font-size: 14px; line-height: 1.6; flex: 1; }
+  .card img { display: block; width: 160px; height: 100px; object-fit: contain; margin: 0 auto; }
+  .card button { font: inherit; font-weight: 700; font-size: 14px; padding: 11px 14px; border-radius: 10px; border: 0; background: var(--teal); color: #fff; }
+  .steps { display: flex; gap: 10px; align-items: stretch; width: 760px; }
+  .step { flex: 1; display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 700; }
+  .step .n { color: var(--teal); font-size: 18px; }
+  .step img { width: 56px; height: 56px; flex: none; }
+  .arrow { align-self: center; color: var(--muted); font-size: 18px; }
+  #err { color: #b00020; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>説明用イラストの確認ページ（2 回目）</h1>
+<p class="note">候補の絵を、実際の部品（web/trip_view.js・trip_view.css）と、最初の画面案の文言に当てはめて並べたものです。製品のファイルは変えていません。各組の一番上が現在の状態（絵なし、または現在の画像）です。</p>
+<div id="err"></div>
+
+<h2>(a) 運行の図と車の絵（TripView）</h2>
+<p class="note">同じ 3 運行（荷物あり 4t、空車 4t、荷の有無が不明 2t）。真上・斜めの絵は、図の中で車が右向きに見えるよう 90 度回してあります。事実の一覧（車・日時など）は省いています。</p>
+<h3>360px の幅（全体）</h3>
+<div id="a360"></div>
+<h3>480px の幅（車の帯のあたりだけを切り出し）</h3>
+<div id="a480"></div>
+<h3>64px の実寸で見る車格の見分け（左から 軽・2t・4t・10t）</h3>
+<p class="note">「枠に合わせる」は図で使う絵（枠いっぱいに拡大）。「共通縮尺」は 4 車種を同じ縮尺で並べたもの（斜め上から見た横向きの案のみ）。</p>
+<div id="strips"></div>
+
+<h2>(b) 最初の画面の役割カード</h2>
+<p class="note">文言は docs/plan/2026-11-06_依頼_最初の画面と操作.md の表のとおり。絵は 160x100 で表示。</p>
+<div id="cards"></div>
+
+<h2>(c) 3 手順の見出し</h2>
+<p class="note">絵は 56px で表示（実寸）。</p>
+<div id="steps"></div>
+
+<script src="../../web/own_calc.js"></script>
+<script src="../../web/trip_view.js"></script>
+<script>
+(async () => {
+  const sample = await (await fetch('../../web/data/own_sample.json')).json();
+  const legs = sample.legs;
+  const find = (f) => legs.find(f);
+  const base = { places: sample.places, vehicles: sample.vehicles, route: sample.route, base: sample.base, dock: sample.dock };
+  const trips = [
+    ['荷物あり', Object.assign({}, find((l) => l.dir === 'back' && l.kind === 'loaded' && l.dep) || find((l) => l.dir === 'back' && l.kind === 'loaded'), { cls: '4t' }), '4t_loaded'],
+    ['空車', Object.assign({}, find((l) => l.dir === 'back' && l.kind === 'empty' && l.dep), { cls: '4t' }), '4t_empty'],
+    ['不明', Object.assign({}, find((l) => l.dir === 'back' && l.kind === 'unknown'), { cls: '2t' }), '2t'],
+  ];
+  const styles = [
+    { key: 'webp', label: '現在の画像', sub: '（原案）', imgBase: '../../web/img/models/' },
+    { key: 'topline', label: '線画・真上', imgBase: 'img/' },
+    { key: 'tiltline', label: '線画・斜め', sub: '（後ろから 38 度）', imgBase: 'img/' },
+    { key: 'topmono', label: '単色・真上', imgBase: 'img/' },
+    { key: 'side', label: '斜め上の横向き', sub: '新案・色つき', imgBase: 'img/' },
+    { key: 'sideline', label: '斜め上の横向き', sub: '新案・線画', imgBase: 'img/' },
+  ];
+  const ctxFor = (st, trip) => {
+    const ctx = Object.assign({}, base, { imgBase: st.imgBase });
+    if (st.key !== 'webp') ctx.vehicleImages = { [trip[1].cls]: `tv_${st.key}_${trip[2]}.png` };
+    return ctx;
+  };
+  const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const rowHead = (st) => { const d = mk('div', 'lab', st.label); if (st.sub) d.appendChild(mk('small', null, st.sub)); return d; };
+
+  for (const w of [360, 480]) {
+    const host = document.getElementById('a' + w);
+    for (const st of styles) {
+      const row = mk('div', 'row'); row.appendChild(rowHead(st));
+      const cells = mk('div', 'cells'); row.appendChild(cells);
+      for (const t of trips) {
+        const box = mk('div', 'tvbox w' + w + (w === 480 ? ' crop' : ''));
+        box.dataset.style = st.key; box.dataset.trip = t[0];
+        cells.appendChild(box);
+        TripView.render(box, t[1], ctxFor(st, t));
+      }
+      host.appendChild(row);
+    }
+  }
+  const classes = [['kei', '軽'], ['2t', '2t'], ['4t', '4t'], ['10t', '10t']];
+  const stripSets = [
+    ['現在の画像（原案）', ['kei_van', 'box_2t', 'truck_4t', 'truck'].map((n) => `../../web/img/models/${n}.webp`)],
+    ['線画・真上（枠に合わせる）', classes.map((c) => `img/tv_topline_${c[0]}.png`)],
+    ['線画・斜め（枠に合わせる）', classes.map((c) => `img/tv_tiltline_${c[0]}.png`)],
+    ['単色・真上（枠に合わせる）', classes.map((c) => `img/tv_topmono_${c[0]}.png`)],
+    ['斜め上の横向き・色（枠に合わせる）', classes.map((c) => `img/tv_side_${c[0]}.png`)],
+    ['斜め上の横向き・色（共通縮尺）', classes.map((c) => `img/cs_side_${c[0]}.png`)],
+    ['斜め上の横向き・線画（枠に合わせる）', classes.map((c) => `img/tv_sideline_${c[0]}.png`)],
+    ['斜め上の横向き・線画（共通縮尺）', classes.map((c) => `img/cs_sideline_${c[0]}.png`)],
+  ];
+  const sh = document.getElementById('strips');
+  for (const [label, files] of stripSets) {
+    const row = mk('div', 'row'); row.appendChild(rowHead({ label }));
+    const s = mk('div', 'strip');
+    files.forEach((f, i) => { const fg = mk('figure'); const im = mk('img'); im.src = f; im.alt = classes[i][1]; fg.appendChild(im); fg.appendChild(mk('span', null, classes[i][1])); s.appendChild(fg); });
+    row.appendChild(s); sh.appendChild(row);
+  }
+  const roles = [
+    ['shipper', '荷主の方', '荷物に合う送り方と費用の目安を比べられます。', '荷物の条件を入れる'],
+    ['carrier', '運送会社の方', '自社の帰り便で、どの区間・曜日に空車が多いか分かります。', '運行記録を見る'],
+  ];
+  const cardSets = [['絵なし', '（原案）', null], ['線画', '', 'line'], ['粘土風', '', 'clay'], ['等角図', '', 'iso']];
+  const ch = document.getElementById('cards');
+  for (const [label, sub, st] of cardSets) {
+    const row = mk('div', 'row'); row.appendChild(rowHead({ label, sub }));
+    const g = mk('div', 'cards');
+    for (const r of roles) {
+      const c = mk('div', 'card');
+      c.appendChild(mk('h4', null, r[1]));
+      if (st) { const im = mk('img'); im.src = `img/role_${r[0]}_${st}.png`; im.alt = ''; c.appendChild(im); }
+      c.appendChild(mk('p', null, r[2])); c.appendChild(mk('button', null, r[3]));
+      g.appendChild(c);
+    }
+    row.appendChild(g); ch.appendChild(row);
+  }
+  const steps = [['data', '1', 'データを選ぶ'], ['bars', '2', '空いた帰りを見る'], ['consult', '3', '荷主に相談する']];
+  const sp = document.getElementById('steps');
+  for (const [label, sub, st] of [['アイコンなし', '（原案）', null], ['線画', '', 'line'], ['等角図', '', 'iso']]) {
+    const row = mk('div', 'row'); row.appendChild(rowHead({ label, sub }));
+    const g = mk('div', 'steps');
+    steps.forEach((s, i) => {
+      if (i) g.appendChild(mk('span', 'arrow', '▶'));
+      const d = mk('div', 'step');
+      if (st) { const im = mk('img'); im.src = `img/step_${s[0]}_${st}.png`; im.alt = ''; d.appendChild(im); }
+      d.appendChild(mk('span', 'n', s[1])); d.appendChild(mk('span', null, s[2]));
+      g.appendChild(d);
+    });
+    row.appendChild(g); sp.appendChild(row);
+  }
+  window.__ready = true;
+})().catch((e) => { window.__errs = (window.__errs || []).concat(String(e)); document.getElementById('err').textContent = '読み込み失敗: ' + e; });
+</script>
+</body>
+</html>

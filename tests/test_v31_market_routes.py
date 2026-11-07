@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 WEB = ROOT / "web"
 
-REASON = "発地に選べるのは関東の 7 か所だけなので、この区間は送り方の比べに移れません。"
+REASON = "集荷地は関東の 7 か所だけのため、この向きは比べられません。"   # 文言の直し 2026-11-07
 
 
 def read(name: str) -> str:
@@ -35,7 +35,7 @@ def test_g139_clo_entry_rule_is_in_market_js():
     # 発地に選べる県の端があるときだけ入口を出す。それ以外は理由の文を常に出す（トーストだけにしない）
     assert REASON in mk
     assert "toast(note)" not in mk
-    assert "鉄道・船を含めて送り方を比べる</span><span class=\"mp-go-sub\">発地 ${esc(clo.oName)} → 着地 ${esc(clo.dName)}" in mk
+    assert "鉄道と船も入れて送り方を比べる</span><span class=\"mp-go-sub\">${esc(clo.oName)} から ${esc(clo.dName)} へ" in mk
 
 
 def test_g141_5_traffic_heading_shows_the_data_period_not_this_week():
@@ -65,7 +65,7 @@ def test_g141_12_days_text_wraps_and_is_not_clipped():
     css, js = read("compare.css"), read("compare_chart.js")
     row = re.search(r"\.cc-days \{[^}]*\}", css).group(0)
     assert "text-overflow" not in row and "white-space: normal" in row and "overflow: hidden" not in row
-    assert "まで翌日、超は翌々日" in js
+    assert "までは翌日、それより遠いと翌々日" in js   # 文言の直し 2026-11-07
 
 
 def test_g141_7_find_view_height_stops_above_the_notes():
@@ -86,9 +86,9 @@ ERR_HOOK = ("window.__errs=[];window.addEventListener('error',e=>window.__errs.p
 
 
 @contextlib.contextmanager
-def _browser(width: int, height: int):
+def _browser(width: int, height: int, kind: str = "public"):
     """公開版の配信サーバー（セッションで 1 つ）に、Edge を 1 つ直列に起動してつなぐ。起動の時間切れは失敗（CDN に届かないと確かめたときだけ飛ばす）。"""
-    port = server_port("public")
+    port = server_port(kind)
     with edge_page(width, height, hooks=(ERR_HOOK,)) as page:
         def open_(hash_: str) -> None:
             page.send("Page.navigate", url="about:blank")
@@ -110,7 +110,7 @@ def test_g139_hyogo_tokyo_has_the_entry_and_the_compare_uses_the_two_prefectures
     with _browser(1920, 1080) as (page, open_):
         open_("#v=market&p=27-12")
         label = page.js("(function(){const b=document.querySelector('#m-pair [data-act=clo]');return b?b.textContent:null})()")
-        assert label == "鉄道・船を含めて送り方を比べる発地 新宿区 → 着地 神戸市中央区"
+        assert label == "鉄道と船も入れて送り方を比べる新宿区 から 神戸市中央区 へ"   # 文言の直し 2026-11-07
         # 区間の詳細に大型車の折れ線は出さない（§32 #2）。層の凡例にはデータの期間が入る（§31 #5）
         assert not page.js("document.querySelector('#m-pair .mp-j')")
         assert "10/27〜11/2 の 1 週間" in page.js("document.querySelector('#mlg-jartic-t').textContent")
@@ -123,7 +123,7 @@ def test_g139_hyogo_tokyo_has_the_entry_and_the_compare_uses_the_two_prefectures
         page.wait(lambda: "v=compare" in page.js("location.hash"), 30, "比べるへ移る")
         h = page.js("location.hash")
         assert "o=13104" in h and "d=28110" in h  # 発地 新宿区、着地 兵庫県の県庁所在地（神戸市中央区）
-        assert not page.js("window.__errs.length")
+        assert not page.js("window.__errs.length"), page.js("JSON.stringify(window.__errs)")
 
 
 def test_g139_pair_without_kanto_end_shows_the_reason_always():
@@ -147,18 +147,18 @@ def test_g141_10_12_capital_distance_matches_and_days_are_not_clipped():
         assert top and top == card, (top, card)
         clip = page.js("[...document.querySelectorAll('.cc-days')].some(e=>e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+2)")
         assert clip is False
-        assert "900kmまで翌日、超は翌々日" in page.js("document.querySelector('.cc').textContent")
-        assert not page.js("window.__errs.length")
+        assert "900 km までは翌日、それより遠いと翌々日" in page.js("document.querySelector('.cc').textContent")
+        assert not page.js("window.__errs.length"), page.js("JSON.stringify(window.__errs)")
 
 
 def test_g141_11_fallback_destination_says_the_tail_stops_at_the_capital():
-    with _browser(1920, 1080) as (page, open_):
-        open_("#v=compare&o=13104&l=km&d=27205")  # 吹田市。公開版では cache に無く、経路が取れない
-        page.wait(lambda: "経路を取得できませんでした" in page.js("document.querySelector('#rt-modes').textContent"), 90, "経路の取得の終わり")
+    with _browser(1920, 1080, "public_nocache") as (page, open_):
+        open_("#v=compare&o=13104&l=km&d=27205")  # 吹田市。cache の無い公開版では経路が取れない
+        page.wait(lambda: "直線で出しています" in page.js("document.querySelector('#rt-modes').textContent"), 90, "経路の取得の終わり")
         t = page.js("document.querySelector('#rt-modes').textContent")
         assert "大阪市中央区（県庁所在地）まで" in t
         assert "吹田市" in page.js("document.querySelector('.rt-card[data-mode=truck] .rt-legs').textContent")
-        assert not page.js("window.__errs.length")
+        assert not page.js("window.__errs.length"), page.js("JSON.stringify(window.__errs)")
 
 
 def test_g141_7_carrier_role_left_panel_does_not_overlap_the_legend():
@@ -179,4 +179,4 @@ def test_g141_14_narrow_corridor_opens_with_the_name_and_numbers_visible():
         top = page.js("document.querySelector('.mp-title').getBoundingClientRect().top")
         sheet = page.js("document.querySelector('#m-right').getBoundingClientRect().top")
         assert sheet <= top < page.js("innerHeight")
-        assert not page.js("window.__errs.length")
+        assert not page.js("window.__errs.length"), page.js("JSON.stringify(window.__errs)")

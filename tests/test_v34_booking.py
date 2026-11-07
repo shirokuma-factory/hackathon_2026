@@ -114,11 +114,11 @@ def test_g144_repro3_contract_destination_follows_shipment():
     t = next(t for t in spaceb.load_trips() if t["id"] == "T7")
     s = spaceb.parse_shipment(dict(
         shipment=dict(items=[dict(count=1, length_cm=30, width_cm=30, height_cm=30, weight_kg=1)]),
-        dest_code="27128", origin_code="13108"))
+        dest_code="46201", origin_code="13108"))
     b = spaceb.Board([t], clock=clock)
     h = b.hold("T7", s)
     b.decide(h["hold_id"], "accept")
     by = {i["key"]: i["value"] for i in b.contract(h["hold_id"])["items"]}
-    assert spaceb.muni_name("27128") in by["transport"]
-    assert spaceb.muni_name("28210") not in by["transport"]
-    assert spaceb.muni_name("28210") in by["trip"] and spaceb.muni_name(t["origin_code"]) in by["trip"]
+    assert spaceb.muni_name("46201") in by["transport"]
+    assert spaceb.muni_name("46203") not in by["transport"]
+    assert spaceb.muni_name("46203") in by["trip"] and spaceb.muni_name(t["origin_code"]) in by["trip"]

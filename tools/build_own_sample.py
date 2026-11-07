@@ -30,66 +30,69 @@ MAPPING = ROOT / "data" / "own_sample" / "mapping.json"
 OUT = ROOT / "web" / "data" / "own_sample.json"
 YEAR, MON = 2026, 10
 HAISHA = "haisha_2026-10.csv"
-OSRM_KM = 556.3  # data/geo/osrm_13104.json の 28210（加古川市）。江東区からの値は無いので新宿区からの値で代用する
+OSRM_KM = 1381.7  # data/geo/osrm_13104.json の 46203（鹿屋市）。江東区からの値は無いので新宿区からの値で代用する
 
 # ---------------------------------------------------------------- 架空の会社と車両
 VEHICLES = [  # plate, 配車表の車番の書き方, 配車表の車種の書き方, 区分, 車両総重量, 最大積載量, 運行記録計, 運転者コード
-    ("9001", "神戸 100 か 9001", "大型", "大型", 20000, 10000, "analog", None),
+    ("9001", "鹿児島 100 か 9001", "大型", "大型", 20000, 10000, "analog", None),
     ("9002", "9002", "大型", "大型", 20000, 10000, "analog", None),
     ("1234", "4t-1234", "4t", "4t", 8000, 3500, "digital", "D01"),
-    ("5678", "神戸 100 さ 5678", "4t", "4t", 8000, 3500, "digital", "D02"),
+    ("5678", "鹿児島 100 さ 5678", "4t", "4t", 8000, 3500, "digital", "D02"),
     ("3344", "3344", "4トン", "4t", 6900, 3000, "analog", None),
     ("3355", "4t-3355", "4t", "4t", 6900, 3000, "analog", None),
     ("7788", "2t-7788", "２ｔ", "2t", 4500, 2000, "analog", None),
-    ("7799", "神戸 400 あ 7799", "2t", "2t", 4500, 2000, "analog", None),
+    ("7799", "鹿児島 400 あ 7799", "2t", "2t", 4500, 2000, "analog", None),
 ]
 TACHO_LABEL = {"digital": "デジタコ（CSV を読む）", "analog": "チャート紙（この版では読みません）"}
 DRIVER_LABEL = {"D01": "運転者 A", "D02": "運転者 B"}
 
 # 地点の別名の辞書。KNOWN は最初から入っている別名、PROPOSED は初めて出た別名（確認待ちに入る）
-KNOWN = [("加古川営業所", "p01"), ("加古川", "p01"), ("江東区辰巳", "p07"), ("江東区", "p07"), ("江東", "p07")]
+KNOWN = [("鹿屋営業所", "p01"), ("鹿屋", "p01"), ("江東区辰巳", "p07"), ("江東区", "p07"), ("江東", "p07")]
 PROPOSED = [("辰巳", "p07")]
+UNCONFIRMED_PID = "p08"  # 確認待ちの別名に当たった名前は、確定するまで p07 に入れず、地図に置かない別の地点にする（own_lite.html の「辰巳」と同じ扱い）
 
-# ---------------------------------------------------------------- 運行の予定（行きを出る日 D。行きは D の列、帰りは D+1 の列）
-# デジタコの 2 台は、停車の分 m・帰りの出発 R（時）・到着の分 arr などを 1 回ずつ決める。
-# 拘束時間 = 29.5 + m/60 + (arr - 5.5) - R（行きの到着が 05:30 の基準）。13 時間・14 時間を超える日の数はこの値で決まる。
+# ---------------------------------------------------------------- 運行の予定
+# 鹿屋 ⇄ 江東は約 1,380 km。運転者 1 人で走れる 1 日の運転は 9 時間ほど（改善基準告示）なので、片道は 2 日かかる。
+# 1 つの運行 = 行き（出発日 D の夜に出て、D+2 の 5:30 に江東へ着く。途中で 9 時間以上休息する）
+#             + 江東での荷下ろし + 帰り（D+2 の夕方に出て、D+4 の未明に鹿屋へ着く。途中で休息する）。
+# 配車表の行きは D の列、帰りは D+2 の列（出発日の列）に書く。同じ車の次の運行は D+4 以降。
+# デジタコの 2 台は、荷下ろしの停車の分 m・帰りの出発 R（D+2 の時）・行きの途中の休息 rest1（時間）などを 1 回ずつ決める。
+# 走行の長さは「距離 ÷ 平均 SPEED_KMH（休憩を含む）」で決め、行きの到着（既定 5:30）から逆算して出発を決める。
+# 拘束時間（始業から 24 時間に入る業務の合計）は、前半の走行 + 後半の走行のうち 24 時間に入る分。休息が短いほど長くなる。
+SPEED_KMH = 66.0  # 平均の速さ（OSRM の走行時間なら約 75 km/h。4 時間ごとの 30 分休憩と渋滞を見込んで 66 km/h にした）
 DIGI = {
     "1234": {"cycles": {
-        6: dict(m=50, R=19.0, back_km=668.0),  # 帰りのメーターが推定より 20% 長い（距離の確認待ち）
-        8: dict(m=20, R=19.0),
-        12: dict(m=70, R=16.25),
-        14: dict(m=65, R=16.5),
-        16: dict(m=75, R=16.5),
-        20: dict(m=45, R=19.5),
-        22: dict(m=15, R=19.0),
-        26: dict(m=55, R=19.5, arr=6 * 60 + 50),  # 配車表の着 5:30 と 80 分ずれる（時刻の確認待ち）
-        28: dict(m=10, R=19.0),
+        3: dict(m=50, R=19.0, rest1=11.5, back_km=1660.0),  # 帰りのメーターが推定より 20% 長い（距離の確認待ち）
+        8: dict(m=20, R=19.0, rest1=12.0),
+        12: dict(m=70, R=16.25, rest1=9.75),
+        16: dict(m=65, R=17.5, rest1=9.5),
+        22: dict(m=45, R=19.0, rest1=11.5),
+        26: dict(m=45, R=19.5, rest1=12.0, arr=6 * 60 + 50),  # 配車表の着 5:30 と 80 分ずれる（時刻の確認待ち）
     }},
     "5678": {"cycles": {
-        1: dict(m=25, R=19.0),
-        5: dict(m=40, R=16.5),
-        10: dict(m=35, R=16.75),
-        13: dict(m=45, R=19.5, arr=6 * 60 + 55),  # 時刻の確認待ち
-        15: dict(m=20, R=19.0),
-        19: dict(m=45, R=16.5),
-        24: dict(m=45, R=19.0, out_km=655.0),  # 行きのメーターが推定より 18% 長い（距離の確認待ち）
-        27: dict(m=25, R=19.0),
-        29: dict(m=10, R=19.0),
+        1: dict(m=25, R=19.0, rest1=12.0),
+        5: dict(m=40, R=18.0, rest1=12.0),
+        9: dict(m=35, R=17.5, rest1=10.5),
+        15: dict(m=45, R=19.5, rest1=11.5, arr=6 * 60 + 55),  # 時刻の確認待ち
+        19: dict(m=20, R=19.0, rest1=12.0),
+        23: dict(m=45, R=18.5, rest1=11.0, out_km=1630.0),  # 行きのメーターが推定より 18% 長い（距離の確認待ち）
+        29: dict(m=40, R=19.0, rest1=12.0),
     }},
 }
-OTHER = {  # デジタコの無い車の、行きを出る日
-    "9001": [2, 6, 10, 13, 18, 21, 24, 27],
-    "9002": [3, 7, 11, 14, 19, 23, 26, 30],
-    "3344": [2, 5, 9, 12, 19, 24],
-    "3355": [4, 7, 11, 17, 20, 27],
-    "7788": [6, 13, 21, 28],
-    "7799": [9, 16, 23, 30],
+OTHER = {  # デジタコの無い車の、行きを出る日（同じ車は 4 日以上あける。木曜はデジタコの 2 台だけが出る）
+    "9001": [2, 6, 10, 14, 18, 23, 27],
+    "9002": [3, 7, 11, 16, 20, 24, 28],
+    "3344": [2, 7, 11, 16, 20, 24, 28],
+    "3355": [3, 7, 12, 16, 20, 24, 28],
+    "7788": [5, 9, 13, 17, 21, 25],
+    "7799": [2, 6, 10, 14, 19, 23, 27],
 }
-BACK_EMPTY_EVERY, BACK_EMPTY_OFFSET = 3, 0  # 木曜以外の帰りは 3 回に 1 回ほど空
-UNKNOWN_EVERY, UNKNOWN_OFFSET = 4, 0  # デジタコの無い車の区間のうち、積地か降ろし地が空欄の区間（不明になる）
-FREE_NOTES = {("3344", 14): "整備", ("7799", 2): "車検", ("7788", 10): "休", ("3355", 24): "休"}
-SHIPPERS_OUT = ["架空 みなと食品", "架空 東和電機", "架空 光建材", "架空 大洋機械", "架空 北斗製菓"]
-SHIPPERS_BACK = ["架空 播州製紙", "架空 加古川化学", "架空 瀬戸内鋼材"]
+CYCLE_DAYS = 2  # 行きの出発日から帰りの出発日まで
+BACK_EMPTY_EVERY, BACK_EMPTY_OFFSET, BACK_EMPTY_MUL = 3, 0, 3  # 木曜以外の帰りの空は、運行の順番 × 3 + 車の順番 が 3 の倍数のもの
+UNKNOWN_EVERY, UNKNOWN_OFFSET = 5, 2  # デジタコの無い車の区間のうち、積地か降ろし地が空欄の区間（不明になる）
+FREE_NOTES = {("3344", 15): "整備", ("7799", 18): "車検", ("7788", 3): "休", ("3355", 11): "休"}  # 運行の最中でない日だけに書く
+SHIPPERS_OUT = ["架空 霧島ファーム", "架空 志布志農協", "架空 大隅園芸", "架空 南薩青果", "架空 桜島野菜組合"]
+SHIPPERS_BACK = ["架空 関東包材", "架空 東京飲料", "架空 埼玉紙器"]
 OUT_LOAD_T = [3.2, 4.6, 5.1, 3.8, 4.4, 5.9, 2.9, 4.0]
 ARR_FORMATS = ["{h}{m:02d}", "{h}:{m:02d}", "{h:02d}:{m:02d}", "{h}時{m:02d}分"]
 DOCK_NAMES = ["江東区辰巳", "辰巳倉庫", "江東区辰巳A棟", "辰巳DC3"]  # 偶数番は漢字だけ、奇数番は英数字まじり
@@ -126,15 +129,33 @@ def make_cycles() -> list[dict]:
     for n, c in enumerate(cyc):
         thursday = wd_of(c["D"]) == 3
         c["thursday"] = thursday
-        c["back_empty"] = True if thursday else ((c["k"] + vidx[c["plate"]] + BACK_EMPTY_OFFSET) % BACK_EMPTY_EVERY == 0)
+        c["back_empty"] = True if thursday else ((c["k"] * BACK_EMPTY_MUL + vidx[c["plate"]] + BACK_EMPTY_OFFSET) % BACK_EMPTY_EVERY == 0)
         c["f_out"], c["f_back"] = factors[n % 8], factors[(n * 3 + 1) % 8]
         c["dev"] = [-20, -10, 0, 10, 20][n % 5]
         if c["digi"]:
             c.setdefault("arr", 5 * 60 + 30)
-            c["dep"] = 20 * 60 + c["dev"]
+            c.setdefault("rest1", 12.0)
+            c.setdefault("rest2", 12.0)
             c["out_km"] = c.get("out_km", round(OSRM_KM * c["f_out"], 1))
             c["back_km"] = c.get("back_km", round(OSRM_KM * c["f_back"], 1))
-            c["back_run"] = 9 * 60 + 20 + (n % 4) * 10
+            # 行き: 前半と後半の走行の間に休息 rest1。到着（D+2 の arr 分）から逆算して出発を決める
+            o1 = round(c["out_km"] / 2, 1)
+            c["out_parts"] = [o1, round(c["out_km"] - o1, 1)]
+            o_min = [int(round(km / (SPEED_KMH * c["f_back"]) * 60)) for km in c["out_parts"]]
+            arr_abs = datetime(YEAR, MON, c["D"]) + timedelta(days=CYCLE_DAYS, minutes=c["arr"])
+            c["o2_start"] = arr_abs - timedelta(minutes=o_min[1])
+            c["o1_end"] = c["o2_start"] - timedelta(minutes=int(round(c["rest1"] * 60)))
+            c["o1_start"] = c["o1_end"] - timedelta(minutes=o_min[0])
+            c["o2_end"] = arr_abs
+            # 帰り: D+2 の R 時に出て、前半の後に休息 rest2、後半で鹿屋へ
+            b1 = round(c["back_km"] / 2, 1)
+            c["back_parts"] = [b1, round(c["back_km"] - b1, 1)]
+            b_min = [int(round(km / (SPEED_KMH * c["f_out"]) * 60)) for km in c["back_parts"]]
+            c["b1_start"] = datetime(YEAR, MON, c["D"]) + timedelta(days=CYCLE_DAYS, minutes=int(round(c["R"] * 60)))
+            c["b1_end"] = c["b1_start"] + timedelta(minutes=b_min[0])
+            c["b2_start"] = c["b1_end"] + timedelta(minutes=int(round(c["rest2"] * 60)))
+            c["b2_end"] = c["b2_start"] + timedelta(minutes=b_min[1])
+            assert c["o1_start"].day == c["D"] and c["o1_start"].month == MON, c  # 行きの出発日が配車表の列の日と一致する
             c["dock_name"] = DOCK_NAMES[(c["k"] // 2) % 2 + (0 if c["k"] % 2 == 0 else 2)]
     # デジタコの無い車の区間のうち、4 区間に 1 つを「積地か降ろし地が空欄」にする
     legs_other = [(c["D"], c["plate"], d) for c in cyc if not c["digi"] for d in ("out", "back")]
@@ -147,6 +168,7 @@ def make_cycles() -> list[dict]:
             if key == unreadable_leg:
                 continue
             unknown.add(key)
+    unknown |= {("3355", 12, "out"), ("7799", 14, "out")}  # 行きが空欄の区間をあと 2 つ（不明の割合を 15% 以上にして、気づき 6 を出す）
     for c in cyc:
         c["unknown_out"] = (c["plate"], c["D"], "out") in unknown
         c["unknown_back"] = (c["plate"], c["D"], "back") in unknown
@@ -157,20 +179,20 @@ def leg_text(c: dict, d: str, i: int) -> tuple[str, str]:
     """配車表のセルの文字と、荷主の行の文字。"""
     large = c["plate"] in ("9001", "9002")
     if d == "out":
-        dest = "辰巳" if (c["plate"], c["D"]) in (("3344", 5), ("3355", 11), ("9002", 14)) else "江東"
+        dest = "辰巳" if (c["plate"], c["D"]) in (("3344", 11), ("3355", 16), ("9002", 16)) else "江東"
         if c.get("unknown_out"):
-            return "加古川 →", ""
-        txt = f"加古川 → {dest} 着{fmt_arr(i, 5 * 60 + 30)}"  # 着の目安はいつも 5:30。デジタコの到着がずれた運行は確認待ちになる
+            return "鹿屋 →", ""
+        txt = f"鹿屋 → {dest} 着{fmt_arr(i, 5 * 60 + 30)}"  # 着の目安はいつも 5:30。デジタコの到着がずれた運行は確認待ちになる
         if large and i % 5 != 0:
             txt += f" {OUT_LOAD_T[i % 8]}t"
         return txt, SHIPPERS_OUT[i % len(SHIPPERS_OUT)]
     if c.get("unknown_back"):
         return "江東 →", ""
     if c["back_empty"]:
-        end = fmt_arr(i + 1, int((c["R"] * 60 + c["back_run"]) % 1440)) if c["digi"] else fmt_arr(i + 1, 4 * 60 + 30)
-        return (f"江東 → 加古川（空）" if i % 2 == 0 else f"江東 → 加古川 着{end}（空）"), ""
-    end = fmt_arr(i + 2, int((c["R"] * 60 + c["back_run"]) % 1440)) if c["digi"] else fmt_arr(i + 2, 4 * 60)
-    txt = f"江東 → 加古川 着{end}"
+        end = fmt_arr(i + 1, c["b2_end"].hour * 60 + c["b2_end"].minute) if c["digi"] else fmt_arr(i + 1, 4 * 60 + 30)
+        return (f"江東 → 鹿屋（空）" if i % 2 == 0 else f"江東 → 鹿屋 着{end}（空）"), ""
+    end = fmt_arr(i + 2, c["b2_end"].hour * 60 + c["b2_end"].minute) if c["digi"] else fmt_arr(i + 2, 4 * 60)
+    txt = f"江東 → 鹿屋 着{end}"
     if large and i % 5 != 2:
         txt += f" {OUT_LOAD_T[(i + 3) % 8]}t"
     else:
@@ -182,10 +204,10 @@ def write_haisha(cycles: list[dict]) -> None:
     cells: dict[str, dict[int, tuple[str, str]]] = {v[0]: {} for v in VEHICLES}
     for i, c in enumerate(cycles):
         cells[c["plate"]][c["D"]] = leg_text(c, "out", i)
-        if c["D"] + 1 <= 31:
-            cells[c["plate"]][c["D"] + 1] = leg_text(c, "back", i)
+        if c["D"] + CYCLE_DAYS <= 31:
+            cells[c["plate"]][c["D"] + CYCLE_DAYS] = leg_text(c, "back", i)
     # 区間が読めない 1 セル（7788 の 10/14 の帰り。矢印が無い）。「8時半ごろ着」のような時刻だけが読めないセルは、時刻を捨てて区間を読む（SPEC §42）ので、ここには使わない
-    cells["7788"][14] = ("江東 加古川 戻り", "")
+    cells["7788"][13 + CYCLE_DAYS] = ("江東 鹿屋 戻り", "")
     for (plate, d), t in FREE_NOTES.items():
         cells[plate].setdefault(d, (t, ""))
     head = ["車番", "車種"] + [f"{MON}/{d}({own.WEEKDAYS[wd_of(d)]})" for d in range(1, 32)] + ["13日"]
@@ -194,11 +216,11 @@ def write_haisha(cycles: list[dict]) -> None:
         a = [raw, vtype] + [cells[plate].get(d, ("", ""))[0] for d in range(1, 32)] + [""]
         b = ["", ""] + [cells[plate].get(d, ("", ""))[1] for d in range(1, 32)] + [""]
         if plate == "9001":
-            a[-1] = "加古川 → 江東"  # 見出しが「13日」だけの列（月が分からない）
+            a[-1] = "鹿屋 → 江東"  # 見出しが「13日」だけの列（月が分からない）
         rows += [a, b]
     rows.append([""] * len(head))  # 空行（ここから先は上の車番を引き継がない）
     stray = [""] * len(head)
-    stray[2 + 19] = "加古川 → 江東 着530"  # 車番が空欄の行（10/20 の列）
+    stray[2 + 19] = "鹿屋 → 江東 着530"  # 車番が空欄の行（10/20 の列）
     rows.append(stray)
     write_csv(RAW / HAISHA, rows)
 
@@ -212,16 +234,17 @@ def write_digitaco(cycles: list[dict]) -> None:
             continue
         rows = [head]
         for c in (x for x in cycles if x["plate"] == plate):
-            dep = iso(c["D"], c["dep"])
-            arr = iso(c["D"] + 1, c["arr"])
+            arr = c["o2_end"]
             stop_end = arr + timedelta(minutes=c["m"])
-            back_dep = iso(c["D"] + 1, int(round(c["R"] * 60)))
-            back_arr = back_dep + timedelta(minutes=c["back_run"])
-            sp = lambda km, mins: f"{km / (mins / 60):.1f}"  # noqa: E731
-            rows.append(["1", f(dep), f(arr), f"{c['out_km']:.1f}", "1", "", drv, sp(c["out_km"], (arr - dep).total_seconds() / 60)])
+            sp = lambda km, s0, e0: f"{km / ((e0 - s0).total_seconds() / 3600):.1f}"  # noqa: E731
+            # 停車の行をはさまない 2 つの走行 = 途中で休息をはさんだ 1 区間（own.link が 1 区間にまとめる）
+            rows.append(["1", f(c["o1_start"]), f(c["o1_end"]), f"{c['out_parts'][0]:.1f}", "1", "", drv, sp(c["out_parts"][0], c["o1_start"], c["o1_end"])])
+            rows.append(["1", f(c["o2_start"]), f(arr), f"{c['out_parts'][1]:.1f}", "1", "", drv, sp(c["out_parts"][1], c["o2_start"], arr)])
             rows.append(["2", f(arr), f(stop_end), "", "", c["dock_name"], drv, ""])
-            rows.append(["1", f(back_dep), f(back_arr), f"{c['back_km']:.1f}", "0" if c["back_empty"] else "1", "", drv, sp(c["back_km"], c["back_run"])])
-            rows.append(["2", f(back_arr), f(back_arr + timedelta(minutes=20)), "", "", "加古川営業所", drv, ""])
+            flag = "0" if c["back_empty"] else "1"
+            rows.append(["1", f(c["b1_start"]), f(c["b1_end"]), f"{c['back_parts'][0]:.1f}", flag, "", drv, sp(c["back_parts"][0], c["b1_start"], c["b1_end"])])
+            rows.append(["1", f(c["b2_start"]), f(c["b2_end"]), f"{c['back_parts'][1]:.1f}", flag, "", drv, sp(c["back_parts"][1], c["b2_start"], c["b2_end"])])
+            rows.append(["2", f(c["b2_end"]), f(c["b2_end"] + timedelta(minutes=20)), "", "", "鹿屋営業所", drv, ""])
         write_csv(RAW / f"digitaco_{plate}.csv", rows)
 
 
@@ -247,7 +270,7 @@ def resolve_place(name: str) -> tuple[str | None, str | None, bool]:
             return pid, alias, False
     for alias, pid in PROPOSED:
         if alias in name:
-            return pid, alias, True
+            return UNCONFIRMED_PID, alias, True  # 確認待ちの別名は、利用者が確定するまで地点に当てない（当てると実車率が画面ごとに変わる）
     return None, None, False
 
 
@@ -261,10 +284,12 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
 
     points = json.loads((ROOT / "data" / "geo" / "municipality_points.json").read_text(encoding="utf-8"))["points"]
     places = {
-        "p01": {"id": "p01", "pseudo": "地点 01", "short": "加古川", "muni": "加古川市", "label": "加古川営業所（自社）", "code": "28210",
-                "lon": points["28210"]["lon"], "lat": points["28210"]["lat"], "aliases": ["加古川営業所", "加古川"]},
+        "p01": {"id": "p01", "pseudo": "地点 01", "short": "鹿屋", "muni": "鹿屋市", "label": "鹿屋営業所（自社）", "code": "46203",
+                "lon": points["46203"]["lon"], "lat": points["46203"]["lat"], "aliases": ["鹿屋営業所", "鹿屋"]},
         "p07": {"id": "p07", "pseudo": "地点 07", "short": "江東", "muni": "江東区", "label": "江東区辰巳", "code": "13108",
                 "lon": points["13108"]["lon"], "lat": points["13108"]["lat"], "aliases": ["江東区辰巳", "江東区", "江東", "辰巳（新）"]},
+        UNCONFIRMED_PID: {"id": UNCONFIRMED_PID, "pseudo": "地点 08", "short": "辰巳", "muni": "", "label": "辰巳", "code": None,
+                          "lon": None, "lat": None, "aliases": ["辰巳"], "placed": False, "reason": "確認待ちの別名です。確定すると地点 07 に入ります"},
     }
     base, dock = "p01", "p07"
     est = {frozenset((base, dock)): OSRM_KM}
@@ -335,7 +360,13 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
     cl = own.classify_legs(lk["legs"], base)
     legs = cl["legs"]
     for l in legs:
-        l["dir"] = ("out" if (l["to"] == dock or l["frm"] == base) else "back" if (l["to"] == base or l["frm"] == dock) else None)
+        # 向きは車庫を先に見る（車庫へ戻る区間は、主な行き先が着地でも「帰り」）。web/own_calc.js の analyze と同じ
+        if base and l["to"] == base and l["frm"] != base:
+            l["dir"] = "back"
+        elif base and l["frm"] == base:
+            l["dir"] = "out"
+        else:
+            l["dir"] = "out" if (dock and l["to"] == dock) else "back" if (dock and l["frm"] == dock) else ("back" if (base and l["to"] == base) else None)
     legs.sort(key=lambda l: (l["date"], l["plate"], 0 if l["dir"] == "out" else 1))
     for i, l in enumerate(legs, 1):
         l["id"] = f"L{i:03d}"
@@ -354,6 +385,9 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
     # 停車に、行きを出た日の曜日を付ける
     run_by_id = {r["id"]: r for r in runs}
     leg_by_did = {l["did"]: l for l in legs if l["did"]}
+    for l in legs:
+        for x in l.get("dids") or []:
+            leg_by_did[x] = l
     for s in stops:
         prev = [r for r in runs if r["plate"] == s["plate"] and r["end"] == s["start"]]
         s["cycle_wd"] = leg_by_did[prev[0]["id"]]["cycle_wd"] if prev and prev[0]["id"] in leg_by_did else None
@@ -401,7 +435,7 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
                 orig = f"配車表の着 {fl['hint']} と、デジタコの到着 {fl['digitaco']} が {abs(fl['diff_min'])} 分ずれています"
                 prop = "時刻はデジタコの値を使う"
             else:
-                orig = f"デジタコの走行距離 {fl['digitaco_km']} km が、OSRM の推定 {fl['est_km']} km より {round(fl['ratio'] * 100)}% 長くなっています"
+                orig = f"デジタコの走行距離 {fl['digitaco_km']} km が、OSRM の推定 {fl['est_km']} km より {round(fl['ratio'] * 100)}% {'長く' if fl['digitaco_km'] >= fl['est_km'] else '短く'}なっています"
                 prop = "距離はデジタコのメーターを使う（迂回した可能性）"
             lk_items.append({"id": "", "kind": "link", "source": "配車表とデジタコ", "title": f"{int(l['date'][5:7])}/{int(l['date'][8:10])} 車番 {l['plate']} の{'行き' if l['dir'] == 'out' else '帰り'}（{'時刻' if fl['type'] == 'time' else '距離'}）",
                              "original": orig, "proposal": prop, "confidence": None, "color": "yellow", "leg": l["id"], "formula": "距離が 15% 以上、時刻が 60 分以上ずれたら確認待ちに入れます", "claude": None})
@@ -441,14 +475,14 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
         "nonleg_cells": nonleg_cells,
     }
 
-    # --- 地図の道路の形（兵庫県 → 東京都のトラックの経路。両端は自社と地点 07 に延ばす）
+    # --- 地図の道路の形（鹿児島県 → 東京都のトラックの経路。両端は自社と地点 07 に延ばす）
     path = road_path(places)
     claude_present = any(c.get("claude_proposal") for c in mapping["columns"])
     data = {
         "version": 1, "fiction": True, "month": f"{YEAR}-{MON:02d}", "year": YEAR, "mon": MON,
-        "company": {"name": "架空 播磨ライン運輸", "city": "兵庫県加古川市", "code": "28210", "vehicles": len(vehicles)},
+        "company": {"name": "架空 さつま運輸", "city": "鹿児島県鹿屋市", "code": "46203", "vehicles": len(vehicles)},
         "places": places, "base": base, "dock": dock,
-        "route": {"path": path, "osrm_km": OSRM_KM, "note": "道路の形は 兵庫県 → 東京都 のトラックの経路（OSRM、OpenStreetMap）。両端は自社の車庫と地点 07 に延ばしています。距離は新宿区 → 加古川市の OSRM の値で代用しています"},
+        "route": {"path": path, "osrm_km": OSRM_KM, "note": "道路の形は 鹿児島県 → 東京都 のトラックの経路（OSRM、OpenStreetMap）。両端は自社の車庫と地点 07 に延ばしています。距離は新宿区 → 鹿屋市の OSRM の値で代用しています"},
         "vehicles": vehicles, "files": files, "unreadable": unreadable,
         "paper": {"count": 3, "text": "紙の日報 3 枚（この版では読みません）"},
         "columns": [{k: v for k, v in c.items() if k != "claude_input"} for c in mapping["columns"]],
@@ -476,8 +510,8 @@ def stop_json(s: dict) -> dict:
 
 
 def road_path(places: dict) -> list[list[float]]:
-    pairs = json.loads((ROOT / "web" / "data" / "routes_pairs.json").read_text(encoding="utf-8"))
-    rec = pairs["兵庫県>東京都"]["m"]["truck"]
+    routes = json.loads((ROOT / "web" / "data" / "routes_13104.json").read_text(encoding="utf-8"))
+    rec = routes["dests"]["鹿児島県"]["m"]["truck"]
     pts: list[tuple[float, float]] = []
     for lg in rec["legs"]:
         c = lg["c"]
@@ -487,6 +521,7 @@ def road_path(places: dict) -> list[list[float]]:
             x += c[i]
             y += c[i + 1]
             pts.append((x / 1e4, y / 1e4))
+    pts.reverse()  # 元は 新宿区 → 鹿児島県 の向き。鹿屋（車庫）→ 東京の向きにする
     step = 5
     sm = pts[::step] + ([pts[-1]] if (len(pts) - 1) % step else [])
     a, b = places["p01"], places["p07"]

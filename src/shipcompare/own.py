@@ -78,6 +78,16 @@ def hall_ward_code(text: str, points: dict[str, dict[str, Any]]) -> str | None:
     return None
 
 
+_GOU = re.compile(r"^(?:NO\.?\s*)?(\d{1,3})\s*(?:号車|号|番車|番|号機)?$", re.I)
+
+
+def gou_name(s: Any) -> str | None:
+    """「1号車」「１１号車」「3号」「No.2」「7」→「1号車」「11号車」…。4 桁の登録番号が無い配車表で、車の名前として使う（web/own_calc.js の gouName と同じ）。"""
+    t = unicodedata.normalize("NFKC", "" if s is None else str(s)).strip()
+    m = _GOU.match(t)
+    return f"{int(m.group(1))}号車" if m and int(m.group(1)) > 0 else None
+
+
 def plate_identity(s: Any) -> tuple[str | None, str | None]:
     """車番の文字から (末尾 4 桁, 完全な書き方)。「品川 100 あ 1234」は ("1234", "品川100あ1234")、「4t-1234」「1234」は ("1234", None)。
     完全な書き方が違う 2 台（品川100あ1234 と 練馬100い1234）を、末尾 4 桁だけで同じ車にしないために使う。web/own_calc.js の plateIdentity と同じ。"""
@@ -94,7 +104,8 @@ def plate_identity(s: Any) -> tuple[str | None, str | None]:
 
 
 _DATE_HEAD = re.compile(r"^\s*(\d{1,2})\s*/\s*(\d{1,2})")
-_DATE_FULL = re.compile(r"^\s*(\d{4})\s*[-/]\s*(\d{1,2})\s*[-/]\s*(\d{1,2})")
+_DATE_FULL = re.compile(r"^\s*(\d{4})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{1,2})")
+_DATE_ERA = re.compile(r"^\s*(令和|平成|R|H)\s*(\d{1,2})\s*[年./\-]\s*(\d{1,2})\s*[月./\-]\s*(\d{1,2})\s*日?", re.I)  # 令和8年10月1日・R8.10.1（令和 = 2018 + n、平成 = 1988 + n）
 _DATE_JA = re.compile(r"^\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日")
 _DATE_FULL_JA = re.compile(r"^\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日")
 _DAY_ONLY = re.compile(r"^\s*(\d{1,2})\s*日\s*$")
@@ -110,6 +121,9 @@ DEFAULT_YEAR = 2026  # 同じく、選ぶ欄の初期値（作成時の年。手
 def _date_head(h: str) -> tuple[int | None, int, int] | None:
     """見出しの文字から (年か None, 月, 日)。「10/1(木)」「10月1日」「2026/10/1」を読む。"""
     t = unicodedata.normalize("NFKC", h or "").strip()
+    me = _DATE_ERA.match(t)
+    if me:
+        return (2018 if me.group(1) in ("令和", "R", "r") else 1988) + int(me.group(2)), int(me.group(3)), int(me.group(4))
     m = _DATE_FULL.match(t) or _DATE_FULL_JA.match(t)
     if m:
         return int(m.group(1)), int(m.group(2)), int(m.group(3))
@@ -243,6 +257,7 @@ H_TO = {"着地", "降ろし地", "卸地", "荷降地", "届け先", "届先", 
 H_TIME = {"時刻", "着時刻", "到着", "到着時刻", "着時間", "時間", "着予定", "到着予定", "納品時間", "指定時刻", "着予定時刻", "到着時間", "納品時刻"}
 H_MARK = {"実空", "実空区分", "区分", "実車空車", "状態", "種別", "空車", "空実"}
 H_IGNORE_IN = ("乗務員", "運転者", "運転手", "ドライバー", "氏名", "合計", "備考", "稼働", "日数", "摘要", "メモ", "実車率", "走行距離", "荷主", "得意先", "取引先", "顧客", "依頼主")
+H_MARK_NOTE_IN = ("備考", "摘要", "メモ", "荷主", "得意先", "取引先", "顧客", "依頼主")  # この見出しの列は、読まないが、セルに空車の印（空車回送・帰荷なし）があれば空車にする
 H_IGNORE_EQ = {"計", "小計", "総計", "担当", "台数", "TOTAL"}
 TOTAL_TOKENS = {"合計", "計", "小計", "総計", "TOTAL", "合計台数", "台数"}  # 車番の欄がこれなら合計の行（読まない）
 
@@ -283,7 +298,8 @@ def haisha_role(h: Any, roles: dict[str, str | None] | None = None) -> str | Non
 
 
 _WD_CELL = re.compile(r"^[月火水木金土日](?:曜日?)?$")
-_DAYNUM = re.compile(r"^(\d{1,2})日?$")
+_DAYNUM = re.compile(r"^(\d{1,2})日?(?:\s*\(\s*([月火水木金土日])\s*\))?$")  # 「1」「1日」「1日(木)」「1日（木）」（全角の括弧は NFKC で直る）
+_TITLE_ERA = re.compile(r"(令和|平成|R|H)\s*(\d{1,2})\s*年\s*(\d{1,2})\s*月", re.I)
 _TITLE_YM = re.compile(r"(\d{4})\s*年\s*(\d{1,2})\s*月")
 _TITLE_M = re.compile(r"(\d{1,2})\s*月")
 
@@ -292,6 +308,9 @@ def _title_month(rows: list[list[str]], upto: int) -> tuple[int | None, int] | N
     """見出しの行より上の題名の行から (年か None, 月)。「2026年10月 配車表」「10月分」。"""
     for r in rows[:upto]:
         t = unicodedata.normalize("NFKC", " ".join((c or "") for c in r))
+        me = _TITLE_ERA.search(t)
+        if me and 1 <= int(me.group(3)) <= 12:
+            return (2018 if me.group(1) in ("令和", "R", "r") else 1988) + int(me.group(2)), int(me.group(3))
         m = _TITLE_YM.search(t)
         if m and 1 <= int(m.group(2)) <= 12:
             return int(m.group(1)), int(m.group(2))
@@ -302,8 +321,26 @@ def _title_month(rows: list[list[str]], upto: int) -> tuple[int | None, int] | N
 
 
 def _day_num(c: str) -> int | None:
-    m = _DAYNUM.match(unicodedata.normalize("NFKC", c))
+    m = _DAYNUM.match(unicodedata.normalize("NFKC", c).strip())
     return int(m.group(1)) if m and 1 <= int(m.group(1)) <= 31 else None
+
+
+def _day_wd(c: str) -> int | None:
+    """見出し自体に付いた曜日（「1日(木)」の木）。無ければ None。"""
+    m = _DAYNUM.match(unicodedata.normalize("NFKC", c).strip())
+    return WEEKDAYS.index(m.group(2)) if m and m.group(2) else None
+
+
+def vdate(cell: str, title: tuple[int | None, int] | None) -> tuple[int | None, int, int] | None:
+    """縦の一覧の日付のセル → (年か None, 月, 日)。「10/1」「R8.10.1」「2026/10/01」はそのまま、「1日」「1」は題名の年月（title）と合わせて読む。"""
+    t = unicodedata.normalize("NFKC", cell or "").strip()
+    p = _date_head(t)
+    if p is not None:
+        return p
+    d = _day_num(t) if re.fullmatch(r"\d{1,2}日?", t) else None
+    if d is not None and title:
+        return title[0], title[1], d
+    return None
 
 
 def _layout_from_row(rows: list[list[str]], i: int, roles: dict[str, str | None] | None, month: int | None) -> dict[str, Any] | None:
@@ -316,8 +353,8 @@ def _layout_from_row(rows: list[list[str]], i: int, roles: dict[str, str | None]
     if plate_col is None:
         return None
     type_col = next((j for j, r in enumerate(rl) if r == "type"), None)
-    md = [j for j, c in enumerate(cells) if c and rl[j] is None and _date_head(c) is not None]
-    dayn = [j for j, c in enumerate(cells) if c and rl[j] is None and _date_head(c) is None and _day_num(c) is not None]
+    md = [j for j, c in enumerate(cells) if c and rl[j] in (None, "date") and _date_head(c) is not None]
+    dayn = [j for j, c in enumerate(cells) if c and rl[j] in (None, "date") and _date_head(c) is None and _day_num(c) is not None]
     wide = len(md) >= 3 or (i == 0 and len(md) >= 1) or (not md and len(dayn) >= 3)
     if wide:
         cols = md or dayn
@@ -348,21 +385,62 @@ def _layout_from_row(rows: list[list[str]], i: int, roles: dict[str, str | None]
             else:
                 for j in dayn:
                     d = _day_num(cells[j])
-                    heads[j] = (f"{ty}/{mm}/{d}" if ty else f"{mm}/{d}") + (f"({WEEKDAYS[wd[j]]})" if j in wd else "")
+                    own_wd = _day_wd(cells[j])
+                    heads[j] = (f"{ty}/{mm}/{d}" if ty else f"{mm}/{d}") + (f"({WEEKDAYS[wd[j]]})" if j in wd else f"({WEEKDAYS[own_wd]})" if own_wd is not None else "")
         return {"kind": "wide", "header_row": i, "head": cells, "data_start": i + (2 if weekday_row else 1), "weekday_row": weekday_row,
                 "plate_col": plate_col, "type_col": type_col, "heads": heads, "day_cols": [] if md else dayn, "roles": rl,
                 "needs_month": needs_month, "title_month": list(title) if title else None}
     c = {r: next((j for j, x in enumerate(rl) if x == r), None) for r in ("date", "from", "to", "weight", "time", "mark")}
     if c["date"] is not None and (c["from"] is not None or c["to"] is not None):
+        title = _title_month(rows, i) or ((None, month) if month else None)
         seen: dict[str, tuple[int, int]] = {}
+        day_only = 0
         for r in rows[i + 1:]:
             cell = unicodedata.normalize("NFKC", (r[c["date"]] if c["date"] < len(r) else "") or "").strip()
-            p = _date_head(cell)
-            if p is not None and cell not in seen:
-                seen[cell] = (p[1], p[2])
+            p = vdate(cell, title)
+            if p is None and re.fullmatch(r"\d{1,2}日?", cell) and _day_num(cell) is not None:
+                day_only += 1
+            if p is not None:
+                key = cell if _date_head(cell) is not None else (f"{p[0]}/{p[1]}/{p[2]}" if p[0] else f"{p[1]}/{p[2]}")
+                if key not in seen:
+                    seen[key] = (p[1], p[2])
         heads = [k for k, _ in sorted(seen.items(), key=lambda kv: (kv[1], kv[0]))]
+        # 備考・摘要・荷主などの列は、読まない列のままにして、セルの中の空車の印（空車回送・帰荷なし）だけ見る。利用者が「読まない」と決めた列は見ない
+        mark_cols = [j for j, x in enumerate(cells) if x and (rl[j] == "mark" or (rl[j] == "skip" and any(w in head_key(x) for w in H_MARK_NOTE_IN)
+                                                                                 and not (roles is not None and col_key(x) in roles)))]
         return {"kind": "vertical", "header_row": i, "head": cells, "data_start": i + 1, "weekday_row": False, "plate_col": plate_col,
-                "type_col": type_col, "cols": c, "heads": heads, "day_cols": [], "roles": rl, "needs_month": False, "title_month": None}
+                "type_col": type_col, "cols": c, "heads": heads, "day_cols": [], "roles": rl, "needs_month": bool(day_only >= 3 and not title),
+                "title_month": list(title) if title else None, "mark_cols": mark_cols}
+    return None
+
+
+def transpose_date_down(rows: list[list[str]]) -> tuple[list[list[str]], dict[str, Any]] | None:
+    """日付が縦に並び、車が横に並ぶ配車表（左端の列が日付、見出しの行に 1234・5678 のような車番が並ぶ）を、日付が横の形（1 行 = 1 車両）に置き換える。
+    見出しの行（先頭の 10 行）に、日付でも列の役割でもない車番らしいセルが 1 つ以上あり（日付の見出しは無い）、その下の日付らしい列（左から 3 列まで）に日付が 3 つ以上あるときだけ。
+    戻り値は (置き換えた行, {header_row, cols, date_col}) か None。cols は新しい行 n（見出しの次から）が、元の何列目の車か。web/own_calc.js の transposeDateDown と同じ。"""
+    for i, row in enumerate(rows[:HEADER_SCAN_ROWS]):
+        cells = [(c or "").strip() for c in row]
+        cols = [j for j, c in enumerate(cells) if c and haisha_role(c) is None and _date_head(c) is None and _WD_CELL.match(unicodedata.normalize("NFKC", c)) is None
+                and normalize_plate(c) is not None]
+        if not cols or any(_date_head(c) is not None for c in cells if c):  # 見出しに日付が並ぶ表は、日付が横の形
+            continue
+        body = rows[i + 1:]
+        for dc in range(min(3, len(cells))):
+            if dc in cols:
+                continue
+            dates = [(r[dc] if dc < len(r) else "") for r in body]
+            if sum(1 for x in dates if _date_head(x or "") is not None) < 3:
+                continue
+            wdc = dc + 1 if sum(1 for r in body if dc + 1 < len(r) and _WD_CELL.match(unicodedata.normalize("NFKC", (r[dc + 1] or "").strip()))) >= 3 else None  # 日付の隣の曜日の列
+            def _dhead(r: list[str]) -> str:
+                d = ((r[dc] if dc < len(r) else "") or "").strip()
+                w = unicodedata.normalize("NFKC", (r[wdc] if wdc is not None and wdc < len(r) else "") or "").strip()
+                return f"{d}({w[0]})" if d and w and _WD_CELL.match(w) and _date_head(d) is not None and "(" not in d else d
+            head = ["車番"] + [_dhead(r) for r in body]
+            new_rows = [list(r) for r in rows[:i]] + [head]
+            for j in cols:
+                new_rows.append([cells[j]] + [((r[j] if j < len(r) else "") or "") for r in body])
+            return new_rows, {"header_row": i, "cols": cols, "date_col": dc}
     return None
 
 
@@ -527,7 +605,13 @@ def read_haisha(rows: list[list[str]], year: int = 2026, layout: dict[str, Any] 
     if not rows:
         out["stats"] = {"filled_rows": 0, "groups": 0, "date_cols": 0, "bad_cols": 0, "data_rows": 0}
         return out
-    lay = layout or detect_haisha(rows, roles, month) or _legacy_layout(rows)
+    lay = layout
+    if lay is None:
+        lay = detect_haisha(rows, roles, month)
+        if lay is None and (tr := transpose_date_down(rows)):  # 日付が縦・車が横の配車表
+            rows = tr[0]
+            lay = detect_haisha(rows, roles, month)
+        lay = lay or _legacy_layout(rows)
     out["layout"] = {"kind": lay["kind"], "header_line": lay["header_row"] + 1, "data_start_line": lay["data_start"] + 1, "weekday_row": lay["weekday_row"],
                      "title_month": lay.get("title_month"), "plate_col": lay["plate_col"]}
     out["needs_month"] = bool(lay.get("needs_month"))
@@ -547,11 +631,14 @@ def read_haisha(rows: list[list[str]], year: int = 2026, layout: dict[str, Any] 
     out["plate_notes"] = plate_notes_of(forms, attr)
     conflict = {n for n, f in forms.items() if len(f["full"]) >= 2}
     out["hired"] = []
+    # 4 桁の登録番号がどの行にも無く、1〜3 桁の号車の番号が並ぶ配車表は、「N号車」をそのファイルの中の車の名前にする
+    gou_mode = bool(plate_cells) and not any(normalize_plate(x) for x in plate_cells) and any(gou_name(x) for x in plate_cells)
+    out["gou_mode"] = gou_mode
 
     def ident(raw: str, ty: str = "", drv: str = "") -> str | None:
         num, full = plate_identity(raw)
         if num is None:
-            return None
+            return gou_name(raw) if gou_mode else None
         if num in conflict and full:
             return full
         if num in attr:  # 車格か運転者が違う: 完全な書き方があればそれ、4 桁だけの書き方は 4 桁。同じ書き方で車格が違うときは車格を添える
@@ -679,6 +766,10 @@ def _read_vertical(rows: list[list[str]], body: list[tuple[int, list[str]]], lay
             used.add(j)
     data_rows = 0
     plates: list[dict[str, Any]] = []
+    title = tuple(lay["title_month"]) if lay.get("title_month") else None
+    mark_cols = lay.get("mark_cols") or []
+    last_date, last_raw = "", ""
+    filled_dates = filled_plates = marked = 0
 
     def cell(r: list[str], j: int | None) -> str:
         return ((r[j] if j is not None and j < len(r) else "") or "").strip()
@@ -691,9 +782,17 @@ def _read_vertical(rows: list[list[str]], body: list[tuple[int, list[str]]], lay
             continue
         data_rows += 1
         col = c["date"]
-        shown = " → ".join(x for x in (cell(row, c["from"]), cell(row, c["to"])) if x) or "(空)"
+        shown = " → ".join(x for x in (cell(row, c["from"]), cell(row, c["to"])) if x) or "（記入なし）"
         raw = cell(row, pc)
         dtext = unicodedata.normalize("NFKC", cell(row, c["date"]))
+        if not dtext and last_date:  # 日付が空欄（Excel の「上と同じ」）は、上の行の日付で読む
+            dtext, filled_dates = last_date, filled_dates + 1
+        elif dtext:
+            last_date = dtext
+        if not raw and last_raw:
+            raw, filled_plates = last_raw, filled_plates + 1
+        elif raw:
+            last_raw = raw
         if raw and is_hired(raw, cell(row, tc)):
             if hired_note is not None:
                 hired_note(raw, ri, 1, 1)
@@ -702,7 +801,7 @@ def _read_vertical(rows: list[list[str]], body: list[tuple[int, list[str]]], lay
         if pn is None:
             out["unreadable"].append({"line": ri, "col": col, "original": shown, "reason": "車番がありません" if not raw else "車番が読めません"})
             continue
-        p = _date_head(dtext)
+        p = vdate(dtext, title)
         iso = None
         if p is not None:
             yy = p[0] if p[0] is not None else year
@@ -718,6 +817,9 @@ def _read_vertical(rows: list[list[str]], body: list[tuple[int, list[str]]], lay
         frm, to = cell(row, c["from"]) or None, cell(row, c["to"]) or None
         mark = unicodedata.normalize("NFKC", cell(row, c["mark"]))
         empty = is_empty_word(mark) or is_empty_word(to or "") or is_empty_word(frm or "")
+        if not empty and any(has_empty_mark(cell(row, j)) for j in mark_cols):  # 備考・荷主・摘要の列の「空車回送」「帰荷なし」
+            empty = True
+            marked += 1
         loaded_mark = (not empty) and mark.strip("()") in LOADED_WORDS
         if to and is_empty_word(to):
             to = None
@@ -741,6 +843,8 @@ def _read_vertical(rows: list[list[str]], body: list[tuple[int, list[str]]], lay
         leg: dict[str, Any] = {"frm": frm, "to": to, "empty": empty, "arr": arr, "weight_kg": None}
         if loaded_mark:
             leg["loaded_mark"] = True
+        elif not empty and mark.strip("()"):
+            leg["note"] = mark.strip("()")[:24]  # 区分の列に書かれた、空車の印でも実車の印でもない語
         w = _vertical_weight(cell(row, c["weight"]), head[c["weight"]] if c["weight"] is not None else "")
         if w:
             sign = [x for x in w["weights"] if "error" in x]
@@ -751,14 +855,16 @@ def _read_vertical(rows: list[list[str]], body: list[tuple[int, list[str]]], lay
                 leg["weight_kg"] = kgs[0]
             elif len(kgs) > 1:
                 leg["weights"] = kgs
-        nonleg = (frm in _NONLEG and not to) or (to in _NONLEG and not frm)
+        # 積地・卸地が空で、行のどこかのセルが「公休」「有給」などなら、走らない日の行（区間として数えない）
+        nonleg = (frm in _NONLEG and not to) or (to in _NONLEG and not frm) or (not frm and not to and any(unicodedata.normalize("NFKC", x or "").strip() in _NONLEG for x in row))
         parsed = {"legs": [] if nonleg else [leg], "nonleg": bool(nonleg), "errors": errors, "warnings": warnings}
         shown_full = " ".join(x for x in (shown, tcell, w["text"] if w else "") if x)
         out["rows"].append({"plate": pn, "plate_raw": raw, "vehicle_type": cell(row, tc), "date": iso, "text": shown_full, "notes": [],
                             "line": ri, "col": col, "parsed": parsed})
     out["plates"] = plates
     out["extra_cols"] = _extra_columns(rows, lay, used)
-    out["stats"] = {"filled_rows": 0, "groups": len(plates), "date_cols": 0, "bad_cols": 0, "data_rows": data_rows}
+    out["stats"] = {"filled_rows": 0, "groups": len(plates), "date_cols": 0, "bad_cols": 0, "data_rows": data_rows,
+                    "filled_dates": filled_dates, "filled_plates": filled_plates, "marked_empty": marked}
     return out
 
 
@@ -777,7 +883,7 @@ def _unique(xs: list[Any]) -> list[Any]:
 
 # ---------------------------------------------------------------- 配車表のセルの読み取り
 
-_NONLEG = ("休", "整備", "休み", "車検", "待機")
+_NONLEG = ("休", "整備", "休み", "車検", "待機", "点検", "定期点検", "修理", "休日", "公休", "有休", "有給", "有給休暇", "欠勤", "代休", "振休", "特休", "年休")
 # 重さ: 数の直後に t・kg・トン。直前が英数字・小数点なら重さではない。「4t車」「5トンウイング」のように、数の直後が車の種類を表す言葉なら、車の大きさで重さではない
 _WEIGHT = re.compile(r"(?<![0-9A-Za-z.])([-−‐‑–+]?)\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?)\s*([kK][gG]|[tT]|トン)(?![a-zA-Z])")
 _CLASS_AFTER = re.compile(r"^\s*(?:車|ウイング|ウィング|ワイド|ロング|箱|平|ユニック|クレーン|冷凍|冷蔵|保冷|ダンプ|トレーラー?|バン|アルミ|幌|ゲート|セミ|低床|高床|パッカー|タンク|ミキサー|コンテナ|キャリア|ローリー)")
@@ -829,8 +935,22 @@ def parse_time(tok: str) -> str | None:
 
 # 空車の印（横の形のセルも縦の形の「区分」の列も、同じ表で読む。web/own_calc.js の EMPTY_WORDS と同じ）。前後が仮名・漢字の中の「空」（空港、空調）は印にしない
 # 「回送」「空コン」（空のコンテナ。半角カナの「空ｺﾝ回送」は NFKC で直る）は、前後に何があっても空車の印にする
-EMPTY_WORDS = ("帰り空車", "帰り空", "空車", "空荷", "回送", "カラ", "空")
-_EMPTY_MARK = re.compile(r"回送|空コン|(?<![ぁ-んァ-ヶ一-鿿々])(?:帰り空車|帰り空|空車|空荷|カラ|空)(?![ぁ-んァ-ヶ一-鿿々])")
+EMPTY_WORDS = ("戻り空車", "戻り空", "帰り空車", "帰り空", "空車", "空荷", "荷なし", "荷無し", "荷無", "帰荷なし", "帰荷無し", "帰り荷なし", "帰り荷無し", "空回送", "回送", "カラ", "空")
+# 「戻り空」「荷なし」は前が仮名でも印にする（「戻り」「荷」の後ろに続く）。「帰り」「戻り」だけの語は印として弱いので、重さが同じ区間に無いときだけ空車にする（_WEAK_EMPTY）
+# 「帰り荷さがし中」「帰り荷探し」「帰り荷待ち」「求荷中」は、帰りの荷を探している（今は積んでいない）ので空車の印にする。「帰り荷あり」は印にしない
+_EMPTY_MARK = re.compile(r"回送|空コン|戻り空車|戻り空|荷なし|荷無し|(?:帰り|戻り|帰)荷\s*(?:さがし|探し|待ち|探索|募集|未定)|荷さがし|荷探し|求荷(?:中)?|(?<![ぁ-んァ-ヶ一-鿿々])(?:帰り空車|帰り空|空車|空荷|カラ|空)(?![ぁ-んァ-ヶ一-鿿々])")
+def has_empty_mark(s: str) -> bool:
+    """備考・荷主・摘要の列のセルに空車の印があるか（「空車回送」「空」「回送」「帰荷なし」）。「空港運輸」のように前後が仮名・漢字の「空」は印にしない。"""
+    t = unicodedata.normalize("NFKC", s or "").strip()
+    return bool(t) and (is_empty_word(t) or bool(_EMPTY_MARK.search(t)))
+
+
+_WEAK_EMPTY = re.compile(r"(?<![ぁ-んァ-ヶ一-鿿々])(?:帰り|戻り)(?![ぁ-んァ-ヶ一-鿿々])")
+# 区間の前に付く空車の印（「回送 江東 → 加古川」「（回送）江東→加古川」「回送：江東→加古川」「空 江東→加古川」）。外して印として覚え、残りを区間として読む
+_EMPTY_PREFIX = re.compile(r"^(?:[(\[【]\s*(?:戻り空車|戻り空|帰り空車|帰り空|空車|空荷|荷なし|荷無し|空回送|回送|空コン|カラ|空)\s*[)\]】]\s*[:：、,]?"
+                           r"|(?:空回送|回送|空コン)\s*[:：、,]?|(?:戻り空車|戻り空|帰り空車|帰り空|空車|空荷|荷なし|荷無し|カラ|空)(?:\s*[:：、,]\s*|\s+))\s*")
+_RETURN_PREFIX = re.compile(r"^(?:帰り|戻り|復路|復)\s*[:：、,]?\s*(?=[^\s→⇒>~〜=\-])")
+_HAS_ARROW = re.compile(r"->|=>|[→⇒>~〜]")
 # 実車の印。車庫へ戻る区間で、重さの代わりに「実車」と書いておけば、実車として数える（印も重さも無いと不明になる）
 LOADED_WORDS = ("実車", "積載", "積み", "実")
 _LOADED_MARK = re.compile(r"(?<![ぁ-んァ-ヶ一-鿿々])(?:実車|積載|積み|実)(?![ぁ-んァ-ヶ一-鿿々])")
@@ -863,6 +983,24 @@ def is_empty_word(s: str) -> bool:
     """区分や印の文字が空車の印か（「（空）」の括弧は外して見る）。"""
     t = unicodedata.normalize("NFKC", s or "").strip().strip("()").strip()
     return t in EMPTY_WORDS or "回送" in t or t.startswith("空コン")
+
+
+def split_cell_prefix(part: str) -> tuple[bool, str]:
+    """区間の前に付いた空車の印と、都道府県の名前（「東京 江東区 → 加古川」の「東京」）を外す。戻り値は (空車の印があったか, 残りの文字)。
+    印は、残りに矢印があるときだけ外す（矢印の無いセルの「回送」「空」は、区間の無い空車として別に読む）。"""
+    t = part.strip()
+    pre = False
+    m = _EMPTY_PREFIX.match(t)
+    if m and _HAS_ARROW.search(t[m.end():]):
+        pre, t = True, t[m.end():].strip()
+    else:
+        mb = _RETURN_PREFIX.match(t)  # 「帰り 江東→加古川 荷なし」の「帰り」は、区間の名前ではない。外して、空車かどうかは後ろの印で決める
+        if mb and _HAS_ARROW.search(t[mb.end():]):
+            t = t[mb.end():].strip()
+    m2 = re.match(r"^(\S+)\s+(?![→⇒>~〜=\-])(\S+)", t)
+    if m2 and pref_name(m2.group(1)) and re.search(r"[市区町村]", m2.group(2).split("→")[0]):
+        t = t[m2.start(2):]  # 積地の前の都道府県（「東京 江東区 → …」「東京都 江東区 → …」）は読み飛ばす
+    return pre, t
 
 
 def _local_place(t: str) -> str | None:
@@ -917,6 +1055,34 @@ _LEG_SPLIT = re.compile(r"[／/\r\n]+|\s+(?=(?:AM|PM|午前|午後)(?!\s*[:：]?
 _PERIOD_HEAD = re.compile(r"^(?:AM|PM|午前|午後)(?!\s*[:：]?\s*[0-9:：着])\s*[:：]?\s*", re.I)
 
 
+# 矢印の前に荷主名や「積」「卸」が挟まるセル（「姫路 ﾄｳﾜ電機 → 春日部」「岩槻 積 → 姫路」「ﾄｳﾜ電機 姫路→春日部」）。web/own_calc.js の SHIPPER_TOKEN と同じ
+_SHIPPER_WORD = re.compile(r"^(?:積|卸|積み|卸し|積込|積込み|取卸|取卸し|荷積|荷卸|荷主|積地|卸地|着|発)$")
+_SHIPPER_NAME = re.compile(r"(?:電機|電気|電工|商事|商店|商会|運輸|運送|物流|通運|工業|工場|製作所|製造|産業|食品|フーズ|倉庫|ロジ|ロジスティクス|化学|鉄鋼|金属|建材|機械|石油|興業|紙業|セメント|株式会社|有限会社|\(株\)|\(有\)|㈱|㈲)")
+_ARROW_ANY = re.compile(r"->|=>|[→⇒>~〜]")
+
+
+def _origin_only(part: str) -> str:
+    """矢印の前に空白で区切った語が 2 つ以上あるとき、積地として最後の地名らしい語だけを残す（荷主名・「積」「卸」・重さ・時刻の語は積地にしない）。
+    「姫路 ﾄｳﾜ電機 → 春日部」は姫路、「ﾄｳﾜ電機 姫路→春日部」は姫路。全部が荷主名らしい語のときは、そのまま（最後の語）にする。"""
+    am = _ARROW_ANY.search(part)
+    if not am:
+        return part
+    head = part[:am.start()].strip()
+    toks = head.split()
+    if len(toks) < 2:
+        return part
+
+    def shipper(t: str) -> bool:
+        return bool(_SHIPPER_WORD.match(t) or _SHIPPER_NAME.search(t) or is_non_place(t) or re.fullmatch(r"[ァ-ヶー]{2,}", t))
+
+    cands = [t for t in toks if not shipper(t)]
+    if not cands:
+        return part
+    if len(cands) == len(toks):
+        return part  # 荷主名らしい語が無い（「東京 江東区」など）。これまでの読み方に任せる
+    return cands[-1] + " " + part[am.start():]
+
+
 def parse_cell(text: str) -> dict[str, Any]:
     """配車表の 1 セルから区間を取り出す。「積地 → 降ろし地 着530 6.5t（空）」「積地 → 降ろし地 5:30着 9.2t」。
 
@@ -939,6 +1105,8 @@ def parse_cell(text: str) -> dict[str, Any]:
         part = _PERIOD_HEAD.sub("", part.strip(), count=1).strip()
         if not part:
             continue
+        pre_empty, part = split_cell_prefix(part)
+        part = _origin_only(part)
         m = _ARROW_LEG.match(part)
         if not m:
             lone = _lone_cell(part)
@@ -951,6 +1119,11 @@ def parse_cell(text: str) -> dict[str, Any]:
                 res["warnings"].append(TIME_DROPPED)
             continue
         frm, to, rest = (m.group(1) or "").strip() or None, (m.group(2) or "").strip() or None, m.group(3)
+        chain: list[str] = []  # 「江東→加古川→大阪」: 降ろし地に矢印が続くときは、経由地ごとに区間を分ける（R7A-10）
+        if to and re.search(r"->|=>|[→⇒>~〜]", to):
+            hops = [h.strip() for h in re.split(r"->|=>|[→⇒>~〜]", to)]
+            if len(hops) >= 2 and all(hops):
+                chain, to = hops, hops[0]
         tm = re.match(r"^(.*?)(\d{1,2}:\d{2})$", to or "")  # 「江東5:30着」のように降ろし地に時刻が続いて書かれたとき
         if tm and tm.group(1):
             to, rest = tm.group(1), tm.group(2) + rest
@@ -960,7 +1133,10 @@ def parse_cell(text: str) -> dict[str, Any]:
             nx = re.match(r"^\s*([^\s（(着]+)", rest)
             if nx and not _NON_PLACE.match(nx.group(1)) and re.search(r"[市区町村]", nx.group(1)):
                 to, rest = nx.group(1), rest[nx.end():]
-        empty = bool(_EMPTY_MARK.search(rest)) or "(空)" in part
+        empty = pre_empty or bool(_EMPTY_MARK.search(rest)) or "(空)" in part
+        weak = False
+        if not empty and _WEAK_EMPTY.search(rest) and not parse_weights(rest):  # 「江東 → 加古川 帰り」: 重さが無いときだけ空車の印として読む。弱い印なので weak_empty を付け、確認に出す
+            empty, weak = True, True
         if to is not None and is_empty_word(to):
             to, empty = None, True
         if to is not None and not pref_name(to):
@@ -979,6 +1155,8 @@ def parse_cell(text: str) -> dict[str, Any]:
             "frm": frm, "to": to, "empty": empty,
             "arr": arr, "weight_kg": kgs[0] if len(kgs) == 1 else None,
         }
+        if weak:
+            leg["weak_empty"] = True
         if len(kgs) > 1:
             leg["weights"] = kgs
         rm = _ROUNDS.search(rest)
@@ -986,8 +1164,39 @@ def parse_cell(text: str) -> dict[str, Any]:
             leg["rounds"] = int(rm.group(1))
         if not empty and _LOADED_MARK.search(rest):
             leg["loaded_mark"] = True
+        if not empty:
+            note = cell_note(rest)
+            if note:
+                leg["note"] = note
+        if chain:
+            seq = [leg["to"]] + [x if pref_name(x) else (pref_split(x)[1] or x) for x in chain[1:]]
+            res["legs"].append(dict(leg, to=seq[0], via=True, arr=None))
+            for k in range(len(seq) - 1):
+                res["legs"].append(dict(leg, frm=seq[k], to=seq[k + 1], via=True, arr=leg["arr"] if k == len(seq) - 2 else None))
+            continue
         res["legs"].append(leg)
     return res
+
+
+_NOTE_STRIP = [
+    re.compile(r"[-−‐‑–+]?\s*[0-9][0-9,]*(?:\.[0-9]+)?\s*(?:[kK][gG]|[tT]|トン)\S*"),  # 重さと車の大きさ（4.6t、4t車）
+    re.compile(r"[0-9]{1,2}\s*[:：]\s*[0-9]{2}|[0-9]{1,2}時(?:半|[0-9]{1,2}分)?|着|[0-9]+\s*(?:回転|往復|回)"),
+    re.compile(r"\(空\)|実車|積載|積み|(?<![ぁ-んァ-ヶ一-鿿々])実(?![ぁ-んァ-ヶ一-鿿々])"),
+]
+
+
+_SCI_NOTE = re.compile(r"(?<![0-9A-Za-z.])[-−‐‑–+]?\s*[0-9]+(?:\.[0-9]+)?[eE][-+]?[0-9]+\s*(?:[kK][gG]|[tT]|トン)\S*")
+
+
+def cell_note(rest: str) -> str:
+    """区間の後ろに書かれた、重さ・時刻・空車の印のどれでもない語（「冷凍」「納品」など）。実車として数えた区間に、どんな語が付いていたかを画面に出すために残す。"""
+    t = unicodedata.normalize("NFKC", rest or "")
+    t = _SCI_NOTE.sub(" ", t)  # 指数の重さ（1e3kg）は、重さとして読めない記号ごと外す
+    for rx in _NOTE_STRIP:
+        t = rx.sub(" ", t)
+    t = re.sub(r"[()\[\]【】:：、,。・\s]+", " ", t).strip()
+    t = " ".join(w for w in t.split(" ") if w and not re.fullmatch(r"[0-9.\-]+", w))
+    return t[:24]
 
 
 def _lone_cell(part: str) -> tuple[dict[str, Any], bool] | None:
@@ -995,6 +1204,8 @@ def _lone_cell(part: str) -> tuple[dict[str, Any], bool] | None:
     戻り値は (区間, 時刻を捨てたか)。"""
     if is_empty_word(part):
         return {"frm": None, "to": None, "empty": True, "arr": None, "weight_kg": None}, False
+    if part.strip() in ("帰り", "戻り"):
+        return {"frm": None, "to": None, "empty": True, "arr": None, "weight_kg": None, "weak_empty": True}, False
     if not _LOCAL_WORD.search(part):
         return None
     place = _local_place(part)
@@ -1032,9 +1243,15 @@ DIGITACO_EXTRA = {  # よくある別の書き方（日本語の列名）。web/
     "車輌番号": "plate", "車輌NO": "plate", "車両NO": "plate", "車番号": "plate",
     "出庫日時": "start_time", "帰庫日時": "end_time", "実車キロ": "loaded_km", "空車キロ": "empty_km",
     "乗務員名": "driver_code", "運転者名": "driver_code", "運転手名": "driver_code", "乗務員氏名": "driver_code",
+    # 日ごとの集計の「荷待ち時間」（「1:30」は 1 時間 30 分、数だけなら分）
+    "拘束時間": "restraint", "拘束": "restraint", "総拘束時間": "restraint",
+    "荷待ち時間": "wait_min", "荷待時間": "wait_min", "荷待ち": "wait_min", "待機時間": "wait_min", "手待ち時間": "wait_min", "手待時間": "wait_min",
 }
 HAISHA_DICT = {"車番": "plate", "車種": "vehicle_type"}
-KIND_RUN, KIND_STOP = ("1", "走行"), ("2", "停車")  # 区分の値（全角は NFKC で直してから比べる）
+# 区分の値（全角は NFKC で直してから比べる）。作業の明細（運転・荷積・荷卸・待機・休憩）は、運転を走行、それ以外を停車として読む
+KIND_RUN = ("1", "走行", "運転", "運行", "移動")
+KIND_STOP = ("2", "停車", "荷積", "荷卸", "積込", "積込み", "取卸", "取卸し", "積み", "卸し", "荷役", "待機", "荷待ち", "手待ち", "休憩", "休息", "仮眠", "給油", "点検")
+KIND_WAIT = ("待機", "荷待ち", "手待ち")  # 停車のうち、荷待ちの候補
 JK_LOADED, JK_EMPTY = ("1", "実", "実車"), ("0", "空", "空車")
 
 
@@ -1116,6 +1333,38 @@ def parse_hm(s: Any) -> int | None:
         return None
     h, mi = int(m.group(1)), int(m.group(2))
     return h * 60 + mi if h < 24 and mi < 60 else None
+
+
+def parse_wait_min(s: Any) -> int | None:
+    """日ごとの集計の「荷待ち時間」を分にする。「1:30」は 90 分、「45」「45分」は 45 分、「1.5時間」は 90 分。読めなければ None。"""
+    t = unicodedata.normalize("NFKC", "" if s is None else str(s)).strip().replace(",", "")
+    hm = parse_hm(t)
+    if hm is not None:
+        return hm
+    m = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)\s*(時間|h|H|分|min|m)?", t)
+    if not m:
+        return None
+    v = float(m.group(1))
+    return int(round(v * 60)) if m.group(2) in ("時間", "h", "H") else int(round(v))
+
+
+def parse_restraint_hours(s: Any) -> float | None:
+    """日ごとの集計の「拘束時間」を時間（小数）にする。「13:10」は 13.1667、「13時間10分」「13.5時間」、数だけなら 24 以下は時間・それより大きければ分。読めなければ None。
+    web/own_calc.js の parseRestraintHours と同じ。"""
+    t = unicodedata.normalize("NFKC", "" if s is None else str(s)).strip().replace(",", "")
+    m = re.fullmatch(r"([0-9]{1,3}):([0-9]{2})(?::[0-9]{2})?", t)  # 拘束時間は 24 時間を超えうる（「34:10」）ので、時を 3 桁まで読む
+    if m and int(m.group(2)) < 60:
+        return round((int(m.group(1)) * 60 + int(m.group(2))) / 60, 4)
+    m = re.fullmatch(r"([0-9]+)\s*時間\s*(?:([0-9]+)\s*分?)?", t)
+    if m:
+        return round(int(m.group(1)) + int(m.group(2) or 0) / 60, 4)
+    m = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)\s*(時間|h|H|分|min|m)?", t)
+    if not m:
+        return None
+    v = float(m.group(1))
+    if m.group(2) in ("分", "min", "m") or (m.group(2) is None and v > 24):
+        return round(v / 60, 4)
+    return round(v, 4)
 
 
 def digitaco_columns(rows: list[dict[str, str]], roles: dict[str, str | None] | None = None) -> dict[str, str]:
@@ -1202,6 +1451,8 @@ def parse_digitaco(rows: list[dict[str, str]], resolve: Callable[[str], str | No
                 "km": km, "jk": 1 if jk_s in JK_LOADED else 0 if jk_s in JK_EMPTY else None,
                 "frm": prev_stop["place"] if prev_stop else None, "to": None, "driver": driver, "line": i,
             }
+            if open_run is not None:
+                open_run["cont"] = True  # 停車の行をはさまず次の走行が始まった（長距離の途中の休息。link で 1 区間にまとめる）
             runs.append(run)
             open_run = run
         elif kind == "2":
@@ -1211,6 +1462,8 @@ def parse_digitaco(rows: list[dict[str, str]], resolve: Callable[[str], str | No
                 "plate": row_plate, "place": place, "name": name, "start": st.isoformat(timespec="minutes"), "end": ed.isoformat(timespec="minutes"),
                 "minutes": int(round((ed - st).total_seconds() / 60)), "driver": driver, "line": i,
             }
+            if kind_raw in KIND_WAIT:
+                stop["wait"] = True
             stops.append(stop)
             if open_run is not None:
                 open_run["to"] = place
@@ -1232,6 +1485,8 @@ def parse_digitaco_summary(rows: list[dict[str, str]], plate: str | None = None,
         return ((r.get(col[role]) if role in col else "") or "").strip()
 
     runs: list[dict[str, Any]] = []
+    waits: list[dict[str, Any]] = []
+    restraints: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
     for i, r in enumerate(rows, start=2 + line_offset):
         if not any((v or "").strip() for v in r.values() if isinstance(v, str)):
@@ -1244,6 +1499,20 @@ def parse_digitaco_summary(rows: list[dict[str, str]], plate: str | None = None,
         if pl is None:
             errors.append({"line": i, "reason": "車番が読めません"})
             continue
+        wtxt = get(r, "wait_min")
+        if wtxt:
+            wm = parse_wait_min(wtxt)
+            if wm is None:
+                errors.append({"line": i, "reason": "荷待ち時間が読めません"})
+            elif wm > 0:
+                waits.append({"plate": pl, "date": d0.isoformat(), "minutes": wm, "line": i})
+        rtxt = get(r, "restraint")
+        if rtxt:
+            rh = parse_restraint_hours(rtxt)
+            if rh is None:
+                errors.append({"line": i, "reason": "拘束時間が読めません"})
+            elif rh > 0:
+                restraints.append({"plate": pl, "date": d0.isoformat(), "hours": rh, "line": i, "driver": get(r, "driver_code") or None})
         kms: list[tuple[float, int]] = []
         for role, jk in (("loaded_km", 1), ("empty_km", 0)):
             txt = get(r, role)
@@ -1269,7 +1538,7 @@ def parse_digitaco_summary(rows: list[dict[str, str]], plate: str | None = None,
         for v, jk in kms:
             runs.append({"plate": pl, "start": st.isoformat(timespec="minutes"), "end": ed.isoformat(timespec="minutes"), "km": v, "jk": jk,
                          "frm": None, "to": None, "driver": get(r, "driver_code") or None, "line": i, "summary": True, "time_unknown": not known})
-    return {"runs": runs, "stops": [], "errors": errors}
+    return {"runs": runs, "stops": [], "errors": errors, "waits": waits, "restraints": restraints}
 
 
 def detect_digitaco(rows: list[list[str]], roles: dict[str, str | None] | None = None) -> dict[str, Any] | None:
@@ -1322,11 +1591,12 @@ def dedupe_digitaco(parts: list[dict[str, Any]]) -> dict[str, Any]:
 
 ROLE_LABEL_JA = {  # 画面の選択肢に出す、やさしい日本語の名前
     "date": "日付", "plate": "車番", "type": "車種・トン数", "from": "荷を積む場所（発地）", "to": "荷を降ろす場所（着地）", "weight": "重さ", "time": "着く時刻",
-    "mark": "実車か空車かの印", "skip": "使わない", "kind": "走行か停車か", "start_time": "開始の日時", "end_time": "終了の日時", "distance_km": "走った距離（km）",
+    "mark": "実空の印がある列", "skip": "使わない", "kind": "走行か停車か", "start_time": "開始の日時", "end_time": "終了の日時", "distance_km": "走った距離（km）",
     "loaded_flag": "実車か空車か", "place_name": "停車した場所", "driver_code": "運転者", "loaded_km": "実車で走った距離（km）", "empty_km": "空車で走った距離（km）",
+    "wait_min": "荷待ちの時間（分または 時:分）", "restraint": "拘束時間（時:分または 時間）",
 }
-HAISHA_ROLE_OPTIONS = ["date", "plate", "from", "to", "weight", "time", "type", "skip"]
-DIGITACO_ROLE_OPTIONS = ["date", "plate", "kind", "start_time", "end_time", "distance_km", "loaded_flag", "place_name", "driver_code", "loaded_km", "empty_km", "skip"]
+HAISHA_ROLE_OPTIONS = ["date", "plate", "from", "to", "weight", "time", "mark", "type", "skip"]
+DIGITACO_ROLE_OPTIONS = ["date", "plate", "kind", "start_time", "end_time", "distance_km", "loaded_flag", "place_name", "driver_code", "loaded_km", "empty_km", "wait_min", "restraint", "skip"]
 
 
 def role_options(source: str) -> list[dict[str, str]]:
@@ -1405,6 +1675,27 @@ def _time_diff_min(hint: str, actual_iso: str) -> int:
     return (_hm(hint) - a + 720) % 1440 - 720
 
 
+REST_JOIN_MIN, REST_JOIN_MAX = SHIFT_GAP_MIN, 16 * 60  # 走行と走行のあいだ（停車の行なし）がこの範囲なら、途中の休息とみなして 1 区間にする
+
+
+def _join_rest_runs(run: dict[str, Any], nxt: dict[str, dict[str, Any]], used: set[str]) -> dict[str, Any]:
+    """停車の行をはさまず 8〜16 時間あいて続く走行（1 人の運転者が途中で休息した長距離）を、1 つの区間にまとめる。
+    開始は最初の走行、終了・到着地は最後の走行、距離は足し合わせ。まとめた走行は used に入れる（別の区間にしない）。"""
+    cur, parts = run, [run]
+    while cur.get("cont") and cur["id"] in nxt and nxt[cur["id"]]["id"] not in used:
+        n = nxt[cur["id"]]
+        gap = (_dt(n["start"]) - _dt(cur["end"])).total_seconds() / 60
+        if not (REST_JOIN_MIN <= gap <= REST_JOIN_MAX):
+            break
+        used.add(n["id"])
+        parts.append(n)
+        cur = n
+    if len(parts) == 1:
+        return run
+    kms = [p.get("km") for p in parts]
+    return {**run, "end": parts[-1]["end"], "to": parts[-1].get("to"), "km": None if any(k is None for k in kms) else round(sum(kms), 1), "joined": [p["id"] for p in parts]}
+
+
 def link(haisha: list[dict[str, Any]], digitaco: list[dict[str, Any]], est_km: dict[frozenset, float] | None = None) -> dict[str, Any]:
     """配車表の区間とデジタコの走行を結び付ける。
 
@@ -1421,6 +1712,7 @@ def link(haisha: list[dict[str, Any]], digitaco: list[dict[str, Any]], est_km: d
         by_key.setdefault((d["plate"], d["start"][:10]), []).append(d)
     used: set[str] = set()
     legs: list[dict[str, Any]] = []
+    nxt = {d["id"]: n for d, n in zip(digitaco, digitaco[1:]) if n["plate"] == d["plate"]}
     for h in sorted(haisha, key=lambda x: (x["date"], x["plate"], x.get("idx", 0))):
         cands = [d for d in by_key.get((h["plate"], h["date"]), []) if d["id"] not in used]
         pick = None
@@ -1429,16 +1721,21 @@ def link(haisha: list[dict[str, Any]], digitaco: list[dict[str, Any]], est_km: d
             if h.get("arr") and len(cands) > 1:
                 pick = min(cands, key=lambda d: abs(_time_diff_min(h["arr"], d["end"])))
             used.add(pick["id"])
+            pick = _join_rest_runs(pick, nxt, used)
         ends = frozenset(x for x in (h.get("frm") or (pick or {}).get("frm"), h.get("to") or (pick or {}).get("to")) if x)
         est = est_km.get(ends)
         leg: dict[str, Any] = {
             "plate": h["plate"], "date": h["date"], "hid": h["id"], "did": pick["id"] if pick else None,
             "frm": h.get("frm") or (pick or {}).get("frm"), "to": h.get("to") or (pick or {}).get("to"),
-            "empty_mark": bool(h.get("empty")), "has_ends": bool(h.get("frm") and h.get("to")), "local": bool(h.get("local")), "loaded_mark": bool(h.get("loaded_mark")), "round": h.get("round") or 1, "rounds": h.get("rounds") or 1,
+            "empty_mark": bool(h.get("empty")), **({"weak_empty": True} if h.get("weak_empty") else {}), "has_ends": bool(h.get("frm") and h.get("to")), "local": bool(h.get("local")), "loaded_mark": bool(h.get("loaded_mark")), "round": h.get("round") or 1, "rounds": h.get("rounds") or 1,
             "weight_kg": h.get("weight_kg"), "weights_multi": h.get("weights") or None, "jk": pick["jk"] if pick else None, "driver": pick["driver"] if pick else None,
             "dep": pick["start"] if pick else None, "arr": pick["end"] if pick else None, "arr_hint": h.get("arr"),
             "flags": [], "sources": {}, "ref": h.get("ref"), "dref": pick.get("ref") if pick else None,
         }
+        if pick and pick.get("joined"):
+            leg["dids"] = pick["joined"]  # 途中の休息でまとめた走行の ID すべて（停車に曜日を付けるときに使う）
+        if h.get("note"):
+            leg["note"] = h["note"]  # 配車表のセルに付いていた、重さ・時刻・印のどれでもない語
         if pick and pick.get("km") is not None:
             leg["km"], leg["sources"]["km"] = pick["km"], "デジタコ"
             if est:
@@ -1468,7 +1765,7 @@ def link(haisha: list[dict[str, Any]], digitaco: list[dict[str, Any]], est_km: d
         only_d.append({
             "plate": d["plate"], "date": d["start"][:10], "hid": None, "did": d["id"], "frm": d.get("frm"), "to": d.get("to"),
             "empty_mark": False, "has_ends": bool(d.get("frm") and d.get("to")), "weight_kg": None, "jk": d["jk"], "driver": d["driver"],
-            "dep": d["start"], "arr": d["end"], "arr_hint": None, "flags": [], "ref": None, "dref": d.get("ref"),
+            "dep": d["start"], "arr": d["end"], "arr_hint": None, "flags": [], "ref": None, "dref": d.get("ref"), **({"summary": True} if d.get("summary") else {}),
             "km": d["km"] if d.get("km") is not None else est,
             "sources": {"km": "デジタコ" if d.get("km") is not None else ("OSRM 推定" if est else None), "time": "デジタコ", "kind": None, "note": "配車表なし"},
         })
@@ -1479,6 +1776,7 @@ def link(haisha: list[dict[str, Any]], digitaco: list[dict[str, Any]], est_km: d
 
 
 RETURN_UNMARKED_SRC = "車庫へ戻る区間で、空の印も重さも無い"
+WEAK_EMPTY_SRC = "「帰り」「戻り」だけで、空車とも実車とも書かれていない"
 
 
 def classify_legs(legs: list[dict[str, Any]], base: str | None = None) -> dict[str, Any]:
@@ -1497,6 +1795,9 @@ def classify_legs(legs: list[dict[str, Any]], base: str | None = None) -> dict[s
         kind, src = "unknown", None
         if l.get("jk") in (0, 1):
             kind, src = ("loaded" if l["jk"] == 1 else "empty"), "デジタコの実空区分"
+        elif l.get("empty_mark") and l.get("weak_empty"):  # 「帰り」「戻り」だけの印は、空車と決めずに確認に出す
+            kind, src = "unknown", WEAK_EMPTY_SRC
+            l["return_unmarked"] = True
         elif l.get("empty_mark"):
             kind, src = "empty", "配車表の（空）の印"
         elif l.get("has_ends"):
@@ -1516,6 +1817,24 @@ def classify_legs(legs: list[dict[str, Any]], base: str | None = None) -> dict[s
         out.append(l)
     n = len(out)
     return {"legs": out, "counts": counts, "unknown_ratio": (counts["unknown"] / n) if n else 0.0}
+
+
+LADEN_NOTE_MAX = 8  # 画面に出す語の数
+
+
+def laden_words(legs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """配車表の積地・降ろし地があるので実車として数えた区間のうち、セルに空車の印でも重さでも時刻でもない語が付いていたものを、語ごとに数える。
+    戻り値は [{word, count, example}]（多い順。word は空白で区切った 1 語、example はその語が付いたセルの文字）。印にならなかった語が空車を意味していたときに、利用者が気づくための一覧。"""
+    cnt: dict[str, dict[str, Any]] = {}
+    for l in legs:
+        if l.get("kind") != "loaded" or l.get("kind_src") != "配車表の積地・降ろし地" or not l.get("note"):
+            continue
+        for w in str(l["note"]).split(" "):
+            if not w:
+                continue
+            e = cnt.setdefault(w, {"word": w, "count": 0, "example": ((l.get("ref") or {}).get("text") or "").strip()[:40]})
+            e["count"] += 1
+    return sorted(cnt.values(), key=lambda e: (-e["count"], e["word"]))[:LADEN_NOTE_MAX]
 
 
 # ---------------------------------------------------------------- 列の対応づけの確かさ
@@ -1545,16 +1864,19 @@ VALUE_SHAPES: dict[str, tuple[str, Callable[[str], bool]]] = {  # 日時・数�
     "vehicle_type": ("「大型」か「数字 + t」", lambda v: bool(re.fullmatch(r"大型|[0-9]+t", v))),
     "decimal": ("小数まじりの数字", lambda v: bool(re.fullmatch(r"[0-9]+(\.[0-9]+)?", v))),
     "place_kanji": ("漢字・かなだけの名称", lambda v: bool(_KANA_KANJI.match(v))),
+    "wait_min": ("分か 時:分の数", lambda v: parse_wait_min(v) is not None),
+    "restraint": ("時:分か時間の数", lambda v: parse_restraint_hours(v) is not None),
 }
 ROLE_SHAPE = {  # 役割 → 期待する値の形
     "kind": "code12", "start_time": "datetime", "end_time": "datetime", "distance_km": "decimal", "loaded_flag": "flag01",
     "place_name": "place_kanji", "driver_code": "driver_code", "plate": "plate", "vehicle_type": "vehicle_type", "date": "date_header",
-    "loaded_km": "decimal", "empty_km": "decimal",
+    "loaded_km": "decimal", "empty_km": "decimal", "wait_min": "wait_min", "restraint": "restraint",
 }
 ROLE_LABEL = {
     "kind": "区分（走行・停車）", "start_time": "開始の日時", "end_time": "終了の日時", "distance_km": "走行距離（km）",
     "loaded_flag": "実車・空車の区分", "place_name": "停車の地点名", "driver_code": "運転者コード", "plate": "車番",
     "vehicle_type": "車種", "date": "日付", "loaded_km": "実車で走った距離（km）", "empty_km": "空車で走った距離（km）",
+    "wait_min": "荷待ちの時間", "restraint": "拘束時間",
 }
 
 
@@ -1611,6 +1933,8 @@ def best_role_for(values: list[str]) -> tuple[str, float]:
     """辞書に無い列で、値の形がいちばん合う役割とその一致率（形の一致率の見積り）。"""
     best = ("", 0.0)
     for role, key in ROLE_SHAPE.items():
+        if role in ("wait_min", "restraint"):
+            continue  # 値の形だけでは、ほかの時刻の列と区別できないので、列の名前が辞書に当たったときだけ使う
         r = shape_ratio(values, key)
         if r > best[1]:
             best = (role, r)
@@ -1755,8 +2079,9 @@ def kpis(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> dict[str
                              "formula": "不明の区間を空車として数えた場合の率（km が分かる区間だけ）"},
         "actual_rate": {"value": rate(judged), "legs": len(judged), "of": n, "share": (len(judged) / n) if n else 0.0,
                         "km_loaded": round(sum(l["km"] for l in judged if l["kind"] == "loaded"), 1), "km_empty": round(sum(l["km"] for l in judged if l["kind"] == "empty"), 1),
-                        "formula": "実車の km ÷ 走った km（実車か空車かが判定できた区間だけ）"},
-        "load_rate": {"value": load_rate, "legs": len(with_w), "of_large": len(large), "of": n, "share": (len(with_w) / n) if n else 0.0,
+                        "formula": "実車の km ÷ 走った km（実車か空車かが判定できた区間だけ）",
+                        **({"basis": "距離の合計", "formula": "距離の合計（日ごとの集計の実車距離の合計 ÷ 走行距離の合計）"} if judged and all(l.get("summary") for l in judged) else {})},
+        "load_rate": {"value": load_rate, "legs": len(with_w), "of_large": len(large), "of": n, "share": (len(with_w) / len(large)) if large else 0.0,  # 割合の分母は、画面の文が書く「大型の区間」
                       "over_max": len(over_ids), "zero_weight": len(zero_weight_legs(legs)), "multi_weight": len(multi_weight_legs(legs)),
                       "formula": "積んだ重さ ÷ 最大積載量（大型の実車の区間のうち、重さが分かる区間の平均。最大積載量を超える重さの区間は入れません）"},
         "large_actual_rate": {"value": large_rate, "legs": len(large_judged), "of_large": len(large)},
@@ -1809,6 +2134,12 @@ def pair_role(frm: str, to: str, base: str | None) -> str | None:
     return None
 
 
+def leg_wd(l: dict[str, Any]) -> int:
+    """区間 × 曜日の表と気づきが数える曜日。往復が車庫を出た日の曜日（cycle_wd）。無い区間は、その便自身の日付の曜日。web/own_calc.js の legWd と同じ。"""
+    wd = l.get("cycle_wd")
+    return wd if isinstance(wd, int) and not isinstance(wd, bool) else date.fromisoformat(l["date"]).weekday()
+
+
 def pair_tables(legs: list[dict[str, Any]], places: dict[str, dict[str, Any]], vehicles: list[dict[str, Any]], base: str | None = None, dock: str | None = None) -> dict[str, Any]:
     """区間を、実際の発地と着地の組ごとに数える（曜日の表・気づき・地図・求荷求車の文に使う）。web/own_calc.js の pairTables と同じ。
 
@@ -1852,7 +2183,7 @@ def pair_tables(legs: list[dict[str, Any]], places: dict[str, dict[str, Any]], v
         t = tally(ls)
         by_wd = []
         for wd in range(7):
-            wl = [l for l in ls if date.fromisoformat(l["date"]).weekday() == wd]
+            wl = [l for l in ls if leg_wd(l) == wd]
             if wl:
                 by_wd.append({"wd": wd, **tally(wl), "leg_ids": [l.get("id") for l in wl]})
         items.append({
@@ -1872,6 +2203,174 @@ def pair_tables(legs: list[dict[str, Any]], places: dict[str, dict[str, Any]], v
     return {"pairs": items, "pair_table": table}
 
 
+# ---------------------------------------------------------------- 復路の根拠（SPEC §44。復路の候補の母数と、区間を確認できた便を分ける）
+# web/own_calc.js の returnWhen / returnTrips / returnTarget / returnPairs と同じ結果になる（試験 tests/test_v44_negotiate.py で突き合わせる）。
+# 曜日は「復路の便そのものが出発した日時」から求める。前日の往路の曜日（cycle_wd）は使わない。実出発時刻が無いときは便の記録日を使い、根拠を date にする。
+
+_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+_ISO_DT = re.compile(r"^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})")
+
+
+def _iso_date_ok(s: Any) -> date | None:
+    if not isinstance(s, str):
+        return None
+    m = _ISO_DATE.match(s)
+    if not m:
+        return None
+    try:
+        return date.fromisoformat(m.group(0))
+    except ValueError:
+        return None
+
+
+def src_cat(s: Any) -> str:
+    """値の出どころの文字を、digitaco / haisha / estimate / user / unknown のどれかにする。出どころが無い・読み取れないものは unknown。"""
+    if s is None or str(s) == "":
+        return "unknown"
+    t = str(s)
+    if "デジタコ" in t:
+        return "digitaco"
+    if "配車表" in t:
+        return "haisha"
+    if "推定" in t or "OSRM" in t or "直線" in t:
+        return "estimate"
+    if "利用者" in t:
+        return "user"
+    return "unknown"
+
+
+def return_when(l: dict[str, Any]) -> tuple[str | None, str, int | None]:
+    """復路の便の曜日を決める日時。(使った日時, 根拠 'dep'|'date'|'none', 曜日 月=0)。dep は復路の便自身の実出発。無ければ記録日（時刻は不明）。"""
+    dep = l.get("dep")
+    if isinstance(dep, str):
+        m = _ISO_DT.match(dep)
+        d = _iso_date_ok(dep)
+        if m and d:
+            return f"{m.group(1)}T{m.group(2)}", "dep", d.weekday()
+    d = _iso_date_ok(l.get("date"))
+    if d:
+        return d.isoformat(), "date", d.weekday()
+    return None, "none", None
+
+
+def _km_of(l: dict[str, Any]) -> float | None:
+    v = l.get("km")
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and v >= 0 else None
+
+
+def _src_of(l: dict[str, Any], key: str) -> Any:
+    s = l.get(key + "_src")
+    if s is None:
+        s = (l.get("sources") or {}).get(key)
+    return s
+
+
+def _ret_counts(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    e = [r for r in rows if r["kind"] == "empty"]
+    kms = [r["km"] for r in e if r["km"] is not None]
+    n_e, n_l = len(e), sum(1 for r in rows if r["kind"] == "loaded")
+    return {"trips": len(rows), "empty": n_e, "loaded": n_l, "unknown": len(rows) - n_e - n_l, "judged": n_e + n_l,
+            "empty_km": round(sum(kms), 1), "km_missing": n_e - len(kms)}
+
+
+def _ret_basis(rows: list[dict[str, Any]]) -> dict[str, int]:
+    return {b: sum(1 for r in rows if r["dt_basis"] == b) for b in ("dep", "date", "none")}
+
+
+def _dt_src(l: dict[str, Any], basis: str) -> str:
+    if basis == "dep":
+        return src_cat(_src_of(l, "time"))
+    if basis == "date":
+        return "haisha" if l.get("ref") else ("digitaco" if l.get("dref") else "unknown")
+    return "unknown"
+
+
+def return_trips(legs: list[dict[str, Any]], fr: str, to: str, base: str | None = None, dock: str | None = None, pair_id: str | None = None) -> dict[str, Any]:
+    """発地 fr の復路の候補（fr → to の区間に入る復路の便）と、そのうち着地を確認できた便（to が記録にある便）を数え、便ごとの根拠の行を返す。
+    to が無い便（着地が未確認）は候補には入るが、区間確定には入れない。完全に同じ行（車番・日時・区間・距離・区分・周回が同じ）は 1 便に数える。"""
+    pid = pair_id or f"{fr}>{to}"
+    rows, seen, dup = [], set(), 0
+    for l in legs:
+        if l.get("dir") != "back" or leg_pair(l, base, dock) != (fr, to):
+            continue
+        key = (l.get("plate"), l.get("date"), l.get("dep"), l.get("arr"), l.get("frm"), l.get("to"), l.get("km"), l.get("kind"), l.get("round"))
+        if key in seen:
+            dup += 1
+            continue
+        seen.add(key)
+        dt, basis, wd = return_when(l)
+        ref, dref = l.get("ref") or None, l.get("dref") or None
+        kind = l.get("kind") if l.get("kind") in ("empty", "loaded") else "unknown"
+        km = _km_of(l)
+        rows.append({
+            "leg_id": l.get("id"), "row_id": f"{ref.get('file')}:{ref.get('where')}" if ref else (l.get("id") or ""), "pair_id": pid,
+            "ref": ref, "dref": dref, "plate": l.get("plate"), "driver": l.get("driver"),
+            "dt": dt, "dt_basis": basis, "dt_src": _dt_src(l, basis), "arr": l.get("arr"), "wd": wd,
+            "kind": kind, "kind_src": l.get("kind_src") if kind != "unknown" else None,
+            "kind_src_cat": src_cat(l.get("kind_src")) if kind != "unknown" else "unknown",
+            "km": km, "km_src_cat": src_cat(_src_of(l, "km")) if km is not None else "unknown",
+            "dest_confirmed": bool(l.get("frm") == fr and l.get("to") == to),
+        })
+    rows.sort(key=lambda r: (r["dt"] or "~", str(r["leg_id"])))
+    conf = [r for r in rows if r["dest_confirmed"]]
+    unc = [r for r in rows if not r["dest_confirmed"]]
+    days = sorted((r["dt"] or "")[:10] for r in rows if r["dt"])
+    by_wd = []
+    for wd in range(7):
+        w = [r for r in conf if r["wd"] == wd]
+        if w:
+            by_wd.append({"wd": wd, "weekday": WEEKDAYS[wd], **_ret_counts(w), "basis": _ret_basis(w)})
+    return {
+        "fr": fr, "to": to, "pair_id": pid, "candidates": _ret_counts(rows), "confirmed": _ret_counts(conf), "unconfirmed": _ret_counts(unc),
+        "duplicates_dropped": dup, "period": {"first": days[0], "last": days[-1]} if days else None,
+        "basis": _ret_basis(conf), "no_weekday": sum(1 for r in conf if r["wd"] is None), "by_weekday": by_wd, "rows": rows,
+    }
+
+
+def return_target(model: dict[str, Any], wd: int | None) -> dict[str, Any]:
+    """選んだ曜日の見方。その曜日に出た区間確定の復路（confirmed）と、それ以外の候補（others。着地が未確認の便も含む）を分けて数える。"""
+    rows = model["rows"]
+    idx = {i for i, r in enumerate(rows) if wd is not None and r["dest_confirmed"] and r["wd"] == wd}
+    tgt = [r for i, r in enumerate(rows) if i in idx]
+    oth = [r for i, r in enumerate(rows) if i not in idx]
+    c = _ret_counts(tgt)
+    return {
+        "wd": wd, "weekday": WEEKDAYS[wd] if wd is not None else None, "confirmed": c, "basis": _ret_basis(tgt),
+        "unconfirmed_dest_on_wd": sum(1 for r in rows if wd is not None and not r["dest_confirmed"] and r["wd"] == wd),
+        "all_empty": c["trips"] > 0 and c["empty"] == c["trips"], "has_empty": c["empty"] > 0, "others": _ret_counts(oth),
+        "dates": [r["dt"] for r in tgt], "rows": tgt,
+    }
+
+
+def return_pairs(legs: list[dict[str, Any]], places: dict[str, dict[str, Any]] | None = None, base: str | None = None, dock: str | None = None) -> list[dict[str, Any]]:
+    """復路（dir が back）の区間ごとに、確認できた空車の曜日の候補を並べる。担当者が区間と曜日を選ぶための一覧。空車の多い区間が先。"""
+    places = places or {}
+
+    def nm(pid: str) -> str:
+        p = places.get(pid) or {}
+        return p.get("short") or p.get("pseudo") or "?"
+
+    keys: list[tuple[str, str]] = []
+    for l in legs:
+        if l.get("dir") != "back":
+            continue
+        p = leg_pair(l, base, dock)
+        if p[0] and p[1] and p[0] != p[1] and p not in keys:
+            keys.append(p)
+    out = []
+    for fr, to in keys:
+        m = return_trips(legs, fr, to, base, dock)
+        wds = [{"wd": w["wd"], "weekday": w["weekday"], "trips": w["trips"], "empty": w["empty"]} for w in m["by_weekday"] if w["empty"] > 0]
+        best = sorted(wds, key=lambda w: (-w["empty"], -(w["empty"] / w["trips"]), w["wd"]))
+        out.append({"fr": fr, "to": to, "key": f"{fr}>{to}", "fr_label": nm(fr), "to_label": nm(to), "label": f"{nm(fr)} → {nm(to)}",
+                    "candidates": m["candidates"]["trips"], "confirmed": m["confirmed"]["trips"], "confirmed_empty": m["confirmed"]["empty"],
+                    "confirmed_empty_km": m["confirmed"]["empty_km"], "empty_km": m["candidates"]["empty_km"],
+                    "weekdays": wds, "default_wd": best[0]["wd"] if best else None})
+    # 空車で走る距離（km）の多い区間を先に並べる（便の数が多い区間ではなく、手を打つ価値の大きい区間を最初の画面に出す。SPEC §49）
+    out.sort(key=lambda x: (-x["confirmed_empty_km"], -x["empty_km"], -x["confirmed_empty"], -x["candidates"], x["label"], x["fr"], x["to"]))
+    return out
+
+
 def apply_max_payload(vehicles: list[dict[str, Any]], by_plate: dict[str, Any] | None = None, by_class: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """車ごと・車格ごとの最大積載量（kg）を車両に当てた写しを返す。by_plate が by_class より先。値が数でない・0 以下なら使わない。
     当てた車は max_load_kg を変え、max_load_assumed を偽、max_load_src を 'plate' か 'class' にする。web/own_calc.js の applyMaxPayload と同じ。"""
@@ -1886,6 +2385,41 @@ def apply_max_payload(vehicles: list[dict[str, Any]], by_plate: dict[str, Any] |
                 break
         out.append(v)
     return out
+
+
+LARGE_ASSUMED_KG = 10000   # 大型の最大積載量の仮定（登録が無いとき）
+LARGE_RAISE_CEIL_KG = 20000  # 仮定を上げる上限。これを超える重さは、t と kg の取り違えや桁の間違いかもしれないので、上げずに「超える重さ」のカードに出す
+
+
+def raise_assumed_max(vehicles: list[dict[str, Any]], legs: list[dict[str, Any]], ceiling_kg: float = LARGE_RAISE_CEIL_KG) -> dict[str, Any]:
+    """登録が無く仮定した最大積載量（max_load_assumed が真）の車に、仮定を超える重さの記録があるとき、その車格の仮定を、記録の最大（ceiling_kg まで）に上げる。
+    黙って外さないための処理で、利用者が車・車格ごとに決めた値（assumed が偽）は変えない。戻り値は {vehicles: 写し, note: None か {cls, from_kg, to_kg, legs, vehicles}}。
+    note.legs は、元の仮定を超えていた区間の数。web/own_calc.js の raiseAssumedMax と同じ。"""
+    out = [dict(v) for v in vehicles]
+    by = {v["plate"]: v for v in out if v.get("max_load_assumed") and v.get("max_load_kg")}
+    top: dict[str, float] = {}
+    n_over: dict[str, int] = {}
+    for l in legs:
+        v = by.get(l.get("plate"))
+        w = l.get("weight_kg")
+        if not v or not w or w <= v["max_load_kg"]:
+            continue
+        c = v.get("cls") or ""
+        n_over[c] = n_over.get(c, 0) + 1
+        if w <= ceiling_kg and w > top.get(c, 0):
+            top[c] = w
+    notes = []
+    for c, mx in top.items():
+        frm = None
+        n_v = 0
+        for v in by.values():
+            if (v.get("cls") or "") == c and v["max_load_kg"] < mx:
+                frm = v["max_load_kg"] if frm is None else min(frm, v["max_load_kg"])
+                v["max_load_kg"] = float(mx)
+                n_v += 1
+        if n_v:
+            notes.append({"cls": c, "from_kg": frm, "to_kg": float(mx), "legs": n_over.get(c, 0), "vehicles": n_v})
+    return {"vehicles": out, "note": notes[0] if notes else None}
 
 
 # ---------------------------------------------------------------- 気づき（筋書き §11.2、6 規則）
@@ -1908,7 +2442,8 @@ def place_phrase(p: dict[str, Any], pid: str, own_names: Any = False) -> str:
         label = (p.get("label") or p.get("muni") or pid)[:16]
         muni = p.get("muni") or ""
         return f"{label}（{muni}）" if muni and muni not in label else label
-    return f"{p.get('muni', '')}の{p.get('pseudo', pid)}"
+    muni = p.get("muni") or ""
+    return f"{muni}の{p.get('pseudo', pid)}" if muni else str(p.get("pseudo", pid))
 
 
 def _ev_leg(l: dict[str, Any]) -> dict[str, Any]:
@@ -1951,8 +2486,29 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
         if n >= R1_MIN_TRIPS and e * R1_RATIO[1] >= n * R1_RATIO[0]:
             hits.append((e, n, fr, to, wd, ls))
     rank = {"back": 0, "out": 1, "pair": 2}
+    pair_all_empty: dict[tuple[str, str], list[int]] = {}  # F10: ある区間の、便のある曜日がどれも全部空なら、曜日ごとのカードを出さず 1 枚にまとめる
+    for (fr, to, wd), ls in groups.items():
+        pair_all_empty.setdefault((fr, to), []).append(wd)
+    merged_done: set[tuple[str, str]] = set()
     for e, n, fr, to, wd, ls in sorted(hits, key=lambda h: (-h[0], h[1], rank[kind_of(h[2], h[3])], f"{short(h[2])} → {short(h[3])}", h[4])):
         d = kind_of(fr, to)
+        all_wds = sorted(pair_all_empty.get((fr, to), []))
+        all_legs = [l for (f2, t2, w2), g in groups.items() if f2 == fr and t2 == to for l in g]
+        if len(all_wds) >= 2 and all(l["kind"] == "empty" for l in all_legs) and sum(1 for h in hits if h[2] == fr and h[3] == to) >= 2:
+            if (fr, to) in merged_done:
+                continue
+            merged_done.add((fr, to))
+            lb = f"{short(fr)} → {short(to)}"
+            word = {"back": "帰り", "out": "行き", "pair": "区間"}[d]
+            wds = "・".join(WEEKDAYS[w] for w in all_wds)
+            text = (f"{lb}の{word}は、{len(all_legs)} 便がすべて空でした（{wds}曜のどの曜日も空で、曜日による違いはありません。実車か空車かが分かった便だけ）。")
+            payload = {"dir": d, "wd": wd, "weekday": WEEKDAYS[wd], "trips": len(all_legs), "empty": len(all_legs), "night": False, "month": data.get("month"),
+                       "frm": fr, "to": to, "frm_label": short(fr), "to_label": short(to), "label": lb, "all_weekdays": True, "weekdays": [WEEKDAYS[w] for w in all_wds]}
+            add(1, text, [{"k": lb, "v": f"{len(all_legs)} 便中 {len(all_legs)} 便が空"}, {"k": "空だった曜日", "v": f"{wds}（どの曜日も空）"}],
+                {"label": "帰り便の下書きにする", "action": "draft_backhaul", "payload": payload},
+                [_ev_leg(l) for l in sorted(all_legs, key=lambda x: x["date"])],
+                {"back": "毎回の帰りが空（曜日の違いなし）", "out": "毎回の行きが空（曜日の違いなし）", "pair": "毎回空の区間（曜日の違いなし）"}[d])
+            continue
         others = [l for g_key, g in groups.items() if g_key[0] == fr and g_key[1] == to and g_key[2] != wd for l in g]
         oe = sum(1 for l in others if l["kind"] == "empty")
         night = all((l.get("cycle_dep") or "")[11:13].isdigit() and int(l["cycle_dep"][11:13]) >= 18 for l in ls)
@@ -1961,7 +2517,8 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
         body = f"{n} 便の帰りがすべて空でした" if (e == n and d == "back") else (f"{n} 便がすべて空でした" if e == n else f"{n} 便のうち {e} 便が空でした")
         lb = f"{short(fr)} → {short(to)}"
         word = {"back": "帰り", "out": "行き", "pair": "区間"}[d]
-        text = f"{lb}の{word}は、{who}{body}。ほかの曜日の同じ向きは {len(others)} 便中 {oe} 便が空です（実車か空車かが分かった便だけ）。"
+        tail1 = f"ほかの曜日の同じ向きは {len(others)} 便中 {oe} 便が空です（実車か空車かが分かった便だけ）。" if others else "ほかの曜日の同じ向きの便は、実車か空車かが分かった中にはありません。"
+        text = f"{lb}の{word}は、{who}{body}。{tail1}"
         payload = {"dir": d, "wd": wd, "weekday": WEEKDAYS[wd], "trips": n, "empty": e, "night": night, "month": data.get("month"),
                    "frm": fr, "to": to, "frm_label": short(fr), "to_label": short(to), "label": lb}
         add(1, text, [{"k": f"{WEEKDAYS[wd]}曜発の{lb}", "v": f"{n} 便中 {e} 便が空"}, {"k": "ほかの曜日", "v": f"{len(others)} 便中 {oe} 便が空"}],
@@ -1986,7 +2543,8 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
             top = sorted(by_pair.items(), key=lambda kv: (-kv[1], f"{short(kv[0][0])} → {short(kv[0][1])}"))
             shown = "、".join(f"{short(k[0])} → {short(k[1])} が {c} 便" for k, c in top[:3])
             tail = (f"向きは {shown} です" + (f"（ほか {len(top) - 3} 区間）" if len(top) > 3 else "") + "。") if top else ""
-        add(2, f"空で走った区間は {len(empties)} 便・約 {round(km):,} km でした（距離はデジタコのメーターと OSRM の推定）。" + tail,
+        meter = any((l.get("sources") or {}).get("km") == "デジタコ" for l in legs)  # デジタコを入れていないときは、メーターと書かない
+        add(2, f"空で走った区間は {len(empties)} 便・約 {round(km):,} km でした（距離は{'デジタコのメーターと OSRM の推定' if meter else 'OSRM の推定'}）。" + tail,
             [{"k": "空で走った便", "v": f"{len(empties)} 便"}, {"k": "空で走った距離", "v": f"約 {round(km):,} km"}],
             {"label": "帰り便の下書きにする", "action": "draft_backhaul", "payload": {"dir": "back"}},
             [_ev_leg(l) for l in sorted(empties, key=lambda x: (x["date"], x["plate"]))][:40])

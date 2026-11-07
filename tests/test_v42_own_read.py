@@ -172,7 +172,7 @@ def test_same_last4_with_different_class_or_driver_is_kept_apart_and_reported():
 # ---------------------------------------------------------------- Python: デジタコの見出し
 
 @pytest.mark.parametrize("head,role", [("実車距離(km)", "loaded_km"), ("空車距離（km）", "empty_km"), ("実車距離 (KM)", "loaded_km"), ("空車距離[km]", "empty_km"), ("車輌番号", "plate"),
-                                       ("車両番号", "plate"), ("乗務員名", "driver_code"), ("出庫日時", "start_time"), ("帰庫日時", "end_time"), ("総走行距離(km)", None), ("拘束時間", None)])
+                                       ("車両番号", "plate"), ("乗務員名", "driver_code"), ("出庫日時", "start_time"), ("帰庫日時", "end_time"), ("総走行距離(km)", None), ("拘束時間", "restraint")])
 def test_digitaco_summary_headers_with_units_and_variants(head, role):
     assert own.role_of(head) == role
 
@@ -219,7 +219,7 @@ def test_year_uses_hints_first_and_then_the_candidate_nearest_to_2026():
 # ---------------------------------------------------------------- Python: 区間の組・最大積載量・不明
 
 def _lg(i, plate, frm, to, kind, km=100.0, date="2026-10-05", wd=None):
-    return {"id": f"L{i:03d}", "plate": plate, "date": date, "frm": frm, "to": to, "kind": kind, "km": km, "dir": None, "cycle_wd": wd if wd is not None else 0}
+    return {"id": f"L{i:03d}", "plate": plate, "date": date, "frm": frm, "to": to, "kind": kind, "km": km, "dir": None, "cycle_wd": wd if wd is not None else dt.date.fromisoformat(date).weekday()}
 
 
 PLACES = {"p1": {"short": "加古川"}, "p2": {"short": "名古屋"}, "p3": {"short": "大井"}, "p4": {"short": "神戸市中央"}}
@@ -338,7 +338,7 @@ def test_js_pair_tables_and_max_payload_match_python(calc):
 
 @pytest.fixture(scope="module")
 def graded(calc):
-    return _an(calc, [_hf(), _df()], {"munis": MUNIS})
+    return _an(calc, [_hf(), _df()], {"munis": MUNIS, "largeMaxLoadKg": 10000})
 
 
 def test_analyze_graders_files_read_every_cell_and_count_empty_returns_as_empty(graded):
@@ -464,7 +464,7 @@ def test_analyze_overlapping_haisha_files_are_reported_and_the_ui_can_choose(cal
 
 def test_analyze_reads_every_readable_example_file(calc):
     # r2 の時点の 10 ファイル（r3 で足した書き方の見本 haisha_banshu は tests/test_v43_own_read.py が確かめる）
-    files = [{"name": p.name, "text": p.read_text(encoding="utf-8")} for p in sorted(EX.glob("*.csv")) if not p.name.startswith("haisha_banshu")]
+    files = [{"name": p.name, "text": p.read_text(encoding="utf-8")} for p in sorted(EX.glob("*.csv")) if not p.name.startswith(("haisha_banshu", "haisha_messy", "digitaco_daily_summary"))]  # haisha_messy は SPEC §47（tests/test_v47_own.py）、digitaco_daily_summary は SPEC §49（tests/test_v49_own_r7.py）
     assert len(files) == 10
     d = _an(calc, files, {"munis": MUNIS})
     kinds = {f["file"]: f["kind"] for f in d["files"]}
@@ -480,7 +480,7 @@ def test_analyze_reads_every_readable_example_file(calc):
 
 
 def test_analyze_max_payload_by_plate_and_by_class_changes_the_over_max_cards(graded, calc):
-    base_cards = [c for c in graded["confirm"] if c["kind"] == "weight"]
+    base_cards = [c for c in _an(calc, [_hf(), _df()], {"munis": MUNIS, "largeMaxLoadKg": 10000})["confirm"] if c["kind"] == "weight"]
     assert len(base_cards) == 16 and all(c["over_max"] and c["cls"] == "大型" and c["cap_kg"] == 10000 and c["cap_assumed"] is True and c["cap_src"] == "assumed" for c in base_cards)
     by_class = _an(calc, [_hf(), _df()], {"munis": MUNIS, "max_payload_by_class": {"大型": 13000}})
     assert [c for c in by_class["confirm"] if c["kind"] == "weight"] == [] and {v["max_load_kg"] for v in by_class["vehicles"] if v["cls"] == "大型"} == {13000.0}

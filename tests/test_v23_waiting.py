@@ -290,7 +290,7 @@ def test_g78_ui_always_shows_protect_lines_and_legal_basis():
 
 def test_g78_ui_has_the_four_tab_wait_input_and_examples():
     assert 'data-tab="wait"' in OWN_JS and "荷待ちを入れる" in OWN_JS
-    for label in ("日付", "車番", "車種", "契約の相手", "場所", "到着", "荷役開始", "荷役終了", "出発", "荷役をした人", "荷役の方法", "荷主等の都合の待機か"):
+    for label in ("日付", "車番", "車種", "契約の相手", "場所", "到着", "荷役開始", "荷役終了", "出発", "荷役をした人", "荷役の方法", "荷主の都合で待ったか"):   # 文言の直し 2026-11-07
         assert f"t: '{label}'" in OWN_JS, label
     assert "例を入れる" in OWN_JS and "WaitingShared.exampleRows" in OWN_JS  # 例は web/waiting_calc.js（waiting.html と同じ。SPEC §30.4）
     assert "/api/waiting" not in OWN_JS.replace("/api/waiting は呼ばない", "") and "WaitingShared.calc" in OWN_JS and "text/csv" in OWN_JS and "window.print()" in OWN_JS

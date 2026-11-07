@@ -10,6 +10,7 @@ const Sheet = (() => {
   const q = (s) => document.querySelector(s);
   const SHEET_RATIO = 0.44; // 下のパネルの高さ（画面の高さに対する割合）。地図は残りのうち上の切り替え（約 6%）を引いても 45% 以上見える
   const SHEET_RATIO_DETAIL = 0.6; // 送り方を比べるの「着地」のタブは、横棒の図と手段のカードが読める高さまで広げる（地図は 40% 残る。SPEC §33 #1）
+  const SHEET_RATIO_GUIDE = 0.6; // 案内の全国の物流傾向は、区間の一覧と主ボタンが 1 画面で読める高さ
   const st0 = { ratio: SHEET_RATIO };
 
   // 見方ごとのタブ。[パネルの id, 名前, 出す条件（body のクラス。省略は常に）]
@@ -22,7 +23,7 @@ const Sheet = (() => {
 
   const narrow = () => mq.matches;
   const sheetPx = () => Math.round(innerHeight * st0.ratio);
-  const view = () => ['market', 'find', 'compare', 'own'].find((v) => document.body.classList.contains('view-' + v)) || 'market';
+  const view = () => ['home', 'market', 'find', 'compare', 'own'].find((v) => document.body.classList.contains('view-' + v)) || 'market';
 
   // 地図に渡す余白。狭い画面は、上の切り替えと下のパネルを避ける。左右は区間の端の名前の札（幅 約 60px）が切れない広さ
   function pad() { return { top: 56, bottom: sheetPx() + 12, left: 40, right: 40 }; }
@@ -40,7 +41,7 @@ const Sheet = (() => {
       const o = { ...(opts || {}) };
       const c = map.getContainer();
       const w = c.clientWidth || innerWidth, h = c.clientHeight || innerHeight;
-      if (narrow()) o.padding = pad();
+      if (narrow() && !o.ownPadding) o.padding = pad();   // ownPadding: 呼び出し側が実際の欄の位置から余白を決めたとき（案内の全国の物流傾向）は、そのまま使う
       if (o.padding && typeof o.padding === 'object') o.padding = clamp(o.padding, w, h);
       return o;
     };
@@ -55,7 +56,7 @@ const Sheet = (() => {
   function defaultPick(v) {
     const b = document.body.classList;
     if (v === 'compare') return b.contains('has-detail') ? 'detail' : 'panel';
-    return 'm-right';
+    return 'm-left';   // 全国の物流傾向は、まず選んだ区間と表示条件（順位や指標は、選んだときだけ開く。SPEC §44）
   }
 
   // 下のパネルの高さの割合。値が変わるときだけ、html 要素の --sheet-h を書く（body の class は触らない）
@@ -82,6 +83,7 @@ const Sheet = (() => {
     const v = view(), nav = q('#sheet-tabs');
     let on = [], tabs = [];
     if (v === 'compare' && b.contains('has-work')) on = ['work'];
+    else if (v === 'market' && b.contains('guided')) on = ['m-left'];   // 案内の全国の物流傾向: 案内の欄だけ。区間を選んでも別の欄に切り替えない（選んだ区間は案内の欄の中に出す）
     else if (TABS[v]) {
       tabs = TABS[v].filter(visible);
       let pick = st.pick[v];
@@ -90,7 +92,7 @@ const Sheet = (() => {
       st.pick[v] = pick;
       on = [pick];
     }
-    setRatio(v === 'compare' && on.length === 1 && on[0] === 'detail' ? SHEET_RATIO_DETAIL : SHEET_RATIO);
+    setRatio(v === 'compare' && on.length === 1 && on[0] === 'detail' ? SHEET_RATIO_DETAIL : (v === 'market' && b.contains('guided')) ? SHEET_RATIO_GUIDE : SHEET_RATIO);
     const key = v + '|' + on.join() + '|' + tabs.map((t) => t[0]).join() + '|' + (on.length ? st.pick[v] : '');
     if (key === st.key) return;
     st.key = key;
@@ -111,7 +113,7 @@ const Sheet = (() => {
       if (added('has-detail')) st.pick.compare = 'detail';
       else if (removed('has-detail') && st.pick.compare === 'detail') st.pick.compare = 'panel';
     }
-    if (v === 'market' && added('m-has-pair')) st.pick.market = 'm-right';
+    if (v === 'market' && added('m-has-pair') && !b.contains('guided')) st.pick.market = 'm-right';
     if ([...now].some((c) => c.startsWith('view-') && !st.prev.has(c))) delete st.pick[v];
     st.prev = now;
     apply();

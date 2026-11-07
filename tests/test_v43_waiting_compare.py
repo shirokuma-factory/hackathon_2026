@@ -127,7 +127,7 @@ def test_waiting_page_memo_paste_document_main_figure_and_pdf_table_cross_check(
         page.js("document.querySelector('#b-cross').click()")
         _wait_for(page, "!!document.querySelector('#cross-result') || !!document.querySelector('#cross-out .errs')", "照合の結果")
         cross = page.js("document.querySelector('#cross-out').textContent")
-        assert "日付と車番が同じ組 2 組" in cross, cross
+        assert "同じ回と見られる 2 回" in cross, cross
         assert "列の数が見出しと違うので読まなかった行が 1 行" in cross
         assert "参考額の合計の目安" in cross
 
@@ -157,7 +157,7 @@ def test_driver_page_copies_any_day_and_keeps_a_night_crossing_record_in_its_day
         _wait_for(page, "!!document.querySelector('#day')", "日の選択")
         sel = page.js("document.querySelector('#day').value")
         lines = page.js("[...document.querySelectorAll('#recs li span:first-child')].map((e) => e.textContent)")
-        assert sel == "10/5" and len(lines) == 3 and any("入力中" in x for x in lines), (sel, lines)
+        assert sel == "10/5" and len(lines) == 3 and any("保存前" in x for x in lines), (sel, lines)
 
 
 # ---------------------------------------------------------------- 送り方比べ（Edge）
@@ -235,7 +235,7 @@ def test_map_app_compare_summary_is_above_the_route_card_and_badges_do_not_overl
       const host = document.createElement('div'); host.style.cssText = 'position:fixed;left:0;top:0;z-index:9999;background:#101826;width:' + width + 'px;padding:0 16px;box-sizing:border-box';
       host.innerHTML = CompareChart.html(%s); document.body.appendChild(host);
       const rows = [...host.querySelectorAll('.cc-row')].map((r) => {
-        const d = r.querySelector('.cc-days'), marks = [...r.querySelectorAll('.cc-mark')], tr = r.querySelector('.cc-track').getBoundingClientRect(), dr = d ? d.getBoundingClientRect() : null;
+        const d = r.querySelector('.cc-days'), marks = [...r.querySelectorAll('.cc-mark, .cc-ok')], tr = r.querySelector('.cc-track').getBoundingClientRect(), dr = d ? d.getBoundingClientRect() : null;
         const cut = marks.filter((m) => m.getBoundingClientRect().right > tr.right + 0.5).length;
         const over = marks.filter((m) => { const mr = m.getBoundingClientRect(); return dr && dr.width > 0 && mr.right > dr.left + 0.5 && mr.left < dr.right - 0.5 && mr.bottom > dr.top + 0.5 && mr.top < dr.bottom - 0.5; }).length;
         return {cut, over, marks: marks.length, w: tr.width};

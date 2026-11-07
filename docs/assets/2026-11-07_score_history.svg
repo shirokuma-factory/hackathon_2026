@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" width="960" height="520" font-family="'Noto Sans JP','Yu Gothic','Meiryo',sans-serif" font-size="13">
+<rect width="960" height="520" fill="#ffffff"/>
+<line x1="60" y1="470.0" x2="730" y2="470.0" stroke="#e5e5e5"/>
+<text x="52" y="474.0" text-anchor="end" fill="#666">0</text>
+<line x1="60" y1="382.0" x2="730" y2="382.0" stroke="#e5e5e5"/>
+<text x="52" y="386.0" text-anchor="end" fill="#666">20</text>
+<line x1="60" y1="294.0" x2="730" y2="294.0" stroke="#e5e5e5"/>
+<text x="52" y="298.0" text-anchor="end" fill="#666">40</text>
+<line x1="60" y1="206.0" x2="730" y2="206.0" stroke="#e5e5e5"/>
+<text x="52" y="210.0" text-anchor="end" fill="#666">60</text>
+<line x1="60" y1="118.0" x2="730" y2="118.0" stroke="#e5e5e5"/>
+<text x="52" y="122.0" text-anchor="end" fill="#666">80</text>
+<line x1="60" y1="30.0" x2="730" y2="30.0" stroke="#e5e5e5"/>
+<text x="52" y="34.0" text-anchor="end" fill="#666">100</text>
+<line x1="60" y1="52.0" x2="730" y2="52.0" stroke="#999" stroke-dasharray="4 4"/>
+<text x="726" y="46.0" text-anchor="end" fill="#666">合格の線 95 点</text>
+<text x="60.0" y="490" text-anchor="middle" fill="#666">r1</text>
+<text x="134.4" y="490" text-anchor="middle" fill="#666">r2</text>
+<text x="208.9" y="490" text-anchor="middle" fill="#666">r3</text>
+<text x="283.3" y="490" text-anchor="middle" fill="#666">r4</text>
+<text x="357.8" y="490" text-anchor="middle" fill="#666">r5</text>
+<text x="432.2" y="490" text-anchor="middle" fill="#666">r6</text>
+<text x="506.7" y="490" text-anchor="middle" fill="#666">r7</text>
+<text x="581.1" y="490" text-anchor="middle" fill="#666">r8</text>
+<text x="655.6" y="490" text-anchor="middle" fill="#666">r9</text>
+<text x="730.0" y="490" text-anchor="middle" fill="#666">r10</text>
+<text x="395.0" y="512" text-anchor="middle" fill="#666">採点の回（毎回、前の点を知らない新しい Opus が採点）</text>
+<polyline points="60.0,258.8 134.4,245.6 208.9,170.8 283.3,197.2" fill="none" stroke="#4e79a7" stroke-width="2.2"/>
+<circle cx="60.0" cy="258.8" r="3" fill="#4e79a7"><title>第1部 筋書き（荷主） r1: 48 点</title></circle>
+<circle cx="134.4" cy="245.6" r="3" fill="#4e79a7"><title>第1部 筋書き（荷主） r2: 51 点</title></circle>
+<circle cx="208.9" cy="170.8" r="3" fill="#4e79a7"><title>第1部 筋書き（荷主） r3: 68 点</title></circle>
+<circle cx="283.3" cy="197.2" r="3" fill="#4e79a7"><title>第1部 筋書き（荷主） r4: 62 点</title></circle>
+<polyline points="60.0,298.4 134.4,206.0 208.9,214.8 283.3,170.8" fill="none" stroke="#59a14f" stroke-width="2.2"/>
+<circle cx="60.0" cy="298.4" r="3" fill="#59a14f"><title>第2部 筋書き（運送会社） r1: 39 点</title></circle>
+<circle cx="134.4" cy="206.0" r="3" fill="#59a14f"><title>第2部 筋書き（運送会社） r2: 60 点</title></circle>
+<circle cx="208.9" cy="214.8" r="3" fill="#59a14f"><title>第2部 筋書き（運送会社） r3: 58 点</title></circle>
+<circle cx="283.3" cy="170.8" r="3" fill="#59a14f"><title>第2部 筋書き（運送会社） r4: 68 点</title></circle>
+<polyline points="60.0,346.8 134.4,263.2 208.9,197.2 283.3,228.0 357.8,206.0" fill="none" stroke="#9c755f" stroke-width="2.2"/>
+<circle cx="60.0" cy="346.8" r="3" fill="#9c755f"><title>第3部 課題を解くか r1: 28 点</title></circle>
+<circle cx="134.4" cy="263.2" r="3" fill="#9c755f"><title>第3部 課題を解くか r2: 47 点</title></circle>
+<circle cx="208.9" cy="197.2" r="3" fill="#9c755f"><title>第3部 課題を解くか r3: 62 点</title></circle>
+<circle cx="283.3" cy="228.0" r="3" fill="#9c755f"><title>第3部 課題を解くか r4: 55 点</title></circle>
+<circle cx="357.8" cy="206.0" r="3" fill="#9c755f"><title>第3部 課題を解くか r5: 60 点</title></circle>
+<polyline points="60.0,302.8 134.4,192.8 208.9,166.4 283.3,153.2" fill="none" stroke="#76b7b2" stroke-width="2.2"/>
+<circle cx="60.0" cy="302.8" r="3" fill="#76b7b2"><title>第4部 論理の筋 r1: 38 点</title></circle>
+<circle cx="134.4" cy="192.8" r="3" fill="#76b7b2"><title>第4部 論理の筋 r2: 63 点</title></circle>
+<circle cx="208.9" cy="166.4" r="3" fill="#76b7b2"><title>第4部 論理の筋 r3: 69 点</title></circle>
+<circle cx="283.3" cy="153.2" r="3" fill="#76b7b2"><title>第4部 論理の筋 r4: 72 点</title></circle>
+<polyline points="60.0,188.4 134.4,170.8 208.9,87.2 283.3,78.4" fill="none" stroke="#edc948" stroke-width="2.2"/>
+<circle cx="60.0" cy="188.4" r="3" fill="#edc948"><title>第5部 思想と公開版 r1: 64 点</title></circle>
+<circle cx="134.4" cy="170.8" r="3" fill="#edc948"><title>第5部 思想と公開版 r2: 68 点</title></circle>
+<circle cx="208.9" cy="87.2" r="3" fill="#edc948"><title>第5部 思想と公開版 r3: 87 点</title></circle>
+<circle cx="283.3" cy="78.4" r="3" fill="#edc948"><title>第5部 思想と公開版 r4: 89 点</title></circle>
+<polyline points="60.0,184.0 134.4,142.2 208.9,124.6 283.3,133.4 357.8,133.4 432.2,100.4 506.7,100.4 581.1,96.0 655.6,93.8" fill="none" stroke="#e15759" stroke-width="2.2"/>
+<circle cx="60.0" cy="184.0" r="3" fill="#e15759"><title>第6部 道具として r1: 65 点</title></circle>
+<circle cx="134.4" cy="142.2" r="3" fill="#e15759"><title>第6部 道具として r2: 74.5 点</title></circle>
+<circle cx="208.9" cy="124.6" r="3" fill="#e15759"><title>第6部 道具として r3: 78.5 点</title></circle>
+<circle cx="283.3" cy="133.4" r="3" fill="#e15759"><title>第6部 道具として r4: 76.5 点</title></circle>
+<circle cx="357.8" cy="133.4" r="3" fill="#e15759"><title>第6部 道具として r5: 76.5 点</title></circle>
+<circle cx="432.2" cy="100.4" r="3" fill="#e15759"><title>第6部 道具として r6: 84 点</title></circle>
+<circle cx="506.7" cy="100.4" r="3" fill="#e15759"><title>第6部 道具として r7: 84 点</title></circle>
+<circle cx="581.1" cy="96.0" r="3" fill="#e15759"><title>第6部 道具として r8: 85 点</title></circle>
+<circle cx="655.6" cy="93.8" r="3" fill="#e15759"><title>第6部 道具として r9: 85.5 点</title></circle>
+<polyline points="60.0,307.2 134.4,265.4 208.9,236.8 283.3,217.0 357.8,261.0 432.2,210.4 506.7,181.8" fill="none" stroke="#f28e2b" stroke-width="2.2"/>
+<circle cx="60.0" cy="307.2" r="3" fill="#f28e2b"><title>第7部 実務の効き目 r1: 37 点</title></circle>
+<circle cx="134.4" cy="265.4" r="3" fill="#f28e2b"><title>第7部 実務の効き目 r2: 46.5 点</title></circle>
+<circle cx="208.9" cy="236.8" r="3" fill="#f28e2b"><title>第7部 実務の効き目 r3: 53 点</title></circle>
+<circle cx="283.3" cy="217.0" r="3" fill="#f28e2b"><title>第7部 実務の効き目 r4: 57.5 点</title></circle>
+<circle cx="357.8" cy="261.0" r="3" fill="#f28e2b"><title>第7部 実務の効き目 r5: 47.5 点</title></circle>
+<circle cx="432.2" cy="210.4" r="3" fill="#f28e2b"><title>第7部 実務の効き目 r6: 59 点</title></circle>
+<circle cx="506.7" cy="181.8" r="3" fill="#f28e2b"><title>第7部 実務の効き目 r7: 65.5 点</title></circle>
+<polyline points="60.0,278.6 134.4,188.4 208.9,177.4 283.3,166.4" fill="none" stroke="#b07aa1" stroke-width="2.2"/>
+<circle cx="60.0" cy="278.6" r="3" fill="#b07aa1"><title>第8部 画面の出来 r1: 43.5 点</title></circle>
+<circle cx="134.4" cy="188.4" r="3" fill="#b07aa1"><title>第8部 画面の出来 r2: 64 点</title></circle>
+<circle cx="208.9" cy="177.4" r="3" fill="#b07aa1"><title>第8部 画面の出来 r3: 66.5 点</title></circle>
+<circle cx="283.3" cy="166.4" r="3" fill="#b07aa1"><title>第8部 画面の出来 r4: 69 点</title></circle>
+<polyline points="60.0,206.0 134.4,170.8 208.9,78.4 283.3,82.8 357.8,91.6 432.2,74.0 506.7,74.0 581.1,47.6 655.6,52.0 730.0,60.8" fill="none" stroke="#555555" stroke-width="2.2"/>
+<circle cx="60.0" cy="206.0" r="3" fill="#555555"><title>動画の脚本 r1: 60 点</title></circle>
+<circle cx="134.4" cy="170.8" r="3" fill="#555555"><title>動画の脚本 r2: 68 点</title></circle>
+<circle cx="208.9" cy="78.4" r="3" fill="#555555"><title>動画の脚本 r3: 89 点</title></circle>
+<circle cx="283.3" cy="82.8" r="3" fill="#555555"><title>動画の脚本 r4: 88 点</title></circle>
+<circle cx="357.8" cy="91.6" r="3" fill="#555555"><title>動画の脚本 r5: 86 点</title></circle>
+<circle cx="432.2" cy="74.0" r="3" fill="#555555"><title>動画の脚本 r6: 90 点</title></circle>
+<circle cx="506.7" cy="74.0" r="3" fill="#555555"><title>動画の脚本 r7: 90 点</title></circle>
+<circle cx="581.1" cy="47.6" r="3" fill="#555555"><title>動画の脚本 r8: 96 点</title></circle>
+<circle cx="655.6" cy="52.0" r="3" fill="#555555"><title>動画の脚本 r9: 95 点</title></circle>
+<circle cx="730.0" cy="60.8" r="3" fill="#555555"><title>動画の脚本 r10: 93 点</title></circle>
+<text x="740" y="64.8" fill="#555555">動画の脚本 60→93</text>
+<text x="740" y="82.8" fill="#edc948">第5部 思想と公開版 64→89</text>
+<text x="740" y="100.8" fill="#e15759">第6部 道具として 65→85.5</text>
+<text x="740" y="157.2" fill="#76b7b2">第4部 論理の筋 38→72</text>
+<text x="740" y="175.2" fill="#b07aa1">第8部 画面の出来 43.5→69</text>
+<text x="740" y="193.2" fill="#59a14f">第2部 筋書き（運送会社） 39→68</text>
+<text x="740" y="211.2" fill="#f28e2b">第7部 実務の効き目 37→65.5</text>
+<text x="740" y="229.2" fill="#4e79a7">第1部 筋書き（荷主） 48→62</text>
+<text x="740" y="247.2" fill="#9c755f">第3部 課題を解くか 28→60</text>
+</svg>

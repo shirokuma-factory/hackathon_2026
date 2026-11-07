@@ -201,37 +201,37 @@ def test_find_screen_only_edits_never_reach_the_shipper_card_match_hold_or_docum
             conftest.open_app(page, f"http://127.0.0.1:{port}/index.html#v=find")
             card = "(function(){var c=document.querySelector('.f-card[data-t=T7]');return c?c.textContent:''})()"
             before = page.js(card)
-            assert "重さの余り 2,000 / 2,000 kg" in before and "43,000" in before
+            assert "積める重さの残り 2,000 / 2,000 kg" in before and "95,000" in before
             # 運送会社の役で、T7 の重さの余りを 1kg、料金を 99,999 円に変える（画面の中だけ）
             page.js("__app.Find.setRole('carrier')")
             page.js("(function(){var c=document.querySelector('#f-carrier-sel');var t=__app.Find.state.trips.find(function(t){return t.id==='T7'});c.value=t.carrier_id;c.dispatchEvent(new Event('change',{bubbles:true}));})()")
             page.js("(function(){var s=document.querySelector('#f-trip-sel');s.value='T7';s.dispatchEvent(new Event('change',{bubbles:true}));})()")
             page.js("(function(){document.querySelector('#f-slack-in').value='1';document.querySelector('#f-price-in').value='99999';document.querySelector('#f-apply').click();})()")
             carrier = page.js(card)
-            assert "未登録" in carrier and "99,999" in carrier and "重さの余り 1 / 1 kg" in carrier
-            assert "登録されている値は" in carrier and "43,000" in carrier   # 運送会社のカードには、盤の値も並べる
+            assert "保存していない変更" in carrier and "99,999" in carrier and "積める重さの残り 1 / 1 kg" in carrier
+            assert "保存した値は" in carrier  # 文言の直し 2026-11-07 and "95,000" in carrier   # 運送会社のカードには、盤の値も並べる
             # 荷主の役: カードは盤の値だけ。変えた値は出ない
             page.js("__app.Find.setRole('shipper')")
             shipper = page.js(card)
-            assert "重さの余り 2,000 / 2,000 kg" in shipper and "43,000" in shipper
+            assert "積める重さの残り 2,000 / 2,000 kg" in shipper and "95,000" in shipper
             assert "99,999" not in shipper and "未登録" not in shipper and "1 / 1" not in shipper
             assert "○ 載ります" in shipper
             # 照合（サーバー）の結果は、カードの「載ります」と同じ
             assert page.js("__app.Find.state.results.T7.ok") is True
-            # 仮予約 → 承諾 → 書面。書面の対価はカードと同じ 43,000 円
+            # 仮予約 → 承諾 → 書面。書面の対価はカードと同じ 95,000 円
             page.js("document.querySelector('.f-card[data-t=T7] [data-act=hold]').click()")
             page.wait(lambda: page.js("__app.Find.state.holds.some(function(h){return h.trip_id==='T7'})"), 30, "仮予約")
             held = page.js("__app.Find.state.holds.find(function(h){return h.trip_id==='T7'}).weight_kg")
-            assert held == 400   # 荷 400kg を、盤の重さの余り 2,000kg から確保した（画面の 1kg ではない）
+            assert held == 120   # 荷 120kg（既定の荷。着地の既定が鹿児島市なので T7 に載り、例の荷には切り替わらない）を、盤の重さの余り 2,000kg から確保した（画面の 1kg ではない）
             page.js("__app.Find.setRole('carrier')")
             page.js("document.querySelector('.f-card[data-t=T7] [data-act=accept]').click()")
             page.wait(lambda: page.js("__app.Find.state.holds.some(function(h){return h.state==='accepted'})"), 30, "承諾")
             page.js("document.querySelector('.f-card[data-t=T7] [data-act=contract]').click()")
             page.wait(lambda: page.js("!document.querySelector('#f-contract').hidden"), 30, "書面")
             doc = page.js("document.querySelector('#f-contract').textContent")
-            assert "対価: 43,000円" in doc and "99,999" not in doc
+            assert "対価: 95,000円" in doc and "99,999" not in doc
             # カードと書面の対価が同じ
-            assert re.search(r"43,000", shipper) and "対価: 43,000円" in doc
+            assert re.search(r"95,000", shipper) and "対価: 95,000円" in doc
     finally:
         call(port, "POST", "/api/b/reset", {})
 
@@ -240,14 +240,11 @@ def test_find_chip_names_the_one_piece_weight_when_only_that_fails():
     import conftest
     port = conftest.server_port("local")
     call(port, "POST", "/api/b/reset", {})
-    with edge_page(1920, 1080) as page:
-        conftest.open_app(page, f"http://127.0.0.1:{port}/index.html#v=find")
-        # S6（合計 400kg、1 個 140kg）。T6 は重さの余り 800kg に収まるが、1 個の上限が 40kg
-        t6 = page.js("(function(){var r=__app.Find.state.results.T6;return JSON.stringify({ok:r.ok,reasons:r.reasons})})()")
-        r = json.loads(t6)
-        assert not r["ok"] and r["reasons"][0].startswith("1個の重さ"), r
-        chip = page.js("document.querySelector('.f-card[data-t=T6] .chip').textContent")
-        assert "1 個の重さ" in chip and "合計" not in chip, chip
+    # S6（合計 400kg、1 個 140kg）。T6（福岡市 → 鹿児島市）は重さの余り 800kg に収まるが、1 個の上限が 40kg。T6 の集荷地（福岡市博多区）から出す荷で確かめる
+    st, m = call(port, "POST", "/api/b/match", dict(s6_body(), origin_code="40132", dest_code="46201", window_from="2026-11-22", window_to="2026-11-22"))
+    r = next(x for x in m["results"] if x["trip_id"] == "T6")
+    assert not r["ok"] and r["reasons"][0].startswith("1個の重さ"), r
+    assert "1 個の重さが上限を超えます" in (ROOT / "web" / "find.js").read_text(encoding="utf-8")  # 画面のチップの文言
     assert "合計の重さが合いません" in (ROOT / "web" / "find.js").read_text(encoding="utf-8")   # 合計が足りないときは別の文
 
 
@@ -333,7 +330,7 @@ def test_a_script_that_never_loads_stops_only_its_own_view():
         # 自社の運行を開いたときだけ、理由を出す
         page.js("__app.setView('own')")
         msg = page.js("(document.querySelector('#own-view .view-missing') || {}).textContent || ''")
-        assert "自社の運行" in msg and "OwnCalc" in msg and "読み込み直して" in msg, msg
+        assert "この画面を開けませんでした" in msg and "読み直す" in msg, msg   # 文言の直し 2026-11-07
         assert page.js("!document.querySelector('#m-left .view-missing')") is True
 
 
@@ -355,20 +352,21 @@ def _set_cargo(page, n, l, w, h, kg):
 
 def test_map_compare_shows_cargo_ratio_when_only_charter_amounts_appear():
     with edge_page(1920, 1080) as page:
-        _open_compare(page, "#v=compare&o=13104&l=km&d=27205")
+        _open_compare(page, "#v=compare&o=13104&l=km&d=23106")
+        # 関東発の運賃表を大阪府・宮城県のどちらにも使うようになり、宅配にも額が出るので、表のない愛知県（名古屋市）を着地にして貸切だけに額が出る場面にする
         _set_cargo(page, 12, 50, 40, 35, 12)   # 12 箱、144kg、床 2.4m²（2t の床の 47%）。重さは小さいが床を使うので「過大」とは言わず、割合だけ出す
-        page.wait(lambda: "144kg" in page.js("(document.querySelector('#cards .charter-only') || {}).textContent || ''"), 90, "貸切だけの注記")
+        page.wait(lambda: "床の 47%" in page.js("(document.querySelector('#cards .charter-only') || {}).textContent || ''"), 90, "貸切だけの注記")
         txt = page.js("document.querySelector('#cards .charter-only').textContent")
-        assert "過大" not in txt and "額が出ているのは貸切だけです" in txt and "最大積載の約 7%" in txt and "床の約 47%" in txt, txt
+        assert "大きすぎ" not in txt and "金額が出るのは貸切だけです" in txt and "重さの 7%" in txt and "床の 47%" in txt, txt   # 文言の直し 2026-11-07
         # 小さな荷（4 箱、48kg、床 0.8m²）は、重さも床も 25% 未満なので「この荷に貸切は過大」
         _set_cargo(page, 4, 50, 40, 35, 12)
-        page.wait(lambda: "48kg" in page.js("(document.querySelector('#cards .charter-only') || {}).textContent || ''"), 90, "小さな荷")
+        page.wait(lambda: "床の 16%" in page.js("(document.querySelector('#cards .charter-only') || {}).textContent || ''"), 90, "小さな荷")
         txt = page.js("document.querySelector('#cards .charter-only').textContent")
-        assert "この荷に貸切は過大です" in txt and "床の約 16%" in txt, txt
+        assert "この荷物に貸切は大きすぎます" in txt and "床の 16%" in txt, txt   # 文言の直し 2026-11-07
         # 床を使う荷（既定の場面の荷: 400kg・床 4.1m²）では「過大」と言わず、割合だけを出す
         _set_cargo(page, 10, 100, 100, 60, 200)   # 床 10m² は 2t の床を超える。重さ 2,000kg
-        page.wait(lambda: "2,000kg" in page.js("(document.querySelector('#cards .charter-only') || {}).textContent || ''") or not page.js("!!document.querySelector('#cards .charter-only')"), 90, "大きな荷")
-        assert "過大" not in page.js("(document.querySelector('#cards .charter-only') || {}).textContent || ''")
+        page.wait(lambda: "重さの 100%" in page.js("(document.querySelector('#cards .charter-only') || {}).textContent || ''") or not page.js("!!document.querySelector('#cards .charter-only')"), 90, "大きな荷")
+        assert "大きすぎ" not in page.js("(document.querySelector('#cards .charter-only') || {}).textContent || ''")   # 文言の直し 2026-11-07
 
 
 def test_charter_class_constants_match_vehicle_decks():

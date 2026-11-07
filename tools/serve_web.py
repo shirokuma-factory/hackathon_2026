@@ -15,7 +15,7 @@ API（POST は Content-Type: application/json の JSON。入力の誤りは 400 
     POST /api/layer      {origin_code, shipment}   荷物に合わせた貸切の額の層
     POST /api/loadplan   {shipment, container?, stackable?}   荷室への積付けの配置（SPEC §20。目安）
     POST /api/waiting/calc {year?, rows:[...] | text}   荷待ち・荷役の記録の計算（SPEC §23。記録は保存もログ出力もしない）
-    POST /api/request    {shipment, scenario?}
+    POST /api/request    {shipment, scenario?, place?, mode?}
     POST /api/compare    {quotes, version, today?}
     POST /api/save       案件（case_to_dict の形）→ 正規化した案件 JSON（保存はブラウザのダウンロード）
     POST /api/load       保存した案件 JSON → 正規化した案件 JSON
@@ -60,13 +60,13 @@ from urllib.parse import parse_qs, unquote, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from shipcompare import geo, loadplan, spaceb, waiting  # noqa: E402
+from shipcompare import ai_explain, geo, loadplan, spaceb, waiting  # noqa: E402
 from shipcompare import routes as route_lib  # noqa: E402
 from shipcompare.estimate import ST_NOCALC, estimate_all, rebase_kashikiri_on_road_distance, summarize  # noqa: E402
 from shipcompare.guide import load_transit_days, mode_group, request_contacts, transit_days, transit_days_text  # noqa: E402
 from shipcompare.models import COST_KEYS, KIND_AMOUNT, KIND_INCLUDED, KIND_UNKNOWN  # noqa: E402
 from shipcompare.quotes import compare_quotes, line_amounts_ex_tax  # noqa: E402
-from shipcompare.request import build_request  # noqa: E402
+from shipcompare.request import MODE_REQUEST_TEXT, build_request  # noqa: E402
 from shipcompare.storage import (  # noqa: E402
     ORDER_NOTICE, case_from_dict, case_to_dict, demo_quotes_for, list_scenarios, load_scenario, quote_from_dict,
     quote_to_dict, scenario_info, shipment_from_dict, shipment_to_dict, validate_shipment,
@@ -114,6 +114,7 @@ class _Ctx(threading.local):
     """リクエストごとの状態（ハンドラが入れる）。API の関数はここから公開版かどうかと来訪者 ID を読む。"""
     public = False
     sid = ANON_SESSION
+    client = "local"
 
 
 _CTX = _Ctx()
@@ -308,12 +309,15 @@ def api_estimate(body: Any) -> dict[str, Any]:
     info = _apply_destination(body, s)
     road_basis = info is not None and not (info["no_route"] or info["ferry"])
     demo_id = geo.demo_route_for(body.get("origin_code"), body.get("dest_code")) if info is not None else None
-    if info is not None and demo_id is None and s.route != "other":
-        s.route = "other"  # デモの区間の組以外は、貸切の額を OSRM の道路距離で出す（洗い出し N1）
+    # 着地が大阪府・宮城県なら、発地がデモの 13104 でなくても関東発の表（宅配・路線便）で出す。
+    # 以前はデモの組以外を一律 "other" にして、埼玉→大阪の宅配が「表がない」になっていた（r7b 指摘1）
+    table_route = info is not None and s.route in ("kanto_kansai", "kanto_tohoku")
+    if info is not None and demo_id is None and not table_route and s.route != "other":
+        s.route = "other"  # 表のない区間は、貸切の額を OSRM の道路距離で出す（洗い出し N1）
         s.origin_in_kanto = True
         s.distance_km = info["km"] if road_basis else None
     rows = estimate_all(s)
-    if road_basis and demo_id is not None:
+    if road_basis and (demo_id is not None or table_route):
         rows = rebase_kashikiri_on_road_distance(s, rows, info["km"])  # 荷物の区間と距離は変えない（確定に使うため）
     totals = summarize(s)
     transit_modes = load_transit_days()
@@ -404,7 +408,10 @@ def api_request(body: Any) -> dict[str, Any]:
     if scenario is not None and not isinstance(scenario, dict):
         raise BadRequest("scenario は辞書か null で渡してください")
     place = _place_of(body.get("place"))
-    draft = build_request(s, scenario, place)
+    mode = body.get("mode")
+    if mode is not None and (not isinstance(mode, str) or mode not in MODE_REQUEST_TEXT):
+        raise BadRequest("mode は宅配・路線便・カゴ台車・貸切・鉄道・船・飛行機のどれかで渡してください")
+    draft = build_request(s, scenario, place, mode)
     contacts, pointer = request_contacts(public=_CTX.public)  # 手段の名前も列も持たない（SPEC §31.2）
     return {
         "status": draft.status,
@@ -808,11 +815,53 @@ def api_waiting_calc(body: Any) -> dict[str, Any]:
     return res
 
 
-GET_ROUTES = {"/api/scenarios": lambda q: api_scenarios(), "/api/demo_quotes": api_demo_quotes,
+def _forwarded_client(header: str | None, public: bool, env: dict[str, str] | None = None) -> str:
+    """公開版の来訪者 ID。X-Forwarded-For の左端は来訪者が自分で付けられるので使わず、信頼する前段の段数 TRUSTED_PROXY_HOPS（既定 1）だけ右から数える。"""
+    if not public or not header:
+        return ""
+    raw = (env if env is not None else os.environ).get("TRUSTED_PROXY_HOPS", "1").strip()
+    hops = int(raw) if raw.isdigit() and int(raw) > 0 else 1
+    parts = [x.strip() for x in header.split(",") if x.strip()]
+    return parts[-hops] if len(parts) >= hops else ""
+
+
+def _ai_guard(call):
+    try:
+        return call()
+    except ai_explain.AiError as e:
+        raise AiHttpError(e) from e
+
+
+class AiHttpError(Exception):
+    """AI の API の誤り。状態コードと code を持つ（画面が分岐する）。"""
+
+    def __init__(self, err: "ai_explain.AiError"):
+        super().__init__(str(err))
+        self.err = err
+
+
+def api_ai_status(query: dict[str, list[str]]) -> dict[str, Any]:
+    """説明文の自動作成が使えるか。キーの値は返さない（あるかどうかだけ調べる）。"""
+    st = ai_explain.status(_CTX.public)
+    st["reason_text"] = ai_explain.reason_text(st["reason"]) if st["reason"] else ""
+    st["used_today"] = ai_explain.LIMITER.used_today()
+    return st
+
+
+def api_ai_waiting_explain(body: Any) -> dict[str, Any]:
+    return _ai_guard(lambda: ai_explain.start(body, _CTX.client, _CTX.public))
+
+
+def api_ai_job(query: dict[str, list[str]]) -> dict[str, Any]:
+    jid = (query.get("id") or [""])[0]
+    return _ai_guard(lambda: ai_explain.job_state(jid))
+
+
+GET_ROUTES = {"/api/ai/status": api_ai_status, "/api/ai/job": api_ai_job, "/api/scenarios": lambda q: api_scenarios(), "/api/demo_quotes": api_demo_quotes,
               "/api/b/trips": api_b_trips, "/api/route": api_route}
 POST_ROUTES = {
     "/api/estimate": api_estimate, "/api/layer": api_layer, "/api/loadplan": api_loadplan, "/api/request": api_request,
-    "/api/waiting/calc": api_waiting_calc,
+    "/api/waiting/calc": api_waiting_calc, "/api/ai/waiting_explain": api_ai_waiting_explain,
     "/api/compare": api_compare, "/api/save": api_save, "/api/load": api_load,
     "/api/confirm": api_confirm, "/api/add_quote": api_add_quote, "/api/add_demo_quotes": api_add_demo_quotes,
     "/api/b/match": api_b_match, "/api/b/hold": api_b_hold, "/api/b/decide": api_b_decide, "/api/b/reset": api_b_reset,
@@ -885,6 +934,8 @@ class Handler(SimpleHTTPRequestHandler):
         """リクエストの頭で、公開版かどうかと来訪者 ID を API の関数に渡す。"""
         _CTX.public = self.public
         _CTX.sid = session_id_of(self.headers.get(SESSION_HEADER))
+        # 来訪者ごとの回数の数え方。公開版は X-Forwarded-For を右から数える（TRUSTED_PROXY_HOPS、既定 1 = 最後の要素）。手元は接続元
+        _CTX.client = (_forwarded_client(self.headers.get("X-Forwarded-For"), self.public) or self.client_address[0])
 
     # --- 共通
     def _send_json(self, status: int, obj: Any) -> None:
@@ -1043,6 +1094,9 @@ class Handler(SimpleHTTPRequestHandler):
             result = call()
         except BadRequest as e:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(e)})
+            return
+        except AiHttpError as e:
+            self._send_json(e.err.status, {"error": str(e.err), "code": e.err.code})
             return
         except (ValueError, TypeError, KeyError, ArithmeticError, AttributeError) as e:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": f"入力を処理できませんでした（{type(e).__name__}: {e}）"})
