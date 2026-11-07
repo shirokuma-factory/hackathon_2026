@@ -241,11 +241,16 @@ def test_negotiate_logic(local_server):
         # 文面: 未確認は質問、不適合は完成扱いにしない、見送りは文面なし
         t = call("buildDraft", P())
         assert "お聞かせいただきたいこと" in t and "積込を希望する日時" in t and "納品先（受取側）が受け取れる日時" in t and "現時点で、確認できている条件はありません" in t
-        assert "金曜日" in t and "江東区周辺" in t and "加古川市周辺" in t and "お受けできるかとお見積りをお返しします" in t
+        assert "金曜日" in t and "江東区周辺" in t and "加古川市周辺" in t and "お受けできるかとお見積りをお送りします" in t
         t2 = page.js("(function(){const p = {type:'commodity', fromMuni:'江東区', toMuni:'加古川市', weekday:'金', load:{state:'ok', note:'金曜の夕方に準備できると電話で確認'}, recv:{state:'unconfirmed', note:''}, hold:{action:'hold',picks:[]}, econ: Negotiate.emptyEcon()}; return Negotiate.buildDraft(p);})()")
         assert "積込の条件: 金曜の夕方に準備できると電話で確認" in t2 and "積込を希望する日時" not in t2 and "納品先（受取側）が受け取れる日時" in t2
         th = call("buildDraft", P("ng", "ok", hold={"action": "hold", "picks": ["load_time", "other_day"]}))
         assert "条件の確認のご連絡です" in th and "積込の日時を変えることは可能でしょうか" in th and "別の曜日の集荷であれば可能でしょうか" in th and "お見積りを比べていただく条件" not in th
+        # 案内の形に 2026-11-07: 文の最初に、空きがあることと曜日を書く。お願い・ご相談の形にしない
+        body = [x for x in t.split(chr(10)) if x and not x.startswith("【") and not x.startswith("突然")][0]
+        assert "金曜日" in body and "空きがあります" in body and "ご相談" not in t and "ご相談" not in call("buildDraft", P(typ="returnable"))
+        assert "江東区周辺から加古川市周辺へ戻る" in body and "江東区周辺から加古川市周辺へ戻る" in call("buildDraft", P(typ="returnable")) and "空きがあります" in call("buildDraft", P(typ="returnable"))
+        assert "戻る便でお運びする件で" in th
         assert "条件が合わない点" in th and "お願い" not in th.replace("再確認させてください", "")
         assert call("buildDraft", P("ng", "ok", hold={"action": "skip", "picks": []})) == ""
         assert call("buildDraft", P("ok", "ok", econ=E % json.dumps({**full, "cost": "99999"}))) == ""
