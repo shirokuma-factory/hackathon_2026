@@ -6,7 +6,7 @@ YouTube の推奨: MP4（moov を先頭）、H.264 High・プログレッシブ�
 
 - 映像と音だけを入れる（ProRes の元にある時刻の情報のトラック tmcd とメタデータは入れない）
 - x264 平均 10 Mbps（crf だと画面がほぼ止まっているため 2〜3 Mbps まで下がり、min の指定も効かない）
-- 音は -16 LUFS（YouTube は -14 前後にそろえるので、下げられない側に置く）
+- 音は -14 LUFS（YouTube の基準の音量。r14 の採点で -16 は 2 dB 小さいと指摘）
 - 長さは EDL の total で切る（3 分以内）
 
 使い方: uv run python tools/video/deliver_mp4.py --master outputs/video/assembly/Backfull_r14_master.mov --edl docs/video/edl_r14.json --out outputs/video/assembly/Backfull_r14.mp4
@@ -31,7 +31,7 @@ def main() -> None:
            "-map_metadata", "-1", "-write_tmcd", "0",
            "-c:v", "libx264", "-preset", "slow", "-b:v", "10M", "-maxrate", "20M", "-bufsize", "40M",
            "-profile:v", "high", "-pix_fmt", "yuv420p", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
-           "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-c:a", "aac", "-b:a", "256k", "-movflags", "+faststart", a.out]
+           "-af", "loudnorm=I=-14:TP=-1.0:LRA=11", "-ar", "48000", "-c:a", "aac", "-b:a", "256k", "-movflags", "+faststart", a.out]
     subprocess.run(cmd, check=True)
     r = subprocess.run([FF, "-hide_banner", "-i", a.out], capture_output=True, text=True, encoding="utf-8", errors="replace").stderr
     print("\n".join(l for l in r.splitlines() if "Duration" in l or "Stream" in l))

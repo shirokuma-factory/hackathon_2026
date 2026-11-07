@@ -1,0 +1,713 @@
+{
+ "timeline": "Backfull_r16",
+ "fps": 30,
+ "video": {
+  "1": [
+   {
+    "s": 0,
+    "off": 0,
+    "path": "outputs/video/motion/FLOW_JP.mov",
+    "p": {},
+    "e": 206,
+    "xfade_out": 8
+   },
+   {
+    "s": 206,
+    "off": 180,
+    "path": "outputs/video/motion/FLOW_JP_hold19b.mov",
+    "p": {},
+    "e": 552,
+    "xfade_out": 8
+   },
+   {
+    "s": 552,
+    "off": 180,
+    "path": "outputs/video/motion/FLOW_JP_hold18b.mov",
+    "p": {},
+    "e": 854,
+    "xfade_out": 8
+   },
+   {
+    "s": 854,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_R2.mp4",
+    "p": {},
+    "e": 993,
+    "xfade_out": 8
+   },
+   {
+    "s": 993,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_LIVE_L.mp4",
+    "p": {},
+    "e": 1248,
+    "xfade_out": 8
+   },
+   {
+    "s": 1249,
+    "off": 60,
+    "path": "outputs/video/motion/FLOW_KAGO.mov",
+    "p": {},
+    "e": 1393,
+    "xfade_out": 8
+   },
+   {
+    "s": 1393,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_F1.mp4",
+    "p": {},
+    "e": 1502,
+    "xfade_out": 8
+   },
+   {
+    "s": 1502,
+    "off": 180,
+    "path": "outputs/video/motion/FLOW_JP_hold14b.mov",
+    "p": {},
+    "e": 1702,
+    "xfade_out": 0
+   },
+   {
+    "s": 1701,
+    "off": 0,
+    "path": "outputs/video/motion/LOGO_B.mov",
+    "p": {},
+    "e": 1767,
+    "xfade_out": 8
+   },
+   {
+    "s": 1767,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_FLOW0_L_hold16b.mp4",
+    "p": {},
+    "e": 2202,
+    "xfade_out": 8
+   },
+   {
+    "s": 2202,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_F1.mp4",
+    "p": {},
+    "e": 2329,
+    "xfade_out": 8
+   },
+   {
+    "s": 2329,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_F2_L.mp4",
+    "p": {},
+    "e": 2398,
+    "xfade_out": 8
+   },
+   {
+    "s": 2398,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_F3.mp4",
+    "p": {},
+    "e": 2466,
+    "xfade_out": 8
+   },
+   {
+    "s": 2467,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_F4_L.mp4",
+    "p": {},
+    "e": 2528,
+    "xfade_out": 0
+   },
+   {
+    "s": 2527,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_C1.mp4",
+    "p": {},
+    "e": 2696,
+    "xfade_out": 8
+   },
+   {
+    "s": 2697,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_P12_L.mp4",
+    "p": {},
+    "e": 2950,
+    "xfade_out": 8
+   },
+   {
+    "s": 2950,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_IMPORT.mp4",
+    "p": {},
+    "e": 3042,
+    "xfade_out": 8
+   },
+   {
+    "s": 3042,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_OWNVIZ.mp4",
+    "p": {},
+    "e": 3132,
+    "xfade_out": 8
+   },
+   {
+    "s": 3132,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_DRIVER_L.mp4",
+    "p": {},
+    "e": 3329,
+    "xfade_out": 8
+   },
+   {
+    "s": 3329,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_AI_L.mp4",
+    "p": {},
+    "e": 3654,
+    "xfade_out": 8
+   },
+   {
+    "s": 3654,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_P7.mp4",
+    "p": {},
+    "e": 3903,
+    "xfade_out": 8
+   },
+   {
+    "s": 3903,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_P8_L.mp4",
+    "p": {},
+    "e": 4243,
+    "xfade_out": 8
+   },
+   {
+    "s": 4243,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_P9_L.mp4",
+    "p": {},
+    "e": 4322,
+    "xfade_out": 8
+   },
+   {
+    "s": 4322,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_P10_L.mp4",
+    "p": {},
+    "e": 4412,
+    "xfade_out": 8
+   },
+   {
+    "s": 4412,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_P12_L.mp4",
+    "p": {},
+    "e": 4633,
+    "xfade_out": 8
+   },
+   {
+    "s": 4633,
+    "off": 0,
+    "path": "outputs/video/rec/CC_rec_v2_hold7b.mp4",
+    "p": {},
+    "e": 4799,
+    "xfade_out": 8
+   },
+   {
+    "s": 4799,
+    "off": 48,
+    "path": "outputs/video/motion/CLAUDE_HUB_m.mov",
+    "p": {},
+    "e": 4994,
+    "xfade_out": 8
+   },
+   {
+    "s": 4994,
+    "off": 0,
+    "path": "outputs/video/bframe/r9/W16_END.mp4",
+    "p": {},
+    "e": 5328,
+    "xfade_out": 8
+   },
+   {
+    "s": 5329,
+    "off": 0,
+    "path": "outputs/video/motion/LOGO_B.mov",
+    "p": {},
+    "e": 5395,
+    "xfade_out": 0
+   }
+  ],
+  "5": [
+   {
+    "s": 50,
+    "off": 0,
+    "path": "outputs/video/motion/HOOK_m.mov",
+    "e": 206,
+    "p": {}
+   },
+   {
+    "s": 215,
+    "off": 0,
+    "path": "outputs/video/motion/CHAIN_p1_m.mov",
+    "fade_out": 6,
+    "e": 890,
+    "p": {}
+   },
+   {
+    "s": 890,
+    "off": 0,
+    "path": "outputs/video/motion/MG9_m.mov",
+    "e": 993,
+    "p": {}
+   },
+   {
+    "s": 1511,
+    "off": 0,
+    "path": "outputs/video/motion/MGH3_m.mov",
+    "e": 1702,
+    "p": {}
+   },
+   {
+    "s": 4380,
+    "off": 0,
+    "path": "outputs/video/motion/MG5s2_m.mov",
+    "e": 4624,
+    "p": {}
+   }
+  ],
+  "3": [
+   {
+    "s": 50,
+    "off": 0,
+    "path": "outputs/video/overlays/scrim.mov",
+    "fade_in": 9,
+    "fade_out": 9,
+    "e": 206,
+    "p": {}
+   },
+   {
+    "s": 215,
+    "off": 0,
+    "path": "outputs/video/overlays/scrim.mov",
+    "fade_in": 9,
+    "fade_out": 9,
+    "e": 899,
+    "p": {}
+   },
+   {
+    "s": 890,
+    "off": 0,
+    "path": "outputs/video/overlays/scrim.mov",
+    "fade_in": 9,
+    "fade_out": 9,
+    "e": 993,
+    "p": {}
+   },
+   {
+    "s": 1511,
+    "off": 0,
+    "path": "outputs/video/overlays/scrim.mov",
+    "fade_in": 9,
+    "fade_out": 9,
+    "e": 1702,
+    "p": {}
+   },
+   {
+    "s": 4380,
+    "off": 0,
+    "path": "outputs/video/overlays/scrim.mov",
+    "fade_in": 9,
+    "fade_out": 9,
+    "e": 4624,
+    "p": {}
+   }
+  ],
+  "6": [
+   {
+    "s": 2527,
+    "off": 0,
+    "path": "outputs/video/motion/CHM2.mov",
+    "e": 2599,
+    "p": {}
+   },
+   {
+    "s": 3654,
+    "off": 0,
+    "path": "outputs/video/motion/CHM3.mov",
+    "e": 3726,
+    "p": {}
+   },
+   {
+    "s": 4243,
+    "off": 0,
+    "path": "outputs/video/motion/CHM4.mov",
+    "e": 4315,
+    "p": {}
+   },
+   {
+    "s": 4633,
+    "off": 0,
+    "path": "outputs/video/motion/CHM5.mov",
+    "e": 4705,
+    "p": {}
+   }
+  ],
+  "4": [
+   {
+    "s": 0,
+    "off": 0,
+    "path": "outputs/video/subs_r16/subs_012602_4k.mov",
+    "e": 5395,
+    "p": {}
+   }
+  ],
+  "7": [
+   {
+    "s": 0,
+    "off": 0,
+    "path": "outputs/video/subs_r16/sources_012602_4k.mov",
+    "e": 5395,
+    "p": {}
+   }
+  ]
+ },
+ "audio": {
+  "1": [
+   {
+    "s": 18,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/H0_r7_t110.wav",
+    "e": 200,
+    "p": {}
+   },
+   {
+    "s": 215,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/P1_r7_t110.wav",
+    "e": 549,
+    "p": {}
+   },
+   {
+    "s": 564,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/H1_r7_t110.wav",
+    "e": 839,
+    "p": {}
+   },
+   {
+    "s": 859,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/H2_r7_t110.wav",
+    "e": 1496,
+    "p": {}
+   },
+   {
+    "s": 1520,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/H3_r7_t110.wav",
+    "e": 1775,
+    "p": {}
+   },
+   {
+    "s": 1788,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/H4_r7_t110.wav",
+    "e": 2512,
+    "p": {}
+   },
+   {
+    "s": 2563,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/C1_r7_t110.wav",
+    "e": 2944,
+    "p": {}
+   },
+   {
+    "s": 2954,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/C2_r7_t110.wav",
+    "e": 3639,
+    "p": {}
+   },
+   {
+    "s": 3690,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/S1_r7_t110.wav",
+    "e": 4228,
+    "p": {}
+   },
+   {
+    "s": 4279,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/S2_r7_t110.wav",
+    "e": 4618,
+    "p": {}
+   },
+   {
+    "s": 4669,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/R7_r7_t110.wav",
+    "e": 4979,
+    "p": {}
+   },
+   {
+    "s": 4999,
+    "off": 0,
+    "path": "outputs/video/voice/tight_r9/H8_r7_t110.wav",
+    "e": 5351,
+    "p": {}
+   }
+  ],
+  "4": [
+   {
+    "s": 122,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/land_soft.wav",
+    "gain_db": -2,
+    "e": 149,
+    "p": {}
+   },
+   {
+    "s": 236,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/land_soft.wav",
+    "e": 263,
+    "p": {}
+   },
+   {
+    "s": 474,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/land_soft.wav",
+    "e": 501,
+    "p": {}
+   },
+   {
+    "s": 1719,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/chime_logo.wav",
+    "gain_db": -3,
+    "e": 1794,
+    "p": {}
+   },
+   {
+    "s": 4536,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_1.wav",
+    "gain_db": -4,
+    "e": 4538,
+    "p": {}
+   },
+   {
+    "s": 4538,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_2.wav",
+    "gain_db": -4,
+    "e": 4540,
+    "p": {}
+   },
+   {
+    "s": 4540,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_3.wav",
+    "gain_db": -4,
+    "e": 4542,
+    "p": {}
+   },
+   {
+    "s": 4542,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_4.wav",
+    "gain_db": -4,
+    "e": 4544,
+    "p": {}
+   },
+   {
+    "s": 4544,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_1.wav",
+    "gain_db": -4,
+    "e": 4546,
+    "p": {}
+   },
+   {
+    "s": 4546,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_2.wav",
+    "gain_db": -4,
+    "e": 4548,
+    "p": {}
+   },
+   {
+    "s": 4549,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_3.wav",
+    "gain_db": -4,
+    "e": 4551,
+    "p": {}
+   },
+   {
+    "s": 4551,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_4.wav",
+    "gain_db": -4,
+    "e": 4553,
+    "p": {}
+   },
+   {
+    "s": 4553,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_1.wav",
+    "gain_db": -4,
+    "e": 4555,
+    "p": {}
+   },
+   {
+    "s": 4555,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_2.wav",
+    "gain_db": -4,
+    "e": 4557,
+    "p": {}
+   },
+   {
+    "s": 4557,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_3.wav",
+    "gain_db": -4,
+    "e": 4559,
+    "p": {}
+   },
+   {
+    "s": 4559,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_4.wav",
+    "gain_db": -4,
+    "e": 4561,
+    "p": {}
+   },
+   {
+    "s": 4561,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_1.wav",
+    "gain_db": -4,
+    "e": 4563,
+    "p": {}
+   },
+   {
+    "s": 4563,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_2.wav",
+    "gain_db": -4,
+    "e": 4565,
+    "p": {}
+   },
+   {
+    "s": 4565,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_3.wav",
+    "gain_db": -4,
+    "e": 4567,
+    "p": {}
+   },
+   {
+    "s": 4567,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_4.wav",
+    "gain_db": -4,
+    "e": 4569,
+    "p": {}
+   },
+   {
+    "s": 4570,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/tick_1.wav",
+    "gain_db": -4,
+    "e": 4572,
+    "p": {}
+   },
+   {
+    "s": 4572,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/land_soft.wav",
+    "gain_db": -2,
+    "e": 4599,
+    "p": {}
+   },
+   {
+    "s": 5347,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/chime_logo.wav",
+    "gain_db": -3,
+    "e": 5422,
+    "p": {}
+   }
+  ],
+  "3": [
+   {
+    "s": 1249,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/whoosh_soft.wav",
+    "gain_db": -6,
+    "e": 1270,
+    "p": {}
+   },
+   {
+    "s": 1710,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/whoosh_soft.wav",
+    "gain_db": -4,
+    "e": 1731,
+    "p": {}
+   },
+   {
+    "s": 2510,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/riser_soft.wav",
+    "gain_db": -3,
+    "e": 2546,
+    "p": {}
+   },
+   {
+    "s": 3638,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/riser_soft.wav",
+    "gain_db": -3,
+    "e": 3674,
+    "p": {}
+   },
+   {
+    "s": 4226,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/riser_soft.wav",
+    "gain_db": -3,
+    "e": 4262,
+    "p": {}
+   },
+   {
+    "s": 4616,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/riser_soft.wav",
+    "gain_db": -3,
+    "e": 4652,
+    "p": {}
+   },
+   {
+    "s": 5338,
+    "off": 0,
+    "path": "outputs/video/sfx/kit/whoosh_soft.wav",
+    "gain_db": -4,
+    "e": 5359,
+    "p": {}
+   }
+  ],
+  "5": [
+   {
+    "s": 0,
+    "off": 0,
+    "path": "outputs/video/bgm/r04/bgm_r16_012602.wav",
+    "e": 5395,
+    "p": {}
+   }
+  ]
+ },
+ "total": 179.828
+}

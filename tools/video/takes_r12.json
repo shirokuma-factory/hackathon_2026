@@ -55,5 +55,35 @@
     "wait": 4.0
    }
   ]
+ },
+ {
+  "id": "LIVE2",
+  "url_path": "/trucks_now.html",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){const T=window.__trucks; const r=document.querySelector('#rank'); return !!(T&&T.data&&r&&r.children.length>0);})()",
+  "steps": [
+   {
+    "wait": 2.0
+   },
+   {
+    "highlight": [
+     "#rank",
+     1.5
+    ]
+   },
+   {
+    "wait": 1.5
+   },
+   {
+    "highlight": [
+     "#map",
+     1.5
+    ]
+   },
+   {
+    "wait": 6.0
+   }
+  ]
  }
 ]

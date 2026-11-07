@@ -99,8 +99,11 @@ def main() -> None:
                     prev_last["path"] = str(hold(Path(prev_last.pop("_src")), (prev_last["off"] + prev_last["L"]) / FPS))
                 else:
                     prev_last["fade_out"] = FADE
+            # chapter_on_new（r16）: 章の見出しを新しい場面と同時に出す。前の場面の上に出すと、
+            # 「画面が切り替わる前に説明が始まる」ように見えた（作成者の指摘 11/8）
+            ch_t = t + b["gap"] if plan.get("chapter_on_new") else t
             if b.get("chapter"):
-                V(6).append({"s": round(t * FPS), "L": round(2.4 * FPS), "off": 0, "path": str(OV / b["chapter"])})
+                V(6).append({"s": round(ch_t * FPS), "L": round(2.4 * FPS), "off": 0, "path": str(OV / b["chapter"])})
             t += b["gap"]
         if b.get("tr"):
             # 印の線が走るつなぎ（1.0 秒、0.5 秒の所で全面が暗い帯に隠れるので、そこが切れ目）
@@ -160,6 +163,9 @@ def main() -> None:
                 ln = card_t(pc["until"]) - pos
             else:
                 ln = None
+            if ln is not None and ln <= 0:
+                # 台本を変えて until の字幕が前へ動くと、長さが 0 以下になって Resolve が置けない（r15 で S2 に起きた）
+                raise SystemExit(f"{sid}: {pc['path']} の長さが {ln:.2f} 秒です（until「{pc.get('until')}」の字幕がこの切れより前にある）")
             pcs.append([pc, ln])
             if ln is not None:
                 pos += ln
@@ -193,7 +199,8 @@ def main() -> None:
             st = at_t(at)
             p = OV / o["path"]
             ln = o.get("len") or (card_t(o["until"]) - st if "until" in o else dur(p) - o.get("off", 0.0))
-            ln = min(ln, blk_end - st)  # 図は自分の区間の中で終える（次の場面にはみ出さない）
+            if not o.get("span"):
+                ln = min(ln, blk_end - st)  # 図は自分の区間の中で終える（次の場面にはみ出さない）。span なら次の区間へ続けてよい
             V(o["track"]).append({"s": round(st * FPS), "L": round(ln * FPS), "off": round(o.get("off", 0.0) * FPS), "path": str(p)})
             if o.get("scrim"):
                 # 後ろの映像を暗く落とす幕（図の下、V3）。出入りは 0.3 秒のフェード
@@ -204,6 +211,10 @@ def main() -> None:
             p = OV / o["path"]
             A(o["track"]).append({"s": round(max(0, st) * FPS), "L": round(dur(p) * FPS), "off": 0, "path": str(p)})
     total = t + 0.3
+    # 最後の 0.3 秒も最後の映像（ロゴ）を出しておく。延ばさないと終わりの 0.3 秒が黒くなる（r14 の採点 #13）
+    if prev_last is not None:
+        prev_last["L"] += round(0.3 * FPS)
+        prev_last["path"] = str(hold(Path(prev_last.pop("_src")), (prev_last["off"] + prev_last["L"]) / FPS))
     # 同じトラックの重ねるもの（図・名札・表示）が重ならないよう、次が出る瞬間に 0.2 秒で消して切り替える
     for tr in ("2", "3", "5"):
         rows = sorted([d for d in edl["video"].get(tr, []) if "scrim" not in d["path"]], key=lambda d: d["s"])
@@ -285,7 +296,7 @@ def main() -> None:
         p = K / name
         A(track).append({"s": round(max(0.0, at) * FPS), "L": round(dur(p) * FPS), "off": 0, "path": str(p), "gain_db": gain})
 
-    LANDS = {"HOOK_m.mov": (2.4, None), "MG1_m.mov": (2.0, (0.9, 2.0)), "MG7_m.mov": (1.7, (0.6, 1.7)), "MG9_m.mov": (4.8, None),
+    LANDS = {"HOOK_m.mov": (2.4, None), "MG1_m.mov": (2.0, (0.9, 2.0)), "MG7_m.mov": (1.7, (0.6, 1.7)), "MG5s2_m.mov": (6.4, (5.2, 6.4)),
              "MG3_m.mov": (4.4, (3.3, 4.4)), "MG3_m2.mov": (4.4, (3.3, 4.4)), "MG5_m.mov": (4.5, (3.5, 4.5)), "MG8_m.mov": (3.0, None)}
     for d in edl["video"].get("6", []):
         nm, s0 = Path(d["path"]).name, d["s"] / FPS
@@ -313,7 +324,8 @@ def main() -> None:
             cue(3, "whoosh_soft.wav", s0, -6)
     # 字幕の強調のうち数字を含むものが着地する瞬間に、弾む音（1・3・5 度を順に）
     pk = 0
-    for c in cards_all:
+    # プランの "pops": false で鳴らさない（r16。字幕が出てから 1 秒以上あとに、何も起きない画面で鳴っていた。タイミングの点検 r15）
+    for c in (cards_all if plan.get("pops", True) else []):
         plain = re.sub(r"\{[^}]*\}", "", c["text"]).replace("/", "").replace("*", "")
         dur_c = c["end"] - c["start"]
         pos = 0
