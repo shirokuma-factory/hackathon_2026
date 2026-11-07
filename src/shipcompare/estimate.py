@@ -36,13 +36,15 @@ TAKUHAI_LABEL = "宅配便（大手の公表運賃からの試算）"
 ROSEN_LABEL = "路線便（積合せの公表運賃からの試算）"
 JITBOX_LABEL = "カゴ台車 1 本単位（公表運賃からの試算）"
 # 出典の行（SPEC §30.1）。各社の表の名前・ファイル名・頁は出さない
+SAMPLE_SOURCE_NAME = "架空の表をもとにした試算。実在の会社の運賃ではありません（試験と画面の説明のための値。会社名と各社の表は載せません）"
 ANON_SOURCE_NAME = "大手の公表運賃をもとにした試算。会社名と各社の表は載せません（各社の利用条件のため）"
 TAKUHAI_LIMIT_TEXT = "大手の宅配の上限（3辺合計 {cm}cm・{kg}kg まで）"
 
 
 def anon_source(tariff: dict[str, Any]) -> Source:
     """宅配・路線便・カゴ台車の行の出典。会社名と各社の表への URL は載せない。"""
-    return Source(ANON_SOURCE_NAME, "", tariff.get("applies_from"), tariff["checked_on"])
+    name = SAMPLE_SOURCE_NAME if tariff.get("is_sample") else ANON_SOURCE_NAME
+    return Source(name, "", tariff.get("applies_from"), tariff["checked_on"])
 
 
 def round_100(value: int | None) -> int | None:

@@ -1,0 +1,98 @@
+{
+  "carrier": "架空の宅配会社A",
+  "service": "架空の宅配便（通常配達）",
+  "source_url": "https://example.invalid/sample",
+  "checked_on": "2026-11-07",
+  "tax": "税込",
+  "scope_note": "架空の表。関東発・関西あての形だけを真似た、1,000円から400円ずつ増える値。",
+  "origin_region": "関東",
+  "dest_region": "関西",
+  "source": "架空（試験と画面の説明のための値。実在の会社の運賃ではありません）",
+  "is_sample": true,
+  "sizes": [
+    {
+      "size": 60,
+      "max_sum_cm": 60,
+      "max_kg": 2,
+      "fare": 1000,
+      "service": "架空の宅配便"
+    },
+    {
+      "size": 80,
+      "max_sum_cm": 80,
+      "max_kg": 5,
+      "fare": 1400,
+      "service": "架空の宅配便"
+    },
+    {
+      "size": 100,
+      "max_sum_cm": 100,
+      "max_kg": 10,
+      "fare": 1800,
+      "service": "架空の宅配便"
+    },
+    {
+      "size": 140,
+      "max_sum_cm": 140,
+      "max_kg": 20,
+      "fare": 2200,
+      "service": "架空の宅配便"
+    },
+    {
+      "size": 160,
+      "max_sum_cm": 160,
+      "max_kg": 30,
+      "fare": 2600,
+      "service": "架空の宅配便"
+    },
+    {
+      "size": 170,
+      "max_sum_cm": 170,
+      "max_kg": 50,
+      "fare": 3000,
+      "service": "架空の大型宅配便"
+    },
+    {
+      "size": 180,
+      "max_sum_cm": 180,
+      "max_kg": 50,
+      "fare": 3400,
+      "service": "架空の大型宅配便"
+    },
+    {
+      "size": 200,
+      "max_sum_cm": 200,
+      "max_kg": 50,
+      "fare": 3800,
+      "service": "架空の大型宅配便"
+    },
+    {
+      "size": 220,
+      "max_sum_cm": 220,
+      "max_kg": 50,
+      "fare": 4200,
+      "service": "架空の大型宅配便"
+    },
+    {
+      "size": 240,
+      "max_sum_cm": 240,
+      "max_kg": 50,
+      "fare": 4600,
+      "service": "架空の大型宅配便"
+    },
+    {
+      "size": 260,
+      "max_sum_cm": 260,
+      "max_kg": 50,
+      "fare": 5000,
+      "service": "架空の大型宅配便"
+    }
+  ],
+  "rules": {
+    "size_rule": "3辺の合計とサイズごとの重さの上限の両方を満たす最小のサイズ。170〜260 の重さの上限は 50kg",
+    "dropoff_discount_per_piece": 100,
+    "dropoff_note": "持ち込むと1個 100円減額（架空の規則）",
+    "not_modeled": "離島の中継料"
+  },
+  "verified_by": "架空の値のため照合なし"
+}

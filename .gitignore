@@ -34,3 +34,6 @@ web/data/local/
 
 # サブエージェントの作業フォルダ（git worktree）
 .claude/worktrees/
+
+# 実在の運賃表の抜粋は公開しない（各社のサイトが無断転載を禁じている）。手元だけに置く。公開側は data/tariffs/sample_*.json（架空）を使う
+data/tariffs/private/

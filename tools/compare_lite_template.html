@@ -868,7 +868,7 @@ function amountsOf(res, C, inp) {
     if (o.id === 'takuhai') {
       const a = takuhaiAmount(res.pieces, C, to);
       if (o.status === 'ok' && a.amount != null) out[o.id] = { amount: a.amount, src: '契約単価', note: a.note };
-      else if (o.status === 'ok' && o.pub && !hasContract(C)) out[o.id] = { amount: o.pub.high, low: o.pub.low, src: '大手宅配の公開料金からの目安', note: '安いほうは持ち込み、高いほうは集荷の額です。割増は入りません。' };
+      else if (o.status === 'ok' && o.pub && !hasContract(C)) out[o.id] = { amount: o.pub.high, low: o.pub.low, src: '架空の宅配の表からの例（実在の運賃ではありません）', note: '安いほうは持ち込み、高いほうは集荷の額です。割増は入りません。自社の契約運賃を入れてください。' };
       else out[o.id] = { amount: null, why: o.status === 'ok' ? a.why : '載らない荷があるため、宅配だけでは運べません' };
     } else if (o.id === 'rosen') {
       const a = rosenAmount(o, res.totals, C, km, to);
@@ -936,7 +936,7 @@ function cmpHtml(res, Cs, inp) {
     const ch = priced.filter((x) => !x.contract);
     const tkc = byId.takuhai && byId.takuhai.status === 'check' ? `<p class="split-line" id="split-hint">荷の一部（${res.pieces.filter(fitsCourier).reduce((s, p) => s + p.n, 0)} 個）は宅配に載り、残り（${res.pieces.filter((p) => !fitsCourier(p)).reduce((s, p) => s + p.n, 0)} 個）は載りません。載る荷は宅配、載らない荷は路線便に分けて送る方法があります。宅配の単価と路線便の運賃を入れると、合計（宅配の単価 × 個数 + 路線便）を出します。</p>` : '';
     const pubx = priced.find((x) => x.id === 'takuhai' && x.low != null);
-    const pubLine = pubx ? `<p class="pub-line" id="pub-range"><b>大手宅配の公開料金からの目安:</b> 宅配は およそ ${rangeText(pubx)}（税抜）。安いほうは営業所に持ち込む額、高いほうは集荷の額です。</p>` : '';
+    const pubLine = pubx ? `<p class="pub-line" id="pub-range"><b>架空の宅配の表からの例（実在の運賃ではありません。自社の契約運賃を入れてください）:</b> 宅配は およそ ${rangeText(pubx)}（税抜）。安いほうは営業所に持ち込む額、高いほうは集荷の額です。</p>` : '';
     return `<div class="cmp" id="cmp"><h3>どれがいちばん安いか</h3><p class="head">${pubx ? '契約単価での比べはまだできません。宅配だけ、公表運賃からの目安の幅を出しています。' : 'まだ比べられません。宅配・路線便の額は、公開の料金表がなく、自社の契約単価か各社の見積がないと分かりません。'}</p>${pubLine}<p class="small">「自社の契約単価」を入れると、安い順に並べます。${ch.length ? '貸切の額は国の標準的運賃の目安（実際は会社ごとに違う）で、表の中に出ています。' : ''}</p>${tkc}</div>`;
   }
   const rows = priced.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(nm(x))}</td><td class="num">${rangeText(x)}</td><td>${esc(x.src)}${x.note ? `<div class="small">${esc(x.note)}</div>` : ''}</td><td><span class="badge ${x.o.status}">${LABEL[x.o.status]}</span></td></tr>`).join('');
@@ -1039,7 +1039,7 @@ function runSelftest() {
   n += 1; { const c1 = parseCargoTable('個数\t縦\t横\t高さ\t重さ\n3\t120\t50\t50\t40\n1\t30cm\t20cm\t10cm\t2kg'); if (c1.rows.length !== 2 || c1.rows[0].n !== '3' || c1.rows[0].l !== '120' || c1.rows[1].kg !== '2') fails.push('Excel の荷物の表（見出しつき、単位つき）を読む'); }
   n += 1; { const c2 = parseCargoTable('2\t120×50×50\t40'); if (c2.rows.length !== 1 || c2.rows[0].n !== '2' || c2.rows[0].h !== '50' || c2.rows[0].kg !== '40') fails.push('寸法が 1 つの欄の荷物の表を読む'); }
   n += 1; { const c3 = parseCargoTable('個数\t寸法(mm)\t重量kg\n1\t1200x500x500\t40'); if (c3.rows.length !== 1 || c3.rows[0].l !== '120' || c3.rows[0].h !== '50') fails.push('mm の見出しは cm にして入れる'); }
-  n += 1; { const pb = publicTakuhai([{ n: 3, l: 120, w: 50, h: 50, kg: 40 }], '東京都', '大阪府'); if (!pb || pb.high !== 14300 || pb.low !== 14000 || publicTakuhai([{ n: 1, l: 30, w: 20, h: 10, kg: 2 }], '東京都', '北海道') !== null || publicTakuhai([{ n: 1, l: 200, w: 50, h: 50, kg: 40 }], '東京都', '大阪府') !== null) fails.push('公表運賃からの宅配の幅は、220 サイズ 3 個で 14,000〜14,300 円（関西あてだけ）'); }
+  n += 1; { const pb = publicTakuhai([{ n: 3, l: 120, w: 50, h: 50, kg: 40 }], '東京都', '大阪府'); if (!pb || pb.high !== 11500 || pb.low !== 11200 || publicTakuhai([{ n: 1, l: 30, w: 20, h: 10, kg: 2 }], '東京都', '北海道') !== null || publicTakuhai([{ n: 1, l: 200, w: 50, h: 50, kg: 40 }], '東京都', '大阪府') !== null) fails.push('公表運賃からの宅配の幅は、220 サイズ 3 個（架空の表）で 11,200〜11,500 円（関西あてだけ）'); }
   n += 1; if (exc(2700.01, 2700, 'kg') !== '+0.01kg') fails.push('超えた量は丸めて 0 にしない');
   // 重さの合計は 10 進の文字列から整数で足す（SPEC §43）。200.0001kg × 10 個は 2,000.001kg で、地図の照合と同じく帰り便にも 2t にも載らない。ちょうど 2,000kg は載る
   const w10 = (kg) => evaluate({ ...s6, rows: [{ n: 10, l: 100, w: 60, h: 50, kg }] }), by10 = (kg) => Object.fromEntries(w10(kg).options.map((o) => [o.id, o]));
@@ -1185,7 +1185,7 @@ function setStepper(res) {
 function optRow(o, per, inp) {
   const cas = per.filter((p) => p.has && p.am[o.id] && p.am[o.id].src === '契約単価' && p.am[o.id].amount != null);
   const contractAmt = cas.map((p) => `<div class="amount">契約単価${p.label ? `（${esc(p.label)}）` : ''}で およそ <b class="yen">${fmt(p.am[o.id].amount)} 円</b>（税抜）${p.am[o.id].note ? `<div class="small">${esc(p.am[o.id].note)}</div>` : ''}</div>`).join('');
-  const pubAmt = o.pub && !cas.length ? `<div class="amount" id="pub-amount">大手宅配の公開料金からの目安 およそ <b class="yen">${fmt(o.pub.low)}〜${fmt(o.pub.high)} 円</b>（税抜）<div class="small">安いほうは営業所に持ち込む額、高いほうは集荷の額です。</div></div>` : '';
+  const pubAmt = o.pub && !cas.length ? `<div class="amount" id="pub-amount">架空の宅配の表からの例 およそ <b class="yen">${fmt(o.pub.low)}〜${fmt(o.pub.high)} 円</b>（税抜）<div class="small">実在の会社の運賃ではない、説明のための値です。自社の契約運賃を入れてください。安いほうは営業所に持ち込む額、高いほうは集荷の額です。</div></div>` : '';
   const amt = o.amount != null ? `<div class="amount">目安 およそ <b class="yen">${fmt(o.amount)} 円</b>（税抜）</div>` : (contractAmt || pubAmt);
   const home = o.home ? `<div class="home">${esc(o.reasons[0])}</div>` : `<ul class="rs"><li>${esc(o.reasons[0] || '')}</li></ul>${o.reasons.length > 1 ? `<details class="disc rs-more"><summary>理由 ${o.reasons.length} 件</summary><ul class="rs">${o.reasons.slice(1).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}`;
   const noText = typeof NO_ESTIMATES[o.id] === 'function' ? NO_ESTIMATES[o.id](o, inp) : NO_ESTIMATES[o.id];
