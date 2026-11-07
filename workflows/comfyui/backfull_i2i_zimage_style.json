@@ -1,0 +1,135 @@
+{
+ "1": {
+  "class_type": "UNETLoader",
+  "inputs": {
+   "unet_name": "z_image_bf16.safetensors",
+   "weight_dtype": "fp8_e4m3fn"
+  }
+ },
+ "2": {
+  "class_type": "CLIPLoader",
+  "inputs": {
+   "clip_name": "qwen_3_4b.safetensors",
+   "type": "lumina2",
+   "device": "default"
+  }
+ },
+ "3": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "z_image_ae.safetensors"
+  }
+ },
+ "5": {
+  "class_type": "ModelSamplingAuraFlow",
+  "inputs": {
+   "shift": 3.0,
+   "model": [
+    "1",
+    0
+   ]
+  }
+ },
+ "6": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "refined hand-painted illustration of a stylised miniature 3D map of Japan seen from above at an angle, soft matte clay material, subtle paper grain, calm muted blue-grey palette, a solid orange arrow with small trucks and a dashed pale blue arrow between two regions, dark navy sea, gentle soft lighting, clean edges, high detail",
+   "clip": [
+    "2",
+    0
+   ]
+  }
+ },
+ "7": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "text, letters, kanji, numbers, logo, watermark, brand name, signature, people, distorted, blurry, extra roads, photo",
+   "clip": [
+    "2",
+    0
+   ]
+  }
+ },
+ "8": {
+  "class_type": "KSampler",
+  "inputs": {
+   "seed": 7,
+   "steps": 28,
+   "cfg": 4.0,
+   "sampler_name": "euler",
+   "scheduler": "simple",
+   "denoise": 0.35,
+   "model": [
+    "5",
+    0
+   ],
+   "positive": [
+    "6",
+    0
+   ],
+   "negative": [
+    "7",
+    0
+   ],
+   "latent_image": [
+    "13",
+    0
+   ]
+  }
+ },
+ "9": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "8",
+    0
+   ],
+   "vae": [
+    "3",
+    0
+   ]
+  }
+ },
+ "10": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "filename_prefix": "backfull/v2_hero_style",
+   "images": [
+    "9",
+    0
+   ]
+  }
+ },
+ "11": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "backfull_v2_hero.png"
+  }
+ },
+ "12": {
+  "class_type": "ImageScale",
+  "inputs": {
+   "image": [
+    "11",
+    0
+   ],
+   "upscale_method": "lanczos",
+   "width": 1344,
+   "height": 768,
+   "crop": "center"
+  }
+ },
+ "13": {
+  "class_type": "VAEEncode",
+  "inputs": {
+   "pixels": [
+    "12",
+    0
+   ],
+   "vae": [
+    "3",
+    0
+   ]
+  }
+ }
+}
