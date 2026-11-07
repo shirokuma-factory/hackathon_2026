@@ -29,8 +29,9 @@ MODEL_OPUS = "claude-opus-5-5"
 
 # max_tokens は思考（thinking）の分を含む。Opus 5.5 は常に考え、Haiku・Sonnet 5.5 も既定で考えるので、出力だけの量より大きく取る
 # 1 回の最悪の費用の目安（仮定）: 事実 30 KB を約 2 万トークンとして、3 段の入力と上の上限まで出力した場合で約 $0.33
-MAX_TOKENS = {"check": 2000, "draft": 4000, "verify": 6000}
-EFFORT = {"check": "low", "draft": "medium", "verify": "medium"}
+# 下書きは effort を low にして、思考で上限を使い切らないようにする（実測: 上限 4000・medium で文の途中で切れた）
+MAX_TOKENS = {"check": 2000, "draft": 8000, "verify": 6000}
+EFFORT = {"check": "low", "draft": "low", "verify": "medium"}
 # 100 万トークンあたりのドル（入力, 出力）。画面に出す額は目安
 PRICE = {MODEL_HAIKU: (0.10, 0.50), MODEL_SONNET: (2.0, 10.0), MODEL_OPUS: (4.0, 20.0)}
 MODEL_LABEL = {MODEL_HAIKU: "Haiku 5.5", MODEL_SONNET: "Sonnet 5.5", MODEL_OPUS: "Opus 5.5"}
@@ -38,7 +39,8 @@ MODEL_LABEL = {MODEL_HAIKU: "Haiku 5.5", MODEL_SONNET: "Sonnet 5.5", MODEL_OPUS:
 MAX_FACTS_BYTES = 30_000
 DEFAULT_DAILY_LIMIT = 100
 PER_CLIENT_PER_HOUR = 10
-DRAFT_MAX_CHARS = 600
+DRAFT_MAX_CHARS = 700  # 依頼は 450 字以内。これを超えたら切らずに失敗にする（切ると文の途中で終わる）
+DRAFT_ASK_CHARS = 450
 ISSUE_MAX_CHARS = 30
 MAX_ISSUES = 20
 MAX_HISTORY = 5
@@ -212,18 +214,28 @@ VERIFY_SCHEMA = {
         "required": ["quote", "reason"], "additionalProperties": False}}},
     "required": ["ok", "problems"], "additionalProperties": False}
 
-SYS_CHECK = ("あなたは荷待ち・荷役の記録の点検係です。渡された行の時刻を調べ、抜け、順序の食い違い、同じ行の重複、"
-             "不自然な間隔だけを指摘します。順序は 到着 → 受付 → 荷役開始 → 荷役終了 です（出発の欄があれば最後）。"
-             f"各指摘は row（行番号）、field（欄名）、message（{ISSUE_MAX_CHARS} 字以内の日本語）です。問題がなければ issues は空にします。"
+SYS_CHECK = ("あなたは荷待ち・荷役の記録の点検係です。渡された行の時刻を調べ、矛盾と必須欄の抜けだけを指摘します。"
+             "指摘してよいもの: 時刻の順序の食い違い（順序は 到着 → 受付 → 荷役開始 → 荷役終了 です）、終わりが始まりより前、同じ行の重複、あり得ない値、"
+             "必須欄（日付・到着・荷役開始）の抜け。"
+             "指摘しないもの: 任意欄の空欄。受付、指定の到着時刻（appointed）、荷役終了（運転者や荷主側が荷役をしていない行）、荷役者（handler）が空なのは正常です。"
+             "空欄そのものを理由にした指摘は 1 件も出さないでください。"
+             f"各指摘は row（行番号）、field（欄名）、message（{ISSUE_MAX_CHARS} 字以内の日本語）です。同じ内容を行ごとに繰り返さず、問題がなければ issues は空にします。"
              "計算や金額には触れません。")
-SYS_DRAFT = ("あなたは運送会社の荷待ち協議の書面に添える説明文を書きます。読み手は荷主の担当者です。"
-             f"丁寧で平易な日本語で、{DRAFT_MAX_CHARS} 字以内、本文だけを書きます（見出し・箇条書き・記号の装飾は使いません）。"
-             "守ること: (1) 数字・日付・場所・相手の名前は、渡された事実に書かれたものだけを、書かれたとおりの表記で使う。数字は算用数字（半角）で書き、漢数字は使わない。"
-             "(2) 計算し直さない。足し算・割り算・丸めをしない。事実にない数字を作らない。"
-             "(3) 参考額は『告示の表に当てた計算で、請求を決めるものではない』と分かるように書く。"
-             "(4) 相手を責めない。協議のお願いとして書く。(5) これまでの協議の履歴（history）があれば、その続きとして触れる。")
+SYS_DRAFT = ("あなたは運送会社の配車課長です。荷主の担当者に送る相談の書面（拝啓から敬具までの定型の文面と、記以下の記録の表）に、添えて渡す短い手書き風の添え書きを書きます。"
+             "読み手は付き合いのある荷主の担当者です。普段の仕事で使う、丁寧で飾らない話し言葉に近い文体で、人が書いたように読める文章にします。"
+             f"{DRAFT_ASK_CHARS} 字以内、2〜3 つの短い段落、本文だけを書きます（見出し・箇条書き・記号の装飾は使いません）。"
+             "書く内容は、いつもの礼、この期間に荷待ちが何回あり合計でどれだけ待ったか、参考額とその根拠（告示の表に当てた計算で、請求を決めるものではないこと）、"
+             "そして、荷待ちを減らす方法を一度相談させてほしいというお願いです。"
+             "文体の決まり: 硬い言い回し（『〜とします』『〜するものとします』『〜に関しまして』『〜の件』『下記のとおり』）を重ねない。"
+             "『〜です。』『〜ます。』を 3 文以上続けず、文の終わり方と長さを変える。同じ言い回しを繰り返さない。定型の文面の言い直しではなく、添え書きとして一言添える気持ちで書く。"
+             "守ること: "
+             "(1) 事実と『使ってよい数字の一覧』に書かれたことだけを使う。事実にないことを足さない。"
+             "(2) 数字は一覧にあるものだけを、算用数字（半角）で書く。漢数字（一回、三万円など）は使わない。計算し直さない。足し算・割り算・丸めをしない。"
+             "(3) 約束・謝罪・記録の出来についての言及をしない（『今後は補います』『記録の不備』のような、事実から言えない約束や評価は書かない）。"
+             "(4) 空欄の任意欄（受付、指定の到着時刻、荷役終了など）には触れない。"
+             "(5) 相手を責めない。相談のお願いの文にする。(6) これまでの協議の履歴（history）があれば、その続きとして触れる。")
 SYS_VERIFY = ("あなたは説明文の検算係です。事実（facts）と下書き（draft）を突き合わせ、下書きの数字・日付・場所・名前・主張の"
-              "すべてが事実から言えるかを確かめます。事実にない数字、事実と違う数字、事実から言えない断定があれば problems に入れます"
+              "すべてが事実から言えるかを確かめます。事実にない数字、事実と違う数字、事実から言えない断定（約束、謝罪、記録の出来への評価を含む）があれば problems に入れます"
               "（quote は下書きからの引用、reason は理由）。すべて一致するときだけ ok を true にし、problems は空にします。")
 
 
@@ -275,26 +287,58 @@ def _json_of(resp: Any) -> Any:
 
 # 数字の機械照合（モデルに頼らず Python で行う）。カンマを外した数字の列が、事実の中に同じ形で現れるか
 _NUM_RE = re.compile(r"\d+(?:\.\d+)?")
+_HM_RE = re.compile(r"(\d+)\s*時間\s*(\d+)\s*分")
 
 
 def _numbers(text: str) -> set[str]:
     return {(m.lstrip("0") or "0") if m.isdigit() else m for m in _NUM_RE.findall(text.replace(",", ""))}
 
 
-def unmatched_numbers(draft: str, facts: dict[str, Any]) -> list[str]:
-    known = _numbers(canonical(facts))
-    # 事実に分・時間の形で入っている時間は、分への換算も許す（例: 90 分 = 1 時間 30 分）
-    for k in list(known):
-        if k.isdigit() and int(k) < 100000:
-            n = int(k)
-            known.add(str(n // 60))
-            known.add(str(n % 60))
-    return sorted(n for n in _numbers(draft) if n not in known)
+def _hm_to_min(s: Any) -> int | None:
+    m = _HM_RE.search(str(s or ""))
+    return int(m.group(1)) * 60 + int(m.group(2)) if m else None
 
 
-_KANJI_NUM_RE = re.compile(r"[〇一二三四五六七八九十百千万]")
-_YEN_RE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*円")
-_TIMES_RE = re.compile(r"(\d[\d,]*)\s*回")
+def _tot(facts: dict[str, Any]) -> dict[str, Any]:
+    return facts["totals"] if isinstance(facts.get("totals"), dict) else {}
+
+
+def allowed_figures(facts: dict[str, Any]) -> list[tuple[str, str]]:
+    """下書きに使ってよい数字の一覧（ラベル, 表記）。Sonnet に渡し、機械照合も同じ一覧で行う。"""
+    tot = _tot(facts)
+    out: list[tuple[str, str]] = []
+    if facts.get("partner"):
+        out.append(("相手", str(facts["partner"])))
+    if facts.get("period"):
+        out.append(("期間", str(facts["period"])))
+    out.append(("件数（回数）", f"{facts.get('count', len(facts.get('rows', [])))} 件"))
+    for key, label in (("wait_total", "合計の待ち"), ("handling_total", "運転者の荷役の合計")):
+        mins = _hm_to_min(tot.get(key))
+        if mins is not None:
+            out.append((label, f"{mins} 分（{tot[key]}）"))
+    if "amount_yen_ex_tax" in tot:
+        v = tot["amount_yen_ex_tax"]
+        out.append(("参考額（税抜）", f"{v:,} 円" if isinstance(v, int) else f"{v} 円"))
+    if "over_1h_count" in tot:
+        out.append(("1 時間以上の荷待ちの回数", f"{tot['over_1h_count']} 回"))
+    if "over_2h_count" in tot:
+        out.append(("2 時間以上の荷待ちの回数", f"{tot['over_2h_count']} 回"))
+    if "from_reception" in tot:
+        out.append(("待ちの数え方", "受付の時刻から" if tot["from_reception"] else "着いた時刻（到着）から"))
+    b = facts.get("basis") if isinstance(facts.get("basis"), dict) else {}
+    if b.get("tariff_applies_from"):
+        out.append(("根拠の表の適用日", str(b["tariff_applies_from"])))
+    if "unit_minutes" in b:
+        out.append(("計算の単位", f"{b['unit_minutes']} 分ごと"))
+    if "free_minutes" in b:
+        out.append(("計算に入れない最初の時間", f"{b['free_minutes']} 分"))
+    for i, line in enumerate(facts.get("consult") or [], 1):
+        out.append((f"場所別の集計 {i}（この文の数字は使ってよい）", str(line)))
+    return out
+
+
+def figures_text(facts: dict[str, Any]) -> str:
+    return "\n".join(f"- {label}: {val}" for label, val in allowed_figures(facts))
 
 
 def _num_set(values: Any) -> set[float]:
@@ -307,27 +351,103 @@ def _num_set(values: Any) -> set[float]:
     return out
 
 
+def _allowed_sets(facts: dict[str, Any]) -> dict[str, set[float]]:
+    """単位ごとに許す数。円、回と件、分、時間。"""
+    tot = _tot(facts)
+    rows = [r for r in facts.get("rows", []) if isinstance(r, dict)]
+    consult = " ".join(str(x) for x in (facts.get("consult") or []))
+
+    def in_consult(unit: str) -> set[float]:
+        return {float(x.replace(",", "")) for x in re.findall(rf"(\d[\d,]*)\s*{unit}", consult)}
+
+    basis = facts.get("basis") if isinstance(facts.get("basis"), dict) else {}
+    yen = _num_set([v for k, v in tot.items() if "yen" in k or "amount" in k] + [r.get("amount") for r in rows]) | in_consult("円")
+    times = _num_set([facts.get("count"), len(rows)] + [v for k, v in tot.items() if "count" in k]) | in_consult("回") | in_consult("件")
+    mins = _num_set([r.get(k) for r in rows for k in ("wait_min", "handling_min")] + [basis.get(k) for k in ("unit_minutes", "free_minutes")]) | in_consult("分")
+    hours: set[float] = {1.0, 2.0} | in_consult("時間")
+    for key in ("wait_total", "handling_total"):
+        m = _hm_to_min(tot.get(key))
+        if m is not None:
+            mins |= {float(m), float(m % 60)}
+            hours.add(float(m // 60))
+    for v in list(mins):
+        mins.add(v % 60)
+        hours.add(float(int(v) // 60))
+    return {"yen": yen, "times": times, "min": mins, "hour": hours}
+
+
+def unmatched_numbers(draft: str, facts: dict[str, Any]) -> list[str]:
+    known = _numbers(canonical(facts)) | _numbers(figures_text(facts))
+    for key in ("wait_total", "handling_total"):  # 分に直した値（682 など）も許す
+        m = _hm_to_min(_tot(facts).get(key))
+        if m is not None:
+            known.add(str(m))
+    # 事実に分・時間の形で入っている時間は、分への換算も許す（例: 90 分 = 1 時間 30 分）
+    for k in list(known):
+        if k.isdigit() and int(k) < 100000:
+            n = int(k)
+            known.add(str(n // 60))
+            known.add(str(n % 60))
+    return sorted(n for n in _numbers(draft) if n not in known)
+
+
+# 数字に付く助数詞の前の漢数字だけを断る（一緒・一つ・一度・一方 などの普通の語は通す）
+_KANJI_COUNTER_RE = re.compile(r"[〇一二三四五六七八九十百千万]+\s*(?:円|回|件|分|時間|日|台|人|か所|ヶ所|箇所)")
+_JUBUN_OK_RE = re.compile(r"十分(?=[になでをはもだ、。]|$)")  # 「十分に」は数ではない
+_YEN_RE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*円")
+_MAN_YEN_RE = re.compile(r"\d[\d,]*\s*万\s*円")
+_TIMES_RE = re.compile(r"(\d[\d,]*)\s*[回件]")
+_MIN_RE = re.compile(r"(\d[\d,]*)\s*分")
+_HOUR_RE = re.compile(r"(\d[\d,]*)\s*時間")
+
+
 def draft_issues(draft: str, facts: dict[str, Any]) -> list[dict[str, str]]:
     """下書きの数字の機械照合。全角の数字は半角にそろえてから調べる。
-    1. 事実に無い数字  2. 「円」の前の数字は合計の額か行の額  3. 「回」の前の数字は回数  4. 漢数字は使わせない（照合できないため）"""
+    1. 事実に無い数字  2. 「円」の前は額  3. 「回」「件」の前は回数・件数  4. 「分」「時間」の前は一覧の時間
+    5. 助数詞（円・回・件・分・時間・日・台・人・か所）に付く漢数字は使わせない（照合できないため）"""
     text = unicodedata.normalize("NFKC", draft)
     out: list[dict[str, str]] = []
     odd = unmatched_numbers(text, facts)
     if odd:
         out.append({"quote": "、".join(odd), "reason": "事実にない数字が下書きに入っています（機械照合）"})
-    tot = facts.get("totals") if isinstance(facts.get("totals"), dict) else {}
-    yen_ok = _num_set([v for k, v in tot.items() if "yen" in k or "amount" in k] + [r.get("amount") for r in facts.get("rows", [])])
-    times_ok = _num_set([facts.get("count")] + [v for k, v in tot.items() if "count" in k])
+    ok = _allowed_sets(facts)
     for m in _YEN_RE.finditer(text):
-        if float(m.group(1).replace(",", "")) not in yen_ok:
+        if float(m.group(1).replace(",", "")) not in ok["yen"]:
             out.append({"quote": m.group(0), "reason": "「円」の前の数字が、合計の額にも行の額にも一致しません（機械照合）"})
+    for m in _MAN_YEN_RE.finditer(text):
+        out.append({"quote": m.group(0), "reason": "金額は「33,550 円」のように円までの算用数字で書く決まりです（機械照合）"})
     for m in _TIMES_RE.finditer(text):
-        if float(m.group(1).replace(",", "")) not in times_ok:
-            out.append({"quote": m.group(0), "reason": "「回」の前の数字が、回数の数字に一致しません（機械照合）"})
-    kn = _KANJI_NUM_RE.findall(text)
-    if kn:
-        out.append({"quote": "".join(dict.fromkeys(kn)), "reason": "漢数字が使われていて数字を照合できません（機械照合）"})
+        if float(m.group(1).replace(",", "")) not in ok["times"]:
+            out.append({"quote": m.group(0), "reason": "「回」「件」の前の数字が、一覧の回数・件数に一致しません（機械照合）"})
+    for m in _MIN_RE.finditer(text):
+        if float(m.group(1).replace(",", "")) not in ok["min"]:
+            out.append({"quote": m.group(0), "reason": "「分」の前の数字が、一覧の時間に一致しません（機械照合）"})
+    for m in _HOUR_RE.finditer(text):
+        if float(m.group(1).replace(",", "")) not in ok["hour"]:
+            out.append({"quote": m.group(0), "reason": "「時間」の前の数字が、一覧の時間に一致しません（機械照合）"})
+    for m in _KANJI_COUNTER_RE.finditer(_JUBUN_OK_RE.sub("", text)):
+        out.append({"quote": m.group(0), "reason": "漢数字が使われていて数字を照合できません（機械照合）"})
     return out
+
+
+OPTIONAL_FIELDS = ("reception", "appointed", "end", "handler", "受付", "指定", "荷役終了", "荷役者", "終了", "担当")
+_BLANK_WORDS = ("空欄", "空白", "未入力", "記載がな", "記入がな", "入力がな")
+
+
+def group_issues(raw: list[Any]) -> list[dict[str, Any]]:
+    """点検の指摘を整える。任意欄の空欄だけを言う指摘は捨て、同じ文はまとめる（rows と n を付ける）。"""
+    grouped: dict[tuple[str, str], dict[str, Any]] = {}
+    for it in raw:
+        try:
+            row, field, msg = int(it["row"]), str(it["field"])[:20], str(it["message"])[:ISSUE_MAX_CHARS]
+        except (KeyError, TypeError, ValueError):
+            continue
+        if any(w in field for w in OPTIONAL_FIELDS) and any(w in msg for w in _BLANK_WORDS):
+            continue
+        g = grouped.setdefault((field, msg), {"row": row, "rows": [], "field": field, "message": msg, "n": 0})
+        g["rows"].append(row)
+        g["n"] += 1
+    return list(grouped.values())[:MAX_ISSUES]
 
 
 Progress = Callable[[dict[str, Any]], None]
@@ -355,9 +475,7 @@ def run_pipeline(facts: dict[str, Any], client: Any, progress: Progress | None =
     try:
         resp, rec = _call(client, "check", MODEL_HAIKU, SYS_CHECK, "記録の行（JSON）:\n" + canonical(facts["rows"]), CHECK_SCHEMA)
         data = _json_of(resp)
-        issues = []
-        for it in data.get("issues", [])[:MAX_ISSUES]:
-            issues.append({"row": int(it["row"]), "field": str(it["field"])[:20], "message": str(it["message"])[:ISSUE_MAX_CHARS]})
+        issues = group_issues(data.get("issues", []))
         out["issues"] = issues
         done(rec, status="ok", detail=f"指摘 {len(issues)} 件", count=len(issues))
     except _Refused as e:
@@ -368,15 +486,25 @@ def run_pipeline(facts: dict[str, Any], client: Any, progress: Progress | None =
     # 2 下書き（失敗したら型どおりに戻す）
     emit({"event": "start", "step": "draft", "model": MODEL_SONNET, "label": MODEL_LABEL[MODEL_SONNET]})
     try:
-        user = ("事実（JSON）:\n" + facts_json + "\n\n点検で見つかった記録の指摘（あれば触れてよい。数字は事実のものだけ）:\n" + canonical(out["issues"])
-                + "\n\n上の事実だけを使って、荷主あての説明文を書いてください。")
+        # 点検の指摘は渡さない（記録の出来や約束についての文を誘うため）。数字は一覧のものだけ
+        user = ("事実（JSON）:\n" + facts_json + "\n\n使ってよい数字の一覧（これ以外の数字は書かない）:\n" + figures_text(facts)
+                + f"\n\n上の事実と一覧だけを使って、定型の書面に添える短い添え書きを {DRAFT_ASK_CHARS} 字以内、2〜3 つの短い段落で書いてください。")
         resp, rec = _call(client, "draft", MODEL_SONNET, SYS_DRAFT, user, None)
-        if getattr(resp, "stop_reason", None) == "max_tokens":
-            raise ValueError("下書きが途中で切れました")
+        if getattr(resp, "stop_reason", None) == "max_tokens":  # 切れた下書きは確かめに回さない
+            fail_step("draft", MODEL_SONNET, "下書きが途中で切れました（max_tokens）", rec)
+            out["message"] = "説明文が途中で切れたため、出していません。もう一度試すか、型どおりの書面をお使いください。"
+            return out
         draft = _text_of(resp).strip()
         if not draft:
             raise ValueError("下書きが空でした")
-        draft = draft[:DRAFT_MAX_CHARS]
+        if len(draft) > DRAFT_MAX_CHARS:
+            fail_step("draft", MODEL_SONNET, f"下書きが長すぎました（{len(draft)} 字）", rec)
+            out["message"] = "説明文が長すぎたため、出していません。もう一度試すか、型どおりの書面をお使いください。"
+            return out
+        if draft[-1] not in "。」）)":  # 文の途中で終わっている
+            fail_step("draft", MODEL_SONNET, "下書きが文の途中で終わっていました", rec)
+            out["message"] = "説明文が途中で切れたため、出していません。もう一度試すか、型どおりの書面をお使いください。"
+            return out
         done(rec, status="ok", detail=f"{len(draft)} 字")
     except _Refused as e:
         fail_step("draft", MODEL_SONNET, "下書きは断られました", e.args[0])

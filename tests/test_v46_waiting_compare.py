@@ -212,7 +212,7 @@ def test_csv_is_only_the_selected_partner_and_print_text_has_the_page_address():
           return {all, mine, lines, scope: document.querySelector('#csv-scope').textContent, text: draftText(S.res.by_partner.find((x) => x.partner === S.partner))}; })()""")
         assert info["lines"] == info["mine"] < info["all"], info
         assert "だけです" in info["scope"]
-        assert "照らし合わせのページ:" in info["text"] and "言葉の意味:" in info["text"]
+        assert "照らし合わせのページ:" in info["text"] and "荷主等の都合とは" in info["text"]
         # 相手を切り替えると CSV もその相手の行
         page.js("document.querySelectorAll('#partners tr[data-pick]')[1].click()")
         n2 = page.js("csvText().trim().split('\\r\\n').length - 1")

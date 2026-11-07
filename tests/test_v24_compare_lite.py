@@ -36,7 +36,7 @@ def test_g85_waiting_print_is_a4_portrait_and_not_cut(tmp_path):
     pdf = tmp_path / "test_waiting_print.pdf"
     pp.print_to_pdf(WAITING.as_uri() + "?example=1", pdf)
     pages = pp.pdf_page_count(pdf)
-    assert pages == 2, pages  # 例の 11 行: 1 枚目に一覧と根拠、2 枚目に欄の案の残りと結びの一文
+    assert pages == 3, pages  # 書面の作り直し 2026-11-07: 1 枚目に手紙の本文、2 枚目に記録の表、3 枚目に別紙
     info = pp.pdf_info(pdf)
     if info is None:
         pytest.skip("pymupdf が使えません（ページ数だけ確かめました）")
@@ -180,4 +180,4 @@ def test_g93_draft_has_wait_from_appointed_wording_clause21_quote_and_shipper_ha
     for src in (WAITING.read_text(encoding="utf-8"), own):
         assert "到着（指定の到着時刻があるときは、その時刻）から ${t.free_minutes} 分を超えた時間に" in src
         assert "貸切運賃料金適用方（参考例）第 21 項（Q&A 集に収録）は、待機時間に「荷主による積込み・取卸しの時間を含む」とし" in src
-        assert "荷主側の荷役を待機に含む" in src
+        assert "貴社側で荷役をしていただいた時間も、待ち時間に含めています" in src if src is not own else "荷主側の荷役を待機に含む" in src   # 書面の作り直し 2026-11-07（荷待ちのページは新しい文言）

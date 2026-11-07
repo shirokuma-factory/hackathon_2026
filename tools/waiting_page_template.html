@@ -258,21 +258,65 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   #partners { grid-column: 2; grid-row: 1; min-width: 0; }
   #draft-area { grid-column: 1 / -1; margin-top: 24px; padding-top: 40px; border-top: 1px solid var(--line-soft); min-width: 0; }
   #draft-area > h2 { font-size: var(--fs-4); margin: 0 0 16px; }
-  #draft-area .wrap > #wait-doc { flex: 1 1 0; min-width: 0; }
+  #draft-area .wrap { justify-content: center; }
+  #draft-area .wrap > #wait-doc { flex: 1 1 0; min-width: 0; max-width: 794px; }
   .side-col { display: flex; flex-direction: column; gap: 16px; flex: 0 0 232px; position: sticky; top: 16px; }
   .side-col aside#process { position: static; flex: none; }
   .side-col .ai-box { margin: 0; }
-  #wait-doc { --text: var(--paper-text); --muted: var(--paper-muted); --line: var(--paper-line); --line-soft: var(--paper-soft); --row-line: var(--paper-soft); --head-bg: var(--paper-head); --card: var(--paper); --card-2: var(--paper-head); --hi: var(--paper-hi); --accent: var(--paper-accent); --warn: var(--paper-ng); --ok: var(--paper-ok); --chk: var(--paper-chk); --elev-1: none; --btn: var(--paper); --field: var(--paper);
-    color: var(--paper-text); background: var(--paper); border: 0; border-radius: 4px; padding: 48px 24px 120px; min-height: 720px; position: relative; box-shadow: var(--paper-shadow); }
-  #wait-doc dl.dl dt, #wait-doc table.rec small, #wait-doc table.rec th small, #wait-doc sup.fn { color: var(--paper-faint); }
-  #wait-doc::after { content: "印"; position: absolute; right: 24px; bottom: 40px; width: 64px; height: 64px; border: 1.5px dashed var(--paper-dash); border-radius: 50%; display: grid; place-items: center; color: var(--paper-dash); font-size: 14px; }
-  #wait-doc h3 { font-size: var(--fs-4); margin-bottom: 16px; }
-  #wait-doc table.rec td { background: none; border-bottom: 1px solid var(--row-line); }
-  #wait-doc table.rec { border-spacing: 0; font-size: 11px; }
-  #wait-doc table.rec th, #wait-doc table.rec td { padding-left: 3px; padding-right: 3px; }
-  #wait-doc table.rec td:first-child, #wait-doc table.rec td:last-child { border-radius: 0; }
-  #wait-doc .main-amt { background: var(--hi); }
 }
+/* ---------- 書面の用紙（書面の作り直し 2026-11-07）: どの配色でも白地に濃い文字。本文は明朝、表と注記はゴシック ---------- */
+#wait-doc { --text: var(--paper-text); --muted: var(--paper-muted); --line: var(--paper-line); --line-soft: var(--paper-soft); --row-line: var(--paper-soft); --head-bg: var(--paper-head); --card: var(--paper); --card-2: var(--paper-head); --hi: var(--paper-hi); --accent: var(--paper-accent); --warn: var(--paper-ng); --ok: var(--paper-ok); --chk: var(--paper-chk); --elev-1: none; --btn: var(--paper); --field: var(--paper);
+  color: var(--paper-text); background: var(--paper); border: 0; border-radius: 3px; box-shadow: var(--paper-shadow); min-height: 480px; position: relative;
+  padding: clamp(28px, 7vw, 64px) clamp(16px, 8vw, 72px) clamp(32px, 7vw, 72px);
+  font-family: "Noto Serif JP", "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "BIZ UDPMincho", "MS PMincho", serif; font-size: 15px; line-height: 1.8; }
+#wait-doc .empty-state, #wait-doc table, #wait-doc .small, #wait-doc small, #wait-doc .main-amt, #wait-doc details summary, #wait-doc h4, #wait-doc h5 { font-family: var(--font); }
+#wait-doc .small, #wait-doc small { color: var(--paper-muted); font-size: 12.5px; line-height: 1.7; }
+#wait-doc p { margin: 0; }
+#wait-doc .letter p.l-body { margin: 0 0 0.9em; text-indent: 1em; }
+#wait-doc .letter p.l-last { margin-bottom: 0.4em; }
+#wait-doc .l-date { text-align: right; }
+#wait-doc .l-to { margin-top: 1.2em; font-size: 16px; }
+#wait-doc .l-from { margin: 1.2em 0 0; text-align: right; }
+#wait-doc h3.l-subject { margin: 1.6em 0 1.2em; text-align: center; font-size: 18px; font-weight: 700; letter-spacing: 0.08em; }
+#wait-doc .l-sign { text-align: right; margin-top: 0.4em; }
+#wait-doc .l-ki { text-align: center; margin: 1.6em 0 0.8em; letter-spacing: 1em; text-indent: 1em; }
+#wait-doc dl.l-items { display: grid; grid-template-columns: 6em 1fr; gap: 0 12px; margin: 0 0 12px; }
+#wait-doc dl.l-items dt { color: var(--paper-text); } #wait-doc dl.l-items dd { margin: 0; }
+#wait-doc .l-end { text-align: right; margin-top: 1em; }
+#wait-doc .fill { padding: 0 4px; border-radius: 3px; background: var(--paper-fill); border-bottom: 1px dashed var(--paper-fill-line); cursor: text; }
+#wait-doc .fill.is-blank { color: var(--paper-fill-text); }
+#wait-doc .fill:focus { outline: 2px solid var(--paper-accent); outline-offset: 1px; background: var(--paper-fill-focus); }
+#wait-doc table.rec { border-collapse: collapse; border-spacing: 0; width: 100%; min-width: 0; font-size: 13px; line-height: 1.5; margin: 4px 0 0; }
+#wait-doc table.rec th { padding: 6px 8px; font-weight: 700; color: var(--paper-text); font-size: 12px; border-top: 1px solid var(--paper-text); border-bottom: 1px solid var(--paper-text); background: none; text-align: left; vertical-align: bottom; }
+#wait-doc table.rec th.num { text-align: right; }
+#wait-doc table.rec td { padding: 6px 8px; background: none; border-bottom: 1px solid var(--paper-line); border-radius: 0; vertical-align: top; white-space: normal; overflow-wrap: anywhere; }
+#wait-doc table.rec td.nw { white-space: nowrap; }
+#wait-doc table.rec td.num, #wait-doc table.rec th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#wait-doc table.rec tfoot td { font-weight: 700; border-top: 1px solid var(--paper-text); border-bottom: 1px solid var(--paper-text); }
+#wait-doc table.rec tfoot td.l-sum { text-align: right; }
+#wait-doc table.rec.rate th, #wait-doc table.rec.rate td { white-space: normal; }
+#wait-doc sup.fn { color: var(--paper-muted); font-size: 10px; margin-left: 1px; }
+#wait-doc ol.rec-notes { list-style: none; margin: 8px 0 0; padding: 0; counter-reset: fn; }
+#wait-doc ol.rec-notes li { counter-increment: fn; padding-left: 2.4em; text-indent: -2.4em; }
+#wait-doc ol.rec-notes li::before { content: "※" counter(fn) " "; display: inline-block; width: 2.4em; text-indent: 0; }
+#wait-doc .l-attach { margin-top: 48px; padding-top: 32px; border-top: 1px dashed var(--paper-dash); font-size: 14px; line-height: 1.75; }
+#wait-doc .l-attach h4 { margin: 28px 0 8px; font-size: 15px; } #wait-doc .l-attach h4:first-child { margin-top: 0; }
+#wait-doc .l-attach h5 { margin: 16px 0 4px; font-size: 13.5px; }
+#wait-doc .l-attach p { margin: 6px 0; }
+#wait-doc .l-attach ul.list { margin: 6px 0; padding-left: 1.4em; }
+#wait-doc .main-amt { background: var(--paper-hi); border: 1px solid var(--paper-line); border-radius: 4px; padding: 10px 14px; font-size: 14px; line-height: 1.7; }
+#wait-doc .main-amt .big { font-size: 18px; font-variant-numeric: tabular-nums; }
+#wait-doc .sentence { border-left: 3px solid var(--paper-accent); background: var(--paper-hi); font-weight: 400; border-radius: 0 4px 4px 0; padding: 8px 14px; font-size: 14px; }
+#wait-doc details.doc-alt { margin: 8px 0; } #wait-doc details.doc-alt summary { font-weight: 500; font-size: 13px; }
+#wait-doc .printnote { display: none; }
+.doc-hint { margin: 0 0 8px; }
+#wait-doc .rec-hint { display: none; margin: 0 0 2px; }
+@media (max-width: 760px) { #wait-doc .rec-hint { display: block; } }
+@media (max-width: 760px) { #draft-area .wrap > #wait-doc { flex: 0 0 auto; } }
+@media (max-width: 480px) { .heat-ax span { white-space: nowrap; } .heat-ax span:not(:nth-child(6n+1)) { visibility: hidden; } #partners .stat .stat-n { white-space: nowrap; font-size: 26px; } #partners .stat.hero .stat-n { font-size: 40px; } }
+@media (max-width: 600px) { #wait-doc { padding-left: 16px; padding-right: 16px; } }
+@media (max-width: 480px) { #wait-doc h3.l-subject { font-size: 16px; letter-spacing: 0.02em; } #wait-doc .l-from { font-size: 14px; } }
+@media (max-width: 600px) { #wait-doc { font-size: 15px; } #wait-doc dl.l-items { grid-template-columns: 5em 1fr; } }
 /*PRINT-START*/
 @page { size: A4 portrait; margin: 12mm; }
 @media print {
@@ -282,19 +326,33 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   html, body { background: #fff; margin: 0; padding: 0; }
   header.top, .app-header, .protect, #selftest, .col-in, #partners, #ai-box, #draft-area > h2, #draft-area > .bar, #draft-area > .ask, aside#process { display: none !important; }
   main, .col-out, section.card, #draft-area, .wrap { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; width: auto; }
-  #wait-doc { border: 0; padding: 0; width: auto; color: #000; font-size: 9.5pt; line-height: 1.5; }
-  #wait-doc h3 { font-size: 13pt; }
-  #wait-doc h4 { font-size: 10.5pt; margin: 8px 0 2px; break-after: avoid; }
+  #wait-doc { border: 0; border-radius: 0; box-shadow: none; padding: 0; width: auto; max-width: none; min-height: 0; color: #000; background: #fff; font-size: 10.5pt; line-height: 1.8; }
+  #draft-area > .doc-hint { display: none !important; }
+  #basis, #guide, #notes-fold { display: none !important; }
+  section.card { box-shadow: none !important; }
+  #draft-area { border: 0 !important; padding: 0 !important; margin: 0 !important; }
+  #wait-doc .l-ki { break-before: page; margin-top: 0; }
+  #wait-doc tfoot { display: table-row-group; }
+  #wait-doc h3.l-subject { font-size: 14pt; margin: 1.4em 0 1em; }
+  #wait-doc h4 { font-size: 10.5pt; margin: 10px 0 2px; break-after: avoid; }
   #wait-doc .rec-w { overflow: visible; }
-  #wait-doc table.rec { table-layout: auto; width: 100%; font-size: 7.5pt; }
-  #wait-doc table.rec th, #wait-doc table.rec td { white-space: normal; overflow-wrap: anywhere; padding: 2px 3px; color: #000; }
-  #wait-doc table.rec td:nth-child(1), #wait-doc table.rec td:nth-child(5), #wait-doc table.rec td:nth-child(6), #wait-doc table.rec td:nth-child(7) { white-space: nowrap; }
+  #wait-doc .rec-hint { display: none !important; }
+  #wait-doc table.rec { table-layout: auto; width: 100%; font-size: 8.5pt; }
+  #wait-doc table.rec th, #wait-doc table.rec td { white-space: normal; overflow-wrap: anywhere; padding: 2px 4px; color: #000; }
   #wait-doc table.rec th { text-align: left; }
+  #wait-doc table.rec th.num { text-align: right; }
   #wait-doc table.rec tr { break-inside: avoid; }
-  #wait-doc small, #wait-doc .small { color: #000; }
-  #wait-doc .sentence { border-left: 4px solid #000; background: none; break-inside: avoid; }
-  #wait-doc .main-amt { background: none; border: 2px solid #000; }
-  #wait-doc .printnote { display: block; margin-top: 8px; font-size: 8.5pt; border-top: 1px solid #000; padding-top: 4px; }
+  #wait-doc thead { display: table-header-group; }
+  #wait-doc .fill, #wait-doc .fill.is-blank { background: none; border: 0; padding: 0; color: #000; }
+  #wait-doc small, #wait-doc .small, #wait-doc sup.fn { color: #000; font-size: 8.5pt; }
+  #wait-doc .l-attach { break-before: page; margin-top: 0; padding-top: 0; border-top: 0; font-size: 8.8pt; line-height: 1.55; }
+  #wait-doc .l-attach h4 { margin-top: 10px; }
+  #wait-doc .l-attach p { margin: 3px 0; }
+  #wait-doc .l-attach h4:first-child { margin-top: 0; }
+  #wait-doc details.doc-alt::details-content { content-visibility: visible; display: block; }
+  #wait-doc details.doc-alt > summary { display: none; }
+  #wait-doc .sentence { border-left: 3px solid #000; background: none; break-inside: avoid; }
+  #wait-doc .main-amt { background: none; border: 1px solid #000; }
 }
 </style>
 </head>
@@ -683,52 +741,154 @@ const earlySentence = (p) => { const e = earlySplit(p); return `全体 ${yen(e.a
 const arriveCell = (r) => `${esc(r.arrive)}${r.reception ? `<small>受付 ${esc(r.reception)}</small>` : ''}${r.early_arrival === 'assumed' ? `<small>${r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）' : '早く着いた可能性（時刻の指定なし）'}</small>` : ''}${r.early_arrival === 'designated' ? `<small>指定 ${esc(r.appointed)} より前に着</small>` : ''}`;
 const arriveText = (r) => r.arrive + [r.reception ? `受付 ${r.reception}` : '', r.early_arrival === 'assumed' ? (r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）' : '早く着いた可能性（時刻の指定なし）') : '', r.early_arrival === 'designated' ? `指定 ${r.appointed} より前に着` : ''].filter(Boolean).map((x) => `（${x}）`).join('');
 
+// ---- 書面: 運送会社から荷主へ出す手紙（書面の作り直し 2026-11-07）。画面の HTML とコピーする文は、同じ部品（letterModel・recModel）から作る
+const SENDER = { company: '', person: '', contact: '' };   // 差出人の欄。書き換えた内容は、このページを開いている間だけ覚える（保存も送信もしない）
+const SENDER_HINT = { company: '（会社名）', person: '（担当者名）', contact: '（電話番号・メールアドレス）' };
+const SENDER_LABEL = { company: '会社名', person: '担当者名', contact: '連絡先' };
+const senderVal = (k) => SENDER[k] || SENDER_HINT[k];
+const SEASON_WORD = ['厳寒', '余寒', '早春', '春暖', '新緑', '初夏', '盛夏', '残暑', '初秋', '秋冷', '晩秋', '寒冷'];
+const LETTER_SUBJECT = '荷待ち時間についてのご相談';
+const CLAUSE_TITLE = '次回からの契約の書面（運送引受書）に入れていただきたい欄（案）';
+const jdate = (iso, withYear = true) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? `${withYear ? m[1] + '年' : ''}${Number(m[2])}月${Number(m[3])}日` : String(iso || ''); };
+const jperiod = (a, b) => (a === b ? jdate(a) : `${jdate(a)}から${jdate(b, String(a).slice(0, 4) !== String(b).slice(0, 4))}まで`);
+const hmj = (m) => (m < 60 ? `${m}分` : `${Math.floor(m / 60)}時間${m % 60 ? `${m % 60}分` : ''}`);
+// 日本語の文章の中の数字と漢字・かなの間の空白をなくす（「5 回」→「5回」）。書面の中の表記をそろえる
+const KANJI_KANA = '\\u3040-\\u30ff\\u3400-\\u9fff';
+const kc = (s) => s.replace(new RegExp(`(\\d) (?=[${KANJI_KANA}])`, 'g'), '$1').replace(new RegExp(`([${KANJI_KANA}]) (?=\\d)`, 'g'), '$1');
+const PUBLIC_PAGE_URL = 'https://backfull-demo-720575644376.asia-northeast1.run.app/waiting.html#g=shipper';
+// 手紙に書く照らし合わせのページの URL。手元（localhost・127.0.0.1・file・Artifact）の URL は書かず、公開している URL を書く
+function letterPageAddress() {
+  try {
+    if (!ARTIFACT && /^https:$/.test(location.protocol) && !/^(localhost|127\.|\[|10\.|192\.168\.)/.test(location.hostname) && !/\.(local|localhost|test)$/.test(location.hostname)) return location.origin + location.pathname + '#g=shipper';
+  } catch (e) { /* 取れないときは公開の URL */ }
+  return PUBLIC_PAGE_URL;
+}
+const placeJa = (place) => String(place).replace(' ', 'の');
+// 場所・時間帯ごとの荷待ちの文（別紙の相談の節）。注記は括弧にせず、続く 1 文にする
+function consultSentences(name) {
+  return (S.res ? S.res.hotspots : []).filter((h) => h.partner === name && h.wait_minutes > 0).slice(0, 3).map((h) =>
+    `${placeJa(h.place)}では、${h.band}に到着した${h.count}回の荷待ちが、平均${h.avg_minutes}分、最長${h.max_minutes}分でした。` +
+    (h.designated_count * 2 < h.count && h.avg_minutes >= 30 ? '指定の到着時刻のない到着が多く含まれます。' : '') +
+    (h.shipper_handling_count > 0 ? '貴社側で荷役をしていただいた時間も含まれています。' : '') +
+    (h.count < 3 ? '回数が少ないため、参考としてご覧ください。' : ''));
+}
+const topSpot = (name) => { const h = (S.res ? S.res.hotspots : []).find((x) => x.partner === name && x.wait_minutes > 0); return h && h.count >= 3 && h.avg_minutes >= 30 ? h : null; };
+
+// 記録の表。HTML もコピーする文も、この形（列の見出し・行・注記・合計）から作る
+function recModel(p) {
+  const rows = partnerRows(p.partner).map((r, i) => [r, i]).sort((a, b) => String(a[0].date).localeCompare(String(b[0].date)) || String(a[0].arrive || '').localeCompare(String(b[0].arrive || '')) || a[1] - b[1]).map((x) => x[0]);   // 日付、到着の順
+  const oneYear = new Set(rows.map((r) => String(r.date).slice(0, 4))).size <= 1;
+  const hasVeh = rows.some((r) => r.vehicle_no);
+  const notes = [];
+  const who = (r) => `${jdate(r.date, !oneYear)}${r.vehicle_no ? `（車番 ${r.vehicle_no}）` : ''}は、`;
+  const mark = (r, sentences) => { notes.push(who(r) + sentences.join('')); return notes.length; };
+  const dash = (v) => (v === undefined || v === null || v === '' ? '—' : String(v));
+  const body = rows.map((r) => {
+    const waitMin = r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min;
+    const amount = r.reception_amount !== undefined ? r.reception_amount : r.amount;
+    const arriveNotes = [r.reception ? `受付の時刻は${r.reception}です。` : '', r.early_arrival === 'assumed' ? (r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）の回です。' : '指定の到着時刻がなく、早く着いた可能性（時刻の指定なし）があります。') : '',
+      r.early_arrival === 'designated' ? `指定の${r.appointed}より前に到着しています。` : ''].filter(Boolean);
+    const waitNotes = [r.reception_wait_min !== undefined ? `受付の${r.reception}から数えると${r.reception_wait_min}分で、到着から数えると${r.wait_min}分です。` : '', r.handler === '荷主側' && r.wait_min > 0 && r.end ? '貴社側で荷役をしていただいた時間も、待ち時間に含めています。' : '',
+      r.post_wait_min > 0 ? `荷役のあとの待ち${r.post_wait_min}分も、待ち時間に含めています。` : '', r.wait_base_min > 0 ? `指定の${r.appointed}から数えた時間です。` : '', r.shipper_fault ? '' : '荷主等の都合によらない待ちとして記録しています。'].filter(Boolean);
+    const sideNote = r.side_work ? [`${r.side_work}${r.side_min ? `（${r.side_min}分）` : ''}の作業も行いましたが、参考額には含めていません。`] : [];
+    const cells = [{ t: jdate(r.date, !oneYear), cls: 'nw' }];
+    if (hasVeh) cells.push({ t: dash(r.vehicle_no), cls: 'nw' });
+    cells.push({ t: dash(r.place) }, { t: dash(r.arrive), cls: 'nw', n: arriveNotes.length ? mark(r, arriveNotes) : 0 }, { t: dash(r.start), cls: 'nw' }, { t: dash(r.end), cls: 'nw' },
+      { t: String(waitMin), cls: 'num', n: waitNotes.length ? mark(r, waitNotes) : 0 },
+      { t: String(r.handling_min), cls: 'num', n: sideNote.length ? mark(r, sideNote) : 0 },
+      { t: n0(amount), cls: 'num', n: r.reception_amount !== undefined ? mark(r, [`到着から数えると${n0(r.amount)}円です。`]) : 0 });
+    return cells;
+  });
+  const head = ['日付', ...(hasVeh ? ['車番'] : []), '場所', '到着', '荷役開始', '荷役終了', '待機（分）', '荷役（分）', '参考額（円）'];
+  return { head, body, notes, lead: head.length - 3, total: [String(mainWait(p)), String(p.handling_minutes), n0(mainAmt(p))] };
+}
+
+function letterModel(p) {
+  const t = TARIFF, now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const amt = mainAmt(p), wait = mainWait(p), spot = topSpot(p.partner);
+  const to = `${String(p.partner).replace(/\s*(御中|様)\s*$/, '')} 物流ご担当者様`;
+  const factText = `さて、${jperiod(p.date_from, p.date_to)}の間に貴社からご依頼をいただいた${p.count}回の運行について、当社の記録を整理いたしました。到着してから荷役が始まるまでにお待ちした時間は、合計で${hmj(wait)}でした。` +
+    (p.over_1h_count > 0 ? `このうち、1時間以上お待ちした回が${p.over_1h_count}回ございました。` : '') +
+    (spot ? `とくに${placeJa(spot.place)}では、${spot.band}に到着した${spot.count}回の待ち時間が平均${spot.avg_minutes}分、最長${spot.max_minutes}分となっております。` : '');
+  const paras = [
+    `拝啓　${SEASON_WORD[now.getMonth()]}の候、貴社におかれましてはますますご清栄のこととお慶び申し上げます。平素は格別のご高配を賜り、厚く御礼申し上げます。`,
+    factText,
+    'ドライバーの拘束時間には、荷待ちの時間も含まれます。2024年4月からは時間外労働の上限規制が適用され、拘束時間の基準（改善基準告示）も改正されましたので、荷待ちが長くなりますと、その日のほかの運行にも影響が及びます。当社としても、安全で無理のない運行を続けるために、この点を改善できないかと考えております。',
+    'つきましては、荷待ちを減らす方法を、貴社のご事情をうかがいながら一緒に検討させていただけないでしょうか。たとえば、到着時刻の調整や指定、受付の予約、荷役の分担や順番などが考えられます。ご都合のよい時期に、一度お打ち合わせの機会をいただければ幸いです。',
+  ];
+  if (amt > 0) {
+    paras.push(`なお、今回の荷待ちと荷役を国の標準的運賃に当てはめた参考額は、${n0(amt)}円（税抜）でした。標準的運賃（${jdate(t.applies_from)}告示）の待機時間料${p.handling_minutes > 0 ? '、積込料・取卸料' : ''}の額を、記録の時間に当てはめて計算しています。` +
+      (hasRec(p) ? '受付の時刻の記録がある回は、受付の時刻から数えています。' : '') + 'これは請求書ではなく、荷待ちの大きさを共通の基準で見ていただくための目安です。計算のしかたは別紙1に記載しております。');
+  }
+  paras.push('ご多用のところ恐縮ですが、ご検討くださいますよう、お願い申し上げます。');
+  return { date: jdate(today), to, subject: LETTER_SUBJECT, paras, closing: '敬具', period: jperiod(p.date_from, p.date_to), count: `${p.count}回`, rec: recModel(p) };
+}
+
+// 別紙1（参考額の計算のしかた）の文。画面もコピーする文も同じ文を使う
+function calcModel(p) {
+  const t = TARIFF;
+  const main = hasRec(p) ? '受付の時刻がある回は受付から数えた額です。内訳は本文の記録の表にあります。' : `内訳は、待機時間料${n0(p.wait_fee)}円、積込料・取卸料${n0(p.handling_fee)}円です。`;
+  return {
+    mainHead: '参考額の合計は', mainAmt: `${n0(mainAmt(p))}円`, mainTail: `（税抜）です。${main}待機は合計${hmj(mainWait(p))}、運転者の荷役は合計${hmj(p.handling_minutes)}でした。`,
+    calc: `計算は、国土交通省が告示した標準的運賃の別紙の表の単価に当てはめています。待機は、到着の時刻（指定の到着時刻があって実際の到着が早かったときは、指定の時刻）から数えます。最初の${t.free_minutes}分を除き、${t.unit_minutes}分までごとに通常の単価、到着から${t.threshold_minutes / 60}時間を超える部分は${t.unit_minutes}分までごとに2時間超の単価を使っています。貴社側で荷役をしていただいた時間も、待ち時間に含めています。`,
+    terms: '荷主等の都合とは、荷主や荷受人の責任で車が待たされたこと（準備が間に合わない、受付が始まらないなど）をいいます。渋滞や当社側の遅れによる待ちは含めていません。附帯業務とは、荷物を運ぶ以外にドライバーが行った作業（検品、仕分け、ラベル貼りなど）で、告示では実費として別に収受するとされているため、参考額には入れていません。',
+    source: `出典: 標準的運賃（${jdate(t.applies_from)}告示）の別紙の表。待機時間の数え方は国土交通省の Q&A 集 Q29、荷主側の荷役の時間を待機に含める扱いは貸切運賃料金適用方（参考例）第21項によります。${t.source_url}`,
+  };
+}
+const fillSpan = (k) => `<span class="fill${SENDER[k] ? '' : ' is-blank'}" data-fill="${k}" contenteditable="plaintext-only" role="textbox" spellcheck="false" aria-label="差出人の${SENDER_LABEL[k]}（書き換えられます）">${esc(senderVal(k))}</span>`;
+function recTableHtml(m) {
+  const sup = (c) => (c.n ? `<sup class="fn">※${c.n}</sup>` : '');
+  return `<p class="small rec-hint">表は横にスクロールできます。</p><div class="rec-w"><table class="rec"><thead><tr>${m.head.map((h, i) => `<th class="${i >= m.lead ? 'num' : 'nw'}">${esc(h)}</th>`).join('')}</tr></thead><tbody>` +
+    m.body.map((cells) => `<tr>${cells.map((c) => `<td${c.cls ? ` class="${c.cls}"` : ''}>${esc(c.t)}${sup(c)}</td>`).join('')}</tr>`).join('') +
+    `</tbody><tfoot><tr><td colspan="${m.lead}" class="l-sum">合計</td>${m.total.map((v) => `<td class="num">${esc(v)}</td>`).join('')}</tr></tfoot></table></div>` +
+    (m.notes.length ? `<ol class="small rec-notes" id="rec-notes">${m.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : '');
+}
+
 function draftHtml(p) {
-  const t = TARIFF, rows = partnerRows(p.partner);
+  const t = TARIFF, rows = partnerRows(p.partner), m = letterModel(p);
   const classes = [...new Set(rows.map((r) => r.vehicle_class))];
   const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
-  // 待機・参考額の欄の細かい注記は、欄に入れると列が細くなって 1 文字ずつ折れるので、表の下に番号つきで並べる
-  const fn = [];
-  const mark = (r, text) => { fn.push(`${r.date}${r.vehicle_no ? ' 車番 ' + r.vehicle_no : ''}: ${text}`); return `<sup class="fn">※${fn.length}</sup>`; };
-  const rec = rows.map((r) => {
-    const waitNotes = [r.reception_wait_min !== undefined ? `受付 ${r.reception} から数えた分。到着から数えると ${r.wait_min} 分` : '', r.handler === '荷主側' && r.wait_min > 0 && r.end ? '荷主側の荷役を待機に含む' : '',
-      r.post_wait_min > 0 ? `荷役のあとの待ち ${r.post_wait_min} 分を含む` : '', r.wait_base_min > 0 ? `指定 ${r.appointed} から数えた分` : ''].filter(Boolean);
-    const amtNote = r.reception_amount !== undefined ? `到着から数えると ${n0(r.amount)}` : '';
-    return `<tr><td>${esc(r.date)}</td><td>${esc(r.vehicle_no)}</td><td>${esc(r.vehicle_class)}</td><td>${esc(r.place)}</td><td>${arriveCell(r)}</td><td>${esc(r.start)}</td><td>${esc(r.end)}</td><td>${esc(r.handler)}</td><td>${r.shipper_fault ? 'はい' : 'いいえ'}</td>` +
-      `<td class="num">${r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min}${waitNotes.length ? mark(r, '待機 ' + waitNotes.join('。')) : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.reception_amount !== undefined ? r.reception_amount : r.amount)}${amtNote ? mark(r, '参考額 ' + amtNote) : ''}</td></tr>`;
-  }).join('');
-  const recNotes = fn.length ? `<ol class="small rec-notes" id="rec-notes">${fn.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : '';
-  const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((m) => `<td class="num">${n0(t.handling[m].normal[c])} / ${n0(t.handling[m].over_2h[c])}</td>`).join('')}</tr>`).join('');
-  return `<h3>荷待ち・荷役に関する協議のお願い（下書き）</h3>
-    <dl class="dl"><dt>相手</dt><dd>${esc(p.partner)} 御中</dd><dt>期間</dt><dd>${esc(p.date_from)} 〜 ${esc(p.date_to)}（${p.count} 回）</dd>
-      <dt>差出人</dt><dd>（運送会社の名称・担当者を書き入れてください）</dd></dl>
-    <h4>記録の一覧</h4>
-    <div class="rec-w"><table class="rec"><thead><tr><th class="nw">日付</th><th class="nw">車番</th><th class="nw">車種</th><th class="nw">場所</th><th class="nw">到着</th><th class="nw">荷役開始</th><th class="nw">荷役終了</th><th class="nw">荷役をした人</th><th class="nw">荷主等の都合</th><th class="nw">待機（分）</th><th class="nw">荷役（分）</th><th>附帯業務（金額なし）</th><th class="nw">請求の目安（円）</th></tr></thead><tbody>${rec}</tbody></table></div>
-    ${recNotes}
-    <h4>金額と計算のしかた</h4>
-    <p class="main-amt" id="doc-main">参考額の合計 <b class="big">${yen(mainAmt(p))}</b>（税抜。${hasRec(p) ? '受付の時刻がある回は受付から数えた額です。内訳は下の記録の一覧にあります' : `待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}`}）。待機の合計 ${hm(mainWait(p))}、運転者の荷役の合計 ${hm(p.handling_minutes)}。<br><small>相談に使う金額はこの 1 つです。</small></p>
+  const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((x) => `<td class="num">${n0(t.handling[x].normal[c])} / ${n0(t.handling[x].over_2h[c])}</td>`).join('')}</tr>`).join('');
+  const cl = consultSentences(p.partner), cm = calcModel(p);
+  const html = `<div class="letter">
+    <p class="l-date">${esc(m.date)}</p>
+    <p class="l-to">${esc(m.to)}</p>
+    <div class="l-from">${fillSpan('company')}<br>${fillSpan('person')}<br>${fillSpan('contact')}</div>
+    <h3 class="l-subject">${esc(m.subject)}</h3>
+    ${m.paras.map((x, i) => `<p class="l-body${i === m.paras.length - 1 ? ' l-last' : ''}">${esc(x)}</p>`).join('')}
+    <p class="l-sign">${esc(m.closing)}</p>
+    <p class="l-ki">記</p>
+    <dl class="l-items"><dt>対象期間</dt><dd>${esc(m.period)}</dd><dt>回数</dt><dd>${esc(m.count)}</dd></dl>
+    ${recTableHtml(m.rec)}
+    <p class="l-end">以上</p>
+  </div>
+  <section class="l-attach" id="doc-attach">
+    <h4>別紙1　参考額の計算のしかた</h4>
+    <p class="main-amt" id="doc-main">${esc(cm.mainHead)}<b class="big">${esc(cm.mainAmt)}</b>${esc(cm.mainTail)}</p>
+    <p>${esc(cm.calc)}</p>
+    <p id="doc-terms">${esc(cm.terms)}</p>
     ${(hasRec(p) || earlyShown(p) || hasEarly(p)) ? `<details class="doc-alt" id="doc-alt"><summary>ほかの数え方の額（参考）</summary>
     ${hasRec(p) ? `<p id="doc-reception"><b>受付から数えた数字:</b> ${esc(receptionSentence(p))}</p>` : ''}
     ${earlyShown(p) ? `<p id="doc-early"><b>${earlyWord(p.partner)}を分けた数字:</b> ${esc(earlySentence(p))}</p>` : ''}
     ${hasEarly(p) ? `<p class="small">${esc(earlyRule(p.partner))}</p>` : ''}</details>` : ''}
     ${docNotes(p).map((x) => `<p class="small doc-note"><b>${esc(x)}</b></p>`).join('')}
-    <p class="small">${esc(calcNote(t))}</p>
-    <p class="small">${esc(BASIS_QUOTE)}</p>
-    <p class="small doc-terms" id="doc-terms"><b>言葉の意味:</b> ${TERMS.map(([k, v]) => `${esc(k)}…${esc(v)}`).join(' ')}</p>
     ${rows.some((r) => r.post_wait) ? `<p class="small">${esc(POST_WAIT_NOTE)}</p>` : ''}
-    <div class="rec-w"><table class="rec"><thead><tr><th>使った車種の単価（税抜・円）</th><th>待機時間料<small>${t.unit_minutes} 分までごと</small></th><th>2 時間超</th>${methods.map((m) => `<th>${esc(m)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
-    ${consultLines(p.partner).length ? `<h4>${CONSULT_TITLE}</h4>
-    <ul class="list">${consultLines(p.partner).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+    <div class="rec-w"><table class="rec rate"><thead><tr><th>使った車種の単価（税抜・円）</th><th class="num">待機時間料<small>${t.unit_minutes} 分までごと</small></th><th class="num">2 時間超</th>${methods.map((x) => `<th class="num">${esc(x)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
+    <p class="small">${esc(cm.source)}</p>
+    ${cl.length ? `<h4>別紙2　${CONSULT_TITLE}</h4>
+    <ul class="list">${cl.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
     <p>${esc(CONSULT_CLOSE)}</p>
     <h5 id="doc-pm-title">${esc(PM_PARTNER_TITLE)}</h5>
     <p class="small">${esc(PM_DEF)}</p>
-    <div class="rec-w"><table class="rec" id="doc-placemonth"><thead><tr><th>場所</th><th>月</th><th>回数</th><th>平均の荷待ち（分）</th><th>1 時間以上の回数</th></tr></thead><tbody>${monthTable(p.partner).map((m) => `<tr><td>${esc(m.place)}</td><td>${esc(monthLabel(m.month))}</td><td class="num">${m.count}</td><td class="num">${m.avg_minutes}</td><td class="num">${m.over_1h_count}</td></tr>`).join('')}</tbody></table></div>
+    <div class="rec-w"><table class="rec" id="doc-placemonth"><thead><tr><th>場所</th><th>月</th><th class="num">回数</th><th class="num">平均の荷待ち（分）</th><th class="num">1 時間以上の回数</th></tr></thead><tbody>${monthTable(p.partner).map((x) => `<tr><td>${esc(x.place)}</td><td>${esc(monthLabel(x.month))}</td><td class="num">${x.count}</td><td class="num">${x.avg_minutes}</td><td class="num">${x.over_1h_count}</td></tr>`).join('')}</tbody></table></div>
     <p>${esc(MONTH_CLOSE)}</p>` : ''}
-    <h4>次の契約の書面（運送引受書）に入れる欄の案</h4>
+    <h4>${cl.length ? '別紙3' : '別紙2'}　${CLAUSE_TITLE}</h4>
     <ul class="list">${clauseList(t).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-    <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(mainAmt(p))} 円（税抜）です。${hasRec(p) ? '受付の時刻がある回は受付から数えています。' : ''}</p>
-    <p class="small" id="doc-cross-note">この書面を紙や PDF で受け取った荷主の方は、上の記録の一覧の「日付・車番・到着・荷役開始」の列を、照らし合わせのページの「荷主として使う」の照合の欄に貼ると、自社の受付記録と照らし合わせられます。運送会社に「CSV をコピー」した表をもらう方法もあります。<br><b>照らし合わせのページ:</b> <span id="doc-url">${esc(crossPageAddress())}</span></p>
-    <p class="printnote">${esc(PROTECT[0])}</p>`;
+    <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけないか、ご相談させてください。</p>
+    <p class="small" id="doc-cross-note">この書面を紙や PDF で受け取った荷主の方は、本文の記録の表の「日付・車番・到着・荷役開始」の列を、照らし合わせのページの「荷主として使う」の照合の欄に貼ると、自社の受付記録と照らし合わせられます。<br><b>照らし合わせのページ:</b> <span id="doc-url">${esc(letterPageAddress())}</span></p>
+  </section>`;
+  return kc(html);
 }
 
 // ---- 説明文の自動作成（SPEC §53）。ページはサーバーに送る事実を組み立てるだけで、通信は ai_explain.js が行う
@@ -768,38 +928,55 @@ function loadAi() {
 /*LOCAL-ONLY-END*/
 
 function draftText(p) {
-  const t = TARIFF, rows = partnerRows(p.partner);
+  const t = TARIFF, rows = partnerRows(p.partner), m = letterModel(p);
   const classes = [...new Set(rows.map((r) => r.vehicle_class))];
   const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
-  const L = [];
-  L.push('荷待ち・荷役に関する協議のお願い（下書き）', '', `相手: ${p.partner} 御中`, `期間: ${p.date_from} 〜 ${p.date_to}（${p.count} 回）`, '差出人: （運送会社の名称・担当者を書き入れてください）', '');
-  L.push('【記録の一覧】', ['日付', '車番', '車種', '場所', '到着', '荷役開始', '荷役終了', '荷役をした人', '荷主等の都合', '待機（分）', '荷役（分）', '附帯業務（記録のみ）', '参考額（円）'].join('\t'));
-  rows.forEach((r) => {
-    const notes = [r.handler === '荷主側' && r.wait_min > 0 && r.end ? '荷主側の荷役を待機に含む' : '', r.post_wait_min > 0 ? `荷役のあとの待ち ${r.post_wait_min} 分を含む` : '', r.wait_base_min > 0 ? `指定 ${r.appointed} から` : ''].filter(Boolean);
-    L.push([r.date, r.vehicle_no, r.vehicle_class, r.place, arriveText(r), r.start, r.end, r.handler, r.shipper_fault ? 'はい' : 'いいえ', r.wait_min + (notes.length ? `（${notes.join('、')}）` : ''), r.handling_min,
-      (r.side_work || '') + (r.side_min ? ` ${r.side_min} 分` : ''), n0(r.amount)].join('\t'));
-  });
-  L.push('', '【参考額と計算の根拠】',
-    `参考額の合計 ${yen(mainAmt(p))}（税抜。${hasRec(p) ? '受付の時刻がある回は受付から数えた額です。内訳は下の記録の一覧にあります' : `待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}`}）。待機の合計 ${hm(mainWait(p))}、運転者の荷役の合計 ${hm(p.handling_minutes)}。`,
-    calcNote(t), BASIS_QUOTE, `言葉の意味: ${TERMS.map(([k, v]) => `${k}…${v}`).join(' ')}`);
+  const L = [m.date, '', m.to, '', senderVal('company'), senderVal('person'), senderVal('contact'), '', m.subject, '', ...m.paras.flatMap((x) => [x, '']), m.closing, '', '記', '',
+    `対象期間　${m.period}`, `回数　${m.count}`, ''];
+  const rm = m.rec;
+  const mk = (c) => c.t + (c.n ? `※${c.n}` : '');
+  L.push(rm.head.join('\t'), ...rm.body.map((cells) => cells.map(mk).join('\t')), ['合計', ...Array(rm.lead - 1).fill(''), ...rm.total].join('\t'));
+  if (rm.notes.length) L.push('', ...rm.notes.map((x, i) => `※${i + 1} ${x}`));
+  const cm = calcModel(p);
+  L.push('', '以上', '', '', '別紙1　参考額の計算のしかた', cm.mainHead + cm.mainAmt + cm.mainTail, cm.calc, cm.terms);
   if (hasRec(p)) L.push(`受付から数えた数字: ${receptionSentence(p)}`);
   if (earlyShown(p)) L.push(`${earlyWord(p.partner)}を分けた数字: ${earlySentence(p)}`);
   if (hasEarly(p)) L.push(earlyRule(p.partner));
   docNotes(p).forEach((x) => L.push(x));
   if (rows.some((r) => r.post_wait)) L.push(POST_WAIT_NOTE);
-  L.push('', '【使った車種の単価（税抜・円）】');
+  L.push('', '使った車種の単価（税抜・円）');
   classes.forEach((c) => L.push(`${t.class_labels[c] || c}: 待機時間料 ${n0(t.waiting.normal[c])}（${t.unit_minutes} 分までごと）、2 時間超 ${n0(t.waiting.over_2h[c])}` +
-    methods.map((m) => `、${m}の積込料・取卸料 ${n0(t.handling[m].normal[c])} / 2 時間超 ${n0(t.handling[m].over_2h[c])}`).join('')));
-  const cl = consultLines(p.partner);
+    methods.map((x) => `、${x}の積込料・取卸料 ${n0(t.handling[x].normal[c])} / 2 時間超 ${n0(t.handling[x].over_2h[c])}`).join('')));
+  L.push(cm.source);
+  const cl = consultSentences(p.partner);
   if (cl.length) {
-    L.push('', `【${CONSULT_TITLE}】`, ...cl.map((x) => `・${x}`), CONSULT_CLOSE, '', `【${PM_PARTNER_TITLE}】`, ['場所', '月', '回数', '平均の荷待ち（分）', '1 時間以上の回数'].join('	'),
-      ...monthTable(p.partner).map((m) => [m.place, monthLabel(m.month), m.count, m.avg_minutes, m.over_1h_count].join('	')), MONTH_CLOSE);
+    L.push('', `別紙2　${CONSULT_TITLE}`, ...cl.map((x) => `・${x}`), CONSULT_CLOSE, '', PM_PARTNER_TITLE, ['場所', '月', '回数', '平均の荷待ち（分）', '1 時間以上の回数'].join('\t'),
+      ...monthTable(p.partner).map((x) => [x.place, monthLabel(x.month), x.count, x.avg_minutes, x.over_1h_count].join('\t')), MONTH_CLOSE);
   }
-  L.push('', '【次の契約の書面（運送引受書）に入れる欄の案】', ...clauseList(t).map((x) => `・${x}`), '',
-    `荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(mainAmt(p))} 円（税抜）です。${hasRec(p) ? '受付の時刻がある回は受付から数えています。' : ''}`, '',
-    `照らし合わせのページ: ${crossPageAddress()}`, PROTECT[0], '', '【根拠】', ...BASIS.map((x) => `・${x}`));
-  return L.join('\n');
+  L.push('', `${cl.length ? '別紙3' : '別紙2'}　${CLAUSE_TITLE}`, ...clauseList(t).map((x) => `・${x}`), '',
+    '荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけないか、ご相談させてください。', '',
+    `照らし合わせのページ: ${letterPageAddress()}`);
+  return kc(L.join('\n'));
 }
+
+// 差出人の欄（書面の中の黄色の部分）。書き換えた内容は SENDER に覚え、コピーする文にも入る。空にするともとの案内の文字に戻る
+document.addEventListener('input', (e) => {
+  const el = e.target.closest ? e.target.closest('[data-fill]') : null;
+  if (el) { SENDER[el.dataset.fill] = el.textContent.replace(/\s+/g, ' ').trim(); el.classList.toggle('is-blank', !SENDER[el.dataset.fill]); }
+});
+document.addEventListener('focusin', (e) => {
+  const el = e.target.closest ? e.target.closest('[data-fill].is-blank') : null;
+  if (el) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+});
+document.addEventListener('focusout', (e) => {
+  const el = e.target.closest ? e.target.closest('[data-fill]') : null;
+  if (el && !SENDER[el.dataset.fill]) { el.textContent = SENDER_HINT[el.dataset.fill]; el.classList.add('is-blank'); }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.closest && e.target.closest('[data-fill]')) { e.preventDefault(); e.target.blur(); } });
+document.addEventListener('paste', (e) => {
+  if (!(e.target.closest && e.target.closest('[data-fill]'))) return;
+  e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData.getData('text/plain') || '').replace(/\s+/g, ' '));
+});
 
 // 書面の上の操作。Artifact の版では印刷と保存ができないので、文と CSV をコピーするボタンにする
 const docBar = () => (ARTIFACT
@@ -871,6 +1048,7 @@ function renderResult() {
   $('#draft-area').innerHTML = `<h2>荷主に出す相談の書面（下書き）<img class="ill ill-64" src="@@ILL:document:128@@" alt="" width="64" height="64"></h2>
     ${S.askPartner ? `<div class="errs ask" id="ask-doc"><b>相手の会社名を確かめてください。</b> 合っていれば「この相手のままにする」を押します。</div>` : ''}
     ${docBar()}
+    <p class="small doc-hint" id="doc-hint">書面の黄色の部分（会社名・担当者名・連絡先）は、そのまま書き換えられます。書き換えた内容はコピーする文にも入ります。</p>
     <div class="wrap"><article id="wait-doc">${draftHtml(p)}</article><div class="side-col">${processHtml()}${ARTIFACT ? '' : `<div id="ai-box" class="ai-box"><p class="small ai-off">${esc(AI_OFF_LINE)}</p></div>`}</div></div>`;
   mountAi(p);
   const cs = $('#csv-scope');

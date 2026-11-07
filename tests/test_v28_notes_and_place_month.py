@@ -146,23 +146,23 @@ def test_g119_g121_notes_and_place_month_on_screen_and_in_document(path):
         assert by[("Z", "12時台")][8] == ""
         # 書面（上位 3 組）の行にも付く。書面の言い方は別
         d = info["doc"]
-        assert f"Xに9時台に到着した 4 回の荷待ちは、平均 " in d
-        assert f"でした。（{DOC_NO_DESIGNATED}）（{NOTE_SHIPPER}）" in d
-        assert f"Yに11時台に到着した 2 回の荷待ちは、平均 75 分、最長 75 分でした。（{NOTE_FEW}）" in d
-        assert "Zに12時台に到着した 3 回の荷待ちは、平均 50 分、最長 50 分でした。" in d and NOTE_NO_DESIGNATED not in d
-        assert f"でした。（{DOC_NO_DESIGNATED}）（{NOTE_SHIPPER}）（{NOTE_FEW}）" not in d
+        assert "Xでは、9時台に到着した4回の荷待ちが、平均" in d   # 書面の作り直し 2026-11-07
+        assert "でした。指定の到着時刻のない到着が多く含まれます。貴社側で荷役をしていただいた時間も含まれています。" in d
+        assert "Yでは、11時台に到着した2回の荷待ちが、平均75分、最長75分でした。回数が少ないため、参考としてご覧ください。" in d
+        assert "Zでは、12時台に到着した3回の荷待ちが、平均50分、最長50分でした。" in d and NOTE_NO_DESIGNATED not in d
+        assert "でした。指定の到着時刻のない到着が多く含まれます。貴社側で荷役をしていただいた時間も含まれています。回数が少ないため、参考としてご覧ください。" not in d
         # 場所ごと・月ごと（画面）: 場所の文字の順、月の順。X は 10 月に 4 回、Y は 11 月、Z は 10 月
         assert [r[:2] for r in info["pm"]] == [["X", "2026 年 10 月"], ["Y", "2026 年 11 月"], ["Z", "2026 年 10 月"]]
         assert [r[2] for r in info["pm"]] == ["4", "2", "3"]
         screen = page.js("document.querySelector('#partners').textContent")
         assert PM_LEAD in screen and "場所ごと・月ごとの平均の荷待ち（分）" in screen
         # 書面: 相談の節の最後に表、続けて取り次ぎの 1 文
-        assert [r[:2] for r in info["dpm"]] == [["X", "2026 年 10 月"], ["Y", "2026 年 11 月"], ["Z", "2026 年 10 月"]]
-        consult = d.split("荷待ちを減らすためのご相談")[1].split("次の契約の書面")[0]
+        assert [r[:2] for r in info["dpm"]] == [["X", "2026年10月"], ["Y", "2026年11月"], ["Z", "2026年10月"]]
+        consult = d.split("荷待ちを減らすためのご相談")[1].split("別紙3　次回からの契約の書面")[0]
         assert consult.rstrip().endswith(PM_CLOSE) and consult.index("ご相談させてください") < consult.index("場所") < consult.index(PM_CLOSE)
         # コピーする文
-        assert "【荷待ちを減らすためのご相談】" in info["copy"] and "Y\t2026 年 11 月\t2\t75\t2" in info["copy"]
-        assert info["copy"].index("ご相談させてください") < info["copy"].index(PM_CLOSE) < info["copy"].index("【次の契約の書面")
+        assert "別紙2　荷待ちを減らすためのご相談" in info["copy"] and "Y\t2026年11月\t2\t75\t2" in info["copy"]
+        assert info["copy"].index("ご相談させてください") < info["copy"].index(PM_CLOSE) < info["copy"].index("別紙3　次回からの契約の書面")
 
 
 @pytest.mark.parametrize("path", [PAGE, ART])
@@ -178,13 +178,13 @@ def test_g121_g123_example_8am_rows_and_place_month_tables(path):
         ten = [r for r in rows if r[2] == "10時台"]
         assert ten and all(NOTE_NO_DESIGNATED not in r[8] for r in ten)   # 10時台は指定が無いが、平均が 30 分未満なので注記は付けない（§29.3）
         doc = page.js("document.querySelector('#wait-doc').textContent")
-        assert "江東区 地点07に8時台に到着した 5 回の荷待ちは、平均 98 分、最長 135 分でした。" in doc
-        assert "江東区 地点07に8時台に到着した 5 回の荷待ちは、平均 98 分、最長 135 分でした。（" not in doc
+        assert "江東区の地点07では、8時台に到着した5回の荷待ちが、平均98分、最長135分でした。" in doc
+        assert "江東区の地点07では、8時台に到着した5回の荷待ちが、平均98分、最長135分でした。指定" not in doc
         pm = page.js("[...document.querySelectorAll('#placemonth tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent))")
         assert pm == [["川崎市 地点12", "2026 年 10 月", "3", "32", "0"], ["市川市 地点03", "2026 年 10 月", "5", "60", "3"],
                       ["江東区 地点07", "2026 年 10 月", "10", "58", "5"]]
         dpm = page.js("[...document.querySelectorAll('#doc-placemonth tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent))")
-        assert dpm == [["川崎市 地点12", "2026 年 10 月", "2", "40", "0"], ["江東区 地点07", "2026 年 10 月", "10", "58", "5"]]   # 書面は、その相手の記録だけ
+        assert dpm == [["川崎市 地点12", "2026年10月", "2", "40", "0"], ["江東区 地点07", "2026年10月", "10", "58", "5"]]   # 書面は、その相手の記録だけ
         assert PM_LEAD in page.js("document.querySelector('#partners').textContent")
         assert PM_CLOSE in doc
 
