@@ -39,7 +39,7 @@ def test_map_credit_css_shows_it_in_market_and_in_narrow_screens():
     css = read("style.css")
     assert re.search(r"#map-credit \{ display: none;", css)
     assert "body.view-market #map-credit { display: block; }" in css
-    assert re.search(r"@media \(max-width: 600px\) \{\s*body:not\(\.view-home\) #map-credit \{ display: block;", css)
+    assert re.search(r"@media \(max-width: 600px\) \{[^}]*?\n\s*body:not\(\.view-home\) #map-credit \{ display: block;", css)
 
 
 def test_jartic_notice_is_in_the_always_visible_line_and_the_credit_list():
@@ -96,3 +96,23 @@ def test_credits_are_visible_without_opening_anything(width, height):
         _assert_visible(_probe(page, ".home-terrain"), "地形: 国土地理院の標高タイルを加工して作成")
         open_("#v=market")
         _assert_visible(_probe(page, "#map-credit"), "© OpenStreetMap contributors", "OpenFreeMap", JARTIC)
+
+
+def test_credit_is_one_line_in_own_view_and_jartic_only_in_market():
+    """390 幅: 自社の運行では出典が 1 行（高さ 30px 以下）で、交通量 API の注記は出ない。市場を見る画面（交通量の層が入っている間）だけ出る。"""
+    with _browser(390, 844) as (page, open_):
+        open_("#v=own")
+        p = _probe(page, "#map-credit")
+        assert p and p["disp"] != "none" and p["h"] <= 30, p
+        assert "© OpenStreetMap contributors" in p["text"], p
+        osm = page.js("(function(){const a = document.querySelector('#map-credit a[href=\"https://www.openstreetmap.org/copyright\"]'); const r = a.getBoundingClientRect(); return {l: r.left, r: r.right, h: r.height, vw: innerWidth};})()")
+        assert osm["l"] >= 0 and osm["r"] <= osm["vw"] and osm["h"] >= 24, osm
+        jt = _probe(page, "#mc-jt")
+        assert jt and (jt["disp"] == "none" or jt["w"] == 0 or JARTIC not in p["text"]), jt
+        assert JARTIC not in p["text"], p["text"]
+        open_("#v=market")
+        page.js("(function(){ if (window.Market && Market.setJartic) Market.setJartic(true); })()")
+        time.sleep(0.4)
+        m = _probe(page, "#mc-jt")
+        assert m and m["disp"] != "none" and m["w"] > 20 and m["h"] > 8, m
+        assert JARTIC in _probe(page, "#map-credit")["text"]
