@@ -160,3 +160,34 @@ def test_home_trip_needs_the_t7_route():
 def test_artifact_build_has_the_same_fixes():
     out = _ev([PALLET], to="沖縄県", km=1945, path=ARTIFACT)
     assert out["opts"]["kashikiri_2t"]["s"] == "ng", out
+
+
+# 11. 採点 r4c: 単位なしの mm・個数の単位・120 サイズの仮寸法
+MM_TEXT = f"個数{TAB}寸法{TAB}重さ\n1{TAB}600×400×300{TAB}20"
+
+
+def test_r4c_unitless_mm_is_stopped_and_can_be_read_as_mm():
+    out = _js("(() => { const r = parseCargoTable(" + json.dumps(MM_TEXT) + ").rows; const res = evaluate({ rows: r, from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 4 });"
+              "S.rows = r; renderRows(); render(); const shown = document.querySelector('#errs').innerText; const btn = !!document.querySelector('[data-mmread=\"0\"]');"
+              "document.querySelector('[data-mmread=\"0\"]').click();"
+              "return { errs: res.errs, totals: res.totals, shown, btn, after: S.rows[0].l + 'x' + S.rows[0].w + 'x' + S.rows[0].h, err2: document.querySelector('#errs').innerText }; })()")
+    assert out["totals"] is None and any("mm ではありませんか" in e and "1 行目" in e for e in out["errs"]), out
+    assert out["btn"] and "mm として読む" in out["shown"], out
+    assert out["after"] == "60x40x30" and out["err2"] == "", out
+
+
+def test_r4c_count_cells_with_unit_words():
+    for cell, n in [("2パレット", "2"), ("2PL", "2"), ("2梱", "2"), ("3cs", "3"), ("2ケース", "2"), ("5箱", "5")]:
+        out = _js("parseCargoTable(" + json.dumps(f"個数{TAB}縦{TAB}横{TAB}高さ{TAB}重さ\n{cell}{TAB}110{TAB}110{TAB}120{TAB}300") + ")")
+        assert len(out["rows"]) == 1 and out["rows"][0]["n"] == n, (cell, out)
+        assert out["rows"][0]["pk"] == ("pallet" if cell in ("2パレット", "2PL") else "box"), (cell, out)
+    bad = _js("parseCargoTable(" + json.dumps(f"個数{TAB}縦{TAB}横{TAB}高さ{TAB}重さ\n1{TAB}50{TAB}40{TAB}30{TAB}10\n二つ{TAB}50{TAB}40{TAB}30{TAB}10") + ")")
+    assert bad["rows"] == [] and any("3 行目" in n and "二つ" in n for n in bad["notes"]), bad
+
+
+def test_r4c_size_class_never_prints_provisional_dimensions():
+    text = f"個数{TAB}サイズ{TAB}重さ\n2{TAB}120サイズ{TAB}8"
+    out = _js("(() => { const p = parseCargoTable(" + json.dumps(text) + "); S.rows = p.rows; renderRows(); render(); return { q: document.querySelector('#quote').value, notes: p.notes.join(' '), d: pdesc(evaluate({ rows: p.rows, from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 4 }).pieces[0]) }; })()")
+    assert "120 サイズ（3 辺合計 120cm 以内・寸法は未確認）" in out["q"], out
+    for k in ("q", "notes", "d"):
+        assert "40×40×40" not in out[k] and "40cm" not in out[k] and "53.33" not in out[k] and "40 cm" not in out[k], (k, out)

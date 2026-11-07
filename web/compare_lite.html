@@ -212,7 +212,10 @@ details[open].disc > summary::before, details[open].fold > summary::before, deta
 table.in { border-collapse: collapse; width: 100%; font-size: 12.5px; }
 table.in th { text-align: left; font-weight: 500; font-size: 11.5px; color: var(--muted); padding: 3px 4px; border-bottom: 1px solid var(--line); }
 table.in td { padding: 2px; }
-table.in input { width: 100%; height: 26px; padding: 0 4px; }
+table.in input[type=number] { appearance: textfield; -moz-appearance: textfield; }
+table.in input[type=number]::-webkit-inner-spin-button, table.in input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }   /* 回すための矢印が幅を取って、値が欠けて見えるのを防ぐ */
+table.in select { width: 84px; }
+table.in input { width: 100%; min-width: 46px; height: 26px; padding: 0 4px; }
 .del { border: 0; background: none; color: var(--faint); padding: 0 6px; min-width: 24px; min-height: 24px; }
 .ask-co a, #backmap a, #maplink a, #process a { display: inline-block; min-height: 24px; line-height: 24px; }
 
@@ -289,7 +292,7 @@ details.fold { margin: 8px 0; }
 details.fold > summary { color: var(--accent); }
 #input .grid2 { grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 8px; }
 .grid2 label.f select, .grid2 label.f input, .cgrid label.f input, .cgrid label.f select { width: 100%; min-height: 44px; height: auto; }
-table.in input { min-height: 36px; height: 36px; padding: 0 8px; }
+table.in input { min-height: 36px; height: 36px; padding: 0 4px; }
 table.in th { padding: 4px; font-size: 12px; }
 .del { min-height: 36px; }
 .errs { border-radius: var(--r-s); }
@@ -371,7 +374,7 @@ ol.bars li .chip { min-height: 22px; padding: 0 8px; font-size: 12px; }
   .app-header { flex-wrap: nowrap; padding: 24px 0 16px; }
   .app-header .stepper { flex: 0 0 440px; margin-left: auto; border-bottom: 0; }
   .guard { margin-bottom: 24px; min-height: 40px; }
-  main { grid-template-columns: 384px minmax(0, 1fr); gap: 40px; }
+  main { grid-template-columns: 448px minmax(0, 1fr); gap: 32px; }   /* 荷物の表の 7 列で値が欠けない幅 */
   .col-in { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: thin; padding: 0 4px 8px 0; margin-right: -4px; }
   .col-out { position: static; }
   #input { padding: 24px; }
@@ -621,7 +624,8 @@ const f1 = (v) => (Math.round(v * 10) / 10).toLocaleString('ja-JP');
 const fx = (v) => (Math.round(v * 1e6) / 1e6).toLocaleString('ja-JP', { maximumFractionDigits: 6 });
 const exc = (v, cap, u) => excD(v - cap, u);
 const excD = (d, u) => { for (const dg of [2, 3, 4, 6]) { const r = +d.toFixed(dg); if (r > 0) return `+${r.toLocaleString('ja-JP', { maximumFractionDigits: dg })}${u}`; } return `+${d.toExponential(1)}${u}`; };
-const pdesc = (p) => `${p.l}×${p.w}×${p.h}cm ${p.kg}kg`;
+const SZ_TXT = (sz) => `${sz} サイズ（3 辺合計 ${sz}cm 以内・寸法は未確認）`;   // 「120サイズ」の荷は仮の立方体の寸法を見せない
+const pdesc = (p) => (p.sz > 0 ? `${SZ_TXT(p.sz)} ${p.kg}kg` : `${p.l}×${p.w}×${p.h}cm ${p.kg}kg`);
 
 // 数の読み方は地図の画面・Python（models.parse_number_text）と同じ: 全角を半角にしたあと、10 進の数字だけ。
 // 1e3・Infinity・NaN・40 字を超える文字列・10^15 以上は数として受けない（SPEC §43）
@@ -645,7 +649,7 @@ function decBig(raw, k, mode) {
 const mmOf = (s) => Number(decBig(s, 1, 'half'));   // cm の文字列 → mm（四捨五入。地図の積付けの _mm と同じ）
 
 function parsePieces(rows) {
-  const pieces = [], errs = [];
+  const pieces = [], errs = [], mmRows = [];
   rows.forEach((r, i) => {
     const vals = [r.n, r.l, r.w, r.h, r.kg].map((x) => String(x == null ? '' : x).normalize('NFKC').trim());
     if (vals.every((x) => !x)) return;
@@ -653,9 +657,13 @@ function parsePieces(rows) {
     if (!(Number.isInteger(n) && n >= 1) || !(l > 0) || !(w > 0) || !(h > 0) || !(kg > 0)) { errs.push(`${i + 1} 行目: 個数は 1 以上の整数、寸法と重さは 0 より大きい数で入れてください（1e3 のような書き方は使えません）`); return; }
     const big = [['縦', l], ['横', w], ['高さ', h]].find(([, v]) => v > 1000);
     if (big) { errs.push(`${i + 1} 行目: ${big[0]} ${fx(big[1])}cm は 1,000cm（10m）を超えます。mm ではありませんか（mm の数字なら 10 で割って cm にするか、貼り付けるときに見出しか数字の後ろに mm と書いてください）。計算していません`); return; }
+    if (!(Number(r.sz) > 0) && !r.cmOk && ((l >= 250 && w >= 250 && h >= 250) || (l * w * h / 1e6 >= 5 && kg / (l * w * h / 1e6) < 10))) {   // 単位なしの mm を cm と読んだ疑い（600×400×300 → 72m³）。確認するまで計算しない
+      errs.push(`${i + 1} 行目: ${fx(l)}×${fx(w)}×${fx(h)}cm は大きすぎます（${fx(l * w * h / 1e6)}m³・${fx(kg)}kg）。mm ではありませんか。下のボタンで、mm として読むか、cm のまま計算するかを選んでください。選ぶまで計算していません`);
+      mmRows.push(i); return;
+    }
     pieces.push({ n, l, w, h, kg, lS: vals[1], wS: vals[2], hS: vals[3], kgS: vals[4], pk: r.pk === 'pallet' || r.pk === 'other' ? r.pk : 'box', ...(Number(r.sz) > 0 ? { sz: Number(r.sz) } : {}) });
   });
-  return { pieces, errs };
+  return { pieces, errs, mmRows };
 }
 
 // 床と重さの合計は整数で足す（JS の小数のまま足すと 0.4m² を 15 回足して 6.000000000000001 になり、床 6.0m² ちょうどの荷を断ってしまう。SPEC §42）。
@@ -861,8 +869,8 @@ function evalHome(pieces, t, flex, inp) {
 
 const kmOf = (inp) => { const v = inp && inp.km != null && String(inp.km).trim() !== '' ? readNum(inp.km) : null; return v === null ? NaN : v; };
 function evaluate(inp) {
-  const { pieces, errs } = parsePieces(inp.rows);
-  if (errs.length || !pieces.length) return { errs: errs.length ? errs : ['荷物を 1 行以上入れてください'], options: [], totals: null, pieces };
+  const { pieces, errs, mmRows } = parsePieces(inp.rows);
+  if (errs.length || !pieces.length) return { errs: errs.length ? errs : ['荷物を 1 行以上入れてください'], options: [], totals: null, pieces, mmRows };
   const kmRaw = inp.km == null ? '' : String(inp.km).normalize('NFKC').trim();
   if (kmRaw !== '' && readNum(kmRaw) === null) return { errs: ['道路の距離は数字で入れてください（1e3・Infinity のような書き方は使えません）'], options: [], totals: null, pieces };
   if (kmRaw !== '' && readNum(kmRaw) <= 0) return { errs: ['道路の距離は 0 km より大きい数で入れてください（0 や負の数では額を出せません）'], options: [], totals: null, pieces };
@@ -1088,7 +1096,7 @@ function rosenAmount(o, t, C, km, to) {
     return { amount: Math.round(Math.max(a.amount, C.r.min || 0)), note: a.note };
   }
   if (C.r.rate == null) return { amount: null, why: C.r.min == null ? '単価が未入力です' : '単価が未入力です（最低運賃だけでは額が決まりません）' };
-  if (o.cw > RULES.rosen.quoteOverKg) return { amount: null, why: '1,000kg を超えるので要見積です' };
+  if (o.cw > RULES.rosen.quoteOverKg) return { amount: null, why: `計算重量 ${f1(o.cw)}kg が ${fmt(RULES.rosen.quoteOverKg)}kg を超えるので要見積です` };
   const base = C.r.rate * (C.r.mode === 'case' ? t.count : o.cw);
   return { amount: Math.round(Math.max(base, C.r.min || 0)), why: '' };
 }
@@ -1204,7 +1212,7 @@ function cmpHtml(res, Cs, inp) {
 function quoteText(inp, res) {
   const t = res.totals;
   const lines = ['お世話になっております。下記の荷物の運送について、見積をお願いします。', '', '【荷物】'];
-  res.pieces.forEach((p) => lines.push(`・${p.l}×${p.w}×${p.h}cm、${p.kg}kg を ${p.n} 個${p.pk === 'pallet' ? '（パレット渡し）' : p.pk === 'other' ? '（段ボール以外の荷姿）' : ''}`));
+  res.pieces.forEach((p) => lines.push(`・${p.sz > 0 ? SZ_TXT(p.sz) : `${p.l}×${p.w}×${p.h}cm`}、${p.kg}kg を ${p.n} 個${p.pk === 'pallet' ? '（パレット渡し）' : p.pk === 'other' ? '（段ボール以外の荷姿）' : ''}`));
   lines.push(`　合計 ${t.count} 個、約 ${f1(t.kg)}kg、約 ${f1(t.m3)}m³`);
   lines.push('', '【区間】');
   lines.push(`・集荷: ${inp.from || '（都道府県を書き入れてください）'}`);
@@ -1319,13 +1327,17 @@ function parseCargoTable(text) {
   const SZ = /^(\d{2,3})\s*(?:サイズ|size)$/i;   // 「120サイズ」。縦・横・高さが分からず、3 辺合計の区分だけ分かる荷
   const unit = (c) => c.replace(/(?:cm|mm|kg|トン|個|本|箱|口|ケース|枚|点|t)$/i, '').replace(/,/g, '').trim();
   const isNum = (c) => NUM_RE.test(unit(c));
+  const CNT = /^(.*?)\s*(パレット|pallet|plt|pl|梱|cs|ケース|箱|個|口|枚|本|台|点)?$/i;
+  const cntNum = (c) => { const m = CNT.exec(String(c).trim()); return m && NUM_RE.test(m[1].replace(/,/g, '')) ? m : null; };   // 「2パレット」「2PL」「3cs」「5箱」などの個数
+  const isCnt = (c) => !!cntNum(c);
+  const cntErrs = [];
   const rows = [], notes = [];
   const note = (x) => { if (!notes.includes(x)) notes.push(x); };
   if (!lines.length) return { rows, notes: ['貼り付ける表が空です'] };
   const PACK = (c) => (/パレット|pallet|^plt?$/i.test(c) ? 'pallet' : /段ボール|ダンボール|段ボ|カートン|^箱$|ケース|carton|^box$|cardboard/i.test(c) ? 'box' : c ? 'other' : '');
   let map = null, mm = false, start = 0, tonCols = [];
   const first = cut(lines[0]);
-  if (!first.some((c) => isNum(c) || DIM.test(c) || SZ.test(c))) {
+  if (!first.some((c) => isNum(c) || isCnt(c) || DIM.test(c) || SZ.test(c))) {
     map = first.map((c) => (/荷姿|梱包|荷形|形態|荷造/.test(c) ? 'pk' : /寸法|サイズ|3辺|三辺/.test(c) ? 'dim' : /個数|数量|口数|ケース数|^n$/i.test(c) ? 'n' : /縦|長さ|奥行|^l$|^d$/i.test(c) ? 'l' : /横|幅|^w$/i.test(c) ? 'w' : /高さ|^h$/i.test(c) ? 'h' : /総重量|合計重量|総重|全重量|重量合計|総量/.test(c) ? 'kgT' : /重|kg/i.test(c) ? 'kg' : null));
     mm = first.some((c, j) => /mm/i.test(c) && /^(?:dim|l|w|h)$/.test(map[j] || ''));   // mm を換算するのは寸法の列だけ。重さの列は割らない
     tonCols = first.map((c, j) => /^(?:kg|kgT)$/.test(map[j] || '') && !/kg/i.test(c) && /[(\[]\s*t\s*[)\]]|トン|ton/i.test(c));   // 「重量(t)」「重さ（トン）」は t
@@ -1341,7 +1353,7 @@ function parseCargoTable(text) {
     if (ton) note('重さが t（トン）の列（重量(t)・トン）は、1,000 倍して kg にして入れました（例 0.45t → 450kg）');
     return String(ton ? Number((x * 1000).toFixed(6)) : x);
   };
-  const setSz = (r, sz) => { const v = String(Math.floor(sz / 3 * 100) / 100); r.l = r.w = r.h = v; r.sz = sz; note(`「${sz}サイズ」は 3 辺合計 ${sz}cm 以下の区分です。縦・横・高さは分からないので、宅配の区分にはそのまま ${sz} サイズを使い、貸切などの積み込みの判定には ${sz}cm を 3 等分した仮の寸法（${v}cm の立方体）を入れました。分かる寸法があれば直してください`); };
+  const setSz = (r, sz) => { const v = String(Math.floor(sz / 3 * 100) / 100); r.l = r.w = r.h = v; r.sz = sz; note(`「${sz}サイズ」は 3 辺合計 ${sz}cm 以下の区分です。縦・横・高さは分からないので、宅配の区分にはそのまま ${sz} サイズを使い、貸切などの積み込みの判定には ${sz}cm を 3 等分した仮の寸法を内部で使います（見積依頼文には書きません）。分かる寸法があれば直してください`); };
   const setDim = (r, c) => {
     const m = DIM.exec(c);
     if (m) { const u = (m[6] || m[4] || m[2] || '').toLowerCase(), isMm = u ? u === 'mm' : mm; r.l = cvt(m[1], isMm); r.w = cvt(m[3], isMm); r.h = cvt(m[5], isMm); return true; }
@@ -1351,22 +1363,25 @@ function parseCargoTable(text) {
   };
   lines.slice(start).forEach((ln, i) => {
     const c = cut(ln), no = i + start + 1, r = blank();
-    let tot = null;
+    let tot = null, pkSet = false;
+    const setN = (rr, v, no2) => { const m = cntNum(v); if (!m) { cntErrs.push(`${no2} 行目: 個数「${String(v).slice(0, 20)}」を数字として読めません。数字（2、2パレット、3cs など）にしてください。取り込んでいません`); return; } rr.n = m[1].replace(/,/g, ''); if (/^(?:パレット|pallet|plt|pl)$/i.test(m[2] || '')) rr.unitPk = true; };
     const mark = (k, v, j) => { if (v !== undefined && v !== '' && isNum(v)) { if (k === 'kg') r.kg = kgOf(v, tonCols[j]); else if (k === 'kgT') tot = kgOf(v, tonCols[j]); else r[k] = conv(v, true); } };
     if (map) {
       map.forEach((k, j) => {
         if (!k || j >= c.length) return;
         if (k === 'dim') { if (!setDim(r, c[j]) && NUM_RE.test(c[j]) && Number(c[j]) >= 40 && Number(c[j]) <= 260) setSz(r, Number(c[j])); }
-        else if (k === 'pk') { const v = PACK(c[j]); if (v) r.pk = v; }
-        else if (k === 'n') { if (isNum(c[j])) r.n = unit(c[j]); }
+        else if (k === 'pk') { const v = PACK(c[j]); if (v) { r.pk = v; pkSet = true; } }
+        else if (k === 'n') { if (c[j] !== '') setN(r, c[j], no); }
         else mark(k, c[j], j);
       });
     } else if (c.some((x) => DIM.test(x) || SZ.test(x))) {
-      const di = c.findIndex((x) => DIM.test(x) || SZ.test(x)), nums = c.filter((x, j) => j !== di && isNum(x));
+      const di = c.findIndex((x) => DIM.test(x) || SZ.test(x)), nums = c.filter((x, j) => j !== di && (isNum(x) || isCnt(x)));
       setDim(r, c[di]);
-      if (nums.length >= 2) { r.n = unit(nums[0]); r.kg = kgOf(nums[1], false); } else if (nums.length === 1) r.kg = kgOf(nums[0], false);
-    } else if (c.length >= 5) { r.n = unit(c[0]); mark('l', c[1]); mark('w', c[2]); mark('h', c[3]); mark('kg', c[4]); }
+      if (nums.length >= 2) { setN(r, nums[0], no); r.kg = kgOf(nums[1], false); } else if (nums.length === 1) r.kg = kgOf(nums[0], false);
+    } else if (c.length >= 5) { setN(r, c[0], no); mark('l', c[1]); mark('w', c[2]); mark('h', c[3]); mark('kg', c[4]); }
     if (!r.n) r.n = '1';
+    if (r.unitPk && !pkSet && r.pk === 'box') r.pk = 'pallet';
+    delete r.unitPk;
     if (tot != null && !r.kg) {
       const nn = Number(r.n);
       r.kg = nn > 1 ? String(Math.ceil(Number(tot) / nn * 1000) / 1000) : tot;
@@ -1376,6 +1391,7 @@ function parseCargoTable(text) {
     if ([r.l, r.w, r.h].some((x) => Number(x) > 1000)) note(`${no} 行目: 寸法が 1,000cm（10m）を超えています。mm ではありませんか（数字の後ろか見出しに mm と書くと cm に直します）。このままでは計算しません`);
     rows.push(r);
   });
+  if (cntErrs.length) return { rows: [], notes: cntErrs };
   if (rows.some((r) => r.pk === 'pallet')) note(`荷姿「パレット」の行が ${rows.filter((r) => r.pk === 'pallet').length} 行あります。パレット渡しとして読み、見積依頼文にも書きます。フォークリフトの有無を下で選んでください`);
   if (rows.length > 200) { notes.push('荷物の行が 200 を超えるので、最初の 200 行だけ入れました'); rows.length = 200; }
   return { rows, notes };
@@ -1383,7 +1399,7 @@ function parseCargoTable(text) {
 function cargoPaste() {
   const ta = $('#cargo-paste'), msg = $('#cargo-msg');
   const r = parseCargoTable(ta.value);
-  if (!r.rows.length) { msg.textContent = r.notes[0] || '読める行がありませんでした'; return; }
+  if (!r.rows.length) { msg.textContent = r.notes.length ? r.notes.join(' / ') : '読める行がありませんでした'; return; }
   const keep = S.exampleAuto ? [] : S.rows.filter((x) => ['n', 'l', 'w', 'h', 'kg'].some((k) => String(x[k]).trim()));
   S.rows = [...keep, ...r.rows];
   endExampleAuto(); renderRows(); saveCargo(); render();
@@ -1470,7 +1486,10 @@ function optRow(o, per, inp) {
   const amt = o.amount != null ? `<div class="amount">目安 およそ <b class="yen">${fmt(o.amount)} 円</b>（税抜）</div>` : (contractAmt || pubAmt);
   const home = o.home ? `<div class="home">${esc(o.reasons[0])}</div>` : `<ul class="rs"><li>${esc(o.reasons[0] || '')}</li></ul>${o.reasons.length > 1 ? `<details class="disc rs-more"><summary>理由 ${o.reasons.length} 件</summary><ul class="rs">${o.reasons.slice(1).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}`;
   const noText = typeof NO_ESTIMATES[o.id] === 'function' ? NO_ESTIMATES[o.id](o, inp) : NO_ESTIMATES[o.id];
-  const noamt = noText && o.status !== 'ng' && o.amount == null && !cas.length && !o.pub ? `<div class="noamt">見積が要ります: ${noText}</div>` : '';
+  // 契約単価を入れたのに額が出ないときは、定型文ではなく本当の理由（重さが上限を超える等）を出す
+  const whyAm = o.id === 'rosen' ? per.filter((p) => p.has && p.am[o.id] && p.am[o.id].amount == null && p.am[o.id].why && !/^単価が未入力/.test(p.am[o.id].why)) : [];
+  const noamt = whyAm.length && o.status !== 'ng' && o.amount == null && !cas.length ? `<div class="noamt">契約単価を入れても額は出せません: ${whyAm.map((p) => esc((p.label ? p.label + '・' : '') + p.am[o.id].why)).join('、')}。見積で確かめてください。</div>`
+    : noText && o.status !== 'ng' && o.amount == null && !cas.length && !o.pub ? `<div class="noamt">見積が要ります: ${noText}</div>` : '';
   return `<tr class="o-${o.status}" data-opt="${esc(o.id)}"><td class="nm">${esc(o.name)}</td><td><span class="badge ${o.status}">${LABEL[o.status]}</span></td><td>${amt}${noamt}${home}${askHtml(o)}</td></tr>`;
 }
 
@@ -1513,7 +1532,7 @@ function render() {
   $('#bars').innerHTML = res.totals ? barsHtml(res) : '';
   $('#headline').textContent = headlineText(res);
   $('#b-copy-top').hidden = !res.totals;
-  $('#errs').innerHTML = res.errs.length && res.errs[0] !== '荷物を 1 行以上入れてください' ? `<div class="errs">${res.errs.map(esc).join('<br>')}</div>` : '';
+  $('#errs').innerHTML = res.errs.length && res.errs[0] !== '荷物を 1 行以上入れてください' ? `<div class="errs">${res.errs.map(esc).join('<br>')}${(res.mmRows || []).map((i) => `<div><button type="button" data-mmread="${i}">${i + 1} 行目を mm として読む（10 で割って cm にする）</button> <button type="button" data-cmok="${i}">${i + 1} 行目は cm のまま計算する</button></div>`).join('')}</div>` : '';
   if (!res.totals) {
     $('#sum').textContent = '';
     $('#cmpbox').innerHTML = '';
@@ -1627,7 +1646,7 @@ function loadCargo() {
   try {
     const d = JSON.parse(localStorage.getItem(PKEY) || 'null');
     if (!d || !Array.isArray(d.rows)) return;
-    const rows = d.rows.slice(0, 100).map((r) => ({ ...Object.fromEntries(['n', 'l', 'w', 'h', 'kg'].map((k) => [k, String(r && r[k] != null ? r[k] : '').slice(0, 20)])), pk: r && (r.pk === 'pallet' || r.pk === 'other') ? r.pk : 'box', ...(r && Number(r.sz) > 0 && Number(r.sz) <= 260 ? { sz: Number(r.sz) } : {}) }));
+    const rows = d.rows.slice(0, 100).map((r) => ({ ...Object.fromEntries(['n', 'l', 'w', 'h', 'kg'].map((k) => [k, String(r && r[k] != null ? r[k] : '').slice(0, 20)])), pk: r && (r.pk === 'pallet' || r.pk === 'other') ? r.pk : 'box', ...(r && Number(r.sz) > 0 && Number(r.sz) <= 260 ? { sz: Number(r.sz) } : {}), ...(r && r.cmOk === true ? { cmOk: true } : {}) }));
     if (!rows.some((r) => ['n', 'l', 'w', 'h', 'kg'].some((k) => r[k].trim()))) return;
     S.rows = rows;
     if (d.from === '' || PREFS.includes(d.from)) $('#from').value = d.from;
@@ -1650,16 +1669,16 @@ function prefKm(a, b) {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(p[1] * r) * Math.cos(q[1] * r) * Math.sin(dLon / 2) ** 2;
   return Math.max(1, Math.round(2 * 6371.0088 * Math.asin(Math.sqrt(h)) * KM_FACTOR));
 }
-function autoKm() {
+function autoKm(keepValue) {
   const k = prefKm($('#from').value, $('#to').value), el = $('#km'), note = $('#km-note');
   if (k == null) { if (S.kmAuto) { el.value = ''; S.kmAuto = false; } note.textContent = ''; return; }
-  if (el.value.trim() === '' || S.kmAuto) { el.value = String(k); S.kmAuto = true; }
+  if (!keepValue && (el.value.trim() === '' || S.kmAuto)) { el.value = String(k); S.kmAuto = true; }
   note.textContent = S.kmAuto ? `県庁所在地の間の目安です（直線距離の1.25倍）。分かる距離があれば書き換えてください。` : `県庁所在地の間の目安は約 ${k}km（直線×1.25）。いまの欄は手で入れた値です`;
 }
 
 function example() {
   S.rows = [{ n: 2, l: 240, w: 60, h: 200, kg: 140 }, { n: 2, l: 100, w: 60, h: 80, kg: 60 }];
-  $('#from').value = '東京都'; $('#to').value = '大阪府'; $('#km').value = '492'; S.kmAuto = false; autoKm(); $('#recv').value = 'business'; $('#flex').value = '4';
+  $('#from').value = '東京都'; $('#to').value = '大阪府'; $('#km').value = '492'; S.kmAuto = true; autoKm(true); $('#recv').value = 'business'; $('#flex').value = '4';   // 例の距離は 492km のまま、自動の値として持つ（届け先を変えたら計算し直す）
   S.rows.forEach((r) => { r.pk = 'box'; });
   renderRows(); render();
 }
@@ -1682,7 +1701,7 @@ function init() {
   document.addEventListener('change', (e) => { if (e.target.id === 'from' || e.target.id === 'to') autoKm(); });   // 先に動かして、このあとの保存と再計算が新しい距離を使う
   document.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.classList && t.classList.contains('pin')) { endExampleAuto(); const row = S.rows[Number(t.dataset.i)]; row[t.dataset.k] = t.value; if (['l', 'w', 'h'].includes(t.dataset.k)) delete row.sz; }   // 寸法を書き換えたら、サイズの区分だけの荷ではなくなる
+    if (t.classList && t.classList.contains('pin')) { endExampleAuto(); const row = S.rows[Number(t.dataset.i)]; row[t.dataset.k] = t.value; if (['l', 'w', 'h'].includes(t.dataset.k)) { delete row.sz; delete row.cmOk; } }   // 寸法を書き換えたら、サイズの区分だけの荷ではなくなる
     if (t.classList && t.classList.contains('cin')) { saveContract(); render(); }
     if (t.classList && t.classList.contains('ain')) { saveAnswers(); renderAnswers(); }
     if ((t.classList && t.classList.contains('pin')) || t.id === 'km' || t.id === 'pickup-time') { saveCargo(); render(); }
@@ -1693,6 +1712,11 @@ function init() {
     if (t.id === 'b-example') { endExampleAuto(); example(); }
     else if (t.id === 'b-clear') { endExampleAuto(); S.rows = [blank(), blank()]; renderRows(); saveCargo(); render(); $('#cargo-d').open = true; }
     else if (t.id === 'b-cclear') { document.querySelectorAll('.cin').forEach((el) => { el.value = ''; }); saveContract(); S.restoreNote = ''; $('#c-msg').textContent = '消しました'; render(); }
+    else if (t.dataset && (t.dataset.mmread != null || t.dataset.cmok != null)) {
+      const row = S.rows[Number(t.dataset.mmread != null ? t.dataset.mmread : t.dataset.cmok)];
+      if (row) { if (t.dataset.mmread != null) ['l', 'w', 'h'].forEach((k) => { row[k] = String(Math.round(Number(row[k])) / 10); }); else row.cmOk = true; }
+      endExampleAuto(); renderRows(); saveCargo(); render();
+    }
     else if (t.id === 'b-add') { S.rows.push(blank()); renderRows(); $('#cargo-d').open = true; }
     else if (t.id === 'b-cargopaste') cargoPaste();
     else if (t.id === 'b-hadd') addHistory();
