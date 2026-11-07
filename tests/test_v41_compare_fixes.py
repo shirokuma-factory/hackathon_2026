@@ -127,10 +127,13 @@ def test_find_checkbox_css_24px():
 
 def test_readme_has_try_now_section_and_limits():
     s = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert s.index("## すぐ試す") < s.index("## 使い方")
-    assert "https://claude.ai/artifact/6hWNv4iGaecGcAQMvBN7i9" in s.split("## 使い方")[0]
-    assert "uv run python tools/serve_web.py" in s.split("## 使い方")[0]
-    assert "実在の会社のファイルでは確かめていません" in s
+    # 11/7 の書き直し: 誰でも開ける公開版（Cloud Run）の URL を「すぐ試す」に置く。共有された人しか開けない Artifact の URL は置かない
+    head = s.split("## 手元で動かす")[0]
+    assert s.index("## すぐ試す") < s.index("## 手元で動かす")
+    assert "run.app/waiting.html" in head and "run.app/compare_lite.html" in head
+    assert "claude.ai/artifact/" not in s
+    assert "uv run python tools/serve_web.py" in s
+    assert "実在の会社のファイルでは、まだ確かめていません" in s
 
 
 # ---------------------------------------------------------------- 5. 比べるページ
