@@ -231,10 +231,10 @@ def test_a_return_without_an_outbound_counts_on_its_own_weekday(calc):
     back = [l for l in d["legs"] if l["plate"] == "1202"]
     assert len(back) == 1 and back[0]["dir"] == "back" and back[0]["cycle_wd"] == 1 and back[0]["date"] == "2026-10-06"  # 火曜（前の日の月曜にはしない）
     assert [(r["dir"], r["wd"], r["trips"], r["empty"]) for r in d["table"] if r["dir"] == "back"] == [("back", 1, 1, 1)]
-    # 直前の行きがあるときは、これまでどおり行きの曜日
+    # 曜日は帰りの便自身が出た日（直前の行きがあっても、行きの曜日にしない）
     t2 = "車番,車種,10/5(月),10/6(火)\n1201,大型,加古川→江東 9t,江東→加古川 空\n"
     d2 = _an(calc, [_h(t2)], {"munis": MUNIS})
-    assert [l["cycle_wd"] for l in d2["legs"]] == [0, 0]
+    assert [l["cycle_wd"] for l in d2["legs"]] == [0, 1]
 
 
 def test_a_header_only_haisha_is_not_counted_as_read_together(calc):

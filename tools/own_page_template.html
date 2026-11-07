@@ -494,7 +494,7 @@ function kpiHtml(d) {
   const raisedNote = mr ? `<p class="hint" id="max-raised">配車表に ${(mr.to_kg / 1000).toFixed(1)}t の荷があったので、${esc(mr.cls)}の最大積載量を ${(mr.to_kg / 1000).toFixed(1)}t にしました。下の欄で変えられます。</p>` : '';
   return `<section class="card" id="sec-kpi"><h2>${monthWord(d)}の実車率と積載率 <small>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}</small></h2>
     ${readq}<div class="tiles">
-      ${tile('actual_rate', '実車率', ar.value, `空車か実車か分かった区間 ${pc(ar.share)}（${ar.legs} / ${ar.of}）`, `全国 ${n.actual_rate_pct}%（営業用普通車）`, ar.formula, arFaint, rq.low && rq.lo != null && ar.value != null ? `${pcs(rq.lo)}〜${pcs(ar.value)}<small>%</small>` : '')}
+      ${tile('actual_rate', '実車率', ar.value, `空車か実車か分かった区間 ${pc(ar.share)}（${ar.legs} / ${ar.of}）${ar.value == null && ar.legs ? '。距離が分からないので実車率は出せません' : ar.legs_with_km != null && ar.legs_with_km < ar.legs ? `。距離が分かるのは ${ar.legs_with_km} 区間で、率はその区間だけで計算しています` : ''}`, `全国 ${n.actual_rate_pct}%（営業用普通車）`, ar.formula, arFaint, rq.low && rq.lo != null && ar.value != null ? `${pcs(rq.lo)}〜${pcs(ar.value)}<small>%</small>` : '')}
       ${tile('load_rate', '大型の積載率', lr.value, `計算できた区間 ${pc(lr.share)}（${lr.legs} 区間。大型 ${lr.of_large} 区間のうち）`, overNote, lr.formula, lrFaint)}
       ${tile('load_efficiency', '大型の積載効率', le.value, `大型の積載率（${lr.legs} 区間）× 大型の実車率 ${pc(lar.value)}（${lar.legs} 区間）`, `全国 ${n.load_efficiency_pct}%（数え方が違うので比べられません）`, le.formula, leFaint)}
     </div>
@@ -801,7 +801,7 @@ function printHtml(d) {
     <table>${tr('実車率', pc(k.actual_rate.value), `判定できた区間 ${k.actual_rate.legs} / ${k.actual_rate.of}。実車か空車か不明の ${d.counts.unknown} 区間と、読めなかった行・セル ${d.counts.unreadable} 件は入れていません`)}
       ${alt ? tr(alt.mode === 'km' ? '（不明を空車として数えた実車率）' : '（不明を空車として数えた実車の区間の割合）', pc(alt.rate), alt.mode === 'km' ? `不明 ${alt.unkLegs} 区間の距離 ${n1(alt.unkKm)} km を空車に入れた場合` : `不明を外すと ${pc(alt.base)}。不明 ${alt.unkLegs} 区間には距離が無いので区間の数で数えた`) : ''}
       ${tr('大型の積載率', pc(k.load_rate.value), `大型の最大積載量は登録が無いとき ${d.max_load_raised ? (d.max_load_raised.to_kg / 1000).toFixed(1).replace(/\.0$/, '') : 10} t と仮定`)}${tr('大型の積載効率', pc(k.load_efficiency.value), '大型の積載率 × 大型の実車率')}
-      ${tr('空車 km', `${n1(sm.empty_km)} km`, c.empty ? `空車の費用の目安 ${yen(c.empty.yen)}（${esc(c.empty.formula)}）` : '単価を入れていないので費用は出していません')}
+      ${tr('空車 km', sm.empty_km || !d.legs.some((l) => l.kind === 'empty') ? `${n1(sm.empty_km)} km` : '距離が分からない', c.empty ? `空車の費用の目安 ${yen(c.empty.yen)}（${esc(c.empty.formula)}）` : '単価を入れていないので費用は出していません')}
       ${tr('荷待ち（30 分以上の停車）', c.waitMissing ? '記録なし' : `${c.longCount} 回・${n1(sm.wait_min / 60)} 時間`, c.waitMissing ? 'デジタコを入れていないので、停車は数えていません' : c.wait ? `停車の費用の目安 ${yen(c.wait.yen)}（${esc(c.wait.formula)}）` : '')}
       ${rev && rev.total ? tr('帰り荷の売上の目安（上限）', yen(rev.total), `空車の帰り ${rev.counted} 便の合計。標準的運賃の表に当てた目安で、相場ではありません`) : ''}</table>
     <h3>空車の便数が多い区間と曜日</h3><table><thead><tr><th>区間</th><th>曜日</th><th>便数</th><th>空車</th><th>不明</th><th>空車の km</th></tr></thead><tbody>${rows}</tbody></table>

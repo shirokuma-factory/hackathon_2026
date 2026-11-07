@@ -2057,14 +2057,14 @@ def kpis(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> dict[str
     cls = {v["plate"]: v for v in vehicles}
     over_ids = {id(l) for l in over_max_legs(legs, vehicles)}
     n = len(legs)
-    judged = [l for l in legs if l["kind"] in ("loaded", "empty") and l.get("km")]
+    judged = [l for l in legs if l["kind"] in ("loaded", "empty")]  # 実車か空車かが分かった区間。距離の有無とは関係ない（率には距離のある区間だけが入る）
 
     def rate(ls: list[dict[str, Any]]) -> float | None:
-        tot = sum(l["km"] for l in ls)
-        return (sum(l["km"] for l in ls if l["kind"] == "loaded") / tot) if tot else None
+        tot = sum(l.get("km") or 0 for l in ls)
+        return (sum(l.get("km") or 0 for l in ls if l["kind"] == "loaded") / tot) if tot else None
 
     large = [l for l in legs if cls.get(l["plate"], {}).get("cls") == "大型"]
-    large_judged = [l for l in large if l["kind"] in ("loaded", "empty") and l.get("km")]
+    large_judged = [l for l in large if l["kind"] in ("loaded", "empty")]
     with_w = [l for l in large if l["kind"] == "loaded" and l.get("weight_kg") and cls[l["plate"]].get("max_load_kg") and id(l) not in over_ids]
     load_rate = (sum(l["weight_kg"] / cls[l["plate"]]["max_load_kg"] for l in with_w) / len(with_w)) if with_w else None
     large_rate = rate(large_judged)
@@ -2077,8 +2077,8 @@ def kpis(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> dict[str
         "empty_rate_if_unknown_empty": (sum(l["km"] for l in with_km if l["kind"] != "loaded") / tot_km) if tot_km else None,
         "unknown_as_empty": {"legs": len(with_km), "unknown_legs": len(unknown_km), "unknown_legs_without_km": sum(1 for l in legs if l["kind"] == "unknown" and not l.get("km")),
                              "formula": "不明の区間を空車として数えた場合の率（km が分かる区間だけ）"},
-        "actual_rate": {"value": rate(judged), "legs": len(judged), "of": n, "share": (len(judged) / n) if n else 0.0,
-                        "km_loaded": round(sum(l["km"] for l in judged if l["kind"] == "loaded"), 1), "km_empty": round(sum(l["km"] for l in judged if l["kind"] == "empty"), 1),
+        "actual_rate": {"value": rate(judged), "legs": len(judged), "legs_with_km": sum(1 for l in judged if l.get("km")), "of": n, "share": (len(judged) / n) if n else 0.0,
+                        "km_loaded": round(sum(l.get("km") or 0 for l in judged if l["kind"] == "loaded"), 1), "km_empty": round(sum(l.get("km") or 0 for l in judged if l["kind"] == "empty"), 1),
                         "formula": "実車の km ÷ 走った km（実車か空車かが判定できた区間だけ）",
                         **({"basis": "距離の合計", "formula": "距離の合計（日ごとの集計の実車距離の合計 ÷ 走行距離の合計）"} if judged and all(l.get("summary") for l in judged) else {})},
         "load_rate": {"value": load_rate, "legs": len(with_w), "of_large": len(large), "of": n, "share": (len(with_w) / len(large)) if large else 0.0,  # 割合の分母は、画面の文が書く「大型の区間」
@@ -2091,8 +2091,8 @@ def kpis(legs: list[dict[str, Any]], vehicles: list[dict[str, Any]]) -> dict[str
 
 
 def weekday_table(legs: list[dict[str, Any]], stops: list[dict[str, Any]], dock: str | None = None) -> list[dict[str, Any]]:
-    """区間 × 向き × 曜日の表。曜日（wd）は、行きは出た日の曜日、帰りは直前の行き（2 日以内）を出た日の曜日。
-    直前の行きが配車表に無い帰りは、その帰りの便自身の日付の曜日で数える（前の日の曜日にはしない。cycle_wd の決め方は web/own_calc.js の analyze と同じ）。
+    """区間 × 向き × 曜日の表。曜日（wd）は、行きも帰りも、その便自身が出た日の曜日（帰りは実出発の日、無ければ記録日）。
+    帰りを前の日の行きに結び付けない。cycle_wd の決め方は web/own_calc.js の analyze と同じ。
 
     各行: dir, wd, trips, empty, unknown, empty_km, long_stops（30 分以上の停車。行きの到着先の地点 `dock` のもの）。
     """
@@ -2135,7 +2135,7 @@ def pair_role(frm: str, to: str, base: str | None) -> str | None:
 
 
 def leg_wd(l: dict[str, Any]) -> int:
-    """区間 × 曜日の表と気づきが数える曜日。往復が車庫を出た日の曜日（cycle_wd）。無い区間は、その便自身の日付の曜日。web/own_calc.js の legWd と同じ。"""
+    """区間 × 曜日の表と気づきが数える曜日（cycle_wd。その便自身が出た日の曜日）。無い区間は、その便自身の日付の曜日。web/own_calc.js の legWd と同じ。"""
     wd = l.get("cycle_wd")
     return wd if isinstance(wd, int) and not isinstance(wd, bool) else date.fromisoformat(l["date"]).weekday()
 
@@ -2513,7 +2513,7 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
         oe = sum(1 for l in others if l["kind"] == "empty")
         night = all((l.get("cycle_dep") or "")[11:13].isdigit() and int(l["cycle_dep"][11:13]) >= 18 for l in ls)
         when = f"{WEEKDAYS[wd]}曜" + ("の夜" if night else "")
-        who = f"{short(base)}を{when}に出た " if d == "back" else f"{when}に出た "
+        who = f"{when}に出た "  # 帰りも、帰りの便自身が出た日
         body = f"{n} 便の帰りがすべて空でした" if (e == n and d == "back") else (f"{n} 便がすべて空でした" if e == n else f"{n} 便のうち {e} 便が空でした")
         lb = f"{short(fr)} → {short(to)}"
         word = {"back": "帰り", "out": "行き", "pair": "区間"}[d]
@@ -2544,8 +2544,20 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
             shown = "、".join(f"{short(k[0])} → {short(k[1])} が {c} 便" for k, c in top[:3])
             tail = (f"向きは {shown} です" + (f"（ほか {len(top) - 3} 区間）" if len(top) > 3 else "") + "。") if top else ""
         meter = any((l.get("sources") or {}).get("km") == "デジタコ" for l in legs)  # デジタコを入れていないときは、メーターと書かない
-        add(2, f"空で走った区間は {len(empties)} 便・約 {round(km):,} km でした（距離は{'デジタコのメーターと OSRM の推定' if meter else 'OSRM の推定'}）。" + tail,
-            [{"k": "空で走った便", "v": f"{len(empties)} 便"}, {"k": "空で走った距離", "v": f"約 {round(km):,} km"}],
+        km_n = sum(1 for l in empties if l.get("km"))
+        km_miss = len(empties) - km_n  # 距離が分からない便は、km の合計に入れない（0 km として足さない）
+        km_src = f"距離は{'デジタコのメーターと OSRM の推定' if meter else 'OSRM の推定'}"
+        if not km_n:
+            km_head = f"空で走った区間は {len(empties)} 便でした（距離が分からないので、km は出していません）。"
+            km_val = "距離が分からない"
+        elif km_miss:
+            km_head = f"空で走った区間は {len(empties)} 便、距離の分かる {km_n} 便で約 {round(km):,} km でした（{km_src}）。距離が分からない {km_miss} 便は km に入れていません。"
+            km_val = f"約 {round(km):,} km（距離が分からない {km_miss} 便を除く）"
+        else:
+            km_head = f"空で走った区間は {len(empties)} 便・約 {round(km):,} km でした（{km_src}）。"
+            km_val = f"約 {round(km):,} km"
+        add(2, km_head + tail,
+            [{"k": "空で走った便", "v": f"{len(empties)} 便"}, {"k": "空で走った距離", "v": km_val}],
             {"label": "帰り便の下書きにする", "action": "draft_backhaul", "payload": {"dir": "back"}},
             [_ev_leg(l) for l in sorted(empties, key=lambda x: (x["date"], x["plate"]))][:40])
 

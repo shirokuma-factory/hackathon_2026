@@ -1583,9 +1583,9 @@ const OwnCalc = (() => {
     for (const v of vehicles) cls[v.plate] = v;
     const overSet = new Set(overMaxLegs(legs, vehicles));
     const n = legs.length;
-    const isJudged = (l) => (l.kind === 'loaded' || l.kind === 'empty') && l.km;
+    const isJudged = (l) => l.kind === 'loaded' || l.kind === 'empty'; // 実車か空車かが分かった区間。距離の有無とは関係ない（率の計算には距離のある区間だけが入る）
     const judged = legs.filter(isJudged);
-    const sum = (ls) => ls.reduce((a, l) => a + l.km, 0);
+    const sum = (ls) => ls.reduce((a, l) => a + (l.km || 0), 0);
     const rate = (ls) => { const tot = sum(ls); return tot ? sum(ls.filter((l) => l.kind === 'loaded')) / tot : null; };
     const large = legs.filter((l) => (cls[l.plate] || {}).cls === '大型');
     const largeJudged = large.filter(isJudged);
@@ -1601,7 +1601,7 @@ const OwnCalc = (() => {
       unknown_as_empty: { legs: withKm.length, unknown_legs: withKm.filter((l) => l.kind === 'unknown').length, unknown_legs_without_km: legs.filter((l) => l.kind === 'unknown' && !l.km).length,
         formula: '不明の区間を空車として数えた場合の率（km が分かる区間だけ）' },
       actual_rate: {
-        value: rate(judged), legs: judged.length, of: n, share: n ? judged.length / n : 0.0,
+        value: rate(judged), legs: judged.length, legs_with_km: judged.filter((l) => l.km).length, of: n, share: n ? judged.length / n : 0.0,
         km_loaded: pyRound(sum(judged.filter((l) => l.kind === 'loaded')), 1), km_empty: pyRound(sum(judged.filter((l) => l.kind === 'empty')), 1),
         formula: '実車の km ÷ 走った km（実車か空車かが判定できた区間だけ）',
         ...(judged.length && judged.every((l) => l.summary) ? { basis: '距離の合計', formula: '距離の合計（日ごとの集計の実車距離の合計 ÷ 走行距離の合計）' } : {}),
@@ -1642,7 +1642,7 @@ const OwnCalc = (() => {
   }
   const pairRole = (frm, to, base) => (base && to === base && frm !== base ? 'back' : base && frm === base && to !== base ? 'out' : null);
 
-  // 区間 × 曜日の表と気づきが数える曜日。往復が車庫を出た日の曜日（cycle_wd）。無い区間は、その便自身の日付の曜日（own.py の leg_wd と同じ）
+  // 区間 × 曜日の表と気づきが数える曜日（cycle_wd。その便自身が出た日の曜日）。無い区間は、その便自身の日付の曜日（own.py の leg_wd と同じ）
   const legWd = (l) => (Number.isInteger(l.cycle_wd) ? l.cycle_wd : weekdayOf(l.date));
 
   // 区間を、実際の発地と着地の組ごとに数える（own.py の pair_tables と同じ）。pairs と pair_table を返す
@@ -1922,7 +1922,7 @@ const OwnCalc = (() => {
       const oe = others.filter((l) => l.kind === 'empty').length;
       const night = ls.every((l) => /^\d+$/.test((l.cycle_dep || '').slice(11, 13)) && +l.cycle_dep.slice(11, 13) >= 18);
       const when = `${WEEKDAYS[wd]}曜` + (night ? 'の夜' : '');
-      const who = d === 'back' ? `${short(base)}を${when}に出た ` : `${when}に出た `;
+      const who = `${when}に出た `; // 帰りも、帰りの便自身が出た日（行きを出た日ではない）
       const body = e === n && d === 'back' ? `${n} 便の帰りがすべて空でした` : e === n ? `${n} 便がすべて空でした` : `${n} 便のうち ${e} 便が空でした`;
       const lb = `${short(fr)} → ${short(to)}`, word = { back: '帰り', out: '行き', pair: '区間' }[d];
       const tail1 = others.length ? `ほかの曜日の同じ向きは ${others.length} 便中 ${oe} 便が空です（実車か空車かが分かった便だけ）。` : 'ほかの曜日の同じ向きの便は、実車か空車かが分かった中にはありません。';
@@ -1947,8 +1947,13 @@ const OwnCalc = (() => {
         tail = top.length ? `向きは ${top.slice(0, 3).map((x) => `${short(x.fr)} → ${short(x.to)} が ${x.c} 便`).join('、')} です${top.length > 3 ? `（ほか ${top.length - 3} 区間）` : ''}。` : '';
       }
       const meter = legs.some((l) => (l.sources || {}).km === 'デジタコ'); // デジタコを入れていないときは、メーターと書かない
-      add(2, `空で走った区間は ${empties.length} 便・約 ${commas(km)} km でした（距離は${meter ? `デジタコのメーターと${data.est_label && data.est_label !== '推定' ? ' ' + data.est_label : '推定'}` : (data.est_label || '推定')}）。${tail}`,
-        [{ k: '空で走った便', v: `${empties.length} 便` }, { k: '空で走った距離', v: `約 ${commas(km)} km` }],
+      const kmN = empties.filter((l) => l.km).length, kmMiss = empties.length - kmN; // 距離が分からない便は、km の合計に入れない（0 km として足さない）
+      const kmSrc = `距離は${meter ? `デジタコのメーターと${data.est_label && data.est_label !== '推定' ? ' ' + data.est_label : '推定'}` : (data.est_label || '推定')}`;
+      const kmHead = !kmN ? `空で走った区間は ${empties.length} 便でした（距離が分からないので、km は出していません）。`
+        : kmMiss ? `空で走った区間は ${empties.length} 便、距離の分かる ${kmN} 便で約 ${commas(km)} km でした（${kmSrc}）。距離が分からない ${kmMiss} 便は km に入れていません。`
+        : `空で走った区間は ${empties.length} 便・約 ${commas(km)} km でした（${kmSrc}）。`;
+      add(2, `${kmHead}${tail}`,
+        [{ k: '空で走った便', v: `${empties.length} 便` }, { k: '空で走った距離', v: !kmN ? '距離が分からない' : kmMiss ? `約 ${commas(km)} km（距離が分からない ${kmMiss} 便を除く）` : `約 ${commas(km)} km` }],
         { label: '帰り便の下書きにする', action: 'draft_backhaul', payload: { dir: 'back' } },
         empties.slice().sort((a, b) => cmp(a.date, b.date) || cmp(a.plate, b.plate)).map(evLeg).slice(0, 40));
     }
@@ -2122,8 +2127,8 @@ const OwnCalc = (() => {
     return 2 * R * Math.asin(Math.sqrt(x));
   };
 
-  // 地図の市区町村に当たらない地名で、倉庫・センターなどの施設名を外した本名（「辰巳倉庫」「辰巳DC3」→「辰巳」）。同じ本名の地名は 1 つの地点にまとめる（options.merge_places が偽のときはまとめない）
-  const FACILITY_TAIL = /(?:第?[0-9一二三四五六七八九十]*(?:物流センター|配送センター|センター|ｾﾝﾀｰ|営業所|工場|倉庫|ターミナル|集配所|出張所|支店|デポ|DC|ＤＣ|倉|庫|物流|配送))+[0-9A-Za-z]*$/i;
+  // 地図の市区町村に当たらない地名で、倉庫・センターなどの施設名を外した本名（「辰巳倉庫」「辰巳DC3」→「辰巳」。「本社車庫」のように、外すと名前が途中で切れる車庫は外さない）。同じ本名の地名は 1 つの地点にまとめる（options.merge_places が偽のときはまとめない）
+  const FACILITY_TAIL = /(?:第?[0-9一二三四五六七八九十]*(?:物流センター|配送センター|センター|ｾﾝﾀｰ|営業所|工場|倉庫|ターミナル|集配所|出張所|支店|デポ|DC|ＤＣ|倉|(?<!車)庫|物流|配送))+[0-9A-Za-z]*$/i;
   function coreName(t) {
     const c = nfkc(t).trim().replace(/\s+/g, '');
     const r = c.replace(FACILITY_TAIL, '').replace(/[0-9\-ー]+$/, '');
@@ -2220,14 +2225,43 @@ const OwnCalc = (() => {
     return { files: out, changed: out.some((f, i) => f !== files[i]) };
   }
 
+  // 見出しのない CSV か。1 行目に日付の形の値（2026/10/01 など）があり、見出しの辞書に当たる語が 1 つも無い 3 列以上の表なら、1 行目に仮の見出し「列 1」「列 2」…の行を足して返す。違うときは null
+  function headerlessRows(rows, roles) {
+    if (!rows.length || blankRow(rows[0])) return null;
+    const cells = rows[0].map((c) => (c || '').trim()), filled = cells.filter((c) => c);
+    if (filled.length < 3 || filled.some((c) => haishaRole(c, roles) || roleOf(c))) return null;
+    if (!filled.some((c) => shapeRatio([c], 'date_header') === 1)) return null;
+    const w = Math.max(...rows.map((r) => r.length));
+    return [Array.from({ length: w }, (_, j) => `列 ${j + 1}`)].concat(rows);
+  }
+  // 見出しの辞書に当たらない列（役割を聞く列）の候補を、縦の配車表の役割から選び直す。日付の列があるとき、デジタコの形（距離・停車した場所）ではなく、
+  // 4 桁の番号の列は車番、漢字の名前の列は先の 2 つを発地と着地、「3t」は重さ、実・空の語は実空の印にする。当てはまらない列は候補を出さない
+  function reguessHaisha(needs, dictFn, cells) {
+    if (!needs.some((e) => e.suggested_role === 'date') && !cells.some((c) => dictFn(c) === 'date')) return needs;
+    const taken = new Set(['date']), places = ['from', 'to'];
+    return needs.map((e) => {
+      if (dictFn(e.column) || e.suggested_role === 'date') return e;
+      const v = e.samples || [];
+      let r = null;
+      if (!taken.has('plate') && shapeRatio(v, 'plate') >= 0.6 && shapeRatio(v, 'date_header') < 0.6) r = 'plate';
+      else if (v.length && v.every((x) => /^[0-9]+(\.[0-9]+)?\s*(t|ｔ|トン|kg|ｋｇ)$/i.test(nfkc(x).trim()))) r = 'weight';
+      else if (v.length && v.every((x) => /^(実車?|積車?|空車?|カラ|回送|空回送)$/.test(nfkc(x).trim()) || isEmptyWord(x))) r = 'mark';
+      else if (shapeRatio(v, 'place_kanji') >= 0.6 && places.length) r = places.shift();
+      else if (shapeRatio(v, 'flag01') < 0.6 && e.suggested_role && HAISHA_ROLE_OPTIONS.includes(e.suggested_role) && !taken.has(e.suggested_role)) r = e.suggested_role;
+      if (r) taken.add(r);
+      return { ...e, suggested_role: r, suggested_label_ja: r ? ROLE_LABEL_JA[r] : null, options: roleOptions('配車表').concat(roleOptions('不明').filter((o) => !HAISHA_ROLE_OPTIONS.includes(o.role) && o.role !== 'skip')) };
+    });
+  }
+
   function analyzeInner(files0, o, hRoles, dRoles) {
     const monthOpt = o.month != null ? +o.month : o.mon != null ? +o.mon : null;
     const ord = orderFiles(files0, o), files = ord.files;
     const parsed = files.map((f) => {
-      let rows = parseCsv(f.text), transposed = null;
+      let rows = parseCsv(f.text), transposed = null, headerless = false;
       const csvWarn = rows.warnings || [];
       if (!detectHaisha(rows, hRoles, monthOpt) && !detectDigitaco(rows)) { const tr = transposeDateDown(rows); if (tr) { rows = tr.rows; transposed = tr; } } // 日付が縦・車が横の配車表は、日付が横の形に置き換えて読む
-      return { name: f.name, encoding: f.encoding || null, rows, transposed, csvWarn };
+      if (!transposed && !detectHaisha(rows, hRoles, monthOpt) && !detectDigitaco(rows)) { const hl = headerlessRows(rows, hRoles); if (hl) { rows = hl; headerless = true; } } // 見出しのない CSV は、仮の見出し「列 N」を 1 行目に足して、1 行目も値として読む
+      return { name: f.name, encoding: f.encoding || null, rows, transposed, csvWarn, headerless };
     });
     // 車番の列が無い 1 行 = 1 便の表（1 台の会社の日報の写しなど）は、車 1 台の表として読む。車番の列を足して、全部の行を「1号車」にする
     for (const f of parsed) {
@@ -2521,7 +2555,7 @@ const OwnCalc = (() => {
         unreadable.push({ line: 1, col: null, original: '', reason: BINARY_REASON, file: f.name, where: 'ファイル全体', howto_ja: HOWTO_UNREADABLE_JA });
         continue;
       }
-      const needs = needingRoles('不明', f.name, cells, f.rows.slice(hi + 1), (h) => decided(h), new Set(), true, hi + 1, dictRole);
+      const needs = reguessHaisha(needingRoles('不明', f.name, cells, f.rows.slice(hi + 1), (h) => decided(h), new Set(), true, hi + 1, dictRole), dictRole, cells);
       judged[f.name] = { hi, cells, needs };
       const sug = new Set(needs.map((e) => e.suggested_role).filter((r) => r)); // 列の役割を選べば読める形になりそうなときだけ「役割を選ぶ」と案内する
       const chooseable = (sug.has('start_time') && sug.has('end_time')) || (sug.has('date') && (sug.has('loaded_km') || sug.has('empty_km'))) || (sug.has('date') && sug.has('plate') && (sug.has('from') || sug.has('to')));
@@ -2636,15 +2670,10 @@ const OwnCalc = (() => {
       }
     }
     for (const l of legs) {
-      if (l.dir === 'out') { l.cycle_wd = weekdayOf(l.date); l.cycle_dep = l.dep; }
-      else {
-        const prev = legs.filter((x) => x.plate === l.plate && x.dir === 'out' && daysBetween(x.date, l.date) > 0 && daysBetween(x.date, l.date) <= 2);
-        if (prev.length) {
-          let oo = prev[0];
-          for (const x of prev) if (x.date > oo.date) oo = x;
-          l.cycle_wd = weekdayOf(oo.date); l.cycle_dep = oo.dep;
-        } else { l.cycle_wd = weekdayOf(l.date); l.cycle_dep = null; } // 直前の行きが無い帰りは、帰りの便自身の日付の曜日（前の日の曜日にはしない）
-      }
+      // 曜日は、その区間の便自身が出た日（行きも帰りも）。帰りを前の日の行きに結び付けない（同じ日に行って帰る便が、前の日の曜日に入っていた）。
+      // 帰りの便の実出発（dep）が無いときは記録日。cycle_dep は、その便自身の出発（夜に出たかの判定に使う）
+      l.cycle_wd = l.dir === 'out' ? weekdayOf(l.date) : (returnWhen(l)[2] ?? weekdayOf(l.date));
+      l.cycle_dep = l.dep || null;
       l.color = l.flags.some((fl) => !decOf(`link:${l.id}:${fl.type}`)) ? 'yellow' : l.kind === 'unknown' ? 'gray' : 'green';
     }
     const legByDid = {};
@@ -2905,7 +2934,7 @@ const OwnCalc = (() => {
       const { hi, cells } = judged[f.name];
       if (judged[f.name].binary) continue;
       // 見出しが辞書に当たる列は、役割がもう決まっているので聞かない（聞くのは、見出しからは分からない列だけ）
-      for (const e of needingRoles('不明', f.name, cells, f.rows.slice(hi + 1), (h) => decided(h) || !!dictRole(h), new Set(), true, hi + 1, dictRole)) pushNeed(e);
+      for (const e of reguessHaisha(needingRoles('不明', f.name, cells, f.rows.slice(hi + 1), (h) => decided(h) || !!dictRole(h), new Set(), true, hi + 1, dictRole), dictRole, cells)) pushNeed(e);
     }
     const shapeSignatures = {};
     for (const f of files2) if (f.shape_signature) shapeSignatures[f.file] = f.shape_signature;
@@ -2916,6 +2945,7 @@ const OwnCalc = (() => {
 
     const hiredAll = wl ? wl.hired : [];
     const hiredCells = hiredAll.reduce((a, h) => a + h.cells, 0), hiredLegs = hiredAll.reduce((a, h) => a + h.legs, 0);
+    for (const f of parsed) if (f.headerless) notices.push({ kind: 'headerless', text_ja: `${f.name} には見出しの行がないので、仮の見出し（列 1、列 2…）を足して、1 行目も値として読みました。行番号は、仮の見出しの行を 1 行目として数えています。` });
     for (const f of used) if (f.noPlateCol) notices.push({ kind: 'no_plate_col', text_ja: `${f.name} には車番の列がないので、${NO_PLATE_LABEL_JA}として読みました。画面では ${NO_PLATE_NAME} と表示します。複数の車が混ざったファイルのときは、車番の列を足してください。` });
     if (hiredAll.length) notices.push({ kind: 'hired', text_ja: `傭車の行 ${hiredAll.length} 行（${hiredAll.map((h) => `「${h.name}」`).join('')}）の ${hiredCells} 日ぶん（区間 ${hiredLegs} 件）は、自社の車ではないので読まず、傭車として別に数えました。` });
     for (const f of parsed) if (f.csvWarn.length) notices.push({ kind: 'csv_quote', text_ja: `${f.name} の ${f.csvWarn.map((w) => w.line).slice(0, 5).join('、')} 行目: ${f.csvWarn[0].reason}（${f.csvWarn.length} 件）。` });
@@ -4989,7 +5019,7 @@ function kpiHtml(d) {
   const raisedNote = mr ? `<p class="hint" id="max-raised">配車表に ${(mr.to_kg / 1000).toFixed(1)}t の荷があったので、${esc(mr.cls)}の最大積載量を ${(mr.to_kg / 1000).toFixed(1)}t にしました。下の欄で変えられます。</p>` : '';
   return `<section class="card" id="sec-kpi"><h2>${monthWord(d)}の実車率と積載率 <small>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}</small></h2>
     ${readq}<div class="tiles">
-      ${tile('actual_rate', '実車率', ar.value, `空車か実車か分かった区間 ${pc(ar.share)}（${ar.legs} / ${ar.of}）`, `全国 ${n.actual_rate_pct}%（営業用普通車）`, ar.formula, arFaint, rq.low && rq.lo != null && ar.value != null ? `${pcs(rq.lo)}〜${pcs(ar.value)}<small>%</small>` : '')}
+      ${tile('actual_rate', '実車率', ar.value, `空車か実車か分かった区間 ${pc(ar.share)}（${ar.legs} / ${ar.of}）${ar.value == null && ar.legs ? '。距離が分からないので実車率は出せません' : ar.legs_with_km != null && ar.legs_with_km < ar.legs ? `。距離が分かるのは ${ar.legs_with_km} 区間で、率はその区間だけで計算しています` : ''}`, `全国 ${n.actual_rate_pct}%（営業用普通車）`, ar.formula, arFaint, rq.low && rq.lo != null && ar.value != null ? `${pcs(rq.lo)}〜${pcs(ar.value)}<small>%</small>` : '')}
       ${tile('load_rate', '大型の積載率', lr.value, `計算できた区間 ${pc(lr.share)}（${lr.legs} 区間。大型 ${lr.of_large} 区間のうち）`, overNote, lr.formula, lrFaint)}
       ${tile('load_efficiency', '大型の積載効率', le.value, `大型の積載率（${lr.legs} 区間）× 大型の実車率 ${pc(lar.value)}（${lar.legs} 区間）`, `全国 ${n.load_efficiency_pct}%（数え方が違うので比べられません）`, le.formula, leFaint)}
     </div>
@@ -5296,7 +5326,7 @@ function printHtml(d) {
     <table>${tr('実車率', pc(k.actual_rate.value), `判定できた区間 ${k.actual_rate.legs} / ${k.actual_rate.of}。実車か空車か不明の ${d.counts.unknown} 区間と、読めなかった行・セル ${d.counts.unreadable} 件は入れていません`)}
       ${alt ? tr(alt.mode === 'km' ? '（不明を空車として数えた実車率）' : '（不明を空車として数えた実車の区間の割合）', pc(alt.rate), alt.mode === 'km' ? `不明 ${alt.unkLegs} 区間の距離 ${n1(alt.unkKm)} km を空車に入れた場合` : `不明を外すと ${pc(alt.base)}。不明 ${alt.unkLegs} 区間には距離が無いので区間の数で数えた`) : ''}
       ${tr('大型の積載率', pc(k.load_rate.value), `大型の最大積載量は登録が無いとき ${d.max_load_raised ? (d.max_load_raised.to_kg / 1000).toFixed(1).replace(/\.0$/, '') : 10} t と仮定`)}${tr('大型の積載効率', pc(k.load_efficiency.value), '大型の積載率 × 大型の実車率')}
-      ${tr('空車 km', `${n1(sm.empty_km)} km`, c.empty ? `空車の費用の目安 ${yen(c.empty.yen)}（${esc(c.empty.formula)}）` : '単価を入れていないので費用は出していません')}
+      ${tr('空車 km', sm.empty_km || !d.legs.some((l) => l.kind === 'empty') ? `${n1(sm.empty_km)} km` : '距離が分からない', c.empty ? `空車の費用の目安 ${yen(c.empty.yen)}（${esc(c.empty.formula)}）` : '単価を入れていないので費用は出していません')}
       ${tr('荷待ち（30 分以上の停車）', c.waitMissing ? '記録なし' : `${c.longCount} 回・${n1(sm.wait_min / 60)} 時間`, c.waitMissing ? 'デジタコを入れていないので、停車は数えていません' : c.wait ? `停車の費用の目安 ${yen(c.wait.yen)}（${esc(c.wait.formula)}）` : '')}
       ${rev && rev.total ? tr('帰り荷の売上の目安（上限）', yen(rev.total), `空車の帰り ${rev.counted} 便の合計。標準的運賃の表に当てた目安で、相場ではありません`) : ''}</table>
     <h3>空車の便数が多い区間と曜日</h3><table><thead><tr><th>区間</th><th>曜日</th><th>便数</th><th>空車</th><th>不明</th><th>空車の km</th></tr></thead><tbody>${rows}</tbody></table>

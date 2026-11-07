@@ -403,7 +403,7 @@ def test_g70_sample_fires_all_six_rules(sample):
         assert i["evidence"] and i["next"]["label"] and i["text"]
         assert all(e["file"] and e["text"] for e in i["evidence"])
     t = by[1]
-    assert "木曜の夜" in t["text"] and "5 便の帰りがすべて空" in t["text"] and len(t["evidence"]) == 5
+    assert "土曜の夜に出た 5 便の帰りがすべて空" in t["text"] and len(t["evidence"]) == 5  # 帰りの便が出た日（行きを出た木曜ではない）
     assert t["next"]["action"] == "draft_backhaul" and t["next"]["payload"]["trips"] == 5 and t["next"]["payload"]["empty"] == 5
     r3 = [i["text"] for i in ins if i["rule"] == 3]  # 確認待ちの別名「辰巳」を当てないので、地点 07（江東区辰巳）と地点 08（辰巳）の 2 件に分かれる（合わせて 10 回・8.0 時間）
     assert len(r3) == 2 and any("5 回" in t and "3.8 時間" in t for t in r3) and any("5 回" in t and "4.2 時間" in t for t in r3)
@@ -413,10 +413,10 @@ def test_g70_sample_fires_all_six_rules(sample):
 
 
 def test_g70_sample_spec_numbers_from_raw(sample):
-    """SPEC §22.1: 木曜発の帰りが 5 回とも空、30 分以上の停車 10 回 = 8.0 時間、確認待ち 7 件、読めない 3 行。"""
-    thu = [l for l in sample["legs"] if l["dir"] == "back" and l["cycle_wd"] == 3]
+    """SPEC §22.1: 土曜に出た帰り（木曜の夜に出た行きの帰り。曜日は帰りの便が出た日）が 5 回とも空、30 分以上の停車 10 回 = 8.0 時間、確認待ち 7 件、読めない 3 行。"""
+    thu = [l for l in sample["legs"] if l["dir"] == "back" and l["cycle_wd"] == 5]
     assert len(thu) == 5 and all(l["kind"] == "empty" for l in thu)
-    assert sorted(l["cycle_dep"][:10] for l in thu) == ["2026-10-01", "2026-10-08", "2026-10-15", "2026-10-22", "2026-10-29"]
+    assert sorted(l["cycle_dep"][:10] for l in thu) == ["2026-10-03", "2026-10-10", "2026-10-17", "2026-10-24", "2026-10-31"]
     assert all(l["cycle_dep"][11:13] >= "18" for l in thu)  # 夜に出た
     long = [s for s in sample["stops"] if s["place"] in ("p07", bos.UNCONFIRMED_PID) and s["minutes"] >= 30]  # 「辰巳」は確定するまで別の地点（p08）
     assert len(long) == 10 and sum(s["minutes"] for s in long) == 480
@@ -424,14 +424,14 @@ def test_g70_sample_spec_numbers_from_raw(sample):
     assert len(sample["confirm"]) == 7 and len(sample["unreadable"]) == 3
     assert {u["reason"] for u in sample["unreadable"]} == {"月が分かりません", "区間が読めません", "車番がありません"}  # SPEC §42: 時刻だけ読めないセルは区間を残すので、3 つ目は矢印の無いセル
     assert sample["paper"]["text"] == "紙の日報 3 枚（この版では読みません）"
-    # 木曜以外に、規則 1 に当たる曜日・向きが無い
+    # 土曜以外に、規則 1 に当たる曜日・向きが無い
     from collections import Counter
     g: dict = {}
     for l in sample["legs"]:
         if l["kind"] != "unknown":
             g.setdefault((l["dir"], l["cycle_wd"]), []).append(l["kind"] == "empty")
     hit = [k for k, v in g.items() if len(v) >= 4 and sum(v) * 4 >= len(v) * 3]
-    assert hit == [("back", 3)]
+    assert hit == [("back", 5)]
     assert Counter(c["kind"] for c in sample["confirm"]) == {"alias": 1, "column": 2, "link": 4}
     vs = {v["plate"]: v for v in sample["vehicles"]}
     assert len(vs) == 8 and sorted(v["cls"] for v in vs.values()).count("大型") == 2 and sorted(v["cls"] for v in vs.values()).count("4t") == 4

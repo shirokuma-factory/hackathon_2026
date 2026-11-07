@@ -370,17 +370,13 @@ def build(write: bool = True, use_claude: bool = True) -> dict:
     legs.sort(key=lambda l: (l["date"], l["plate"], 0 if l["dir"] == "out" else 1))
     for i, l in enumerate(legs, 1):
         l["id"] = f"L{i:03d}"
-    # 行きを出た日の曜日（帰りは、直前の行きと同じ運行。直前の行きが無い帰りは、帰りの便自身の日付の曜日）
+    # 曜日は、その便自身が出た日（行きも帰りも）。帰りは実出発の日、無ければ記録日。前の日の行きには結び付けない（web/own_calc.js の analyze と同じ）
     for l in legs:
-        if l["dir"] == "out":
-            l["cycle_wd"], l["cycle_dep"] = date.fromisoformat(l["date"]).weekday(), l["dep"]
-        else:
-            prev = [o for o in legs if o["plate"] == l["plate"] and o["dir"] == "out" and 0 < (date.fromisoformat(l["date"]) - date.fromisoformat(o["date"])).days <= 2]
-            if prev:
-                o = max(prev, key=lambda x: x["date"])
-                l["cycle_wd"], l["cycle_dep"] = date.fromisoformat(o["date"]).weekday(), o["dep"]
-            else:
-                l["cycle_wd"], l["cycle_dep"] = date.fromisoformat(l["date"]).weekday(), None  # 直前の行きが無い帰りは、帰りの便自身の日付の曜日（SPEC §43）
+        try:
+            wd_day = date.fromisoformat((l["dep"] or "")[:10]).isoformat() if l["dir"] != "out" else l["date"]
+        except ValueError:
+            wd_day = l["date"]
+        l["cycle_wd"], l["cycle_dep"] = date.fromisoformat(wd_day).weekday(), l["dep"] or None
         l["color"] = "yellow" if l["flags"] else ("gray" if l["kind"] == "unknown" else "green")
     # 停車に、行きを出た日の曜日を付ける
     run_by_id = {r["id"]: r for r in runs}

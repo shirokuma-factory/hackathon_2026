@@ -398,14 +398,14 @@ const Own = (() => {
   }
   /* ------------------------------------------------------------ 取り込みの案内と見本の CSV、AI による列の整理（SPEC §53.1） */
 
-  // 見本の CSV（架空）。web/data/own_sample.json の元にした data/own_sample/raw の配車表と同じ地名・車番の書き方で、OwnCalc の辞書が読む見出しを使う
+  // 見本の CSV（架空）。web/data/own_sample.json の元にした data/own_sample/raw の配車表と同じ地名・車番の書き方で、OwnCalc の辞書が読む見出しを使う。地名は辞書にあるものだけ（「辰巳」は地図に置けず確認待ちになるので使わない）
   const SAMPLE_CSV = ['日付,車番,車種,発地,着地,着時刻,重さ,実空',
     '2026/10/01,鹿児島 100 か 9001,大型,鹿屋,江東,05:30,4.6t,',
     '2026/10/02,鹿児島 100 か 9001,大型,江東,鹿屋,04:30,,空',
     '2026/10/03,鹿児島 100 か 9001,大型,鹿屋,江東,05:30,3.2t,',
     '2026/10/04,鹿児島 100 か 9001,大型,江東,鹿屋,04:30,,空',
-    '2026/10/01,鹿児島 100 か 9002,大型,鹿屋,辰巳,05:30,3.8t,',
-    '2026/10/02,鹿児島 100 か 9002,大型,辰巳,鹿屋,04:00,2.9t,'].join('\r\n') + '\r\n';
+    '2026/10/01,鹿児島 100 か 9002,大型,鹿屋,江東,05:30,3.8t,',
+    '2026/10/02,鹿児島 100 か 9002,大型,江東,鹿屋,04:00,2.9t,'].join('\r\n') + '\r\n';
   function saveSampleCsv() {
     const blob = new Blob(['﻿' + SAMPLE_CSV], { type: 'text/csv;charset=utf-8' }); // BOM つき UTF-8（Excel でも文字化けしない）
     const a = document.createElement('a');
@@ -969,7 +969,7 @@ const Own = (() => {
       }).join('');
       const a = dir === 'out' ? d.base : d.dock, b = dir === 'out' ? d.dock : d.base;
       return `<tr class="grp"><td colspan="${5 + extra}">${dir === 'out' ? '行き（車庫から）' : '帰り（車庫へ）'}　${esc(nm(a))} → ${esc(nm(b))}</td></tr>${body}
-        <tr class="tot"><td>合計</td><td class="num" data-l="便数">${tot.trips}</td><td class="num" data-l="空車">${tot.empty}</td><td class="num" data-l="空車の km">${n1(tot.km)}</td><td class="num" data-l="30 分以上の停車">${dir === 'out' ? tot.ls : '—'}</td>${costCells(tot.km, tot.lm)}</tr>`;
+        <tr class="tot"><td>合計</td><td class="num" data-l="便数">${tot.trips}</td><td class="num" data-l="空車">${tot.empty}</td><td class="num" data-l="空車の km">${tot.km ? n1(tot.km) : '—'}</td><td class="num" data-l="30 分以上の停車">${dir === 'out' ? tot.ls : '—'}</td>${costCells(tot.km, tot.lm)}</tr>`;
     };
     const body = rowsOf('out') + rowsOf('back');
     if (!body) return '<p class="o-hint">主な往復（車庫から・車庫へ）の区間がありません。区間の表は出せません。</p>';
@@ -1035,7 +1035,7 @@ const Own = (() => {
       }).join('');
       const role = p.role === 'out' ? '行き（車庫から）' : p.role === 'back' ? '帰り（車庫へ）' : '';
       return `<tr class="grp"><td colspan="${5 + extra}">${esc(p.label)}${role ? `<small>主な往復の「${role}」の向き${p.role === 'back' ? '・帰りの便が出た曜日で数えています' : ''}</small>` : ''}</td></tr>${body}
-        <tr class="tot"><td>合計</td><td class="num" data-l="便数">${tot.trips}</td><td class="num" data-l="空車">${tot.empty}</td><td class="num" data-l="空車の km">${n1(tot.km)}</td><td class="num" data-l="30 分以上の停車">${atDock ? tot.ls : '—'}</td>${costCells(tot.km, tot.lm)}</tr>`;
+        <tr class="tot"><td>合計</td><td class="num" data-l="便数">${tot.trips}</td><td class="num" data-l="空車">${tot.empty}</td><td class="num" data-l="空車の km">${tot.km ? n1(tot.km) : '—'}</td><td class="num" data-l="30 分以上の停車">${atDock ? tot.ls : '—'}</td>${costCells(tot.km, tot.lm)}</tr>`;
     };
     const gs = d.pairs.map(group).filter((x) => x);
     if (!gs.length) return '<p class="o-hint">区間の表を作れる便がありません。</p>';
@@ -1161,8 +1161,8 @@ const Own = (() => {
     const rev = OwnMonth.revenue(d), alt = altActual(d), own = OwnMonth.ownRevenue(d, O.rate);
     return `<h2>自社の運行 ${monthWord(d)}${isImport() ? '' : '（架空のサンプル）'}</h2>
       <p>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}。この数字は取り込んだ記録から計算した目安です。法令で残す元の記録は別に保管してください。</p>
-      <table class="o-pt">${tr('実車率', pc(k.actual_rate.value, 1), `空車か実車か分かった区間 ${k.actual_rate.legs} / ${k.actual_rate.of}${k.actual_rate.legs < FEW ? '（参考。件数が少ない）' : ''}`)}${alt ? tr(alt.full ? '実車率（不明・読めない行を空とした場合）' : '実車率（不明の区間を空とした場合）', pc(alt.v, 1), `不明の区間 ${alt.unk}・読めない行 ${alt.unread} を空車とした値`) : ''}${tr('実車率に入れていないもの', `不明の区間 ${(d.counts && d.counts.unknown) || 0}・読めない行 ${(d.unreadable || []).length}`, '不明の区間は実車率の計算に入れていません。読めない行は取り込めていません')}${tr('大型の積載率', pc(k.load_rate.value, 1), '大型の最大積載量は登録が無いとき 10 t と仮定')}
-        ${tr('大型の積載効率', pc(k.load_efficiency.value, 1), '大型の積載率 × 大型の実車率')}${tr('空車 km', `${n1(sm.empty_km)} km`, '')}${tr('荷待ち（30 分以上の停車）', c.waitMissing ? '記録なし' : `${c.longCount} 回・${n1(sm.wait_min / 60)} 時間`, c.waitMissing ? 'デジタコを入れていないので、停車は数えていません' : '')}
+      <table class="o-pt">${tr('実車率', pc(k.actual_rate.value, 1), `空車か実車か分かった区間 ${k.actual_rate.legs} / ${k.actual_rate.of}${k.actual_rate.value == null && k.actual_rate.legs ? '。距離が分からないので実車率は出せません' : k.actual_rate.legs_with_km != null && k.actual_rate.legs_with_km < k.actual_rate.legs ? `。距離が分かるのは ${k.actual_rate.legs_with_km} 区間で、率はその区間だけで計算しています` : ''}${k.actual_rate.legs < FEW ? '（参考。件数が少ない）' : ''}`)}${alt ? tr(alt.full ? '実車率（不明・読めない行を空とした場合）' : '実車率（不明の区間を空とした場合）', pc(alt.v, 1), `不明の区間 ${alt.unk}・読めない行 ${alt.unread} を空車とした値`) : ''}${tr('実車率に入れていないもの', `不明の区間 ${(d.counts && d.counts.unknown) || 0}・読めない行 ${(d.unreadable || []).length}`, '不明の区間は実車率の計算に入れていません。読めない行は取り込めていません')}${tr('大型の積載率', pc(k.load_rate.value, 1), '大型の最大積載量は登録が無いとき 10 t と仮定')}
+        ${tr('大型の積載効率', pc(k.load_efficiency.value, 1), '大型の積載率 × 大型の実車率')}${tr('空車 km', sm.empty_km || !d.legs.some((l) => l.kind === 'empty') ? `${n1(sm.empty_km)} km` : '距離が分からない', '')}${tr('荷待ち（30 分以上の停車）', c.waitMissing ? '記録なし' : `${c.longCount} 回・${n1(sm.wait_min / 60)} 時間`, c.waitMissing ? 'デジタコを入れていないので、停車は数えていません' : '')}
         ${rev && rev.total ? tr('帰り荷の売上の目安（全部の帰りに荷が付いた場合の上限）', yenS(rev.total), `空車の帰り ${rev.counted} 便の合計。1 便 ${rev.min === rev.max ? yenS(rev.min) : `${yenS(rev.min)}〜${yenS(rev.max)}`}（標準的運賃、便ごとの車の種類と km、目安）。${STD_NOTE}`) : ''}${own ? tr(`帰り荷の売上（自社の成約単価 ${n0(own.value)} ${own.unit} で出した上限）`, yenS(own.total), `空車の帰り ${own.counted} 便ぶん。入れた単価で計算した値`) : ''}</table>
       ${cmp}
       <h3>気づき</h3><ol>${d.insights.map((i) => `<li>${esc(i.text)}</li>`).join('') || '<li>今月は目立つ点はありません。</li>'}</ol>`;
