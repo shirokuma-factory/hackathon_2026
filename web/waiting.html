@@ -208,8 +208,15 @@ details[open].disc > summary::before, details[open].fold > summary::before, deta
 .col-in, .col-out { min-width: 0; }
 .scroll-x { overflow-x: auto; max-width: 100%; }
 .protect p { margin: 2px 0; }
-#hotspots td.num, #hotspots th { white-space: nowrap; }
-#hotspots td.small { min-width: 260px; }
+#hotspots td.small { min-width: 14em; white-space: normal; overflow-wrap: anywhere; }   /* メモは折り返して読める幅にする。右端で切れないよう他の列は詰める */
+#hotspots th { padding: 4px 6px; white-space: normal; }
+#hotspots td { padding-left: 6px; padding-right: 6px; }
+#hotspots th:last-child { text-align: left; }
+#hotspots td.num, #hotspots th.num { white-space: nowrap; }
+/* 施設名・場所の列は縦に 1 文字ずつ並ばない幅を持たせる（空白では折り返す）。表が広いときは .scroll-x で横に動かす */
+table.par td:first-child, table.par th:first-child { min-width: 7em; }
+#shipper-places td:first-child, #shipper-hours td:first-child { min-width: 9em; white-space: nowrap; }
+#shipper-places td, #shipper-places th { min-width: 4.5em; }
 #hotspots td.c1, #placemonth td.c1 { white-space: nowrap; min-width: 7em; } /* 「江東区 地点07」のような場所が縦に折れない。表が広いときは .scroll-x で横に動かす */
 .tw { overflow: auto; max-height: 440px; border: 1px solid var(--line); border-radius: 8px; }
 table.in { border-collapse: collapse; width: 100%; font-size: 12.5px; }
@@ -504,6 +511,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 #wait-doc table.rec tfoot td { font-weight: 700; border-top: 1px solid var(--paper-text); border-bottom: 1px solid var(--paper-text); }
 #wait-doc table.rec tfoot td.l-sum { text-align: right; }
 #wait-doc table.rec.rate th, #wait-doc table.rec.rate td { white-space: normal; }
+@media screen { #doc-placemonth td:first-child, #doc-placemonth th:first-child { min-width: 8em; } #doc-placemonth td, #doc-placemonth th { min-width: 3.5em; } }   /* 狭い画面で場所・月が 1 文字ずつ縦に折れない */
 #wait-doc sup.fn { color: var(--paper-muted); font-size: 10px; margin-left: 1px; }
 #wait-doc ol.rec-notes { list-style: none; margin: 8px 0 0; padding: 0; counter-reset: fn; }
 #wait-doc ol.rec-notes li { counter-increment: fn; padding-left: 2.4em; text-indent: -2.4em; }
@@ -2180,7 +2188,7 @@ function draftHtml(p) {
 }
 
 // ---- 説明文の自動作成（SPEC §53）。ページはサーバーに送る事実を組み立てるだけで、通信は ai_explain.js が行う
-const AI_OFF_LINE = (() => { try { return /^https?:$/.test(location.protocol) ? '説明文の自動作成は今は使えません（型どおりの書面です）' : '説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）'; } catch (e) { return '説明文の自動作成は今は使えません（型どおりの書面です）'; } })();
+const AI_OFF_LINE = (() => { try { return /^https?:$/.test(location.protocol) ? '説明文の自動作成は今は使えません（型どおりの書面です）' : '説明文の自動作成: ファイルで開いたときは使えません（今は型どおりの書面です）'; } catch (e) { return '説明文の自動作成は今は使えません（型どおりの書面です）'; } })();
 function aiFacts(p) {
   const t = TARIFF, rows = partnerRows(p.partner);
   return {
