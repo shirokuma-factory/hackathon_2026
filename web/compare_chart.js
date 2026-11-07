@@ -117,7 +117,7 @@ const CompareChart = (() => {
     const ttl = ref ? '送り方ごとの費用（確認が要る便を含む）' : '送り方ごとの費用';
     return `<section class="cc" aria-label="送り方の比べ">` +
       `<h4 class="cc-title">${ttl}<small class="cc-long">税抜・この荷物 1 件分です。高速代と待機料は別です。</small><small class="cc-unit">円・税抜・この荷物 1 件分。付帯料金は別</small></h4>` +
-      `${sum}<div class="cc-head" aria-hidden="true"><span>送り方</span><span>使えるか</span><span>費用の目安（棒は金額の大きさ）</span><span>日数</span></div>` +
+      `${sum}<div class="cc-head" aria-hidden="true"><span>送り方</span><span>使えるか</span><span title="棒の長さは金額の大きさです">費用の目安</span><span>日数</span></div>` +
       `<div class="cc-rows" role="radiogroup" aria-label="見積依頼文を作る送り方">${fits.map(line).join('')}${checks.map(line).join('')}${plain.map(none).join('')}</div>` +
       (alt.length ? `<details class="cc-alt"${altOpen ? ' open' : ''}><summary>鉄道・船・飛行機（見積で確認）</summary><div class="cc-alt-rows" role="radiogroup" aria-label="見積依頼文を作る送り方（額を出さない手段）">${alt.map(none).join('')}</div></details>` : '') +
       `</section>`;
