@@ -55,7 +55,7 @@ class Container:
 
 
 def _box_container() -> Container:
-    """JITBOX のボックスの内寸と最大積載量。estimate.py と同じ data/tariffs/yamato_jitbox.json から読む（別の数値を持たない）。"""
+    """JITBOX のボックスの内寸と最大積載量。estimate.py と同じ表（tariffs.load_tariff。実在の表がなければ架空の見本）から読む（別の数値を持たない）。"""
     box = load_tariff("jitbox")["box"]
     ln, wd, ht = (int(x) for x in box["inner_mm"])
     return Container("jitbox", "ボックス（JITBOX 1本）", ln, wd, ht, int(box["max_kg"]), "公表例",

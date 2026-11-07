@@ -24,7 +24,8 @@ KINKI = ROOT / "data" / "tariffs" / "mlit_standard_fare_kinki.json"
 CONTACTS = ROOT / "data" / "contacts.json"
 DECKS = ROOT / "data" / "vehicle_decks.json"
 CARRIERS = ROOT / "data" / "demo" / "carriers.json"
-SAGAWA = ROOT / "data" / "tariffs" / "sagawa_kanto.json"
+# 公開するページには架空の見本の表だけを埋め込む。実在の会社の運賃（data/tariffs/private/）は読まない
+SAGAWA = ROOT / "data" / "tariffs" / "sample_parcel.json"
 VECTORS = ROOT / "tests" / "data" / "compare_lite_vectors.json"
 OUT_ARTIFACT = ROOT / "web" / "publish" / "compare_lite_artifact.html"
 TITLE = "荷物の送り方比べ"
@@ -59,7 +60,7 @@ def _filled() -> str:
     # 帰り便の目安は、地図の画面のデモの便 T7 の「空き」で判定する（/api/b/match と同じ。SPEC §39）
     t7 = next(t for t in json.loads(CARRIERS.read_text(encoding="utf-8"))["trips"] if t["id"] == "T7")
     home = {k: t7[k] for k in ("weight_slack_kg", "floor_free_m2", "max_piece_kg", "clear_height_mm", "unit_footprint_mm")}
-    # 宅配の公表運賃（関東発・関西あて）。会社名・商品名・表への URL は載せない。サイズ・寸法と重さの上限・運賃（税込）・持込の減額だけ（SPEC §47）
+    # 宅配の架空の運賃の例（関東発・関西あて）。会社名・商品名・表への URL は載せない。サイズ・寸法と重さの上限・運賃（税込）・持込の減額だけ（SPEC §47）
     sg = json.loads(SAGAWA.read_text(encoding="utf-8"))
     pub_takuhai = {"origin": sg["origin_region"], "dest": sg["dest_region"], "tax": sg["tax"], "checked_on": sg["checked_on"],
                    "sizes": [{k: z[k] for k in ("size", "max_sum_cm", "max_kg", "fare")} for z in sg["sizes"]],
