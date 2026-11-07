@@ -980,7 +980,7 @@ const Own = (() => {
   // 表の向きの言葉（行き（車庫から）・帰り（車庫へ））と、曜日の数え方の説明。推定した車庫と理由を表の上に出す
   function baseNote(d, nm) {
     if (!d.base) return '';
-    return `<p class="o-hint o-basenote" id="own-basenote">車庫は ${esc(nm(d.base))} と見ています（${esc(baseWhy(d, nm))}）。違うときは行きと帰りが逆になります。</p>`;
+    return `<p class="o-hint o-basenote" id="own-basenote">車庫は ${esc(nm(d.base))} と見ています${baseWhy(d, nm) ? `（${esc(baseWhy(d, nm))}）` : ''}。違うときは行きと帰りが逆になります。</p>`;
   }
 
   // 区間（実際の発地 → 着地の組）× 曜日の表。見出しは組の名前（d.pair_table / d.pairs）。単価が入っているときだけ、費用の列を足す（空なら出さない。0 円にしない）
@@ -990,10 +990,29 @@ const Own = (() => {
     const cs = OwnCalc.costs(d, O.cost.perKm, O.cost.perHour), nm = (id) => (d.places[id] ? d.places[id].short : '?');
     const extra = (cs.perKm != null ? 1 : 0) + (cs.perHour != null ? 1 : 0);
     const dockLong = (wd) => d.stops.filter((s) => s.place === d.dock && s.minutes >= 30 && s.cycle_wd === wd).reduce((a, s) => a + s.minutes, 0);
-    const head = `<thead><tr><th>往復が車庫を出た曜日</th><th>便数</th><th>空車</th><th>空車の km</th><th>${esc(nm(d.dock))}での 30 分以上の停車</th>${cs.perKm != null ? '<th>空車の費用</th>' : ''}${cs.perHour != null ? '<th>停車の費用</th>' : ''}</tr></thead>`;
+    const head = `<thead><tr><th title="行きの行は車庫を出た日の曜日、帰りの行は帰りの便が出た日の曜日で数えています（荷主への案内文と同じ数え方）">便が出た曜日</th><th>便数</th><th>空車</th><th>空車の km</th><th>${esc(nm(d.dock))}での 30 分以上の停車</th>${cs.perKm != null ? '<th>空車の費用</th>' : ''}${cs.perHour != null ? '<th>停車の費用</th>' : ''}</tr></thead>`;
+    const legById = new Map((d.legs || []).map((l) => [l.id, l]));
+    // 帰りの向きは、行きが車庫を出た曜日ではなく、帰りの便自身が出た日の曜日で数え直す（荷主への案内文と同じ基準。便が出た日が分からないときは元の数え方のまま）
+    const byReturnDay = (rs) => {
+      const acc = new Map();
+      for (const t of rs) {
+        for (const id of t.leg_ids || []) {
+          const l = legById.get(id);
+          if (!l) continue;
+          const w = OwnCalc.returnWhen(l)[2];
+          const wd = w == null ? t.wd : w;
+          if (!acc.has(wd)) acc.set(wd, { wd, trips: 0, empty: 0, unknown: 0, empty_km: 0 });
+          const a = acc.get(wd);
+          a.trips++;
+          if (l.kind === 'empty') { a.empty++; a.empty_km += l.km || 0; } else if (l.kind === 'unknown') a.unknown++;
+        }
+      }
+      return [...acc.values()].sort((x, y) => x.wd - y.wd).map((a) => ({ ...a, empty_km: OwnCalc.pyRound(a.empty_km, 1) }));
+    };
     const group = (p) => {
-      const rs = d.pair_table.filter((t) => t.pair === p.id);
+      let rs = d.pair_table.filter((t) => t.pair === p.id);
       if (!rs.length) return '';
+      if (p.role === 'back') rs = byReturnDay(rs);
       const atDock = p.role === 'out' && p.to === d.dock;
       const tot = rs.reduce((a, t) => ({ trips: a.trips + t.trips, empty: a.empty + t.empty, km: a.km + t.empty_km, unk: a.unk + t.unknown, lm: a.lm + (atDock ? dockLong(t.wd) : 0), ls: a.ls + (atDock ? ((d.table.find((x) => x.dir === 'out' && x.wd === t.wd) || {}).long_stops || 0) : 0) }), { trips: 0, empty: 0, km: 0, unk: 0, lm: 0, ls: 0 });
       tot.km = OwnCalc.pyRound(tot.km, 1);
@@ -1005,7 +1024,7 @@ const Own = (() => {
         return `<tr class="${hot ? 'hot' : ''}"><td>${WD[t.wd]}曜発${hot ? '<small class="o-hotmark">空車が多い</small>' : ''}</td><td class="num" data-l="便数">${t.trips}</td><td class="num" data-l="空車">${t.empty}</td><td class="num" data-l="空車の km">${t.empty_km ? n1(t.empty_km) : '—'}</td><td class="num" data-l="30 分以上の停車">${ls}</td>${costCells(t.empty_km, atDock ? dockLong(t.wd) : 0)}</tr>`;
       }).join('');
       const role = p.role === 'out' ? '行き（車庫から）' : p.role === 'back' ? '帰り（車庫へ）' : '';
-      return `<tr class="grp"><td colspan="${5 + extra}">${esc(p.label)}${role ? `<small>主な往復の「${role}」の向き</small>` : ''}</td></tr>${body}
+      return `<tr class="grp"><td colspan="${5 + extra}">${esc(p.label)}${role ? `<small>主な往復の「${role}」の向き${p.role === 'back' ? '・帰りの便が出た曜日で数えています' : ''}</small>` : ''}</td></tr>${body}
         <tr class="tot"><td>合計</td><td class="num" data-l="便数">${tot.trips}</td><td class="num" data-l="空車">${tot.empty}</td><td class="num" data-l="空車の km">${n1(tot.km)}</td><td class="num" data-l="30 分以上の停車">${atDock ? tot.ls : '—'}</td>${costCells(tot.km, tot.lm)}</tr>`;
     };
     const gs = d.pairs.map(group).filter((x) => x);
@@ -1197,7 +1216,7 @@ const Own = (() => {
       <div class="o-printsheet" id="own-printsheet">${printHtml(d)}</div>`;
     // 手順に沿う画面（guided）では、相談の欄だけを前に出し、そのほかは閉じた「詳しく」に入れる。左の欄（読んだファイル）もその中へ移す
     el.innerHTML = O.guided
-      ? `<div id="neg-slot" class="neg-slot"></div><details class="o-adv" id="own-adv" ${O.advOpen ? 'open' : ''}><summary>読んだファイルと今月の数字を見る）</summary><div id="own-adv-slot"></div>${restHtml}</details>`
+      ? `<div id="neg-slot" class="neg-slot"></div><details class="o-adv" id="own-adv" ${O.advOpen ? 'open' : ''}><summary>読んだファイルと今月の数字を見る</summary><div id="own-adv-slot"></div>${restHtml}</details>`
       : `${headHtml}<div id="neg-slot" class="neg-slot"></div>${restHtml}`;
     mountLeft();
     const cb = q('#own-mkt');
@@ -1781,7 +1800,7 @@ const Own = (() => {
       monthSave();
       renderLeft(); renderRight();
       const unread = bad.concat(d.files_unread.map((u) => `${u.file}: ${u.reason}`));
-      showDropMsg(`${d.files_read} 件を読みました（このブラウザの中だけで計算しています）${unread.length ? `。読めなかった ${unread.length} 件: ` + unread.join('。') : ''}`);
+      showDropMsg(`ファイル ${d.files_read} 件（区間 ${(d.legs || []).length} 件）を読みました（このブラウザの中だけで計算しています）${(d.files || []).some((f) => f.no_plate_col) ? '。車番の列がないので、車両 1 台（車番の列なし）として読みました' : ''}${unread.length ? `。読めなかった ${unread.length} 件: ` + unread.join('。') : ''}`);
       writeHash();
     } catch (e) {
       console.warn(e);

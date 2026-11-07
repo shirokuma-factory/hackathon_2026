@@ -267,7 +267,7 @@ function go(files, fresh, mode) {
   if (fresh && S.mode === 'import') { S.noSave = false; offerRestore(files); } else if (fresh) S.restore = null;
   monthSave();
   const unread = (S.bad || []).concat((d.files_unread || []).map((u) => `${u.file}: ${u.reason}`));
-  setMsg(`${S.mode === 'sample' ? '架空の会社のサンプルを' : `${d.files_read} 件を`}読みました。${unread.length ? `。読めなかった ${unread.length} 件: ${unread.join('。')}` : ''}`, false);
+  setMsg(`${S.mode === 'sample' ? '架空の会社のサンプルを読みました。' : `ファイル ${d.files_read} 件（区間 ${(d.legs || []).length} 件）を読みました。`}${(d.files || []).some((f) => f.no_plate_col) ? '車番の列がないので、車両 1 台（車番の列なし）として読みました。' : ''}${unread.length ? `読めなかった ${unread.length} 件: ${unread.join('。')}` : ''}`, false);
   render();
 }
 
@@ -348,8 +348,27 @@ function periodNote(d) {
 }
 const hasHot = (t) => t.role === 'back' && t.trips >= 4 && t.empty * 4 >= (t.trips - t.unknown) * 3 && (t.trips - t.unknown) >= 4;
 // 区間 × 曜日の表: 空車の便数が多い順
+// 行きの向きは、往復が車庫を出た日の曜日のまま。帰りの向きは、帰りの便自身が出た日の曜日で数え直す（荷主への案内文と同じ基準。便が出た日が分からない便は元の曜日のまま）
+function weekdayRows(d) {
+  const legById = new Map((d.legs || []).map((l) => [l.id, l]));
+  const out = [], acc = new Map();
+  for (const t of d.pair_table || []) {
+    if (t.role !== 'back') { out.push(t); continue; }
+    for (const id of t.leg_ids || []) {
+      const l = legById.get(id);
+      if (!l) continue;
+      const w = OwnCalc.returnWhen(l)[2], wd = w == null ? t.wd : w, k = t.pair + '|' + wd;
+      if (!acc.has(k)) acc.set(k, { pair: t.pair, frm: t.frm, to: t.to, label: t.label, role: t.role, wd, trips: 0, empty: 0, unknown: 0, empty_km: 0 });
+      const a = acc.get(k);
+      a.trips++;
+      if (l.kind === 'empty') { a.empty++; a.empty_km += l.km || 0; } else if (l.kind === 'unknown') a.unknown++;
+    }
+  }
+  for (const a of acc.values()) { a.empty_km = OwnCalc.pyRound(a.empty_km, 1); out.push(a); }
+  return out;
+}
 function sortedPairTable(d) {
-  return (d.pair_table || []).filter((t) => t.trips > 0).slice().sort((a, b) => b.empty - a.empty || (b.empty_km || 0) - (a.empty_km || 0) || b.trips - a.trips);
+  return weekdayRows(d).filter((t) => t.trips > 0).slice().sort((a, b) => b.empty - a.empty || (b.empty_km || 0) - (a.empty_km || 0) || b.trips - a.trips);
 }
 
 async function copyText(text, what) {
@@ -527,9 +546,9 @@ function tableHtml(d) {
   const rows = sortedPairTable(d);
   if (!rows.length) return '<p class="hint">区間と曜日の表にできる便がありません。</p>';
   const body = (r) => `<tr class="${hasHot(r) ? 'hot' : ''}"><td>${esc(r.label)}</td><td>${ROLE_JA[r.role] || ''}</td><td>${WD[r.wd]}曜発</td><td class="num">${r.trips}</td><td class="num"><b>${r.empty}</b></td><td class="num">${r.unknown}</td><td class="num">${r.empty_km ? n1(r.empty_km) : '—'}</td><td>${hasHot(r) ? 'いつも空' : ''}</td></tr>`;
-  const head = '<thead><tr><th>区間</th><th>向き</th><th title="車庫を出た日の曜日">車庫を出た曜日</th><th class="num">便数</th><th class="num">空車</th><th class="num">不明</th><th class="num">空車の km</th><th></th></tr></thead>';
+  const head = '<thead><tr><th>区間</th><th>向き</th><th title="行きは車庫を出た日の曜日、帰りは帰りの便が出た日の曜日（荷主への案内文と同じ数え方）">便が出た曜日</th><th class="num">便数</th><th class="num">空車</th><th class="num">不明</th><th class="num">空車の km</th><th></th></tr></thead>';
   const top = rows.slice(0, 14), rest = rows.slice(14);
-  const baseNote = d.base ? `<p class="hint" id="base-note">車庫は ${esc(shortOf(d, d.base))} と見ています（${esc(baseWhy(d, (id) => shortOf(d, id)))}）。違うときは行きと帰りが逆になります。</p>` : '';
+  const baseNote = d.base ? `<p class="hint" id="base-note">車庫は ${esc(shortOf(d, d.base))} と見ています${baseWhy(d, (id) => shortOf(d, id)) ? `（${esc(baseWhy(d, (id) => shortOf(d, id)))}）` : ''}。違うときは行きと帰りが逆になります。</p>` : '';
   return `${baseNote}<div class="scroll-x" id="pair-table-box"><table id="pair-table" aria-label="区間と曜日の表（空車の便数の多い順）">${head}<tbody>${top.map(body).join('')}</tbody></table></div>
     ${rest.length ? `<details><summary>ほか ${rest.length} 行</summary><div class="scroll-x"><table aria-label="区間と曜日の表の続き">${head}<tbody>${rest.map(body).join('')}</tbody></table></div></details>` : ''}`;
 }
@@ -541,12 +560,13 @@ function chartHtml(d) {
   const mx = Math.max(1, ...ps.flatMap((p) => p.by_weekday.map((w) => w.empty_km || 0)));
   const W = 360, H = 150, x0 = 12, bw = 36, gap = 13, top = 28, base = 118;
   const one = (p) => {
-    const vals = Array.from({ length: 7 }, (_, i) => { const w = p.by_weekday.find((x) => x.wd === i); return w ? (w.empty_km || 0) : 0; });
+    const wrows = weekdayRows(d).filter((t) => t.pair === p.id);
+    const vals = Array.from({ length: 7 }, (_, i) => { const w = wrows.find((x) => x.wd === i); return w ? (w.empty_km || 0) : 0; });
     const bars = vals.map((v, i) => {
       const h = Math.round((v / mx) * (base - top)), x = x0 + i * (bw + gap);
       return `<rect class="bar-r" x="${x}" y="${base - h}" width="${bw}" height="${h}"><title>${WD[i]}曜 ${n1(v)} km</title></rect>${v > 0 ? `<text x="${x + bw / 2}" y="${base - h - 4}" text-anchor="middle">${Math.round(v)}</text>` : ''}<text x="${x + bw / 2}" y="${base + 16}" text-anchor="middle">${WD[i]}</text>`;
     }).join('');
-    return `<div><h3>${esc(p.label)}（${ROLE_JA[p.role] || '区間'}）空車 ${n1(p.empty_km)} km</h3>
+    return `<div><h3>${esc(p.label)}・${ROLE_JA[p.role] || '区間'}　空車 ${n1(p.empty_km)} km</h3>
       <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(p.label)} 曜日ごとの空車の km。${vals.map((v, i) => `${WD[i]} ${Math.round(v)}`).join('、')}"><line class="axis" x1="${x0 - 4}" y1="${base}" x2="${W - 4}" y2="${base}"/>${bars}</svg></div>`;
   };
   return `<div class="charts" id="chart">${ps.map(one).join('')}</div><p class="hint">棒の上の数字は、その曜日に出た便の空車の km です。</p>`;
@@ -775,7 +795,7 @@ function monthHtml(d) {
 function printHtml(d) {
   const k = d.kpis, c = OwnCalc.costs(d, S.cost.perKm, S.cost.perHour), sm = OwnMonth.summary(d, c), rev = OwnMonth.revenue(d), alt = unknownAlt(d);
   const tr = (a, b, t) => `<tr><th>${a}</th><td>${b}</td><td>${t || ''}</td></tr>`;
-  const rows = sortedPairTable(d).slice(0, 8).map((r) => `<tr><td>${esc(r.label)}（${ROLE_JA[r.role] || '区間'}）</td><td>${WD[r.wd]}曜発</td><td>${r.trips}</td><td>${r.empty}</td><td>${r.unknown}</td><td>${r.empty_km ? n1(r.empty_km) : '—'}</td></tr>`).join('');
+  const rows = sortedPairTable(d).slice(0, 8).map((r) => `<tr><td>${esc(r.label)}・${ROLE_JA[r.role] || '区間'}</td><td>${WD[r.wd]}曜発</td><td>${r.trips}</td><td>${r.empty}</td><td>${r.unknown}</td><td>${r.empty_km ? n1(r.empty_km) : '—'}</td></tr>`).join('');
   return `<h2>自社の運行 ${monthWord(d)}${S.mode === 'sample' ? '（架空のサンプル）' : ''}</h2>
     <p>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}。この数字は取り込んだ記録から計算した目安です。法令で残す元の記録は別に保管してください。</p>
     <table>${tr('実車率', pc(k.actual_rate.value), `判定できた区間 ${k.actual_rate.legs} / ${k.actual_rate.of}。実車か空車か不明の ${d.counts.unknown} 区間と、読めなかった行・セル ${d.counts.unreadable} 件は入れていません`)}

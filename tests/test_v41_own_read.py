@@ -569,7 +569,7 @@ def test_analyze_user_roles_make_an_unrecognised_haisha_readable_and_skip_remove
     t = "いつ,車,積み,降ろし先\n2026/10/1,1234,加古川,江東\n2026/10/2,1234,江東,加古川\n"
     f = {"name": "h.csv", "text": t}
     d = _an(calc, [f])
-    assert d["failed"] and [n["column"] for n in d["column_roles_needed"]] == ["いつ", "車", "積み", "降ろし先"]
+    assert d["failed"] and [n["column"] for n in d["column_roles_needed"]] == ["いつ", "車", "積み"]  # 見出しが辞書にある「降ろし先」は聞かない
     ok = _an(calc, [f], {"column_roles": {"haisha": {"いつ": "date", "車": "plate", "積み": "from", "降ろし先": "to"}}})
     assert ok["failed"] is None and ok["counts"]["legs"] == 2
     memo = "車番,付記,10/1(木),10/2(金),10/3(土)\n1234,夜勤,加古川→江東,,\n"

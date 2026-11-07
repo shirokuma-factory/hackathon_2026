@@ -223,6 +223,8 @@ const OwnCalc = (() => {
   const H_TO = new Set(['着地', '降ろし地', '卸地', '荷降地', '届け先', '届先', '納品先', '到着地', '着', '降ろし', '卸し地', '卸先', '配達先', '荷卸地', '卸', '降し地', '降地', '着地名', '配送先', '納入先', '卸し先', '降ろし先', '卸場所', '降ろし場所']);
   const H_TIME = new Set(['時刻', '着時刻', '到着', '到着時刻', '着時間', '時間', '着予定', '到着予定', '納品時間', '指定時刻', '着予定時刻', '到着時間', '納品時刻']);
   const H_MARK = new Set(['実空', '実空区分', '区分', '実車空車', '状態', '種別', '空車', '空実']);
+  const H_KM = new Set(['走行KM', '走行キロ', '距離KM', '距離', 'キロ数', '実走行KM', '走行距離KM', '運行距離KM', '運行KM']); // 1 行 = 1 便の表で、その便の走った距離。「走行距離」だけの見出しは月の合計のことがあるので、これには入れない
+  const H_DEP = new Set(['発時刻', '出発時刻', '出発時間', '発時間', '発車時刻', '出庫時刻', '出発予定', '積込時刻']);
   const H_IGNORE_IN = ['乗務員', '運転者', '運転手', 'ドライバー', '氏名', '合計', '備考', '稼働', '日数', '摘要', 'メモ', '実車率', '走行距離', '荷主', '得意先', '取引先', '顧客', '依頼主'];
   const H_MARK_NOTE_IN = ['備考', '摘要', 'メモ', '荷主', '得意先', '取引先', '顧客', '依頼主']; // この見出しの列は、読まないが、セルに空車の印（空車回送・帰荷なし）があれば空車にする
   const H_IGNORE_EQ = new Set(['計', '小計', '総計', '担当', '台数', 'TOTAL']);
@@ -244,6 +246,8 @@ const OwnCalc = (() => {
     if (H_FROM.has(hk)) return 'from';
     if (H_TO.has(hk)) return 'to';
     if (H_TIME.has(hk)) return 'time';
+    if (H_KM.has(hk)) return 'distance_km';
+    if (H_DEP.has(hk)) return 'dep_time';
     if (H_MARK.has(hk)) return 'mark';
     if (hk.includes('重量') || ['重さ', '荷重', '荷量'].includes(hk)) return 'weight';
     if (H_IGNORE_IN.some((x) => hk.includes(x)) || H_IGNORE_EQ.has(hk)) return 'skip';
@@ -315,6 +319,7 @@ const OwnCalc = (() => {
     }
     const c = {};
     for (const r of ['date', 'from', 'to', 'weight', 'time', 'mark']) { const j = rl.indexOf(r); c[r] = j >= 0 ? j : null; }
+    { const jk = rl.indexOf('distance_km'), jd = rl.indexOf('dep_time'); if (jk >= 0) c.km = jk; if (jd >= 0) c.dep = jd; } // 走行km・出発時刻の列がある表だけ、このキーが付く（own.py の cols と同じ形を保つ）
     if (c.date != null && (c.from != null || c.to != null)) {
       const title = titleMonth(rows, i) || (month != null ? [null, month] : null);
       const seen = new Map();
@@ -373,6 +378,21 @@ const OwnCalc = (() => {
       if (blankRow(rows[i])) continue;
       const lay = layoutFromRow(rows, i, roles, month == null ? null : month);
       if (lay) return lay;
+    }
+    return null;
+  }
+
+  // 見出しに日付と発地か着地の列があり、車番の列が無い表に、車番の列（全行「1号車」）を足した行列を返す。足せない（車番の列がある・日付の列が無い）ときは null
+  const NO_PLATE_NAME = '1号車', NO_PLATE_LABEL_JA = '車両 1 台（車番の列なし）';
+  function addVehicleCol(rows, roles, month) {
+    for (let i = 0; i < Math.min(HEADER_SCAN_ROWS, rows.length); i++) {
+      if (blankRow(rows[i])) continue;
+      const rl = rows[i].map((c) => haishaRole((c || '').trim(), roles));
+      if (rl.some((r) => r === 'plate' || r === 'plate2' || r === 'plate3')) return null;
+      if (!rl.includes('date') || !(rl.includes('from') || rl.includes('to'))) continue;
+      const out = rows.map((r, ri) => (ri < i || blankRow(r) ? r : r.concat([ri === i ? '車番' : NO_PLATE_NAME])));
+      if (out[i].length !== rows[i].length + 1) return null;
+      return detectHaisha(out, roles, month == null ? null : month) ? out : null;
     }
     return null;
   }
@@ -624,6 +644,10 @@ const OwnCalc = (() => {
         if (arr == null) warnings.push(TIME_DROPPED); // 時刻だけ捨てて、区間は残す
       }
       const leg = { frm, to, empty, arr, weight_kg: null };
+      const kmFile = c.km != null ? parseKm(cell(row, c.km)) : null;
+      if (kmFile != null && kmFile > 0) leg.km_file = kmFile; // ファイルに書かれた走行距離。あれば推定より先に使う
+      const depCell = c.dep != null ? parseTime(nfkc(cell(row, c.dep)).trim()) : null;
+      if (depCell) leg.dep_hint = depCell;
       if (loadedMark) leg.loaded_mark = true;
       else if (!empty && mark.replace(/^[()]+|[()]+$/g, '')) leg.note = mark.replace(/^[()]+|[()]+$/g, '').slice(0, 24); // 区分の列に書かれた、空車の印でも実車の印でもない語
       const w = verticalWeight(cell(row, c.weight), c.weight != null ? head[c.weight] : '');
@@ -1131,11 +1155,11 @@ const OwnCalc = (() => {
   /* ------------------------------------------------------------ 列の役割（利用者が選ぶ）とその説明 */
 
   const ROLE_LABEL_JA = {
-    date: '日付', plate: '車番', type: '車種・トン数', from: '荷を積む場所（発地）', to: '荷を降ろす場所（着地）', weight: '重さ', time: '着く時刻',
+    date: '日付', plate: '車番', type: '車種・トン数', from: '荷を積む場所（発地）', to: '荷を降ろす場所（着地）', weight: '重さ', time: '着く時刻', dep_time: '出発の時刻',
     mark: '実空の印がある列', skip: '使わない', kind: '走行か停車か', start_time: '開始の日時', end_time: '終了の日時', distance_km: '走った距離（km）',
     loaded_flag: '実車か空車か', place_name: '停車した場所', driver_code: '運転者', loaded_km: '実車で走った距離（km）', empty_km: '空車で走った距離（km）', wait_min: '荷待ちの時間（分または 時:分）', restraint: '拘束時間（時:分または 時間）',
   };
-  const HAISHA_ROLE_OPTIONS = ['date', 'plate', 'from', 'to', 'weight', 'time', 'mark', 'type', 'skip'];
+  const HAISHA_ROLE_OPTIONS = ['date', 'plate', 'from', 'to', 'weight', 'time', 'dep_time', 'distance_km', 'mark', 'type', 'skip'];
   const DIGITACO_ROLE_OPTIONS = ['date', 'plate', 'kind', 'start_time', 'end_time', 'distance_km', 'loaded_flag', 'place_name', 'driver_code', 'loaded_km', 'empty_km', 'wait_min', 'restraint', 'skip'];
   // source: '配車表'、'デジタコ'、それ以外（どちらか分からないファイル。両方の選択肢を重ならないように並べる）
   function roleOptions(source) {
@@ -1144,7 +1168,7 @@ const OwnCalc = (() => {
     return roles.map((role) => ({ role, label_ja: ROLE_LABEL_JA[role] }));
   }
   // 役割が決まらなかった列（見出しがあり、中身のある列）。見本の値（3 つまで）と選択肢を付けて返す。blocking が真のときは、その列を決めないとファイルが読めない
-  function needingRoles(source, file, head, body, roleFn, used, blocking, headerLine) {
+  function needingRoles(source, file, head, body, roleFn, used, blocking, headerLine, dictFn) {
     const out = [], taken = new Set();
     head.forEach((h0, j) => {
       const h = (h0 || '').trim();
@@ -1153,6 +1177,9 @@ const OwnCalc = (() => {
       for (const r of body) { const v = ((j < r.length ? r[j] : '') || '').trim(); if (v && !vals.includes(v)) vals.push(v); }
       if (!vals.length) return;
       let [guess, ratio] = bestRoleFor(vals);
+      const dr = dictFn ? dictFn(h) : null;
+      if (dr) { guess = dr; ratio = 1; } // 見出しが辞書に当たる列は、その役割を候補にする
+      else if (guess === 'plate' && shapeRatio(vals, 'date_header') >= ratio) guess = 'date'; // 日付の形の値は、4 桁の数字をふくんでも車番より日付を先に候補にする
       if (guess === 'start_time' && taken.has('start_time')) guess = 'end_time'; // 日時の列が 2 つ並ぶときは、2 つ目を終了にする
       const ok = ratio >= 0.6 && guess in ROLE_LABEL_JA && blocking;
       if (ok) taken.add(guess);
@@ -1193,6 +1220,7 @@ const OwnCalc = (() => {
     return { ...run, end: parts[parts.length - 1].end, to: parts[parts.length - 1].to, km: anyNull ? null : pyRound(parts.reduce((a, q) => a + q.km, 0), 1), joined: parts.map((q) => q.id) };
   }
 
+  const KM_FILE_SRC = 'ファイルの走行km';
   // estFn(ends の配列) は { km, src } か null を返す
   function link(haisha, digitaco, estFn) {
     const byKey = new Map();
@@ -1232,6 +1260,7 @@ const OwnCalc = (() => {
           const ratio = pyRound(Math.abs(pick.km - est.km) / est.km, 9);
           if (ratio >= LINK_DIST_RATIO) leg.flags.push({ type: 'distance', ratio: pyRound(ratio, 4), digitaco_km: pick.km, est_km: est.km });
         }
+      } else if (h.km_file != null) { leg.km = h.km_file; leg.sources.km = KM_FILE_SRC; // ファイルの走行距離があれば、推定は使わない
       } else if (est) { leg.km = est.km; leg.sources.km = est.src; } else { leg.km = null; leg.sources.km = null; }
       if (pick) {
         leg.sources.time = 'デジタコ';
@@ -1560,7 +1589,7 @@ const OwnCalc = (() => {
     if (s == null || String(s) === '') return 'unknown';
     const t = String(s);
     if (t.includes('デジタコ')) return 'digitaco';
-    if (t.includes('配車表')) return 'haisha';
+    if (t.includes('配車表') || t.includes('ファイル')) return 'haisha';
     if (t.includes('推定') || t.includes('OSRM') || t.includes('直線')) return 'estimate';
     if (t.includes('利用者')) return 'user';
     return 'unknown';
@@ -2075,6 +2104,12 @@ const OwnCalc = (() => {
       if (!detectHaisha(rows, hRoles, monthOpt) && !detectDigitaco(rows)) { const tr = transposeDateDown(rows); if (tr) { rows = tr.rows; transposed = tr; } } // 日付が縦・車が横の配車表は、日付が横の形に置き換えて読む
       return { name: f.name, encoding: f.encoding || null, rows, transposed, csvWarn };
     });
+    // 車番の列が無い 1 行 = 1 便の表（1 台の会社の日報の写しなど）は、車 1 台の表として読む。車番の列を足して、全部の行を「1号車」にする
+    for (const f of parsed) {
+      if (f.transposed || detectHaisha(f.rows, hRoles, monthOpt) || detectDigitaco(f.rows)) continue;
+      const nv = addVehicleCol(f.rows, hRoles, monthOpt);
+      if (nv) { f.rows = nv; f.noPlateCol = true; }
+    }
     for (const f of parsed) {
       f.hlay = detectHaisha(f.rows, hRoles, monthOpt);
       f.dlay = f.hlay ? null : detectDigitaco(f.rows);
@@ -2270,7 +2305,7 @@ const OwnCalc = (() => {
             const ids = [lg.frm, lg.to].map((nm) => (nm ? resolve(nm, 'haisha') : null));
             haishaLegs.push({
               id: `H${pad(hseq, 3)}`, plate: r.plate, date: r.date, idx, frm: ids[0], to: ids[1], empty: lg.empty, arr: lg.arr, weight_kg: lg.weight_kg, weights: lg.weights || null,
-              local: !!lg.local, loaded_mark: !!lg.loaded_mark, ...(lg.weak_empty ? { weak_empty: true } : {}), note: lg.note || null, round: rd, rounds, ref: { file: f.name, where, text: r.text },
+              local: !!lg.local, loaded_mark: !!lg.loaded_mark, ...(lg.weak_empty ? { weak_empty: true } : {}), ...(lg.km_file != null ? { km_file: lg.km_file } : {}), ...(lg.dep_hint ? { dep_hint: lg.dep_hint } : {}), note: lg.note || null, round: rd, rounds, ref: { file: f.name, where, text: r.text },
             });
           }
         });
@@ -2348,6 +2383,7 @@ const OwnCalc = (() => {
     // 読めなかったファイル: 見出しとして見た行と、どう直せば読めるかの例を添える
     const decided = (h) => { const k = colKey(h); return (hRoles && Object.prototype.hasOwnProperty.call(hRoles, k)) || Object.prototype.hasOwnProperty.call(dRoles, k); };
     const judged = {};
+    const dictRole = (h) => { const r = haishaRole(h); if (r) return r === 'plate2' || r === 'plate3' ? 'plate' : r; return roleOf(h) || null; }; // 見出しの辞書で決まる役割（配車表の辞書が先、次にデジタコの辞書）
     const CHOOSE_REASON = '列の役割が決まっていません（画面で各列が何かを選ぶと読めます）';
     const UNKNOWN_REASON = '配車表にもデジタコにも見えません';
     const BINARY_REASON = 'CSV ではありません（文字ではないデータです。画像・PDF・Excel のファイルそのものは読みません）';
@@ -2360,7 +2396,7 @@ const OwnCalc = (() => {
         unreadable.push({ line: 1, col: null, original: '', reason: BINARY_REASON, file: f.name, where: 'ファイル全体', howto_ja: HOWTO_UNREADABLE_JA });
         continue;
       }
-      const needs = needingRoles('不明', f.name, cells, f.rows.slice(hi + 1), (h) => decided(h), new Set(), true, hi + 1);
+      const needs = needingRoles('不明', f.name, cells, f.rows.slice(hi + 1), (h) => decided(h), new Set(), true, hi + 1, dictRole);
       judged[f.name] = { hi, cells, needs };
       const sug = new Set(needs.map((e) => e.suggested_role).filter((r) => r)); // 列の役割を選べば読める形になりそうなときだけ「役割を選ぶ」と案内する
       const chooseable = (sug.has('start_time') && sug.has('end_time')) || (sug.has('date') && (sug.has('loaded_km') || sug.has('empty_km'))) || (sug.has('date') && sug.has('plate') && (sug.has('from') || sug.has('to')));
@@ -2682,14 +2718,17 @@ const OwnCalc = (() => {
       if (hi.length) wn.push(`傭車の行 ${hi.length} 行（${hi.map((h) => `「${h.name}」`).join('')}）は、自社の車ではないので読まず、傭車として別に数えました`);
       const base0 = {
         file: f.name, kind: '配車表', shape: vertical ? '1 行 = 1 便の縦の形' : '日付が列に並ぶ横の形', encoding: f.encoding, year: f.year,
-        layout_note_ja: wn.join('。') + (wn.length ? '。' : ''), shape_signature: shapeSignature(lay.kind, lay.head),
+        layout_note_ja: wn.join('。') + (wn.length ? '。' : ''), shape_signature: shapeSignature(lay.kind, f.noPlateCol ? lay.head.slice(0, -1) : lay.head),
+        ...(f.noPlateCol ? { no_plate_col: true, vehicle_label_ja: NO_PLATE_LABEL_JA } : {}),
       };
       if (f.excluded) {
         return { ...base0, verdict: `この配車表は読んでいません。${excludedReason(f)}。`, cells: hCells, ok: 0, pending: 0, unreadable: 1, excluded: true, reason: excludedReason(f) };
       }
       return {
         ...base0,
-        verdict: vertical
+        verdict: f.noPlateCol
+          ? `1 行 = 1 便の縦の形です（車番の列がないので、${NO_PLATE_LABEL_JA}として読みました。日付・発地・着地の列から、1 行を 1 つの区間にしました）。`
+          : vertical
           ? `1 行 = 1 便の縦の形です（日付・車番・発地・着地の列から、1 行を 1 つの区間として読みました。車番 ${hs.plate_groups} 台）。`
           : `日付が列に並ぶ横の形です。1 行 = 1 車両 × 1 日に直しました（車番 ${hs.plate_groups} 台、日付の列 ${hs.date_cols} 個。`
             + `車番が空欄の続きの行 ${hs.filled_rows} か所を、上の行の車番で埋めました。色は読みません）。`,
@@ -2740,7 +2779,8 @@ const OwnCalc = (() => {
     for (const f of otherFiles) {
       const { hi, cells } = judged[f.name];
       if (judged[f.name].binary) continue;
-      for (const e of needingRoles('不明', f.name, cells, f.rows.slice(hi + 1), (h) => decided(h), new Set(), true, hi + 1)) pushNeed(e);
+      // 見出しが辞書に当たる列は、役割がもう決まっているので聞かない（聞くのは、見出しからは分からない列だけ）
+      for (const e of needingRoles('不明', f.name, cells, f.rows.slice(hi + 1), (h) => decided(h) || !!dictRole(h), new Set(), true, hi + 1, dictRole)) pushNeed(e);
     }
     const shapeSignatures = {};
     for (const f of files2) if (f.shape_signature) shapeSignatures[f.file] = f.shape_signature;
@@ -2751,6 +2791,7 @@ const OwnCalc = (() => {
 
     const hiredAll = wl ? wl.hired : [];
     const hiredCells = hiredAll.reduce((a, h) => a + h.cells, 0), hiredLegs = hiredAll.reduce((a, h) => a + h.legs, 0);
+    for (const f of used) if (f.noPlateCol) notices.push({ kind: 'no_plate_col', text_ja: `${f.name} には車番の列がないので、${NO_PLATE_LABEL_JA}として読みました。画面では ${NO_PLATE_NAME} と表示します。複数の車が混ざったファイルのときは、車番の列を足してください。` });
     if (hiredAll.length) notices.push({ kind: 'hired', text_ja: `傭車の行 ${hiredAll.length} 行（${hiredAll.map((h) => `「${h.name}」`).join('')}）の ${hiredCells} 日ぶん（区間 ${hiredLegs} 件）は、自社の車ではないので読まず、傭車として別に数えました。` });
     for (const f of parsed) if (f.csvWarn.length) notices.push({ kind: 'csv_quote', text_ja: `${f.name} の ${f.csvWarn.map((w) => w.line).slice(0, 5).join('、')} 行目: ${f.csvWarn[0].reason}（${f.csvWarn.length} 件）。` });
     if (timeDropped.length) notices.push({ kind: 'time_dropped', text_ja: `「8時半ごろ着」のように時刻が読めないセル ${timeDropped.length} 件は、時刻だけ使わず、区間は読みました。` });
@@ -2883,7 +2924,7 @@ const OwnCalc = (() => {
       const lay = hf.hlay, head = lay.head, pc = lay.plate_col, tc = lay.type_col;
       const dataRows = hrows.slice(lay.data_start);
       const plateVals = dataRows.map((r) => r[pc] || '').filter((v) => v.trim() && !TOTAL_TOKENS.has(headKey(v)));
-      specs.push(['配車表', head[pc] || '車番', 'plate', true, plateVals]);
+      if (!hf.noPlateCol) specs.push(['配車表', head[pc] || '車番', 'plate', true, plateVals]); // 車番の列を足して読んだファイルは、足した列の中身を確かめない
       if (tc != null) specs.push(['配車表', head[tc], 'vehicle_type', true, dataRows.map((r) => r[tc] || '').filter((v) => v.trim())]);
       if (lay.kind === 'vertical') {
         const dc = lay.cols.date;
@@ -3014,7 +3055,7 @@ const OwnCalc = (() => {
         id: l.id, vehicle: l.plate, start, end,
         from: { name: a.label || a.short, lon: a.lon, lat: a.lat }, to: { name: b.label || b.short, lon: b.lon, lat: b.lat },
         status: l.kind, distance_km: l.km == null ? null : l.km, weight_kg: l.weight_kg == null ? null : l.weight_kg,
-        basis: ks === 'デジタコ' ? '実測' : ks === '利用者の修正' ? '仮定' : '推定',
+        basis: ks === 'デジタコ' || ks === KM_FILE_SRC ? '実測' : ks === '利用者の修正' ? '仮定' : '推定',
         source: [l.ref, l.dref].filter((x) => x).map((x) => `${x.file} ${x.where}`).join(' / ') || '配車表・デジタコ',
       });
     }
@@ -3028,7 +3069,7 @@ const OwnCalc = (() => {
     analyze, decode, parseCsv, wideToLong, parseCell, raiseAssumedMax, parseWaitMin, legWd, parseTime, parseDigitaco, normalizePlate, link, classifyLegs, confidence, confidenceColor, shapeRatio, bestRoleFor,
     parseRestraintHours, kousokuHours, buildShifts, kpis, weekdayTable, insights, matchMuni, legsCsv, costs, summaryText, pyRound,
     isNonPlace, prefSplit, prefName, toKitLegs, resolveRole, hallWard, CITY_HALL_WARD, HALL_WARD_NOTE, inferYear, assignHeadYears, parseKm, parseWeight, parseWeights, parseDT, overMaxLegs, parseUnit,
-    detectHaisha, readHaisha, transposeDateDown, haishaRole, headKey, plateIdentity, detectDigitaco, parseDigitacoSummary, dedupeDigitaco, parseDateOnly, parseHm, tonsPair,
+    detectHaisha, addVehicleCol, NO_PLATE_LABEL_JA, readHaisha, transposeDateDown, haishaRole, headKey, plateIdentity, detectDigitaco, parseDigitacoSummary, dedupeDigitaco, parseDateOnly, parseHm, tonsPair,
     roleOptions, needingRoles, shapeSignature, hasEmptyMark, gouName, vdate, columnReasonJa, judgedRow, ROLE_LABEL_JA, weightConfirmItems, pairTables, legPair, returnTrips, returnTarget, returnPairs, returnWhen, srcCat, applyMaxPayload, roleOf, yearsInText, nearestYear, classOf, isEmptyWord, plateAttrConflicts, EMPTY_WORDS, ladenWords, cellNote, YEAR_RANGE: [YEAR_MIN, YEAR_MAX], DIGITACO_DICT, HAISHA_DICT, ROLE_LABEL, NATIONAL,
   };
 })();
