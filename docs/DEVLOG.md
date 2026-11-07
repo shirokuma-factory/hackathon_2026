@@ -465,3 +465,7 @@
 - 書き出し: MOV を作らず、Resolve から「YouTube - 1080p」の設定で mp4 を直接書き出す（H.264 High、7.2 Mbps）。API から画質も音量の正規化も指定できず、音は -20.4 LUFS だったので、`deliver_mp4.py --copy-video` で映像は写すだけにして音だけ -14.6 LUFS に直した。
 - 2026-11-08 06:51 `7da7b75` Video r18: full logo animations, live AI generation shot, direct mp4 from Resolve
 - 2026-11-08 06:52 `bb0cd6d` Rights doc matches HEAD; record history decisions; drop an unused untraced image
+- 2026-11-08 07:01 `2b17c46` Submission form r6 fixes; stop scoring at 87/85/87
+- 2026-11-08 07:03 `9b3aaac` Waiting: bug-hunt fixes (duplicates, CSV re-import, year crossing, title rows, mode, mixed handlers, LINE text)
+- 2026-11-08 07:05 `071080b` Map compare: bug-hunt fixes; AI check field names in Japanese
+- r19（作成者の指摘 11/8 朝 2 回目）: ②などの地図の画面で 3D が 2 重に見える（3 か所）、書面を作る場面が実際に文章を作っている画面になっていない、さつま運輸の困りごとが抜けている、1:57〜2:00 は広く切り出す。困りごと 3 つを図にした（MGSAT_m、声の「帰りが」「荷待ちで」「言い出しにくい」に合わせて出す）。書面の場面を広く切り出した（W19_AI_L、送る内容 → 点検中 → 下書き中 → 確かめ中 → 一致と本文）。地図の 2 重は、録画の段階で県境・塗り・経路（deck.gl の層）が下の地図からずれていた。アプリのセッションに伝え、直し中（画素比 2 で地図と deck の解像度比が食い違う疑い）。直ったら地図の場面を撮り直す。
