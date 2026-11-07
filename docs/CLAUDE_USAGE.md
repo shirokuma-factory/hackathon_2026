@@ -188,3 +188,4 @@
 - 安い順に点検し、いちばん高いモデルは数字の確かめだけに使う。確かめが通らなければ下書きは出さず、型どおりの書面に戻す。数字の機械照合は Python でも行う。
 - 守り: `AI_EXPLAIN_ENABLED=1` が要る（既定は止）。公開版は `AI_EXPLAIN_PUBLIC=1` も要る。1 日 `AI_DAILY_LIMIT`（既定 100）、来訪者ごとに 1 時間 10 回、事実は 30 KB まで、同じ内容は再利用。キーは環境変数 `ANTHROPIC_API_KEY` だけで、`.env` は読まない。
 - 試験は SDK を差し替える（`tests/test_v53_ai_explain.py`）。本物の呼び出しは作成者の許可を得てから最初の 1 回を行う。
+- 自社の運行記録の列の整理（SPEC §53.1）: `claude-haiku-5-5` を 1 回、effort low、max_tokens 2,000、JSON スキーマ。送るのは列の見出しと値の形の要約だけで、セルの値は送らない。上限・有効化の条件は上と同じ。試験は `tests/test_v53_own_columns.py`（SDK を差し替え）。

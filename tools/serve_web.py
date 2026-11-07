@@ -857,6 +857,10 @@ def api_ai_waiting_explain(body: Any) -> dict[str, Any]:
     return _ai_guard(lambda: ai_explain.start(body, _CTX.client, _CTX.public))
 
 
+def api_ai_own_columns(body: Any) -> dict[str, Any]:
+    return _ai_guard(lambda: ai_explain.own_columns(body, _CTX.client, _CTX.public))
+
+
 def api_ai_job(query: dict[str, list[str]]) -> dict[str, Any]:
     jid = (query.get("id") or [""])[0]
     return _ai_guard(lambda: ai_explain.job_state(jid))
@@ -866,7 +870,7 @@ GET_ROUTES = {"/api/ai/status": api_ai_status, "/api/ai/job": api_ai_job, "/api/
               "/api/b/trips": api_b_trips, "/api/route": api_route}
 POST_ROUTES = {
     "/api/estimate": api_estimate, "/api/layer": api_layer, "/api/loadplan": api_loadplan, "/api/request": api_request,
-    "/api/waiting/calc": api_waiting_calc, "/api/ai/waiting_explain": api_ai_waiting_explain,
+    "/api/waiting/calc": api_waiting_calc, "/api/ai/waiting_explain": api_ai_waiting_explain, "/api/ai/own_columns": api_ai_own_columns,
     "/api/compare": api_compare, "/api/save": api_save, "/api/load": api_load,
     "/api/confirm": api_confirm, "/api/add_quote": api_add_quote, "/api/add_demo_quotes": api_add_demo_quotes,
     "/api/b/match": api_b_match, "/api/b/hold": api_b_hold, "/api/b/decide": api_b_decide, "/api/b/reset": api_b_reset,
