@@ -130,6 +130,24 @@ def main() -> None:
     voice = [(d["s"] / FPS, d["path"], d["off"] / FPS) for d in out["audio"]["1"]]
     subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_bgm.py"), "--db", "-15", "--out", f"bgm_r4_{stamp}.wav",
                     "--total", str(TOTAL), "--voice", json.dumps(voice)], check=True)
+    # 出典の行: 図が出ている間だけ、画面の一番下に小さく出す（docs/video/sources_r4_map.json）
+    smap = json.loads((ROOT / "docs/video/sources_r4_map.json").read_text(encoding="utf-8"))
+    scards = []
+    for t in ("1", "5"):
+        for d in out["video"].get(t, []):
+            nm = Path(d["path"]).name
+            for k, txt in smap.items():
+                if nm.startswith(k):
+                    scards.append({"start": round(d["s"] / FPS, 3), "end": round(d["e"] / FPS, 3), "text": txt})
+    scards.sort(key=lambda c: c["start"])
+    sp = ROOT / "outputs/video/subs_r4/sources_cards.json"
+    with open(sp, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(scards, f, ensure_ascii=False, indent=1)
+    smov = ROOT / f"outputs/video/subs_r4/sources_{stamp}.mov"
+    subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_sources.py"), "--cards", str(sp), "--total", str(TOTAL), "--out", str(smov)], check=True)
+    out["video"]["7"] = [{"s": 0, "e": int(TOTAL * FPS), "off": 0, "path": str(smov), "p": {}}]
+    with open(ROOT / "docs/video/edl_r4.json", "w", encoding="utf-8", newline="\n") as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
     print(f"r4: 合計 {TOTAL:.1f} 秒 -> docs/video/edl_r4.json")
 
 

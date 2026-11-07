@@ -1,0 +1,29 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>AIL</title><link rel="stylesheet" href="../graphics/common.css"><link rel="stylesheet" href="motion.css">
+<style>
+#panel{width:1400px;margin-left:-700px}
+.loop{display:flex;align-items:center;gap:22px;margin:10px 0 26px}
+.bx{border:2px solid var(--line);border-radius:12px;padding:14px 22px;font-size:34px;font-weight:700;line-height:1.3}
+.bx small{display:block;font-size:24px;font-weight:500;color:var(--muted)}
+.ar{font-size:44px;color:var(--muted)}
+.log{font-family:Consolas,"Noto Sans JP",monospace;font-size:26px;line-height:1.55;color:var(--text)}
+.log .h{color:var(--warn)}
+.log .f{color:var(--hl)}
+</style></head><body data-duration="10">
+<div id="panel">
+<h1>Claude Code で　書く AI と確かめる AI を分けた</h1>
+<div class="loop">
+ <div class="bx" data-at="0.4">書く<small>coder（Sonnet）</small></div><div class="ar" data-at="0.8">→</div>
+ <div class="bx" data-at="1.0">確かめる<small>前の点を知らない Opus</small></div><div class="ar" data-at="1.4">→</div>
+ <div class="bx" data-at="1.6">直す<small>仕様とテストに足す</small></div><div class="ar" data-at="2.0">↺</div>
+</div>
+<div class="bx u" data-at="2.2" style="border-color:var(--warn);display:inline-block;margin-bottom:22px">下の 3 回で直した指摘 72 件<i class="ul" data-ul="2.6"></i></div>
+<div class="log">
+ <div data-at="3.0"><span class="h">b772aa9</span> Add vision review r3 (87) and SPEC 32</div>
+ <div data-at="3.6"><span class="f">7a328ac</span> Fix the 10 findings of vision review r3</div>
+ <div data-at="4.2"><span class="h">ffe933c</span> Add vision review r4 (89) and SPEC 33</div>
+ <div data-at="4.8"><span class="f">fd67d73</span> Fix the 14 findings of vision review r4</div>
+ <div data-at="5.4"><span class="h">ce2dc3f</span> Record debug sweep r1 (48 confirmed findings)</div>
+ <div data-at="6.0"><span class="f">f8dadbc</span> Fix the 48 confirmed findings of debug sweep r1</div>
+</div>
+</div>
+<script src="motion.js"></script></body></html>

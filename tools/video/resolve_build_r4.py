@@ -5,7 +5,7 @@ DaVinci Resolve の MCP（run_script_unsafe）に、このファイルの中身�
 """
 import json
 
-EDL = "C:/dev/hackathon_2026/docs/video/edl_r4.json"
+EDL = globals().get("EDL_PATH", "C:/dev/hackathon_2026/docs/video/edl_r4.json")
 edl = json.load(open(EDL, encoding="utf-8"))
 mp = project.GetMediaPool()
 root = mp.GetRootFolder()
