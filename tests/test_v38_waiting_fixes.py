@@ -105,7 +105,7 @@ def _edge_or_skip():
     import capture_screens as cs
     try:
         cs.find_edge()
-    except Exception:  # noqa: BLE001
+    except (Exception, SystemExit):  # noqa: BLE001  (見つからないと SystemExit)
         pytest.skip("Microsoft Edge が見つかりません")
 
 
