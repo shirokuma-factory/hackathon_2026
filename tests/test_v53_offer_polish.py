@@ -96,7 +96,7 @@ def test_call_shape_and_payload_is_exactly_the_confirmed_text(monkeypatch):
     assert kw["model"] == "claude-haiku-5-5" and kw["max_tokens"] == 1500 and kw["output_config"] == {"effort": "low"}
     assert kw["messages"] == [{"role": "user", "content": SRC}]            # 本文だけ。ほかの欄は送らない
     assert set(kw) == {"model", "max_tokens", "system", "messages", "output_config"}
-    assert "thinking" not in kw and "【" in kw["system"] and "詳しい条件は、ご関心があればあらためて伺います。" in kw["system"]
+    assert "thinking" not in kw and "【" in kw["system"] and "消さない" in kw["system"]   # 質問を消さない方針に 2026-11-08
     assert "鹿児島" not in json.dumps(kw, ensure_ascii=False) and SENTINEL not in json.dumps(kw, ensure_ascii=False)
     assert r["step"]["model"] == "claude-haiku-5-5" and r["step"]["cost_usd"] < 0.002
 

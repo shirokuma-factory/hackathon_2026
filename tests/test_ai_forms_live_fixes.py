@@ -62,6 +62,14 @@ def test_polish_removed_lists_dropped_bullets_and_ignores_rewording():
     assert ax.polish_removed("本文だけ。箇条書きなし", "別の文") == []
 
 
+def test_polish_removed_ignores_headings_and_closing_and_reworded_receiving_item():
+    gone = ax.polish_removed(SRC, OUT3)
+    assert not any("お聞かせ" in g or g.startswith("■") for g in gone)   # ■ の見出しは対象にしない
+    assert not any("納品先" in g for g in gone)   # 「納品先（受取側）が受け取れる日時」→「納品先の受取可能な日時」は消えていない
+    assert ax.polish_removed("・納品先（受取側）が受け取れる日時", "・納品先の受取可能な日時") == []
+    assert len(gone) == 4, gone   # 積込の日程・荷役設備・混載・現在の送り方
+
+
 def test_offer_polish_response_has_removed(monkeypatch):
     monkeypatch.setenv("AI_EXPLAIN_ENABLED", "1")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
@@ -275,3 +283,13 @@ def test_untouched_example_row_is_replaced_by_the_first_ai_row(cargo_page):
     assert "例 S1" not in page.js("document.querySelector('#cargo-editor').innerText")
     page.js("document.querySelector('[data-cg=insert][data-i=\"1\"]').click()")
     assert page.js("W.draft.items.length") == 2   # 2 行目からは、これまでどおり足す
+
+
+def test_blocked_confirm_marks_right_table_as_stale(cargo_page):
+    page = cargo_page
+    page.js("document.querySelector('#detail').classList.remove('cargo-stale')")
+    page.js("W.draft.items = [{count: 4, length_cm: null, width_cm: null, height_cm: null, weight_kg: 570}]")
+    page.js("document.querySelector('#ed-confirm').click()")
+    page.wait(lambda: page.js("document.querySelector('#detail').classList.contains('cargo-stale')"), 10, "前の条件の額の表示")
+    assert "確定するまで前の条件の額です" in page.js("getComputedStyle(document.querySelector('#detail'), '::before').content")
+    assert float(page.js("getComputedStyle(document.querySelector('#detail > header')).opacity")) < 1

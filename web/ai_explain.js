@@ -150,7 +150,7 @@
         <li>期間、合計の数字、計算の根拠の文（告示の表の単価と出典）</li>
         ${cons.length ? `<li>協議の項目 ${cons.length} 件</li>` : ''}${hist ? `<li>これまでの協議の履歴 ${hist} 件</li>` : ''}
         ${costLine}${leftLine}</ul>
-      <details class="ai-json" open><summary class="ai-json-sum">送る JSON そのもの</summary><pre class="ai-json-text">${esc(JSON.stringify(sendFacts, null, 2))}</pre></details>
+      <details class="ai-json" open><summary class="ai-json-sum">送る中身（JSON）</summary><pre class="ai-json-text">${esc(JSON.stringify(sendFacts, null, 2))}</pre></details>
       <p class="small">送らないもの: 車番、運転者名、貼り付けた元の文、ファイル、ほかの相手の行。送った内容は保存しません。</p>
       ${out ? '<p class="errs">今日の上限に達しました。明日また使えます（今は型どおりの書面です）。</p>' : ''}
       <div class="ai-bar">${out ? '' : '<button type="button" class="primary" data-ai="send">送る</button>'}<button type="button" data-ai="cancel">やめる</button></div>`;

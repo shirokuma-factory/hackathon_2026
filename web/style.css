@@ -134,6 +134,8 @@ body.has-detail #layers { right: calc(var(--gutter) + var(--detail-w) + 14px); }
   transition: transform .3s var(--ease), opacity .3s;
 }
 body.has-detail #detail { transform: none; opacity: 1; pointer-events: auto; }
+#detail.cargo-stale > * { opacity: .45; }
+#detail.cargo-stale::before { content: '荷物を変えたので、確定するまで前の条件の額です'; display: block; padding: 10px 16px; font-weight: 600; font-size: 13px; background: rgba(255,170,40,.18); border-bottom: 1px solid rgba(255,170,40,.6); }
 #detail header { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); position: relative; }
 #close {
   position: absolute; right: 12px; top: 12px; width: 30px; height: 30px; border-radius: 8px; border: 0; background: transparent; color: var(--muted);

@@ -379,7 +379,13 @@ function setCargoOpen(on) {
   document.body.classList.toggle('cargo-open', on);
 }
 
+// 確定できなかった荷物の変更があるあいだ、右の費用の表は前の条件の額なので、薄くして注意を出す（style.css の #detail.cargo-stale）
+function markCargoStale(on) {
+  const d = document.getElementById('detail');
+  if (d) d.classList.toggle('cargo-stale', !!on);
+}
 function afterCase(changed) {
+  markCargoStale(false);
   W.request = null; W.cmp = null;
   renderCargoHead();
   if (W.cargoOpen) updateEdState();
@@ -405,7 +411,7 @@ function missingDims(d) {
 async function confirmCargo() {
   const btn = $w('#ed-confirm');
   const miss = missingDims(W.draft);
-  if (miss) { updateEdState(miss); toast(miss); return; }
+  if (miss) { markCargoStale(true); updateEdState(miss); toast(miss); return; }
   btn.disabled = true;
   try {
     const hadQuotes = W.C.quotes.length > 0;
@@ -415,6 +421,7 @@ async function confirmCargo() {
     if (r.changed) toastCompare(`荷物の条件を変えました。運賃を計算し直しています${hadQuotes ? '。前の見積回答は別に分けました' : ''}。`);
     else toastCompare('条件は変わっていません');
   } catch (e) {
+    markCargoStale(true);
     updateEdState(e.message);
     toast(e.message);
   } finally { btn.disabled = false; }

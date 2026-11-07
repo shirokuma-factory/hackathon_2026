@@ -1028,30 +1028,55 @@ def polish_problems(src: str, out: str) -> list[str]:
 
 
 POLISH_KEEP_RATIO = 0.6
-_BULLET_RE = re.compile(r"^\s*(?:[-*・●○■□◆◇▼▽▶▷・]|\d+[.)）]|[①-⑳])\s*")
+# 質問の行（・などの箇条書き）だけを比べる。■ の見出しや結びの文は対象にしない
+_BULLET_RE = re.compile(r"^\s*(?:[-*・●○]|\d+[.)）]|[①-⑳])\s*")
+_HEAD_RE = re.compile(r"^\s*[■□◆◇▼▽▶▷]")
+_PAREN_RE = re.compile(r"[（(][^（）()]*[）)]")
+_ENDINGS = ("を教えてください", "をお聞かせください", "を伺います", "について", "ください", "ですか", "でしょうか", "できる", "できます", "れる", "ます", "です", "する", "した", "は", "が", "を", "に", "の", "と", "も", "か", "で", "へ")
+_KEY_NOUNS = ("納品先", "受取", "受け取", "日時", "荷役設備", "混載", "荷姿", "品名", "寸法", "重量", "数量", "日程", "送り方")
 
 
 def _norm_line(line: str) -> str:
-    """箇条書きの記号・空白・句読点を除いて、同じ項目かどうかを比べる形にする。"""
+    """箇条書きの記号・括弧の中・空白・句読点・語尾を除いて、同じ項目かどうかを比べる形にする。"""
     t = unicodedata.normalize("NFKC", _BULLET_RE.sub("", line))
-    return re.sub(r"[\s、。，．,.！!？?:：;；・「」『』（）()]", "", t)
+    t = _PAREN_RE.sub("", t)
+    t = re.sub(r"[\s、。，．,.！!？?:：;；・「」『』（）()]", "", t)
+    for _ in range(2):
+        for e in _ENDINGS:
+            if len(t) > len(e) + 2 and t.endswith(e):
+                t = t[: -len(e)]
+                break
+    return t
 
 
 def _bullet_lines(text: str) -> list[str]:
-    return [ln.strip() for ln in text.splitlines() if _BULLET_RE.match(ln) and _norm_line(ln)]
+    return [ln.strip() for ln in text.splitlines() if not _HEAD_RE.match(ln) and _BULLET_RE.match(ln) and len(_norm_line(ln)) >= 4]
+
+
+def _keys_of(n: str) -> set[str]:
+    k = {w for w in _KEY_NOUNS if w in n}
+    if "受け取" in k:
+        k.discard("受け取")
+        k.add("受取")
+    return k
 
 
 def polish_removed(src: str, out: str) -> list[str]:
-    """元の文の箇条書きのうち、AI の案に残っていない行（記号を除いて比べる）。元の文に箇条書きが無ければ空。"""
-    out_n = [_norm_line(x) for x in out.splitlines()]
-    out_all = "".join(out_n)
+    """元の文の質問の行（・の箇条書き）のうち、AI の案に残っていない行。見出し・結びの文は比べない。
+    残っているとみなす条件は、(1) 正規化した行がそのまま入っている、(2) 主な名詞が 2 つ以上、案のどれか 1 行に入っている（名詞が 1 つだけの行は、その名詞が入っていれば）、
+    (3) 2 文字の並びの 6 割が案のどれか 1 行に残っている。元の文に箇条書きが無ければ空。"""
+    out_n = [n for n in (_norm_line(x) for x in out.splitlines() if not _HEAD_RE.match(x)) if n]
     gone: list[str] = []
     for ln in _bullet_lines(src):
         n = _norm_line(ln)
-        if n in out_all:
+        if any(n in o for o in out_n):
+            continue
+        keys = _keys_of(n)
+        need = min(2, len(keys))
+        if need and any(len(keys & _keys_of(o)) >= need for o in out_n):
             continue
         grams = {n[i:i + 2] for i in range(len(n) - 1)}
-        if grams and sum(g in out_all for g in grams) / len(grams) >= POLISH_KEEP_RATIO:   # 言い回しを変えても、2 文字の並びの 6 割が残っていれば残っているとみなす
+        if grams and any(sum(g in o for g in grams) / len(grams) >= POLISH_KEEP_RATIO for o in out_n):
             continue
         gone.append(_BULLET_RE.sub("", ln).strip())
     return gone
