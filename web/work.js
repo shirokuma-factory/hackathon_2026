@@ -198,6 +198,7 @@ function renderCargoEditor() {
   const sc = W.scenarios.find((s) => s.id === W.scenarioSel);
   ed.innerHTML = `
     <div class="sc-simple" id="sc-simple">${simpleHtml()}</div>
+    <div class="ed-ai" id="cargo-ai"></div>
     <details class="ed-detail" id="ed-detail"${W.detailOpen ? ' open' : ''}><summary>詳しい条件</summary>
     <p class="ed-defaults">${wesc(DEFAULTS_LINE)}${W.defaultApplied ? wesc(DEFAULT_CARGO_LINE) : ''}</p>
     <p class="ed-origin-note">集荷できるのは関東の 7 か所です。ほかの地域は<a href="compare_lite.html">地図なしの比べるページ</a>へ。</p>
@@ -234,6 +235,25 @@ function renderCargoEditor() {
     </details>
     <div class="ed-foot"><span class="ed-state" id="ed-state" role="status"></span><button type="button" class="btn-link" id="ed-3d">積み方を 3D で見る</button><button type="button" class="btn-primary sm" id="ed-confirm">この条件で確定</button></div>`;
   updateEdState();
+  mountCargoAi();
+}
+
+// 荷物の条件を文で書いて AI に表にしてもらう（SPEC §53.4）。ai_explain.js が使えるときだけ出る。案は、行ごとに「入れる」を押したときだけ荷物の表に入る
+function mountCargoAi() {
+  const el = $w('#cargo-ai');
+  if (!el) return;
+  if (window.AiExplain && AiExplain.mountCargo) { AiExplain.mountCargo(el, { onInsert: insertAiCargoRow }); return; }
+  if (!W.cargoAiWait) { W.cargoAiWait = true; window.addEventListener('load', () => { W.cargoAiWait = false; mountCargoAi(); }, { once: true }); }   // ai_explain.js は後から読み込まれる
+}
+function insertAiCargoRow(r) {
+  const it = { count: r.n ?? null, length_cm: r.l_cm ?? null, width_cm: r.w_cm ?? null, height_cm: r.h_cm ?? null, weight_kg: r.kg ?? null };
+  const items = W.draft.items;
+  const blank = (x) => ['count', 'length_cm', 'width_cm', 'height_cm', 'weight_kg'].every((k) => x[k] === null || x[k] === undefined || x[k] === '');
+  if (items.length === 1 && blank(items[0])) items[0] = it; else items.push(it);
+  W.touched = true;
+  W.detailOpen = true;   // 入った行を、詳しい条件の表で見られるようにする
+  renderCargoEditor();
+  renderCargoHead();
 }
 
 function updateEdState(err) {
