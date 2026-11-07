@@ -38,6 +38,11 @@ def run(args: list[str]) -> None:
 
 
 def main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--db", type=float, default=BASE_DB, help="声のない所の BGM の大きさ（元の曲からの差、dB）")
+    ap.add_argument("--out", default="bgm_duck.wav", help="Resolve に読み込み済みの名前は上書きしないこと")
+    a = ap.parse_args()
     fit = D / "bgm_fit.wav"
     run(["-i", str(SRC), "-filter_complex",
          f"[0]atrim=0:{CUT_A},asetpts=PTS-STARTPTS[a];[0]atrim={CUT_B},asetpts=PTS-STARTPTS[b];"
@@ -52,9 +57,9 @@ def main() -> None:
     mix = "".join(f"[v{i}]" for i in range(len(VOICE)))
     run([*ins, "-filter_complex", ";".join(parts) + f";{mix}amix=inputs={len(VOICE)}:normalize=0,apad=whole_dur={TOTAL}[o]",
          "-map", "[o]", "-t", str(TOTAL), str(voice)])
-    duck = D / "bgm_duck.wav"
+    duck = D / a.out
     run(["-i", str(fit), "-i", str(voice), "-filter_complex",
-         f"[0]volume={BASE_DB}dB[m];[1]asplit=2[sc][x];[x]anullsink;"
+         f"[0]volume={a.db}dB[m];[1]asplit=2[sc][x];[x]anullsink;"
          f"[m][sc]sidechaincompress=threshold=0.015:ratio=10:attack=80:release=600:makeup=1,apad=whole_dur={TOTAL}[o]",
          "-map", "[o]", str(duck)])
     run(["-i", str(duck), "-i", str(voice), "-filter_complex", "[0][1]amix=inputs=2:normalize=0[o]",
