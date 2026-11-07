@@ -5,6 +5,7 @@ Resolve が別の作業で使われているときでも書き出せるように
 
 対応する設定: ZoomX/ZoomY（拡大縮小）、Pan/Tilt（右・上へずらす）、Opacity（不透明度）、
 fade_in/fade_out（V1 は黒へのフェード、ほかは透明へのフェード）。重ねる切り替え（xfade_out）は扱わない。
+dissolve_in（コマ数）: 透明から現れて、下の映像（延ばした前の場面）と溶け合う切り替え。
 
 使い方: uv run python tools/video/render_edl.py --edl docs/video/edl_r5.json --out outputs/video/assembly/x.mp4 [--height 720]
 
@@ -94,7 +95,10 @@ def main() -> None:
                 chain.append(f"colorchannelmixer=aa={float(op) / 100:.3f}")
             fi, fo = d.get("fade_in", 0) / FPS, d.get("fade_out", 0) / FPS
             alpha = "" if tr == "1" else ":alpha=1"
-            if fi:
+            if d.get("dissolve_in"):
+                # 前の映像の上に透明から現れる（黒を挟まない切り替え。前の映像は build_r5 が重なる分だけ延ばしてある）
+                chain.append(f"fade=t=in:st=0:d={d['dissolve_in'] / FPS:.3f}:alpha=1")
+            elif fi:
                 chain.append(f"fade=t=in:st=0:d={fi:.3f}{alpha}")
             if fo and not clipped:
                 chain.append(f"fade=t=out:st={L - fo:.3f}:d={fo:.3f}{alpha}")

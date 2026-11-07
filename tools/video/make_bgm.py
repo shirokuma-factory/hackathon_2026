@@ -45,15 +45,37 @@ def main() -> None:
     ap.add_argument("--out", default="bgm_duck.wav", help="Resolve に読み込み済みの名前は上書きしないこと")
     ap.add_argument("--total", type=float, default=TOTAL, help="動画の長さ（秒）")
     ap.add_argument("--voice", default=None, help='声の置き場所の JSON: [[秒, ファイル名, 頭を切る秒], ...]')
+    ap.add_argument("--start", type=float, default=0.0, help="BGM を始める秒（冒頭のフックは BGM なし。作成者の指摘 11/7）")
+    ap.add_argument("--end", type=float, default=None, help="この秒で今の曲を 2.5 秒かけて消す（締めは --closing の曲に替える）")
+    ap.add_argument("--closing", default=None, help="締めの曲の WAV。--closing-at の秒から最後まで置く")
+    ap.add_argument("--closing-at", type=float, default=None)
+    ap.add_argument("--closing-skip", type=float, default=0.0, help="締めの曲の頭を切る秒（曲の終わりを動画の終わりに合わせる）")
+    ap.add_argument("--closing-db", type=float, default=None, help="締めの曲の大きさ（元からの差、dB）。省略時は --db と同じ")
     a = ap.parse_args()
     total = a.total
     voices = [tuple(x) for x in json.loads(a.voice)] if a.voice else VOICE
-    cut_a = total - (SONG_LEN - CUT_B) + XF
     fit = D / "bgm_fit.wav"
-    run(["-i", str(SRC), "-filter_complex",
-         f"[0]atrim=0:{cut_a},asetpts=PTS-STARTPTS[a];[0]atrim={CUT_B},asetpts=PTS-STARTPTS[b];"
-         f"[a][b]acrossfade=d={XF}:c1=tri:c2=tri,atrim=0:{total},afade=t=in:d=0.8[o]",
-         "-map", "[o]", "-ar", "48000", str(fit)])
+    st_ms = int(round(a.start * 1000))
+    if a.end is None:
+        cut_a = total - a.start - (SONG_LEN - CUT_B) + XF
+        run(["-i", str(SRC), "-filter_complex",
+             f"[0]atrim=0:{cut_a},asetpts=PTS-STARTPTS[a];[0]atrim={CUT_B},asetpts=PTS-STARTPTS[b];"
+             f"[a][b]acrossfade=d={XF}:c1=tri:c2=tri,afade=t=in:d=1.5,adelay={st_ms}|{st_ms},apad=whole_dur={total},atrim=0:{total}[o]",
+             "-map", "[o]", "-ar", "48000", str(fit)])
+        cut_a = round(cut_a, 2)
+    else:
+        L = a.end - a.start
+        chain = (f"[0]atrim=0:{L + 0.01},asetpts=PTS-STARTPTS,aresample=48000,afade=t=in:d=1.5,afade=t=out:st={L - 2.5}:d=2.5,"
+                 f"adelay={st_ms}|{st_ms},apad=whole_dur={total},atrim=0:{total}[m]")
+        if a.closing:
+            cdb = a.db if a.closing_db is None else a.closing_db
+            c_ms = int(round(a.closing_at * 1000))
+            chain += (f";[1]aresample=48000,aformat=channel_layouts=stereo,atrim={a.closing_skip}:{a.closing_skip + total - a.closing_at},asetpts=PTS-STARTPTS,afade=t=in:d=2.0,"
+                      f"volume={cdb - a.db}dB,adelay={c_ms}|{c_ms},apad=whole_dur={total},atrim=0:{total}[c];[m][c]amix=inputs=2:normalize=0[o]")
+            run(["-i", str(SRC), "-i", a.closing, "-filter_complex", chain, "-map", "[o]", str(fit)])
+        else:
+            run(["-i", str(SRC), "-filter_complex", chain.replace("[m]", "[o]"), "-map", "[o]", str(fit)])
+        cut_a = None
     voice = D / "voice_only.wav"
     ins, parts = [], []
     for i, (t, f, skip) in enumerate(voices):
@@ -70,7 +92,7 @@ def main() -> None:
          "-map", "[o]", str(duck)])
     run(["-i", str(duck), "-i", str(voice), "-filter_complex", "[0][1]amix=inputs=2:normalize=0[o]",
          "-map", "[o]", str(D / "check_mix.wav")])
-    print(f"CUT_A={cut_a:.2f} CUT_B={CUT_B} -> {duck}")
+    print(f"CUT_A={cut_a} start={a.start} end={a.end} closing={a.closing} -> {duck}")
 
 
 if __name__ == "__main__":
