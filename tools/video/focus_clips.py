@@ -99,6 +99,24 @@ PIECES["DOCh"] = dict(rec="rec6", S=2, take="DOC", t_in=0.4, t_out=13.9, zmin=1.
     dict(t0=3.5, t1=10.3, c=(1226, 520), z=1.85)])
 
 
+# 機能紹介の追加場面（rec7、make_takes_r7.py の台本）。録画は outputs/video/rec7/（3840x2160）、出力は rec7/focus/。
+# F_<名前>_h は 1920x1080、F_<名前>_4k は 3840x2160（out=2。元が 4K なので 1 倍の構図は元の解像度のまま、拡大すると補間になる）。倍率は 1.0〜2.0
+_R7 = dict(rec="rec7", S=2, zmin=1.0, zmax=2.0, wide_z=1.0, trans=0.9)
+_R7_PIECES = {
+    "DRIVER": dict(take="DRIVER_4kbg", t_in=0.2, t_out=15.9, manual=[dict(t0=0.2, t1=9.0, c=(960, 300), z=1.9)]),   # 5 回押す間は、ボタンの列を大きく
+    "POST": dict(take="POST", t_in=0.3, t_out=14.9),
+    "OWNVIZ": dict(take="OWNVIZ", t_in=0.3, t_out=15.6),
+    "NEGOTIATE": dict(take="NEGOTIATE", t_in=0.2, t_out=14.8),
+    "NEGO2": dict(take="NEGO2", t_in=0.3, t_out=13.9),
+    "QUOTE": dict(take="QUOTE", t_in=0.0, t_out=12.6),
+    "LIVE": dict(take="LIVE", t_in=0.3, t_out=13.5),
+    "MARKET": dict(take="MARKET", t_in=1.0, t_out=16.6),
+}
+for _n, _p in _R7_PIECES.items():
+    PIECES[f"F_{_n}_h"] = dict(_R7, **_p)
+    PIECES[f"F_{_n}_4k"] = dict(_R7, out=2, **_p)
+
+
 def read_frames(path, t0, dur, S=1, down=False):
     """S: 元動画の倍率（4K 録画なら 2）。down=True なら 1920x1080 に縮小して読む（枠の検出用）。"""
     vf = ["-vf", f"scale={W}:{H}:flags=area"] if (down and S != 1) else []
@@ -291,18 +309,19 @@ def camera_factory(init, keys, trans, zmax):
     return at
 
 
-def render_frame(f, x0, y0, z):
-    """f は (H*S, W*S) の元コマ。(x0, y0, z) は 1920x1080 の座標系。S>1 でも元の解像度のまま切り出す。"""
+def render_frame(f, x0, y0, z, o=1):
+    """f は (H*S, W*S) の元コマ。(x0, y0, z) は 1920x1080 の座標系。S>1 でも元の解像度のまま切り出す。
+    o: 出力の倍率（1 なら 1920x1080、2 なら 3840x2160）。既定は 1 で、従来と同じ結果。"""
     S = f.shape[1] // W
-    if S > 1 and S / z > 1.0:
-        # 縮小になるときは、先に面積平均で (W*z, H*z) に縮めてから切り出す（間引きによるにじみを避ける）
-        f = cv2.resize(f, (int(round(W * z)), int(round(H * z))), interpolation=cv2.INTER_AREA)
-        sc = z
+    if S > 1 and S / (z * o) > 1.0:
+        # 縮小になるときは、先に面積平均で (W*z*o, H*z*o) に縮めてから切り出す（間引きによるにじみを避ける）
+        f = cv2.resize(f, (int(round(W * z * o)), int(round(H * z * o))), interpolation=cv2.INTER_AREA)
+        sc = z * o
     else:
         sc = float(S)
-    k = sc / z   # 出力 1 画素あたりの元画素数（<=1 なら拡大）
+    k = sc / (z * o)   # 出力 1 画素あたりの元画素数（<=1 なら拡大）
     M = np.array([[k, 0, sc * x0 + 0.5 * k - 0.5], [0, k, sc * y0 + 0.5 * k - 0.5]], np.float32)
-    return cv2.warpAffine(f, M, (W, H), flags=cv2.INTER_LANCZOS4 | cv2.WARP_INVERSE_MAP,
+    return cv2.warpAffine(f, M, (W * o, H * o), flags=cv2.INTER_LANCZOS4 | cv2.WARP_INVERSE_MAP,
                           borderMode=cv2.BORDER_REPLICATE)
 
 
@@ -328,6 +347,7 @@ def make(pid):
     OUT = rec / "focus"
     src = rec / f"{p['take']}.mp4"
     S = p.get("S", 1)   # 元動画の倍率（rec6 は 3840x2160 なので 2）
+    o = p.get("out", 1)   # 出力の倍率（既定 1 = 1920x1080。2 なら 3840x2160）
     speed = p.get("speed", 1)
     t_in, t_out = p["t_in"], p["t_out"]
     zmin, zmax = p.get("zmin", 1.15), p.get("zmax", 2.6)
@@ -357,7 +377,7 @@ def make(pid):
     OUT.mkdir(parents=True, exist_ok=True)
     outp = OUT / f"{pid}.mp4"
     enc = subprocess.Popen([
-        FFMPEG, "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS),
+        FFMPEG, "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W * o}x{H * o}", "-r", str(FPS),
         "-i", "-", "-an", "-vf", "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p",
         "-c:v", "libx264", "-crf", "14", "-preset", "medium", "-colorspace", "bt709",
         "-color_primaries", "bt709", "-color_trc", "bt709", "-r", str(FPS), "-movflags", "+faststart",
@@ -368,7 +388,7 @@ def make(pid):
         if k % speed or i >= n:
             continue
         x0, y0, z = at(i / FPS)
-        out = render_frame(f, x0, y0, z)
+        out = render_frame(f, x0, y0, z, o)
         last = f
         enc.stdin.write(out.tobytes())
         log.append((x0, y0, z))
@@ -377,7 +397,7 @@ def make(pid):
         i += 1
     while i < n and last is not None:   # 元が短いときは最後のコマを保持
         x0, y0, z = at(i / FPS)
-        out = render_frame(last, x0, y0, z)
+        out = render_frame(last, x0, y0, z, o)
         enc.stdin.write(out.tobytes())
         log.append((x0, y0, z))
         if i in pick:
@@ -394,9 +414,16 @@ def make(pid):
     return dict(id=pid, frames=i, zoom=(float(a[:, 2].min()), float(a[:, 2].max())))
 
 
+# r7 の 4K 書き出し用。rec6 の場面を 3840x2160 で切り出す（render_edl.py --prefer-hd が P1h.mp4 の隣の P1h_4k.mp4 を拾う）
+for _k in (1, 7, 8, 9, 10, 12, 13):
+    PIECES[f"P{_k}h_4k"] = dict(PIECES[f"P{_k}h"], out=2)
+PIECES["FLOW0h_4k"] = dict(PIECES["FLOW0h"], out=2)
+
+
 if __name__ == "__main__":
     ids = sys.argv[1:] or list(PIECES)
     res = [make(x) for x in ids]
     if len(ids) == len(PIECES):
         with open(OUT / "focus_report.json", "w", encoding="utf-8", newline="\n") as fh:
             json.dump(res, fh)
+

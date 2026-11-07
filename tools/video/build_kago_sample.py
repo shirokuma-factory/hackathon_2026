@@ -144,7 +144,7 @@ def edit_trips():
             t.update(route_label="福岡県→鹿児島県（鹿児島県→福岡県の荷の帰り）", origin_code="40132", dest_code="46201", drop_points=["46201", "46203", "46204"])
         elif t["id"] == "T7":
             t.update(route_label="東京都→鹿児島県（鹿児島県→東京都の荷の帰り）", origin_code="13108", dest_code="46203",
-                     arrive_at="2026-11-14T22:30", drop_points=["46201", "46203"], price_ex_tax_yen=T7_PRICE,
+                     arrive_at="2026-11-15T06:00", drop_points=["46201", "46203"], price_ex_tax_yen=T7_PRICE,
                      pickup_radius_km=15)   # 新宿区の荷主は江東区から 10.5 km。元の 10 km では範囲外になる
     w(p, json.dumps(d, ensure_ascii=False, indent=2) + "\n")
     # 場面 S6（東雲木工の陳列棚）の帰り荷の着地を、大阪市中央区から鹿児島市にする
