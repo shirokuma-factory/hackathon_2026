@@ -73,6 +73,22 @@ def main() -> int:
     check_links(readme)
     check_links(ROOT / "docs" / "README.md")
 
+    if ONLINE:
+        # 公開版のページが、コミット済み（HEAD）の web/ と同じ中身か（入れ直しの忘れを見つける）
+        base = "https://backfull-demo-720575644376.asia-northeast1.run.app/"
+        stale = []
+        for page in ("index.html", "waiting.html", "own_lite.html", "compare_lite.html", "driver.html", "trucks_now.html"):
+            want = subprocess.run(["git", "-C", str(ROOT), "show", f"HEAD:web/{page}"], capture_output=True).stdout
+            try:
+                with urllib.request.urlopen(urllib.request.Request(base + page, headers={"User-Agent": "repo-check"}), timeout=60) as r:
+                    got = r.read()
+            except Exception as e:  # noqa: BLE001
+                stale.append(f"{page} {type(e).__name__}")
+                continue
+            if got != want:
+                stale.append(page)
+        check(not stale, f"公開版のページが HEAD の web/ と同じ: {stale or 'すべて同じ'}（違えば Cloud Run を入れ直す）")
+
     text = readme.read_text(encoding="utf-8") if readme.exists() else ""
     head = text[:4000]
     check((ROOT / "LICENSE").exists(), "LICENSE がある")
