@@ -33,7 +33,12 @@
       '.ai-box .ai-confirm ul{margin:4px 0 8px;padding-left:20px}.ai-box ol.ai-steps{margin:8px 0;padding-left:22px}' +
       '.ai-box .ai-json{margin:6px 0}.ai-box .ai-json pre{max-height:220px;overflow:auto;margin:4px 0;padding:8px;font-size:12px;line-height:1.5;border:1px solid var(--line,#ccc);border-radius:8px;white-space:pre-wrap;word-break:break-all}' +
       '.ai-box .ai-text{white-space:pre-wrap;margin:6px 0}.ai-box .ai-badge{display:inline-block;padding:1px 10px;border-radius:999px;font-weight:700;font-size:12px;border:1px solid currentColor}' +
-      '.ai-box .ai-badge.ok{color:var(--accent,#1b5fbf)}.ai-box .ai-badge.ng{color:var(--warn,#b3261e)}.ai-box .ai-cost{color:var(--muted,#5b6475);font-size:12px}';
+      '.ai-box .ai-badge.ok{color:var(--accent,#1b5fbf)}.ai-box .ai-badge.ng{color:var(--warn,#b3261e)}.ai-box .ai-cost{color:var(--muted,#5b6475);font-size:12px}' +
+      '.ai-cg{margin:8px 0;padding:8px 10px;border:1px solid var(--line,#ccc);border-radius:10px}.ai-cg>summary{cursor:pointer;font-weight:700}' +
+      '.ai-cg .ai-cg-text{width:100%;box-sizing:border-box;margin:6px 0;resize:vertical;min-height:64px}.ai-cg .ai-cg-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}' +
+      '.ai-cg .ai-confirm,.ai-cg .ai-result-cg{margin-top:8px;padding:10px 12px;border:1px solid var(--line,#ccc);border-radius:10px}.ai-cg .ai-cg-sent{white-space:pre-wrap;word-break:break-all;margin:6px 0;padding:8px;font-size:13px;border:1px solid var(--line,#ccc);border-radius:8px}' +
+      '.ai-cg .ai-cg-scroll{overflow-x:auto;margin:6px 0}.ai-cg table.ai-cg-table{border-collapse:collapse;font-size:13px;width:100%}.ai-cg-table th,.ai-cg-table td{padding:3px 6px;text-align:left;white-space:nowrap}.ai-cg-table .ai-cg-r1 td{padding-top:8px}.ai-cg-table .ai-cg-r2 td{white-space:normal;border-bottom:1px solid var(--line,#ccc)}' +
+      '.ai-cg-table td.num{text-align:right}.ai-cg .ai-cg-na{color:var(--muted,#5b6475)}.ai-cg .ai-cg-h{margin:8px 0 2px;font-weight:700}.ai-cg .ai-cg-list{margin:2px 0 6px;padding-left:20px}.ai-cg .ai-badge{display:inline-block;padding:1px 10px;border-radius:999px;font-weight:700;font-size:12px;border:1px solid var(--accent,#1b5fbf);color:var(--accent,#1b5fbf)}';
     document.head.appendChild(st);
   }
 
@@ -285,6 +290,115 @@
       .then(({ ok, j }) => { if (!ok) throw new Error(j.error || '送れませんでした'); return j; });
   }
 
-  root.AiExplain = { mount, OFF_LINE, status: getStatus, ownColumns, offerPolish, pseudonymize, restore, estimate, reasonText,
+  // 荷物の条件を文で書いて表にしてもらう（SPEC §53.4）。地図の画面の荷物の欄（work.js）が使う。
+  // 送るのは、押した時点の文だけ（1,000 字まで）。確認の枠に同じ文を出し、「送る」を押すまで要求を出さない。
+  // 案は「AI の案」として表に出し、「この行を荷物の表に入れる」を押すまで荷物の表は変わらない。
+  const CARGO_MAX = 1000;
+  const cg = { text: '', phase: 'idle', pending: '', res: null, err: '', done: {} };   // 荷物の欄が描き直されても、入れた文と案は残す
+  const CG_COLS = [['kind', '種類'], ['n', '個数'], ['l_cm', '縦cm'], ['w_cm', '横cm'], ['h_cm', '高さcm'], ['kg', '1個kg'], ['note', '備考']];
+  const CG_EXAMPLE = '例: 段ボール 120サイズ 3箱 各40kg、パレット1枚 110×110×150cm 450kg、東京から大阪';
+
+  function cargoEstimate(text, st) {
+    const c = st && st.cargo_cost, tpc = st && st.cost && st.cost.tokens_per_char;
+    if (!c || !tpc) return null;
+    const tin = c.in_base + text.length * tpc;
+    const one = (out) => (tin * c.price_in + out * c.price_out) / 1e6;
+    return { typ: one(c.out_typical), max: one(c.out_max), yen: st.cost.usd_jpy };
+  }
+  const cgCell = (v) => (v === null || v === undefined || v === '' ? '<span class="ai-cg-na">未入力</span>' : esc(v));
+
+  function cargoHtml(st) {
+    const dis = cg.phase === 'busy' ? ' disabled' : '';
+    const parts = [`<details class="ai-cg" id="ai-cg-box"${cg.open ? ' open' : ''}><summary>文で書いて AI に表にしてもらう</summary>
+      <p class="small">荷物の内容を文で書くと、荷物の表の案を作ります。送るのはここに書いた文だけです。作った案は、押すまで表に入りません。</p>
+      <textarea class="ctl ai-cg-text" id="ai-cg-text" rows="3" maxlength="${CARGO_MAX}" placeholder="${esc(CG_EXAMPLE)}" aria-label="荷物の条件を書いた文"${dis}>${esc(cg.text)}</textarea>
+      <div class="ai-cg-bar"><button type="button" class="btn-primary sm" data-cg="ask"${dis}>表にしてもらう</button><span class="small" id="ai-cg-count">${cg.text.length} / ${CARGO_MAX} 字</span></div>`];
+    if (cg.err) parts.push(`<p class="errs" role="alert" id="ai-cg-err">${esc(cg.err)}</p>`);
+    if (cg.phase === 'confirm') {
+      const est = cargoEstimate(cg.pending, st), left = st && typeof st.remaining === 'number' ? st.remaining : null, out = left === 0;
+      const cost = est ? `<li>1 回の費用の目安: ${usd(est.typ)}（${yenText(est.typ * est.yen)}）。最大でも ${usd(est.max)}（${yenText(est.max * est.yen)}）。1 ドル ${est.yen} 円と仮定。Haiku 5.5 を 1 回呼びます。同じ文は結果を再利用し、費用も回数もかかりません</li>` : '';
+      const lft = left !== null ? `<li class="ai-left">今日の残り ${left} 回${st.limits && st.limits.daily ? `（1 日 ${st.limits.daily} 回まで）` : ''}</li>` : '';
+      parts.push(`<div class="ai-confirm" id="ai-cg-confirm"><b>この文を Anthropic の API に送ります</b>
+        <pre class="ai-cg-sent" id="ai-cg-sent">${esc(cg.pending)}</pre>
+        <ul><li>送るのはこの文だけです（ほかの欄、会社名、見積の内容、地図の選択は送りません）。送った内容は保存しません</li>${cost}${lft}</ul>
+        ${out ? '<p class="errs">今日の上限に達しました。明日また使えます。荷物の表は手で入れてください。</p>' : ''}
+        <div class="bar">${out ? '' : '<button type="button" class="btn-primary sm" id="ai-cg-send" data-cg="send">送る</button>'}<button type="button" class="btn-link" id="ai-cg-cancel" data-cg="cancel">やめる</button></div></div>`);
+    } else if (cg.phase === 'busy') {
+      parts.push('<p class="small" role="status" id="ai-cg-busy">Haiku 5.5 が表にしています…</p>');
+    } else if (cg.phase === 'result' && cg.res) {
+      const r = cg.res, rows = r.rows || [];
+      const body = rows.map((x, i) => `<tr class="ai-cg-r1"><td>${esc(x.kind)}</td>${CG_COLS.slice(1, 6).map(([k]) => `<td class="num">${cgCell(x[k])}</td>`).join('')}</tr>
+        <tr class="ai-cg-r2"><td colspan="6">${x.note ? `<span class="small">備考: ${esc(x.note)}</span> ` : ''}<button type="button" class="btn-link" data-cg="insert" data-i="${i}"${cg.done[i] ? ' disabled' : ''}>${cg.done[i] ? '入れました' : 'この行を荷物の表に入れる'}</button></td></tr>`).join('');
+      parts.push(`<div class="ai-result-cg" id="ai-cg-result"><p><span class="ai-badge ok">AI の案</span> <span class="small">${r.cached ? '同じ文の結果を再利用しました。' : ''}文にない数字は入れていません。内容を見てから入れてください。</span></p>
+        ${rows.length ? `<p class="small">寸法は cm、重さは 1 個あたり kg です。</p><div class="ai-cg-scroll"><table class="ai-cg-table"><thead><tr>${['種類', '個数', '縦', '横', '高さ', '重さ'].map((l) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>` : '<p class="small">表にできる行がありませんでした。</p>'}
+        ${r.origin || r.destination ? `<p class="small" id="ai-cg-places">発地: ${esc(r.origin || '（書かれていません）')} / 着地: ${esc(r.destination || '（書かれていません）')}（参考です。地図の選択は変わりません）</p>` : ''}
+        ${(r.unknowns || []).length ? `<p class="ai-cg-h">分からなかったこと</p><ul class="ai-cg-list" id="ai-cg-unknowns">${r.unknowns.map((u) => `<li>${esc(u)}</li>`).join('')}</ul>` : ''}
+        ${(r.dropped || []).length ? `<details class="ai-cg-drop"><summary>入れなかった行・消した所（${r.dropped.length} 件）</summary><ul class="ai-cg-list" id="ai-cg-dropped">${r.dropped.map((u) => `<li>${esc(u)}</li>`).join('')}</ul></details>` : ''}
+        <div class="bar"><button type="button" class="btn-link" data-cg="close">閉じる</button></div></div>`);
+    }
+    parts.push('</details>');
+    return parts.join('');
+  }
+
+  function cargoRows(text) {
+    return fetch('/api/ai/cargo_rows', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => { if (!ok) throw new Error(j.error || '送れませんでした'); return j; });
+  }
+
+  // el: 荷物の欄に置いた空の枠。opts.onInsert(row): 「この行を荷物の表に入れる」を押したときだけ呼ぶ
+  function mountCargo(el, opts) {
+    if (!el) return Promise.resolve(false);
+    return getStatus().then((st0) => {
+      if (!st0 || !st0.available || !el.isConnected) { if (el.isConnected) el.innerHTML = ''; return false; }
+      injectStyle();
+      let st = st0;
+      const paint = () => {
+        el.innerHTML = cargoHtml(st);
+        const det = el.querySelector('#ai-cg-box');
+        if (det) det.addEventListener('toggle', () => { cg.open = det.open; });
+      };
+      el.oninput = (ev) => {
+        if (ev.target.id !== 'ai-cg-text') return;
+        cg.text = ev.target.value;
+        const c = el.querySelector('#ai-cg-count'); if (c) c.textContent = `${cg.text.length} / ${CARGO_MAX} 字`;
+      };
+      el.onclick = (ev) => {
+        const b = ev.target.closest && ev.target.closest('[data-cg]');
+        if (!b || b.disabled) return;
+        const act = b.dataset.cg;
+        if (act === 'ask') {
+          const text = (el.querySelector('#ai-cg-text').value || '').trim();
+          cg.text = el.querySelector('#ai-cg-text').value; cg.err = '';
+          if (!text) { cg.err = '荷物の条件を文で書いてください。'; cg.phase = 'idle'; paint(); return; }
+          if (text.length > CARGO_MAX) { cg.err = `文は ${CARGO_MAX} 字までです。`; cg.phase = 'idle'; paint(); return; }
+          cg.pending = text; cg.phase = 'confirm'; cg.res = null; cg.done = {}; cg.open = true;
+          paint();
+          fetchStatus().then((s) => { if (cg.phase === 'confirm' && cg.pending === text && el.isConnected) { st = s && s.available ? s : st; paint(); } });   // 残りの回数は押した時点のものを出す
+        } else if (act === 'cancel') {
+          cg.phase = 'idle'; cg.pending = ''; cg.err = ''; paint();
+        } else if (act === 'send') {
+          const text = cg.pending;
+          if (!text) return;
+          cg.phase = 'busy'; cg.err = ''; paint();
+          cargoRows(text).then((j) => { cg.res = j; cg.done = {}; cg.phase = 'result'; })
+            .catch((e) => { cg.err = e.message || '送れませんでした'; cg.phase = 'idle'; })
+            .then(() => { if (el.isConnected) paint(); });
+        } else if (act === 'insert') {
+          const i = Number(b.dataset.i), row = cg.res && cg.res.rows && cg.res.rows[i];
+          if (!row || cg.done[i]) return;
+          cg.done[i] = true;
+          if (opts && opts.onInsert) opts.onInsert(Object.assign({}, row));
+          if (el.isConnected) paint();
+        } else if (act === 'close') {
+          cg.phase = 'idle'; cg.res = null; cg.pending = ''; cg.err = ''; paint();
+        }
+      };
+      paint();
+      return true;
+    });
+  }
+
+  root.AiExplain = { mount, OFF_LINE, status: getStatus, ownColumns, offerPolish, cargoRows, mountCargo, pseudonymize, restore, estimate, reasonText,
     _stepsHtml: stepsHtml, _resultHtml: resultHtml };
 })(window);

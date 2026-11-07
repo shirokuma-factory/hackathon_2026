@@ -50,6 +50,8 @@ STAGE_EST = {
     "verify": {"in_base": 800, "scale": "all", "out": 1500},
 }
 
+CARGO_IN_BASE = 650      # 荷物の表づくり: 指示文と出力の形の入力トークン（仮定。SPEC §53.4）
+CARGO_OUT_TYPICAL = 600  # 同・出力の見込み（思考を含む。仮定）
 MAX_FACTS_BYTES = 30_000
 DEFAULT_DAILY_LIMIT = 100
 PER_CLIENT_PER_HOUR = 10
@@ -119,7 +121,9 @@ def status(public: bool) -> dict[str, Any]:
     limits = {"daily": daily_limit(), "per_client_per_hour": PER_CLIENT_PER_HOUR, "max_request_bytes": MAX_FACTS_BYTES, "models": models}
     used = LIMITER.used_today()
     extra = {"public": bool(public), "remaining": max(0, daily_limit() - used), "verify_opus": verify,
-             "cost": {"tokens_per_char": TOKENS_PER_CHAR, "usd_jpy": USD_JPY, "stages": cost_stages(verify), "assumed": True}}
+             "cost": {"tokens_per_char": TOKENS_PER_CHAR, "usd_jpy": USD_JPY, "stages": cost_stages(verify), "assumed": True},
+             "cargo_cost": {"in_base": CARGO_IN_BASE, "out_typical": CARGO_OUT_TYPICAL, "out_max": CARGO_MAX_TOKENS,
+                            "price_in": PRICE[MODEL_HAIKU][0], "price_out": PRICE[MODEL_HAIKU][1]}}
     if not _truthy("AI_EXPLAIN_ENABLED"):
         return {"available": False, "reason": "disabled", "limits": limits, **extra}
     if public and not _truthy("AI_EXPLAIN_PUBLIC"):
@@ -1005,6 +1009,230 @@ def offer_polish(body: Any, client_id: str, public: bool) -> dict[str, Any]:
     if not problems:
         CACHE.put(key, res)
     return res
+
+
+
+# ---------------------------------------------------------------- 荷物の条件を文で書いて表にしてもらう（SPEC §53.4）
+# 送るのは、利用者が書いた文だけ（1,000 字まで）。Haiku 1 回、構造化出力。戻りの数字は Python で入力の文と照合する。
+# 宅配の「120 サイズ」は 3 辺の合計の上限なので、縦・横・高さにしない（備考と「分からなかったこと」に書く）。
+
+CARGO_MODEL = MODEL_HAIKU
+CARGO_MAX_TOKENS = 1000
+CARGO_EFFORT = "low"
+CARGO_MAX_CHARS = 1000
+CARGO_MAX_ROWS = 20
+CARGO_KINDS = ("段ボール", "パレット", "その他")
+CARGO_NOTE_MAX = 60
+CARGO_PLACE_MAX = 40
+CARGO_UNKNOWN_MAX = 60
+CARGO_MAX_UNKNOWNS = 10
+_NULL_NUM = {"anyOf": [{"type": "number"}, {"type": "null"}]}
+CARGO_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "rows": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"kind": {"type": "string", "enum": list(CARGO_KINDS)}, "n": _NULL_NUM, "l_cm": _NULL_NUM, "w_cm": _NULL_NUM,
+                           "h_cm": _NULL_NUM, "kg": _NULL_NUM, "note": {"type": "string"}},
+            "required": ["kind", "n", "l_cm", "w_cm", "h_cm", "kg", "note"], "additionalProperties": False}},
+        "origin": {"type": "string"}, "destination": {"type": "string"},
+        "unknowns": {"type": "array", "items": {"type": "string"}}},
+    "required": ["rows", "origin", "destination", "unknowns"], "additionalProperties": False}
+SYS_CARGO = ("あなたは運送の見積依頼の入力係です。荷主が文で書いた荷物の条件を、荷物の表の行にします。"
+             "守ること: (1) 文に書かれていない数字（個数・寸法・重さ）を作らない。分からない欄は null にする。"
+             "(2) n は個数、l_cm・w_cm・h_cm は 1 個の縦・横・高さ（cm）、kg は 1 個の重さ（kg）。mm や m で書かれていれば cm に直す。"
+             "重さが合計でしか書かれていないときは kg を null にして、note に書く。"
+             "(3) 「120 サイズ」「80 サイズ」のような宅配のサイズは 3 辺の合計の上限で、縦・横・高さは分からない。l_cm・w_cm・h_cm は null にし、"
+             "note に「120サイズ（3辺合計120cm以内）」の形で書き、unknowns にも縦・横・高さが分からないことを書く。"
+             "(4) kind は 段ボール・パレット・その他 のどれか。(5) 発地・着地は文に書かれている地名の文字をそのまま使い、書かれていなければ空の文字列。"
+             "(6) unknowns は、見積に必要で文に書かれていなかったこと（例: 寸法、重さ、個数、日付）を 1 件 40 字以内の短い日本語で並べる。note は 40 字以内。")
+
+_NUM = r"\d+(?:\.\d+)?"
+_CARGO_CHAIN_RE = re.compile(rf"{_NUM}\s*(?:mm|cm|m(?![a-z]))?(?:\s*[x*×]\s*{_NUM}\s*(?:mm|cm|m(?![a-z]))?){{1,2}}")
+_CARGO_NUM_RE = re.compile(rf"({_NUM})\s*(mm|cm|kg|g(?![a-z])|m(?![a-z])|t(?![a-z])|トン|サイズ)?")
+_CARGO_SIZE_RE = re.compile(r"(\d+)\s*サイズ")
+
+
+def clean_cargo(body: Any) -> str:
+    text = body.get("text") if isinstance(body, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        raise AiError("表にする文がありません")
+    if set(body) - {"text"}:
+        raise AiError("送れない項目が含まれています", "bad_field", 400)
+    text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "").strip()
+    if len(text) > CARGO_MAX_CHARS:
+        raise AiError(f"表にできる文は {CARGO_MAX_CHARS} 字までです", "too_large", 413)
+    return text
+
+
+def _fnum(x: Any) -> float | None:
+    if isinstance(x, bool) or not isinstance(x, (int, float)):
+        return None
+    return float(x)
+
+
+def cargo_allowed(text: str) -> dict[str, set[float]]:
+    """入力の文から、欄ごとに出してよい数を作る。単位の換算（mm・m → cm、t・g → kg）はここで計算する。
+    「120 サイズ」の数は宅配の区分なので、どの欄にも入れない。"""
+    t = unicodedata.normalize("NFKC", text).lower().replace(",", "")
+    dims: set[float] = set()
+    kg: set[float] = set()
+    cnt: set[float] = set()
+    used: list[tuple[int, int]] = []
+
+    def dim_val(v: float, u: str | None) -> float:
+        return v / 10 if u == "mm" else v * 100 if u == "m" else v
+
+    for m in _CARGO_CHAIN_RE.finditer(t):   # 110×110×150cm のように並んだ寸法は、最後の単位をすべてに当てる
+        seg = m.group(0)
+        units = re.findall(r"(mm|cm|m)(?![a-z])", seg)
+        u = units[-1] if units else None
+        for n, nu in re.findall(rf"({_NUM})\s*(mm|cm|m(?![a-z]))?", seg):   # 自分の単位があればそれ、なければ最後の単位
+            dims.add(round(dim_val(float(n), nu or u), 4))
+        used.append(m.span())
+    for m in _CARGO_NUM_RE.finditer(t):
+        v, u = float(m.group(1)), m.group(2)
+        if u == "サイズ":
+            continue
+        if any(a <= m.start() < b for a, b in used):
+            continue
+        if not u:
+            cnt.add(round(v, 4))   # 個数は「3箱」「1枚」のように単位なしの数（寸法の並びの中の数は除く）
+        if u in ("mm", "cm", "m"):
+            dims.add(round(dim_val(v, u), 4))
+        elif u == "kg":
+            kg.add(round(v, 4))
+        elif u == "g":
+            kg.add(round(v / 1000, 4))
+        elif u in ("t", "トン"):
+            kg.add(round(v * 1000, 4))
+        else:
+            dims.add(round(v, 4))
+            kg.add(round(v, 4))
+    return {"dims": dims, "kg": kg, "n": cnt}
+
+
+def cargo_validate(text: str, data: Any) -> tuple[list[dict[str, Any]], str, str, list[str], list[str]]:
+    """モデルの答えを検める。入力の文にない数字の行は外し、理由を返す。(行, 発地, 着地, 分からなかったこと, 外した理由)"""
+    allowed = cargo_allowed(text)
+    norm = unicodedata.normalize("NFKC", text)
+    sizes = list(dict.fromkeys(_CARGO_SIZE_RE.findall(norm)))   # 宅配のサイズは、縦・横・高さにしない
+    note_ok = allowed["dims"] | allowed["kg"] | allowed["n"] | {float(s) for s in sizes} | {3.0}
+    rows_in = data.get("rows") if isinstance(data, dict) else None
+    rows: list[dict[str, Any]] = []
+    dropped: list[str] = []
+    for i, r in enumerate(rows_in if isinstance(rows_in, list) else []):
+        if not isinstance(r, dict):
+            continue
+        if len(rows) >= CARGO_MAX_ROWS:
+            dropped.append(f"行が多いので {CARGO_MAX_ROWS} 行までにしました")
+            break
+        kind = r.get("kind") if r.get("kind") in CARGO_KINDS else "その他"
+        bad: list[str] = []
+        out: dict[str, Any] = {"kind": kind}
+        for key, fld, label, hi in (("n", "n", "個数", 9999), ("l_cm", "dims", "縦", 5000), ("w_cm", "dims", "横", 5000),
+                                    ("h_cm", "dims", "高さ", 5000), ("kg", "kg", "重さ", 100000)):
+            raw = r.get(key)
+            if raw is None:
+                out[key] = None
+                continue
+            v = _fnum(raw)
+            if v is None or v <= 0 or v > hi:
+                bad.append(f"{label}が正しい数ではありません")
+                continue
+            if key == "n" and v != int(v):
+                bad.append("個数が整数ではありません")
+                continue
+            if round(v, 4) not in allowed[fld]:
+                shown = int(v) if v == int(v) else v
+                bad.append(f"{label}の {shown} が、文にある数（単位の換算を含む）と合いません")
+                continue
+            out[key] = int(v) if v == int(v) else round(v, 2)
+        note = str(r.get("note", "")).strip()[:CARGO_NOTE_MAX]
+        n_note = {round(float(x), 4) for x in re.findall(_NUM, unicodedata.normalize("NFKC", note).replace(",", ""))}
+        if n_note - note_ok:
+            note = ""
+            dropped.append(f"{i + 1} 行目の備考に、文にない数字があったので消しました")
+        out["note"] = note
+        if bad:
+            dropped.append(f"{i + 1} 行目（{kind}）を外しました: " + "、".join(bad))
+            continue
+        if all(out.get(k) is None for k in ("n", "l_cm", "w_cm", "h_cm", "kg")):
+            dropped.append(f"{i + 1} 行目（{kind}）は数字が 1 つもないので外しました")
+            continue
+        rows.append(out)
+
+    for row in rows:
+        for s in sizes:
+            phrase = f"{s}サイズ（3辺合計{s}cm以内）"
+            if re.search(rf"{s}\s*サイズ", row["note"]) and phrase not in row["note"]:
+                row["note"] = re.sub(rf"{s}\s*サイズ(（[^）]*）)?", phrase, row["note"])[:CARGO_NOTE_MAX]
+    unknowns: list[str] = []
+    raw_unk = data.get("unknowns") if isinstance(data, dict) else None
+    for u in raw_unk if isinstance(raw_unk, list) else []:
+        if isinstance(u, str) and u.strip():
+            unknowns.append(u.strip()[:CARGO_UNKNOWN_MAX])
+    for s in sizes:
+        unknowns.append(f"{s}サイズは3辺合計{s}cm以内の区分で、縦・横・高さは分かりません")
+    unknowns = list(dict.fromkeys(unknowns))[:CARGO_MAX_UNKNOWNS]
+    places: list[str] = []
+    for key, label in (("origin", "発地"), ("destination", "着地")):
+        v = data.get(key) if isinstance(data, dict) else ""
+        v = v.strip()[:CARGO_PLACE_MAX] if isinstance(v, str) else ""
+        if v and v not in norm and v not in text:
+            dropped.append(f"{label}「{v}」は文にないので入れませんでした")
+            v = ""
+        places.append(v)
+    return rows, places[0], places[1], unknowns, dropped
+
+
+def _call_cargo(client: Any, text: str) -> tuple[Any, dict[str, Any]]:
+    kw: dict[str, Any] = dict(model=CARGO_MODEL, max_tokens=CARGO_MAX_TOKENS, system=SYS_CARGO,
+                              messages=[{"role": "user", "content": text}],
+                              output_config={"effort": CARGO_EFFORT, "format": {"type": "json_schema", "schema": CARGO_SCHEMA}})
+    t0 = time.perf_counter()
+    resp = client.messages.create(**kw)
+    ms = int((time.perf_counter() - t0) * 1000)
+    tin, tout = _usage(resp)
+    rec = {"step": "cargo_rows", "model": CARGO_MODEL, "label": MODEL_LABEL[CARGO_MODEL], "input_tokens": tin, "output_tokens": tout, "ms": ms,
+           "cost_usd": round(cost_usd(CARGO_MODEL, tin, tout), 6), "stop_reason": getattr(resp, "stop_reason", None)}
+    if getattr(resp, "stop_reason", None) == "refusal":
+        raise _Refused(rec)  # type: ignore[arg-type]
+    return resp, rec
+
+
+def cargo_rows(body: Any, client_id: str, public: bool) -> dict[str, Any]:
+    """POST /api/ai/cargo_rows。同期で返す（Haiku 1 回）。同じ文の結果は上限に数えない。"""
+    st = status(public)
+    if not st["available"]:
+        raise AiError(cargo_reason_text(st["reason"]), "unavailable", 403)
+    text = clean_cargo(body)
+    key = "cargo:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+    hit = CACHE.get(key)
+    if hit is not None:
+        return dict(hit, cached=True)
+    LIMITER.reserve(client_id)
+    try:
+        resp, rec = _call_cargo(make_client(), text)
+    except _Refused:
+        raise AiError("AI が表にするのを断りました。荷物の表は手で入れてください", "refused", 502) from None
+    except Exception as e:  # noqa: BLE001  メッセージにキーが入ることはないが、型名だけを返す
+        raise AiError(f"AI に表にしてもらえませんでした（{type(e).__name__}）。荷物の表は手で入れてください", "api_error", 502) from None
+    try:
+        data = _json_of(resp)   # max_tokens で切れたときもここで失敗にする
+    except Exception:  # noqa: BLE001
+        raise AiError("AI の答えを読めませんでした（途中で切れたか、形が違いました）。荷物の表は手で入れてください", "bad_output", 502) from None
+    rows, origin, dest, unknowns, dropped = cargo_validate(text, data)
+    res = {"ok": True, "rows": rows, "origin": origin, "destination": dest, "unknowns": unknowns, "dropped": dropped, "step": rec, "cached": False}
+    CACHE.put(key, res)
+    return res
+
+
+def cargo_reason_text(reason: str) -> str:
+    return {"disabled": "AI による荷物の表づくりは、このサーバーでは使えない設定です",
+            "public_off": "公開版では AI による荷物の表づくりを止めています",
+            "no_key": "AI による荷物の表づくりに必要な設定がありません",
+            "no_sdk": "AI による荷物の表づくりに必要な部品（anthropic）が入っていません"}.get(reason, "AI による荷物の表づくりは今は使えません")
 
 
 def polish_reason_text(reason: str) -> str:
