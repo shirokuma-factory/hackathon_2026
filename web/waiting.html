@@ -2570,7 +2570,7 @@ const calcSoon = () => { clearTimeout(S.tm); S.tm = setTimeout(doCalc, 200); };
 function csvTextOf(resRows) {
   const heads = ['日付', '車番', '車種', '契約の相手', '場所', '到着', '荷役開始', '荷役終了', '出発', '荷役をした人', '荷役の方法', '荷主等の都合の待機か', '指定の到着時刻', '附帯業務の内容', '附帯業務の分', '荷役のあとの待ちを荷主等の都合として数える', '待機の数え始め',
     '待機（分）', '運転者の荷役（分）', '待機時間料 通常（回）', '待機時間料 2時間超（回）', '待機時間料（円）', '積込料・取卸料 通常（回）', '積込料・取卸料 2時間超（回）', '積込料・取卸料（円）', '参考額（円・税抜）', '受付から数えた待機（分）', '受付から数えた参考額（円・税抜）'];
-  const cell = (v) => { const t = String(v == null ? '' : v); return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+  const cell = (v) => { const t0 = String(v == null ? '' : v); const t = /^[=+\-@\t\r]/.test(t0) && !/^[-+]?\d+(\.\d+)?$/.test(t0) ? `'${t0}` : t0; return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
   const lines = [heads, ...resRows.map((r) => [r.date, r.vehicle_no, r.vehicle_class, r.partner, r.place, r.arrive, r.start, r.end, r.depart, r.handler, r.method, r.shipper_fault ? 'はい' : 'いいえ',
     r.appointed, r.side_work, r.side_min || '', r.post_wait ? 'はい' : '', r.wait_from, r.wait_min, r.handling_min, r.wait_normal_units, r.wait_over_units, r.wait_fee, r.handling_normal_units, r.handling_over_units, r.handling_fee, r.amount, r.reception_wait_min !== undefined ? r.reception_wait_min : '', r.reception_amount !== undefined ? r.reception_amount : ''])];
   return '\uFEFF' + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n';
@@ -2584,17 +2584,19 @@ const csvText = () => csvTextOf(csvRowsOfPartner());
 function parseCsv(text) {
   const t = String(text || '').replace(/^\uFEFF/, '');
   const out = [];
+  // 書き出しで式と読まれないように付けた先頭の ' を、1 つだけ外す（csvTextOf と対）
+  const unq = (x) => (/^'[=+\-@\t\r]/.test(x) ? x.slice(1) : x);
   let row = [], cur = '', q = false;
   for (let i = 0; i < t.length; i++) {
     const c = t[i];
     if (q) {
       if (c === '"') { if (t[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c;
     } else if (c === '"') q = true;
-    else if (c === ',') { row.push(cur); cur = ''; }
-    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(cur); cur = ''; out.push(row); row = []; }
+    else if (c === ',') { row.push(unq(cur)); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(unq(cur)); cur = ''; out.push(row); row = []; }
     else cur += c;
   }
-  if (cur !== '' || row.length) { row.push(cur); out.push(row); }
+  if (cur !== '' || row.length) { row.push(unq(cur)); out.push(row); }
   return out.filter((r) => r.some((x) => x.trim() !== ''));
 }
 

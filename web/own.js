@@ -1362,7 +1362,7 @@ const Own = (() => {
   function waitCsv() {
     const heads = ['日付', '車番', '車種', '契約の相手', '場所', '到着', '荷役開始', '荷役終了', '出発', '荷役をした人', '荷役の方法', '荷主の都合で待ったか', '指定の到着時刻', '荷役以外の作業', '附帯業務の分', '荷役のあとの待ちを荷主等の都合として数える', '待機の数え始め', '待機（分）', '運転者の荷役（分）',
       '待機時間料 通常（回）', '待機時間料 2時間超（回）', '待機時間料（円）', '積込料・取卸料 通常（回）', '積込料・取卸料 2時間超（回）', '積込料・取卸料（円）', '参考額（円・税抜）'];
-    const cell = (v) => { const t = String(v ?? ''); return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+    const cell = (v) => { const t0 = String(v ?? ''); const t = /^[=+\-@\t\r]/.test(t0) && !/^[-+]?\d+(\.\d+)?$/.test(t0) ? `'${t0}` : t0; return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
     const lines = [heads, ...W.res.rows.map((r) => [r.date, r.vehicle_no, r.vehicle_class, r.partner, r.place, r.arrive, r.start, r.end, r.depart, r.handler, r.method, r.shipper_fault ? 'はい' : 'いいえ', r.appointed, r.side_work, r.side_min || '', r.post_wait ? 'はい' : '', r.wait_from,
       r.wait_min, r.handling_min, r.wait_normal_units, r.wait_over_units, r.wait_fee, r.handling_normal_units, r.handling_over_units, r.handling_fee, r.amount])];
     const blob = new Blob(['﻿' + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
