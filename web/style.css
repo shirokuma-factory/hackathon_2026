@@ -1669,7 +1669,7 @@ body.guided #mlg-traf { display: none; }
 
 /* 地図の出典: 開かなくても最初から見える短い行（OSMF の表示指針）。市場を見る画面は全幅、狭い画面（600px 以下）は地図のある全画面で出す */
 #map-credit { display: none; position: fixed; z-index: 15; left: var(--gutter); bottom: 6px; right: calc(var(--m-w) + 40px); font-size: 10.5px; line-height: 1.5; color: #b4c0d4; text-shadow: 0 0 4px #05080e, 0 0 8px #05080e; pointer-events: none; }
-#map-credit a { color: #b4c0d4; text-decoration: underline; pointer-events: auto; }
+#map-credit a { display: inline-flex; align-items: center; min-height: 24px; min-width: 24px; padding: 0 3px; color: #b4c0d4; text-decoration: underline; pointer-events: auto; }
 #map-credit [hidden] { display: none; }
 body.view-market #map-credit { display: block; }
 body.view-market #m-credits { bottom: 40px; }
@@ -1678,8 +1678,8 @@ body.view-market.cr-open { --cr-h: 144px; }
 @media (max-width: 600px) {
   body:not(.view-home) #map-credit { display: block; top: 52px; bottom: auto; left: 8px; right: 8px; padding: 3px 6px; border-radius: 6px; background: rgba(5, 8, 14, .78); text-shadow: none; }
 }
-body.guided #map-credit { display: none !important; }
+body.guided #map-credit, body.own-guided #map-credit { display: none !important; }
 
 /* 最初の画面の背景（国土地理院の標高タイルを加工した画像と 3D モデル）の出典 */
 .home-terrain { position: absolute; left: 12px; bottom: 6px; z-index: 2; margin: 0; padding: 2px 6px; border-radius: 4px; font-size: 11px; line-height: 1.5; color: #b4c0d4; background: rgba(5, 8, 14, .7); }
-.home-terrain a { color: #b4c0d4; text-decoration: underline; }
+.home-terrain a { display: inline-flex; align-items: center; min-height: 24px; min-width: 24px; color: #b4c0d4; text-decoration: underline; }
