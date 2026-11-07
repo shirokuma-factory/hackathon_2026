@@ -242,7 +242,7 @@ def test_document_for_the_receiving_shipper_shows_fault_column_early_split_and_n
         t = doc["text"]
         assert "荷主等の都合の欄が貼り付けの記録に無かったため" in t and "該当3行" in t
         # 受付の時刻がある回は受付から数えた額が主な額（SPEC §43）。受付があるので「早着の疑いを除くと」は出さない
-        assert "受付から数えた数字" in t and "受付の時刻がある3回" in t and "早く着いた可能性（時刻の指定なし）" in t  # 文言の直し 2026-11-07
+        assert "受付から数えた数字" in t and "受付の時刻がある3回" in t and "早く着いた可能性" not in t   # メールには書かない（画面の注意だけ。2026-11-08）  # 文言の直し 2026-11-07
         assert "早着の疑いを分けた数字" not in t and "を除くと 0 円" not in t
         assert "指定の到着時刻が無く、到着が05:00から07:59までの回" in t
         assert "車種が記入されていない3行は『中型』の単価で計算しています" in t

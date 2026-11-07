@@ -334,6 +334,13 @@ details.doc-alt { margin: 6px 0; }
 #cross-recalc { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 10px; background: var(--hi); }
 #cross-recalc .big { font-size: 18px; }
 #reply-ta { margin-top: 6px; }
+.g-help { margin: 0 0 8px; font-size: var(--fs-1); }
+.g-help p { margin: 4px 0; }
+.g-help table.ex { border-collapse: collapse; font-size: 12.5px; margin: 6px 0; }
+.g-help table.ex th, .g-help table.ex td { padding: 3px 10px; border: 1px solid var(--line-soft); text-align: left; white-space: nowrap; }
+.g-help table.ex th { background: var(--head-bg); font-weight: 500; color: var(--muted); }
+.g-help table.ex th.req::after { content: " *"; color: var(--warn); }
+.g-help pre { margin: 6px 0; padding: 8px 10px; background: var(--head-bg); border-radius: 8px; font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* ---------- 荷待ちの書面: 入力 → 結果（数字のタイル・時間帯の帯・場所の表・書面）（デザインの作り直し 2026-11-07） ---------- */
 body { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 .page-head { max-width: 1500px; margin: 0 auto; }
@@ -374,7 +381,7 @@ td.num { font-variant-numeric: tabular-nums; }
 #partners h2, #draft-area h2 { font-size: var(--fs-3); margin: 24px 0 8px; }
 #partners h2:first-child { margin-top: 0; }
 /* 例を入れた最初の画面は、数字・帯・Claude の欄・表の要点だけにする（記録を触ると全部出る） */
-body.demo #partners p:not(.ai-off), body.demo #partners h2 .small, body.demo #head-defs, body.demo .heat-card h3 .small { display: none; }
+body.demo #partners p:not(.ai-off):not(.keep-show), body.demo #partners h2 .small, body.demo #head-defs, body.demo .heat-card h3 .small { display: none; }
 @media (min-width: 601px) { body.demo #hotspots td.c3 { display: none; } }
 @media (min-width: 601px) { body.demo #partners > h2 + .scroll-x th:nth-child(3), body.demo #partners > h2 + .scroll-x td:nth-child(3), body.demo #partners > h2 + .scroll-x th:nth-child(n+6), body.demo #partners > h2 + .scroll-x td:nth-child(n+6) { display: none; } }
 body.demo #partners .stat .stat-d, body.demo #hotspots th:last-child { display: none; }
@@ -461,6 +468,14 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   .side-col { display: flex; flex-direction: column; gap: 16px; flex: 0 0 232px; position: sticky; top: 16px; }
   .side-col aside#process { position: static; flex: none; }
   .side-col .ai-box { margin: 0; }
+  /* 案内の入口（#g=...）は 1 列。広い画面の 2 列の置き方を使うと、右の列が幅 0 になる */
+  body.g-step .col-in-w { grid-column: 1; grid-row: 1; align-self: start; }
+  body.g-step .col-in { position: static; max-height: none; overflow: visible; margin-right: 0; padding: 0; }
+  body.g-step #partners { grid-column: 1; grid-row: 2; margin-top: 24px; }
+  body.g-step #draft-area { grid-column: 1; grid-row: 3; }
+  body.g-step #draft-area .wrap { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+  body.g-step #draft-area .wrap > #wait-doc { flex: 0 0 auto; max-width: none; width: 100%; }
+  body.g-step .side-col { flex: 0 0 auto; position: static; width: 100%; }
 }
 /* ---------- メールのカード（2026-11-07）: どの配色でも白地に濃い文字。本文は読みやすいゴシック体 15〜16px、行の高さ 1.8 ---------- */
 #wait-doc { --text: var(--paper-text); --muted: var(--paper-muted); --line: var(--paper-line); --line-soft: var(--paper-soft); --row-line: var(--paper-soft); --head-bg: var(--paper-head); --card: var(--paper); --card-2: var(--paper-head); --hi: var(--paper-hi); --accent: var(--paper-accent); --warn: var(--paper-ng); --ok: var(--paper-ok); --chk: var(--paper-chk); --elev-1: none; --btn: var(--paper); --field: var(--paper);
@@ -618,6 +633,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
       </details>
       <details open id="paste-d">
         <summary>Excel から貼り付ける</summary>
+        <div id="g-help" class="g-help" hidden></div>
         <textarea id="paste" rows="6" placeholder="ここに貼り付け&#10;列の順: 見出しがあれば自由&#10;日付の例: 10/5、R8.10.5&#10;時刻の例: 9:00、9時半、0900&#10;車種の例: 4t車、中型&#10;荷主の都合: ○ / × でも可" aria-label="Excel から貼り付ける欄"></textarea>
         <div class="bar"><button type="button" id="b-paste">貼り付けた内容を表に入れる</button><span class="small" id="paste-msg"></span></div>
       </details>
@@ -2051,7 +2067,7 @@ function recModel(p) {
   const body = rows.map((r) => {
     const waitMin = r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min;
     const amount = r.reception_amount !== undefined ? r.reception_amount : r.amount;
-    const arriveNotes = [r.reception ? `受付の時刻は${r.reception}です。` : '', r.early_arrival === 'assumed' ? (r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）の回です。' : '指定の到着時刻がなく、早く着いた可能性（時刻の指定なし）があります。') : '',
+    const arriveNotes = [r.reception ? `受付の時刻は${r.reception}です。` : '', r.early_arrival === 'assumed' && r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）の回です。' : '',
       r.early_arrival === 'designated' ? `指定の${r.appointed}より前に到着しています。` : ''].filter(Boolean);
     const waitNotes = [r.reception_wait_min !== undefined ? `受付の${r.reception}から数えると${r.reception_wait_min}分で、到着から数えると${r.wait_min}分です。` : '', r.handler === '荷主側' && r.wait_min > 0 && r.end ? '貴社側で荷役をしていただいた時間も、待ち時間に含めています。' : '',
       r.post_wait_min > 0 ? `荷役のあとの待ち${r.post_wait_min}分も、待ち時間に含めています。` : '', r.wait_base_min > 0 ? `指定の${r.appointed}から数えた時間です。` : '', r.shipper_fault ? '' : '荷主等の都合によらない待ちとして記録しています。'].filter(Boolean);
@@ -2061,7 +2077,7 @@ function recModel(p) {
     cells.push({ t: dash(r.place) }, { t: dash(r.arrive), cls: 'nw', n: arriveNotes.length ? mark(r, arriveNotes) : 0 }, { t: dash(r.start), cls: 'nw' }, { t: dash(r.end), cls: 'nw' },
       { t: String(waitMin), cls: 'num', n: waitNotes.length ? mark(r, waitNotes) : 0 },
       { t: String(r.handling_min), cls: 'num', n: sideNote.length ? mark(r, sideNote) : 0 },
-      { t: n0(amount), cls: 'num', n: r.reception_amount !== undefined ? mark(r, [`到着から数えると${n0(r.amount)}円です。`]) : 0 });
+      { t: n0(amount), cls: 'num', n: r.reception_amount !== undefined && r.amount !== r.reception_amount ? mark(r, [`到着から数えると${n0(r.amount)}円です。`]) : 0 });
     return cells;
   });
   const head = ['日付', ...(hasVeh ? ['車番'] : []), '場所', '到着', '荷役開始', '荷役終了', '待機（分）', '荷役（分）', '参考額（円）'];
@@ -2074,13 +2090,18 @@ function mailPeriod(p) {
   const withYear = a.slice(0, 4) !== y || b.slice(0, 4) !== a.slice(0, 4);
   return a === b ? jdate(a, withYear) : `${jdate(a, withYear)}〜${jdate(b, withYear)}`;
 }
+// 待ちを数え始める時刻の言い方。メールの文・画面の数字の注記が、実際の数え方（waiting_calc）と同じ言い方になるようにする
+function waitFromJa(p) {
+  if (hasRec(p)) return p.reception_count >= p.count ? '受付の時刻' : '受付の時刻（受付の時刻がない回は到着）';
+  return partnerRows(p.partner).some((r) => r.appointed) ? '到着（指定の到着時刻がある回は、その時刻）' : '到着';
+}
 function mailModel(p) {
   const amt = mainAmt(p), wait = mainWait(p), spot = topSpot(p.partner);
   const prov = p.partner === PROVISIONAL_PARTNER;
   const name = prov ? '（荷主の会社名）' : String(p.partner).replace(/\s*(御中|様)\s*$/, '');
   const period = mailPeriod(p);
   const paras = [
-    `今回は、${period}の間にご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。到着してから荷役が始まるまでにお待ちした時間は、合計で${hmj(wait)}でした。` +
+    `今回は、${period}${p.date_from === p.date_to ? 'に' : 'の間に'}ご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。${waitFromJa(p)}から荷役が始まるまでにお待ちした時間は、合計で${hmj(wait)}でした。` +
       (p.over_1h_count > 0 ? `そのうち、1時間以上お待ちした回が${p.over_1h_count}回ありました。` : ''),
     (spot ? `とくに${placeJa(spot.place)}では、${spot.band}に到着した${spot.count}回の待ち時間が、平均${spot.avg_minutes}分、最長${spot.max_minutes}分でした。` : '') +
       'ドライバーの拘束時間には荷待ちの時間も含まれます。2024年4月から時間外労働の上限規制が始まり、拘束時間の基準（改善基準告示）も改正されたため、荷待ちが長いと、その日のほかの運行にも影響が出ます。',
@@ -2159,7 +2180,7 @@ function draftHtml(p) {
 }
 
 // ---- 説明文の自動作成（SPEC §53）。ページはサーバーに送る事実を組み立てるだけで、通信は ai_explain.js が行う
-const AI_OFF_LINE = '説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）';
+const AI_OFF_LINE = (() => { try { return /^https?:$/.test(location.protocol) ? '説明文の自動作成は今は使えません（型どおりの書面です）' : '説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）'; } catch (e) { return '説明文の自動作成は今は使えません（型どおりの書面です）'; } })();
 function aiFacts(p) {
   const t = TARIFF, rows = partnerRows(p.partner);
   return {
@@ -2176,7 +2197,12 @@ function aiFacts(p) {
 const PRIV_AI = '記録は外に送りません（Claude で説明文を作るときだけ、確認のうえ計算結果を送ります）';
 function mountAi(p) {
   if (!window.AiExplain) return;
-  window.AiExplain.mount($('#ai-box'), () => aiFacts(p));
+  const mounted = window.AiExplain.mount($('#ai-box'), () => aiFacts(p));
+  // 使えないときは、理由（サーバーが返す文）を本文に出す。吹き出しだけだと、画面から読めない
+  if (mounted && mounted.then) mounted.then((ok) => {
+    const b = $('#ai-box'), why = b && b.title, off = b && b.querySelector('.ai-off');
+    if (!ok && why && off) off.textContent = `説明文の自動作成: ${why.replace(/[。\s]+$/, '')}（今は型どおりの書面です）`;
+  });
   // サーバー（http）で開き、説明文の自動作成が使えるときだけ、上の説明の 2 文目を変える（ファイルで開いた版・Artifact の版は元のまま）
   const box = $('#ai-box'), priv = $('#hdr-priv');
   if (!box || !priv) return;
@@ -2268,7 +2294,7 @@ const processHtml = () => `<aside id="process" aria-label="相談の進め方"><
 // 数字のタイルと、到着の時間帯ごとの待ち時間の帯（選んだ相手の記録から。手元で数えるだけ）
 function statsHtml(p) {
   const w = mainWait(p), h = Math.floor(w / 60), m = w % 60;
-  return `<div class="stat-grid" id="stats"><div class="stat is-empty hero"><span class="stat-l">待ち時間の合計</span><span class="stat-n">${h}<span class="stat-u">時間</span>${m}<span class="stat-u">分</span></span><span class="stat-d">${esc(p.partner)}</span></div>` +
+  return `<div class="stat-grid" id="stats"><div class="stat is-empty hero"><span class="stat-l">待ち時間の合計</span><span class="stat-n">${h}<span class="stat-u">時間</span>${m}<span class="stat-u">分</span></span><span class="stat-d">${esc(p.partner)}。${esc(waitFromJa(p))}から荷役開始まで</span></div>` +
     `<div class="stat"><span class="stat-l">参考額（税抜）</span><span class="stat-n">${n0(mainAmt(p))}<span class="stat-u">円</span></span><span class="stat-d">${hasRec(p) ? '受付から数えた額' : '到着から数えた額'}</span></div>` +
     `<div class="stat"><span class="stat-l">記録の件数</span><span class="stat-n">${p.count}<span class="stat-u">件</span></span><span class="stat-d">1 時間以上の待ち ${p.over_1h_count} 件</span></div></div>`;
 }
@@ -2283,7 +2309,7 @@ function heatHtml(p) {
   return `<div class="heat-card" id="heat"><h3>何時に着いた回で待っているか<span class="small">　色が濃く高いほど待ち時間の合計が長い</span></h3><div class="heat" role="img" aria-label="到着の時間帯ごとの待ち時間の合計">${cells.join('')}</div><div class="heat-ax" aria-hidden="true">${axis.join('')}</div><div class="heat-legend" aria-hidden="true"><span>到着の時刻（時）</span><span class="lg"><span>少ない</span><i class="heat-scale"></i><span>多い（最大 ${max} 分）</span></span></div></div>`;
 }
 const hotspotsHtml = (r) => {
-  const total = r.rows.reduce((a, x) => a + x.wait_min, 0);
+  const total = r.rows.reduce((a, x) => a + (x.reception_wait_min !== undefined ? x.reception_wait_min : x.wait_min), 0);
   const top = r.hotspots.filter((h) => h.wait_minutes > 0).slice(0, 5);
   const tb = top.map((h) => `<tr><td class="c1">${esc(h.partner)}</td><td class="c1">${esc(h.place)}</td><td class="c1">${esc(h.band)}</td><td class="num" data-l="回数">${h.count}</td><td class="num" data-l="平均の荷待ち">${h.avg_minutes} 分</td><td class="num" data-l="最長">${h.max_minutes} 分</td><td class="num" data-l="1 時間以上">${h.over_1h_count}</td><td class="num" data-l="参考額（円）">${n0(h.amount)}</td><td class="small c3">${hotspotNotes(h, false).map((x) => `（${esc(x)}）`).join('')}</td></tr>`).join('');
   const pm = r.by_place_month.map((m) => `<tr><td class="c1">${esc(m.place)}</td><td class="c1">${esc(monthLabel(m.month))}</td><td class="num" data-l="回数">${m.count}</td><td class="num" data-l="平均（分）">${m.avg_minutes}</td><td class="num" data-l="1 時間以上">${m.over_1h_count}</td></tr>`).join('');
@@ -2314,9 +2340,12 @@ function renderResult() {
   const sel = r.by_partner.some((p) => p.partner === S.partner) ? S.partner : r.by_partner[0].partner;
   S.partner = sel;
   const p = r.by_partner.find((x) => x.partner === sel);
-  const tb = r.by_partner.map((x) => `<tr class="${x.partner === sel ? 'on' : ''}" data-pick="${esc(x.partner)}"><td class="c1">${esc(x.partner)}</td><td class="num" data-l="回数">${x.count}</td><td class="num" data-l="待機の合計">${hm(x.wait_minutes)}</td>` +
-    `<td class="num" data-l="運転者の荷役の合計">${hm(x.handling_minutes)}</td><td class="num" data-l="参考額"><b>${n0(mainAmt(x))}</b>${hasRec(x) ? `<small class="small">　受付の時刻から数えた額（着いた時刻からだと ${n0(x.amount)} 円）</small>` : ''}${earlyShown(x) ? `<small class="small">　${earlyWord(x.partner)} ${noRecEarly(x).n} 回を除くと ${n0(mainAmt(x) - noRecEarly(x).amt)} 円</small>` : ''}</td><td class="num" data-l="1 時間以上">${x.over_1h_count}</td><td class="num" data-l="2 時間以上">${x.over_2h_count}</td></tr>`).join('');
-  $('#partners').innerHTML = `${provisionalHtml()}${statsHtml(p)}${heatHtml(p)}<h2>依頼元ごと<span class="small" title="運送を頼んできた会社">（?）</span><span class="small">　金額は税抜。行を押すと書面の相手が変わります</span></h2>
+  const tb = r.by_partner.map((x) => `<tr class="${x.partner === sel ? 'on' : ''}" data-pick="${esc(x.partner)}"><td class="c1">${esc(x.partner)}</td><td class="num" data-l="回数">${x.count}</td><td class="num" data-l="待機の合計">${hm(mainWait(x))}</td>` +
+    `<td class="num" data-l="運転者の荷役の合計">${hm(x.handling_minutes)}</td><td class="num" data-l="参考額"><b>${n0(mainAmt(x))}</b>${hasRec(x) ? `<small class="small">　受付の時刻から数えた額${x.amount !== mainAmt(x) ? `（着いた時刻からだと ${n0(x.amount)} 円）` : ''}</small>` : ''}${earlyShown(x) ? `<small class="small">　${earlyWord(x.partner)} ${noRecEarly(x).n} 回を除くと ${n0(mainAmt(x) - noRecEarly(x).amt)} 円</small>` : ''}</td><td class="num" data-l="1 時間以上">${x.over_1h_count}</td><td class="num" data-l="2 時間以上">${x.over_2h_count}</td></tr>`).join('');
+  const earlyN = partnerRows(sel).filter((x) => x.early_arrival === 'assumed' && !x.arrive_from_reception).length;
+  const lead = (S.exampleAuto ? '<p class="note keep-show" id="example-lead">例の記録です（架空）。自分の記録を貼ると置き換わります。</p>' : '') +
+    `<p class="small keep-show" id="tile-for">この数字とメールは『${esc(sel)}』の分です。${r.by_partner.length > 1 ? 'ほかの相手は、下の表の行を押すと切り替わります。' : ''}</p>`;
+  $('#partners').innerHTML = `${provisionalHtml()}${lead}${statsHtml(p)}${heatHtml(p)}<h2>依頼元ごと<span class="small" title="運送を頼んできた会社">（?）</span><span class="small">　金額は税抜。行を押すと書面の相手が変わります</span></h2>
     <div class="scroll-x"><table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th title="積み降ろしの作業">運転者の荷役の合計</th><th>請求の目安</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">待ちと荷役で 2 時間以上</th></tr></thead><tbody>${tb}</tbody></table></div>
     <details class="defs" id="head-defs"><summary>表の見出しの意味</summary><ul>
       <li><b>待機の合計</b>: 荷主側の荷役の時間を含む待機の分です。</li>
@@ -2326,6 +2355,7 @@ function renderResult() {
   $('#draft-area').innerHTML = `<h2>荷主に出す相談のメール（下書き）<img class="ill ill-64" src="data:image/webp;base64,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" alt="" width="64" height="64"></h2>
     ${S.askPartner ? `<div class="errs ask" id="ask-doc"><b>相手の会社名を確かめてください。</b> 合っていれば「この相手のままにする」を押します。</div>` : ''}
     ${docBar()}
+    ${earlyN ? `<p class="note" id="early-note">社内向けの注意: 指定の到着時刻がなく、早く着いた可能性のある回が ${earlyN} 回あります。この点はメールには書いていません。</p>` : ''}
     <p class="small doc-hint" id="doc-hint">メールの黄色の部分（会社名・担当者名・電話番号・メールアドレス）は、そのまま書き換えられます。書き換えた内容はコピーする文にも入ります。</p>
     <div class="wrap"><article id="wait-doc">${draftHtml(p)}</article><div class="side-col">${processHtml()}${ARTIFACT ? '' : `<div id="ai-box" class="ai-box"><p class="small ai-off">${esc(AI_OFF_LINE)}</p></div>`}</div></div>`;
   mountAi(p);
@@ -2857,6 +2887,20 @@ const GUIDE = {
   excel: ['Excel の表を貼る', 'Excel の表をコピーして貼ります。1 行目が見出しなら、列の順は問いません。'],
   shipper: ['届いた書面を受付簿と見比べる', '受付簿を貼ります。次に運送会社から届いた書面を貼ると、時刻の違う回が分かります。'],
 };
+// 入口ごとの「貼る前に読むこと」: 必要な列・見本・見本を貼り欄に入れるボタン（見本は貼り付けの読み取りで読めることを確かめてある）
+const G_SAMPLE = {
+  excel: { cols: ['日付', '到着', '荷役開始', '荷役終了', '契約の相手', '場所'], req: [0, 1, 2], rows: [['10/5', '8:50', '9:35', '9:57', '○○商事', '江東倉庫'], ['10/6', '9:10', '9:50', '10:12', '○○商事', '江東倉庫'], ['10/7', '8:30', '10:05', '10:30', '△△食品', '大田センター']] },
+  shipper: { cols: ['受付日', '運送会社', '施設', '車番', '受付時刻', '入場'], req: [0, 1, 2, 4, 5], rows: [['2026/10/5', 'A運輸', '江東区 第1倉庫', '1234', '7:50', '8:30'], ['2026/10/5', 'A運輸', '江東区 第1倉庫', '5678', '8:10', '9:40'], ['2026/10/6', 'B急便', '大田区 配送センター', '1234', '8:00', '10:35']] },
+};
+const G_DRIVER_LINES = ['荷待ち記録 10/5 江東区 ○○倉庫 着 8:50 荷役開始 9:35 荷役終了 9:57 出発 10:05 車番 1234 相手 ○○商事', '荷待ち記録 10/6 江東区 ○○倉庫 着 9:10 荷役開始 9:50 荷役終了 10:12 出発 10:20 車番 1234 相手 ○○商事'];
+function gSampleText(g) { const x = G_SAMPLE[g]; return g === 'driver' ? G_DRIVER_LINES.join('\n') : [x.cols, ...x.rows].map((r) => r.join('\t')).join('\n'); }
+function gHelpHtml(g) {
+  const table = (x) => `<div class="scroll-x"><table class="ex"><thead><tr>${x.cols.map((c, i) => `<th${x.req.includes(i) ? ' class="req"' : ''}>${esc(c)}</th>`).join('')}</tr></thead><tbody>${x.rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const btn = '<div class="bar"><button type="button" id="b-g-sample">見本を貼り欄に入れる</button></div>';
+  if (g === 'excel') return `<p><b>必要な列</b>（* は必須）: 日付、到着、荷役開始。あれば契約の相手、場所、荷役終了、車番。1 行目は見出しにします。</p>${table(G_SAMPLE.excel)}${btn}`;
+  if (g === 'shipper') return `<p><b>受付簿の必要な列</b>（* は必須）: 受付日、運送会社、施設、受付時刻、入場（作業開始）。あれば車番、退場。1 行目は見出しにします。</p>${table(G_SAMPLE.shipper)}${btn}`;
+  return ARTIFACT ? '' : '<p>ドライバーが<a href="driver.html" id="g-driver-link">ドライバー用のページ</a>で作った文を、LINE で受け取って貼ります。</p>';
+}
 // 例の記録を自動で入れた最初の画面（demo）では、表・注意・結果を閉じ、貼る欄と主ボタンだけを見せる。記録を触ると開く
 function syncDemo(g) {
   const demo = !g && !!S.exampleAuto;
@@ -2877,10 +2921,13 @@ function applyGuided() {
   $('#g-bar').hidden = !g; $('#g-lead').hidden = !g || g === 'choose';
   $('#g-again').hidden = g === 'choose'; if ($('#g-home')) $('#g-home').hidden = ARTIFACT;   // 単独の版（Artifact）ではビルドでこのリンクを外す
   syncDemo(g);
+  if (!g || g === 'choose') { const gh = $('#g-help'); if (gh) { gh.hidden = true; gh.innerHTML = ''; } }
   if (!g) { h1.textContent = h1.dataset.orig; return; }
   if (g === 'choose') { h1.textContent = '荷待ちの記録から書面を作る'; return; }
   h1.textContent = GUIDE[g][0]; $('#g-lead').textContent = GUIDE[g][1];
   $('#paste').setAttribute('aria-label', GUIDE[g][0] + '（貼り付ける欄）');
+  $('#paste').placeholder = g === 'driver' ? G_DRIVER_LINES[0] : 'ここに貼り付け（上の見本の形）';
+  const gh = $('#g-help'); gh.innerHTML = gHelpHtml(g); gh.hidden = false;
   const want = g === 'shipper' ? 'shipper' : 'carrier';
   if (S.mode !== want) { S.modeAuto = false; setMode(want, true); }
   updateNotesSum();
@@ -2947,6 +2994,7 @@ function init() {
     else if (t.id === 'b-clear') { endExampleAuto(); S.memoRead = null; $('#memo-read').innerHTML = ''; S.askPartner = false; $('#paste-note').innerHTML = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderBoxes(); renderResult(); }
     else if (t.id === 'b-add') { endExampleAuto(); S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
     else if (t.id === 'b-paste') pasteIn();
+    else if (t.id === 'b-g-sample') { const g = guidedState(); if (g && g !== 'choose') { $('#paste').value = gSampleText(g); $('#paste').focus(); } }
     else if (t.id === 'b-fault-yes') bulkFault('はい');
     else if (t.id === 'b-fault-no') bulkFault('いいえ');
     else if (t.id === 'b-fill-partner') fillDown('partner', '契約の相手');

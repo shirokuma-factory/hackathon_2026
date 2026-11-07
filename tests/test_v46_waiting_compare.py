@@ -125,7 +125,7 @@ def test_guided_entry_screens_stay_within_the_budget(width, height, max_chars):
             time.sleep(0.3)
             m = _budget(page)
             assert m["chars"] <= max_chars, (hash_, width, m["chars"], m["samples"])
-            assert m["controls"] <= 8, (hash_, width, m["controls"])
+            assert m["controls"] <= (8 if hash_ == "#g" else 9), (hash_, width, m["controls"])   # 入口の説明に、driver.html へのリンクか見本のボタンを 1 つ足した（2026-11-08）
             assert m["primary"] == 1, (hash_, width, m["primary"])
             wide = page.js("document.documentElement.scrollWidth")
             assert wide <= width, (hash_, wide)
@@ -327,7 +327,7 @@ def test_driver_day_sheet_follows_the_paper_report_order_and_back_link_exists():
         page.js("(function(){const s=document.querySelector('#day'); s.value='10/5'; s.dispatchEvent(new Event('input',{bubbles:true}));})()")
         rows = page.js("[...document.querySelectorAll('#sheet-body tr:not(.blank)')].map((tr) => [...tr.children].filter((td) => !td.classList.contains('pc')).map((td) => td.textContent).join('|'))")
         assert rows == ["10/5|尼崎|○○|7:50|9:40|10:30|10:40|110", "10/5|江東 B|○○|23:30|0:20|||50"], rows     # 日をまたぐ回は翌日として数える
-        assert page.js("document.querySelector('#b-home').getAttribute('href')") == "/"
+        assert page.js("document.querySelector('#b-home').getAttribute('href')") == "index.html"
         assert page.js("document.documentElement.scrollWidth") <= 390
         small = page.js("[...document.querySelectorAll('button, input, select')].filter((b) => b.getBoundingClientRect().width > 0 && b.getBoundingClientRect().height < 43.5).map((b) => b.id || b.textContent)")
         assert small == [], small
