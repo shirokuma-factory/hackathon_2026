@@ -94,6 +94,12 @@
 | 一次資料の照合 | researcher（Opus）が法令・告示・統計を開いて照合 | [docs/plan/2026-11-03_課題の出典.md](docs/plan/2026-11-03_課題の出典.md) |
 | 3D と動画を MCP で作る | Blender・ComfyUI・DaVinci Resolve を Claude Code から動かした | [docs/LOCAL_AI.md](docs/LOCAL_AI.md) |
 
+荷待ちのページで「Claude で説明文を作る」を押したときの画面です（手元のサーバーで本物の API を 1 回だけ使って撮影。公開版では止めてあります）。
+
+| 送る前の確認（相手と地点は置き換えて送る） | 送ったあと（Haiku の点検と下書き、数字の機械照合「一致」） |
+|---|---|
+| <img src="docs/assets/2026-11-08_ai_confirm_1920.jpg" width="232" alt="Anthropic の API に送る中身を見せる確認の枠"> | <img src="docs/assets/2026-11-08_ai_result_1920.jpg" width="232" alt="点検・下書き・照合の結果と説明文"> |
+
 ## データの扱いと、安心して使うために
 
 | ページ | 外に送るもの |
