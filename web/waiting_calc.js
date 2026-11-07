@@ -295,6 +295,8 @@ const WaitingShared = (() => {
 
   // ---- 「荷待ち記録」で始まらないスマホのメモ（SPEC §43。waiting.py の parse_memo_text と同じ）。1 行 = 1 件: 「11/10 江東 着7:50 呼ばれ9:40 終わり10:30」
   const MEMO_NO_PARTNER = '（相手未記入）';
+  // 契約の相手が空の行を、画面で相手を入れてもらうまで仮の名前で計算する（defaults.provisional_partner を渡したときだけ）
+  const PROVISIONAL_PARTNER = '（相手を入れてください）';
   const MEMO_UNREADABLE = '読める形ではありませんでした（{shown}）。次のどれかの形で貼ってください: Excel の表（1 行目が見出し、列はタブ区切り）、'
     + 'ドライバーの 1 枚（driver.html）の文（荷待ち記録 11/10 …）、1 行 1 件のメモ（11/10 江東 着7:50 呼ばれ9:40 終わり10:30）';
   const MEMO_KEYS = { '到着': 'arrive', '着': 'arrive', '受付': 'reception', '受': 'reception', '呼ばれた': 'call', '呼ばれ': 'call', '呼び出し': 'call', '呼出し': 'call', '呼出': 'call', '呼': 'call',
@@ -548,8 +550,10 @@ const WaitingShared = (() => {
       vclass = normalizeClass(g.vehicle_class);
       if (vclass === null) errs.push(`車種「${g.vehicle_class}」を読めません（小型（2t）/ 中型（4t）/ 大型（10t）/ トレーラー）`);
     }
-    const partner = nz(g.partner);   // 全角・半角の違いで相手が分かれないようにそろえる
-    if (!partner) errs.push('契約の相手がありません');
+    let partner = nz(g.partner);   // 全角・半角の違いで相手が分かれないようにそろえる
+    let partnerProvisional = false;
+    if (!partner && defaults.provisional_partner) { partner = PROVISIONAL_PARTNER; partnerProvisional = true; }   // 荷待ちの記録のページだけ。相手の列が無い表も計算し、画面で相手を入れてもらう
+    else if (!partner) errs.push('契約の相手がありません');
 
     const needTime = (key, label, required) => {
       if (!g[key]) { if (required) errs.push(`${label}がありません`); return null; }
@@ -739,6 +743,7 @@ const WaitingShared = (() => {
         ...(norm(raw.arrive_src) === 'reception' ? { arrive_from_reception: true } : {}),
         ...(early ? { early_arrival: early } : {}),
         ...(used.length ? { defaults_used: used } : {}),
+        ...(partnerProvisional ? { partner_provisional: true } : {}),
         ...(rowNotes.length ? { notes: rowNotes } : {}),
     };
     // 受付の時刻があるとき: 受付から数えた待機も出す（SPEC §43）。到着が受付より前でも、荷主の受付から数える額が書面の主な額
@@ -818,6 +823,7 @@ const WaitingShared = (() => {
     if (defaults) {
       if (has(tariff.waiting.normal, defaults.vehicle_class)) dfl.vehicle_class = defaults.vehicle_class;
       if (has(tariff.handling, defaults.method)) dfl.method = defaults.method;
+      if (defaults.provisional_partner) dfl.provisional_partner = true;
     }
     if (rows.length > MAX_ROWS) throw new Error(`行が多すぎます（${MAX_ROWS.toLocaleString('ja-JP')} 行まで）`);
     const done = [], errors = [];
@@ -1028,7 +1034,7 @@ const WaitingShared = (() => {
 
   return {
     rowKey, mergeRows, shipperSummary, shipperActions, noticeTemplate, crossCheck, hourLabel, vehicleKey, REVERSE_MAX_MIN,
-    HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, parseMemoText, looseTableToTsv, MEMO_NO_PARTNER, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
+    HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, parseMemoText, looseTableToTsv, MEMO_NO_PARTNER, PROVISIONAL_PARTNER, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
     BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE, CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE,
   };
 })();

@@ -263,7 +263,9 @@ def test_waiting_draft_is_read_by_the_waiting_page_paste():
     assert rows["n"] == n_lines, rows
     assert all(re.fullmatch(r"\d{4}", p or "") for p in rows["plates"]) and all(rows["arrive"]) and all(rows["depart"])
     # 出る注意は、空にしてある欄（契約の相手・荷役開始）だけ
-    assert set(re.findall(r"行目: (.+?)(?=表の|$)", rows["errs"])) <= {"契約の相手がありません", "荷役開始がありません"}, rows["errs"]
+    # 契約の相手が空の行は仮の相手で計算する（誤りにしない）。残る誤りは荷役開始だけ。直し方（「表の…の列に入れてください」）が添えられる
+    found = {re.sub(r"（表の.*?）$", "", m) for m in re.findall(r"行目: (.+?)(?=表の\d+ 行目|$)", rows["errs"])}
+    assert found <= {"契約の相手がありません", "荷役開始がありません"}, rows["errs"]
 
 
 def test_import_saves_only_summaries_and_compares_previous_month():
