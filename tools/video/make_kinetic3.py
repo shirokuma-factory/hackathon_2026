@@ -462,7 +462,7 @@ def split_ext(text: str) -> tuple[dict, str]:
     ext, rest = {}, []
     for tok in m.group(1).split():
         k, _, v = tok.partition("=")
-        if k in ("kind", "line2"):
+        if k in ("kind", "line2", "maxw", "x"):  # maxw=箱の最大幅、x=左端（1080p の px。ブラウザーの窓の横に置くとき）
             ext[k] = v
         else:
             rest.append(tok)
@@ -526,6 +526,8 @@ def prepare_pivot(card: dict, S: int, ext: dict, st: Style, text: str) -> dict:
             fnt = K.font(sz, PV["weight"])
             ws = [seg_width(fnt, s) + 2 * PV["pad_x"] * sz for s, _ in rows]
             lim = W - PV["left_x"] - PV["right_margin"] if st.h != "c" else W - 2 * MARGIN_X
+            if "maxw" in ext:
+                lim = min(lim, float(ext["maxw"]))
             if max(ws) <= lim:
                 break
             fit *= lim / max(ws) * 0.995
@@ -540,7 +542,7 @@ def prepare_pivot(card: dict, S: int, ext: dict, st: Style, text: str) -> dict:
         else:
             top0 = (H - total) / 2
         for i, ((segs, navy), w) in enumerate(zip(rows, ws)):
-            x = PV["left_x"] if st.h == "l" else (W - PV["left_x"] - w) if st.h == "r" else (W - w) / 2
+            x = float(ext.get("x", PV["left_x"])) if st.h == "l" else (W - PV["left_x"] - w) if st.h == "r" else (W - w) / 2
             boxes.append({"segs": segs, "x": x, "y": top0 + i * (bh + gap), "w": w, "h": bh, "size": sz,
                           "weight": PV["weight"], "bg": PV["colors"]["navy"] if navy else PV["colors"]["box"],
                           "fg": PV["colors"]["navy_text"] if navy else PV["colors"]["text"], "tx": PV["pad_x"] * sz,
