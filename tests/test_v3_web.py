@@ -472,7 +472,7 @@ def test_spec15_17_settings_and_files():
     launch = json.loads((ROOT / ".claude" / "launch.json").read_text(encoding="utf-8"))
     web = next(c for c in launch["configurations"] if c["name"] == "web-map")
     assert web["runtimeArgs"][-1] == "tools/serve_web.py" and web["port"] == 8600
-    assert any(c["name"] == "shipcompare" for c in launch["configurations"])
+    assert not any(c["name"] == "shipcompare" for c in launch["configurations"])  # Streamlit の最初の版は 11/7 に消した
     src = (ROOT / "tools" / "serve_web.py").read_text(encoding="utf-8")
     assert "\r" not in src and "import fastapi" not in src and "import flask" not in src
     for name in ("serve_web.py", "capture_web.py"):

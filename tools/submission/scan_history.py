@@ -11,7 +11,7 @@ pats = {
  "openai_key": r"sk-(proj-)?[A-Za-z0-9]{32,}",
  "elevenlabs_key": r"\bsk_[a-f0-9]{40,}\b",
  "google_api_key": r"AIza[0-9A-Za-z_-]{35}",
- "gcp_sa_private_key": r"-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----",
+ "gcp_sa_private_key": r"-----BEGIN (RSA |EC |OPENSSH )?PRIVATE" + r" KEY-----",  # 自分に当たらないよう分けて書く
  "github_token": r"\b(ghp|gho|ghs|ghu|github_pat)_[A-Za-z0-9_]{20,}",
  "aws_key": r"\bAKIA[0-9A-Z]{16}\b",
  "slack": r"xox[baprs]-[A-Za-z0-9-]{10,}",

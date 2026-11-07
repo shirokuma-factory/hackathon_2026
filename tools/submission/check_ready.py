@@ -85,8 +85,8 @@ def main() -> int:
     files = tracked_files()
     pat_path = re.compile(r"(?i)C:[\\/]+Users[\\/]+[^\\/\s]+")
     pat_name = re.compile("\u4f5c\u6210\u8005|user" + "name")  # この行が自分に当たらないよう、エスケープと連結で書く
-    pat_secret = re.compile(r"sk-ant-[A-Za-z0-9_-]{20,}|\bsk_[a-f0-9]{40,}\b|AIza[0-9A-Za-z_-]{35}|"
-                            r"\b(ghp|gho|github_pat)_[A-Za-z0-9_]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----")
+    pat_secret = re.compile(r"sk-" r"ant-[A-Za-z0-9_-]{20,}|\bsk_[a-f0-9]{40,}\b|AIza[0-9A-Za-z_-]{35}|"
+                            r"\b(ghp|gho|github_pat)_[A-Za-z0-9_]{20,}|-----BEGIN [A-Z ]*PRIVATE" r" KEY-----")  # 自分に当たらないよう分けて書く
     hit_path, hit_name, hit_secret = [], [], []
     for f in files:
         p = ROOT / f
