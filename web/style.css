@@ -1056,6 +1056,13 @@ body.m-right-collapsed .m-rsub { display: none; }
   #m-credits { right: 12px; }
   .mp-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+/* タブレット幅（601〜1100）: 自社の運行と空きを探すの左の欄は 316px にそろえ、右の欄は上の切り替え（own.css で 440px 幅）の下から、左の欄の右隣に置く。
+   own.css は後に読まれるので、同じ id でも負けないよう body を付ける */
+@media (min-width: 601px) and (max-width: 1100px) {
+  body #own-view { width: 316px; }
+  body #find-right, body #own-right { top: 70px; width: min(var(--m-w), calc(100vw - 356px)); }
+  body #own-right { width: min(540px, calc(100vw - 356px)); }
+}
 .mlg-more { margin-top: 6px; font-size: 11px; color: var(--muted); }
 .mlg-more summary { cursor: pointer; }
 .mlg-more p { margin: 4px 0 0; line-height: 1.6; }
