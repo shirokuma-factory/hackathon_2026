@@ -27,6 +27,7 @@ from typing import Any
 from .tariffs import load_waiting_tariff
 
 MAX_ROWS = 5000
+HEADER_SEARCH_LINES = 5   # 貼り付けの見出しを探す先頭の行数（表題の行が上にある表のため）
 
 # 入力の列（貼り付けのときの並び順）
 COLUMNS = ("date", "vehicle_no", "vehicle_class", "partner", "place", "arrive", "start", "end", "depart",
@@ -395,7 +396,12 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
     lines = [ln for ln in (text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n") if ln.strip()]
     if not lines:
         return {"rows": [], "defaulted": [], "notes": [], "asks": [], "shipper_log": False}
-    if DRIVER_LABEL in _nz(text) and not any(chr(9) in ln for ln in lines):   # タブのある貼り付けは Excel の表（表題に「荷待ち記録」とあっても表として読む）
+    def _head_line(ln: str) -> bool:
+        f = [_header_key(c) for c in ln.split(chr(9))]
+        return bool(f) and (f[0] in ("日付", "date") or sum(1 for c in f if c in _HEADER_ALIASES) >= 3)
+    # タブのある貼り付けは Excel の表（表題に「荷待ち記録」とあっても表として読む）。ただし見出しの行が無いタブ区切り（PC の LINE の「トーク履歴を保存」の
+    # 「日時 名前 本文」）は、「荷待ち記録」から後ろをドライバーの文として読む
+    if DRIVER_LABEL in _nz(text) and (not any(chr(9) in ln for ln in lines) or not any(_head_line(ln) for ln in lines[:HEADER_SEARCH_LINES])):
         rows = parse_driver_text(text)
         notes = [f"{_ASK_NOTE_DRIVER}（{len(rows)} 件）。『相手』を契約の相手として読んでいます" if rows else ""]
         notes = [n for n in notes if n]
@@ -437,9 +443,17 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
     notes: list[str] = []
     cols = list(COLUMNS)
     header = False
-    first = [_header_key(c) for c in lines[0].split("\t")]
+    head_at = 0   # 表題の行が見出しの上にあるときのために、先頭の数行から見出しの行を探す
+    for k, ln0 in enumerate(lines[:HEADER_SEARCH_LINES]):
+        f0 = [_header_key(c) for c in ln0.split("\t")]
+        if f0 and (f0[0] in ("日付", "date") or sum(1 for c in f0 if c in _HEADER_ALIASES) >= 3):
+            head_at = k
+            break
+    first = [_header_key(c) for c in lines[head_at].split("\t")]
     if first and (first[0] in ("日付", "date") or sum(1 for c in first if c in _HEADER_ALIASES) >= 3):
         header = True
+        if head_at:
+            notes.append(f"見出しの上の {head_at} 行（「{_nz(lines[0].split(chr(9))[0])[:20]}」など）は表題として読まずに、{head_at + 1} 行目を見出しにしました")
         mapped = [_HEADER_ALIASES.get(c) for c in first]
         start_idx = [i for i, c in enumerate(mapped) if c == "start"]
         call_idx = [i for i in start_idx if first[i] in _CALL_HEADERS]
@@ -450,12 +464,12 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
         if any(c == "partner" and h in _ASK_PARTNER_HEADERS for c, h in zip(mapped, first)):
             asks.append(ASK_PARTNER)
         seen: set[str] = set()
-        for raw, c in zip(lines[0].split("\t"), mapped):
+        for raw, c in zip(lines[head_at].split("\t"), mapped):
             name = _nz(raw)
             if c is None and name and name not in seen:
                 seen.add(name)
                 notes.append(f"見出し『{name}』は読みませんでした")
-        lines = lines[1:]
+        lines = lines[head_at + 1:]
     else:
         notes.append(_POS_NOTE)
     rows = []
@@ -956,6 +970,32 @@ def aggregate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def infer_years(rows: list[Any], year: int | None) -> tuple[list[int | None], int]:
+    """年のない日付（10/5）が 10〜12 月と 1〜3 月の両方にあり、4〜9 月が無いときは、年末年始をまたぐ記録とみなし、1〜3 月を翌年にする（web/waiting_calc.js の inferYears と同じ）。
+    返り値は（行ごとの年, 翌年と読んだ行の数）。"""
+    years: list[int | None] = [year] * len(rows)
+    if year is None:
+        return years, 0
+    ms: list[int | None] = []
+    for raw in rows:
+        m = None
+        if isinstance(raw, dict):
+            t = str(raw.get("date") or "").strip()
+            if t and parse_date(t, None) is None:
+                d = parse_date(t, year)
+                m = d.month if d else None
+        ms.append(m)
+    got = [m for m in ms if m is not None]
+    if not (any(m >= 10 for m in got) and any(m <= 3 for m in got) and not any(4 <= m <= 9 for m in got)):
+        return years, 0
+    n = 0
+    for i, m in enumerate(ms):
+        if m is not None and m <= 3:
+            years[i] = year + 1
+            n += 1
+    return years, n
+
+
 def calc(rows: list[Any], year: int | None = None, tariff: dict[str, Any] | None = None, defaults: dict[str, str] | None = None) -> dict[str, Any]:
     """記録の行を計算する。返り値は {rows, by_partner, hotspots, by_place_month, errors, tariff}。
 
@@ -977,16 +1017,17 @@ def calc(rows: list[Any], year: int | None = None, tariff: dict[str, Any] | None
             dfl["method"] = defaults["method"]
     done: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
+    years, next_rows = infer_years(rows, year)
     for i, raw in enumerate(rows, start=1):
         if not isinstance(raw, dict):
             errors.append({"row": i, "message": "行の形が正しくありません"})
             continue
-        res, errs = _calc_row(i, raw, year, t, dfl)
+        res, errs = _calc_row(i, raw, years[i - 1], t, dfl)
         if res is None:
             errors.extend({"row": i, "message": e} for e in errs)
         else:
             done.append(res)
-    return {
+    out = {
         "rows": done,
         "by_partner": aggregate(done),
         "hotspots": hotspots(done),
@@ -997,3 +1038,6 @@ def calc(rows: list[Any], year: int | None = None, tariff: dict[str, Any] | None
                    "threshold_minutes": t["threshold_minutes"], "class_labels": t.get("class_labels", {}),
                    "waiting": t["waiting"], "handling": t["handling"]},
     }
+    if next_rows:   # 年のない日付が 10〜12 月と 1〜3 月にまたがるとき、1〜3 月を翌年と読んだ印
+        out["year_crossed"] = {"from": year, "to": year + 1, "rows": next_rows}
+    return out

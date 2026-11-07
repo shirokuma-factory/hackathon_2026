@@ -383,7 +383,9 @@ const WaitingShared = (() => {
     const lines = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((ln) => ln.trim());
     const asks = [];
     if (!lines.length) return { rows: [], defaulted: [], notes: [], asks: [], shipper_log: false };
-    if (nz(text).includes(DRIVER_LABEL) && !lines.some((ln) => ln.includes(String.fromCharCode(9)))) {   // タブのある貼り付けは Excel の表（表題に「荷待ち記録」とあっても表として読む）
+    const headLine = (ln) => { const f = ln.split(String.fromCharCode(9)).map(headerKey); return f.length > 0 && (f[0] === '日付' || f[0] === 'date' || f.filter((c) => has(HEADER_ALIASES, c)).length >= 3); };
+    // タブのある貼り付けは Excel の表（表題に「荷待ち記録」とあっても表として読む）。見出しの行が無いタブ区切り（PC の LINE の「トーク履歴を保存」）は、「荷待ち記録」から後ろをドライバーの文として読む
+    if (nz(text).includes(DRIVER_LABEL) && (!lines.some((ln) => ln.includes(String.fromCharCode(9))) || !lines.slice(0, 5).some(headLine))) {
       const drows = parseDriverText(text);
       const defaulted = [], notes = [];
       if (drows.length) {
@@ -421,11 +423,16 @@ const WaitingShared = (() => {
     const notes = [];
     let cols = COLUMNS.slice();
     let body = lines, header = false;
-    const rawFirst = lines[0].split('\t');
+    // 表題の行が見出しの上にあるときのために、先頭の数行から見出しの行を探す（waiting.py の HEADER_SEARCH_LINES と同じ）
+    const isHead = (ln) => { const f = ln.split('\t').map(headerKey); return f.length > 0 && (f[0] === '日付' || f[0] === 'date' || f.filter((c) => has(HEADER_ALIASES, c)).length >= 3); };
+    let headAt = lines.slice(0, 5).findIndex(isHead);
+    if (headAt < 0) headAt = 0;
+    const rawFirst = lines[headAt].split('\t');
     const first = rawFirst.map(headerKey);
     const known = first.filter((c) => has(HEADER_ALIASES, c)).length;
     if (first.length && (first[0] === '日付' || first[0] === 'date' || known >= 3)) {
       header = true;
+      if (headAt) notes.push(`見出しの上の ${headAt} 行（「${nz(lines[0].split('\t')[0]).slice(0, 20)}」など）は表題として読まずに、${headAt + 1} 行目を見出しにしました`);
       const mapped = first.map((c) => (has(HEADER_ALIASES, c) ? HEADER_ALIASES[c] : null));
       const startIdx = mapped.map((c, i) => (c === 'start' ? i : -1)).filter((i) => i >= 0);
       const callIdx = startIdx.filter((i) => CALL_HEADERS.has(first[i]));
@@ -437,7 +444,7 @@ const WaitingShared = (() => {
         const name = nz(raw);
         if (mapped[i] === null && name && !seen.has(name)) { seen.add(name); notes.push(`見出し『${name}』は読みませんでした`); }
       });
-      body = lines.slice(1);
+      body = lines.slice(headAt + 1);
     } else notes.push(POS_NOTE);
     const rows = body.map((ln) => {
       const cells = ln.split('\t'), o = {};
@@ -482,7 +489,7 @@ const WaitingShared = (() => {
       rows.forEach((r) => { r.shipper_fault = 'はい'; });
       defaulted.push('shipper_fault');
     }
-    return { rows, defaulted, notes, asks, shipper_log: shipperLog };
+    return { rows, defaulted, notes, asks, shipper_log: shipperLog, carrier_table: !!(header && !shipperLog && CARRIER_CONTEXT_COLS.some((c) => cols.includes(c))) };   // carrier_table: 運送会社の書面の側の列がある表（荷主の画面から戻す判断に使う）
   }
   const parsePaste = (text) => parsePasteFull(text).rows;
 
@@ -827,26 +834,49 @@ const WaitingShared = (() => {
     }
     if (rows.length > MAX_ROWS) throw new Error(`行が多すぎます（${MAX_ROWS.toLocaleString('ja-JP')} 行まで）`);
     const done = [], errors = [];
+    const yi = inferYears(rows, year);
     rows.forEach((raw, i) => {
       const n = i + 1;
       if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) { errors.push({ row: n, message: '行の形が正しくありません' }); return; }
-      const { res, errs } = calcRow(n, raw, year, tariff, dfl);
+      const { res, errs } = calcRow(n, raw, yi.years[i], tariff, dfl);
       if (res === null) errs.forEach((e) => errors.push({ row: n, message: e })); else done.push(res);
     });
-    return { rows: done, by_partner: aggregate(done), hotspots: hotspots(done), by_place_month: byPlaceMonth(done), errors };
+    const out = { rows: done, by_partner: aggregate(done), hotspots: hotspots(done), by_place_month: byPlaceMonth(done), errors };
+    if (yi.crossed) out.year_crossed = { from: year, to: year + 1, rows: yi.nextRows };   // 年のない日付が 10〜12 月と 1〜3 月にまたがるとき、1〜3 月を翌年と読んだ印
+    return out;
+  }
+
+  // 年のない日付（10/5）が 10〜12 月と 1〜3 月の両方にあり、4〜9 月が無いときは、年末年始をまたぐ記録とみなし、1〜3 月を翌年にする（waiting.py の infer_years と同じ）
+  function inferYears(rows, year) {
+    const years = rows.map(() => year);
+    if (year == null) return { years, crossed: false, nextRows: 0 };
+    const ms = rows.map((raw) => {
+      if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+      const t = norm(raw.date);
+      if (!t || parseDate(t, null) !== null) return null;
+      const d = parseDate(t, year);
+      return d === null ? null : Number(d.slice(5, 7));
+    });
+    const got = ms.filter((m) => m !== null);
+    if (!(got.some((m) => m >= 10) && got.some((m) => m <= 3) && !got.some((m) => m >= 4 && m <= 9))) return { years, crossed: false, nextRows: 0 };
+    let nextRows = 0;
+    ms.forEach((m, i) => { if (m !== null && m <= 3) { years[i] = year + 1; nextRows += 1; } });
+    return { years, crossed: true, nextRows };
   }
 
 
   /* ---------------------------------------------------------------- 貼り付けを表の後ろに足す（SPEC §42）。同じ行（日付・場所・到着・車番）は 1 つにする */
   const TIME_KEYS = new Set(['arrive', 'start', 'end', 'depart', 'appointed', 'reception', 'call']);
   const META_KEYS = new Set(['fault_default', 'arrive_src']);
-  // 日付と到着の両方があるときだけ鍵を返す。どちらかが空の行は、同じ行かどうか言えないので足す（'' を返す）
+  // 同じ行とみなすのは、日付・場所・契約の相手・到着・荷役開始・車番がすべて同じで、車番が空でないときだけ。
+  // 日付・到着・車番のどれかが空の行は、同じ行かどうか言えないので足す（'' を返す）。契約の相手が違う、荷役開始が違う行も別の行（B1）
   function rowKey(r, year) {
-    const dRaw = nz(r.date), aRaw = nz(r.arrive);
-    if (!dRaw || !aRaw) return '';
+    const dRaw = nz(r.date), aRaw = nz(r.arrive), plate = nz(r.vehicle_no);
+    if (!dRaw || !aRaw || !plate) return '';
     const dd = parseDate(norm(r.date), year);
     const t = parseTime(norm(r.arrive));
-    return [dd || dRaw, nz(r.place), t === null ? aRaw : t, nz(r.vehicle_no)].join('|');
+    const sRaw = nz(r.start), s = sRaw ? parseTime(norm(r.start)) : null;
+    return [dd || dRaw, nz(r.place), nz(r.partner), t === null ? aRaw : t, s === null ? sRaw : s, plate].join('|');
   }
   const sameValue = (k, a, b) => {
     if (TIME_KEYS.has(k)) { const x = parseTime(norm(a)), y = parseTime(norm(b)); if (x !== null && y !== null) return x === y; }
@@ -975,7 +1005,7 @@ const WaitingShared = (() => {
     const limit = thr == null ? 15 : thr;
     const mkPair = (c, s, key) => {
       const ad = sdiff(mm(c.arrive), mm(s.arrive)), sd = sdiff(mm(c.start), mm(s.start));
-      return { date: c.date, vehicle: c.vehicle_no || s.vehicle_no || '', key, carrier: c, shipper: s, arrive_diff: ad, start_diff: sd, differs: Math.abs(ad) > limit || Math.abs(sd) > limit };
+      return { date: c.date, vehicle: c.vehicle_no || s.vehicle_no || '', key, carrier: c, shipper: s, arrive_diff: ad, start_diff: sd, differs: Math.abs(ad) >= limit || Math.abs(sd) >= limit };
     };
     const pairs = [], ambiguous = [];
     const usedC = new Set(), usedS = new Set();

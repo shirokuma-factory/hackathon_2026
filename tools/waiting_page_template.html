@@ -168,6 +168,8 @@ main { display: grid; grid-template-columns: minmax(0, 720px) minmax(0, 1fr); ga
 @media (max-width: 1500px) { main { grid-template-columns: minmax(0, 1fr); } }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0; font-size: var(--fs-1); }
 .bar small { color: var(--muted); }
+#bulk select { max-width: 100%; min-width: 0; }
+#bulk label { min-width: 0; max-width: 100%; }
 details { margin-top: 8px; }
 details summary { cursor: pointer; font-weight: 700; font-size: var(--fs-1); }
 select, input[type=text], textarea { font-size: var(--fs-1); }
@@ -726,7 +728,8 @@ function errsHtml() {
   const rowNotes = [...groups].map(([m, ids]) => (ids.length >= 4
     ? `<details class="note-group"><summary>${esc(m)}（${ids.length} 行）</summary><div class="small">表の ${ids.join('・')} 行目</div></details>`
     : ids.map((i) => `<div>表の ${i} 行目: ${esc(m)}</div>`).join(''))).join('');
-  const notesHtml = rowNotes ? `<div class="note">${rowNotes}</div>` : '';
+  const yc = r.year_crossed ? `<div class="note" id="year-note">年のない日付が 12 月と 1 月にまたがっているので、1〜3 月の ${r.year_crossed.rows} 行は ${r.year_crossed.to} 年として読みました（${r.year_crossed.from} 年の年末から ${r.year_crossed.to} 年の年始の記録として数えています）。違うときは、表の日付に年を入れてください（2027-01-05 の形）。</div>` : '';
+  const notesHtml = yc + (rowNotes ? `<div class="note">${rowNotes}</div>` : '');
   if (!r.errors.length) return notesHtml;
   return `<div class="errs"><b>読めなかった行 ${new Set(r.errors.map((e) => e.row)).size} 行（計算から外しています）</b>` +
     r.errors.map((e) => `<div>表の ${(S.idxMap[e.row - 1] ?? e.row - 1) + 1} 行目: ${esc(errFix(e.message))}</div>`).join('') + '</div>' + notesHtml;
@@ -757,12 +760,16 @@ function fillProvisional() {
   renderTable(); doCalc();
 }
 
+// 相手の名前は、まとめるときだけ正規化（全角・半角、㈱ と (株)）して、表示は入力したとおりにする（B10）
+const partnerLabel = (name) => { const r = S.rows.find((x) => nz(x.partner) === name); return (r && String(r.partner).replace(/\s+/g, ' ').trim()) || name; };
 const partnerRows = (name) => (S.res ? S.res.rows.filter((r) => r.partner === name) : []);
 // 荷主等の都合の列が無く、既定の はい で計算している行（メールには「すべての待ちを数えています」と書く。事務の指示は画面だけ）
 const faultDefRows = (rows) => rows.filter((r) => { const src = S.rows[S.idxMap[r.row - 1]]; return src && src.fault_default && r.shipper_fault; });
 const faultAssumed = (p) => faultDefRows(partnerRows(p.partner)).length > 0;
 // 荷役をした人が分からない行（列が無い貼り付け）。荷役の時間は 0 ではなく不明として、メールには荷役の合計を書かない
-const handlerUnknown = (p) => partnerRows(p.partner).some((r) => r.handler === UNKNOWN_HANDLER);
+// 荷役をした人が分からない行の数。handlerUnknown は、荷役をした人が分かる行が 1 つも無いときだけ true（分かる行と混ざるときは、分からない行だけを外す）
+const unknownHandlerCount = (p) => partnerRows(p.partner).filter((r) => r.handler === UNKNOWN_HANDLER).length;
+const handlerUnknown = (p) => unknownHandlerCount(p) > 0 && !partnerRows(p.partner).some((r) => r.handler === '運転者' || r.handler === '荷主側');
 // 画面だけの確認欄（メールにはコピーしない）: 荷主等の都合の列が無いとき、荷役をした人の列が無いとき
 function faultDefaultHtml() {
   const n = S.res ? faultDefRows(S.res.rows).length : 0;
@@ -844,20 +851,33 @@ function letterPageAddress() {
   } catch (e) { /* 取れないときは公開の URL */ }
   return PUBLIC_PAGE_URL;
 }
-const placeJa = (place) => String(place).replace(' ', 'の');
+// 「江東区 地点07」→「江東区の地点07」。最初の語が 区・市・町・村・郡 で終わるときだけ「の」を入れる。「株式会社 山田 第2倉庫」のような名前はそのまま（B10）
+const placeJa = (place) => String(place).replace(/^(\S*[区市町村郡]) /, '$1の');
 // 場所の記入が無いとき（列が無い貼り付けなど）は、場所の言葉を書かずに時間帯から始める
 const noPlace = (place) => place === NO_PLACE;
 const placeLead = (h, all) => (noPlace(h.place) ? (all ? '' : '場所の記載がない分のうち、') : `${placeJa(h.place)}では、`);
 const allPlaceless = (name) => !(S.res ? S.res.hotspots : []).some((h) => h.partner === name && !noPlace(h.place));
+// メールと別紙の「平均・最長」は、実際に待った分（report_wait_min: 到着か指定の時刻から荷役開始まで。荷主等の都合かどうかに関わらず）で数える。
+// 別紙の「場所ごと・月ごとの平均の荷待ち」の表と同じ数え方にそろえる（B3）。画面の偏りの表（hotspots そのもの）は変えない
+const reportSpots = (name) => {
+  const rows = partnerRows(name);
+  return (S.res ? S.res.hotspots : []).filter((h) => h.partner === name).map((h) => {
+    const rs = rows.filter((r) => (r.place || NO_PLACE) === h.place && `${parseInt(r.arrive.slice(0, 2), 10)}時台` === h.band);
+    const w = rs.map((r) => r.report_wait_min), total = w.reduce((a, x) => a + x, 0), n = rs.length;
+    return { ...h, shipper_handling_count: rs.filter((r) => r.handler === '荷主側' && r.end && r.wait_min > 0).length, count: n, wait_minutes: total, avg_minutes: n ? Math.floor((2 * total + n) / (2 * n)) : 0, max_minutes: n ? Math.max(...w) : 0, over_1h_count: w.filter((x) => x >= 60).length };
+  }).sort((a, b) => b.wait_minutes - a.wait_minutes);
+};
 // 場所・時間帯ごとの荷待ちの文（別紙の相談の節）。注記は括弧にせず、続く 1 文にする
+const consultSpots = (name) => reportSpots(name).filter((h) => h.wait_minutes > 0).slice(0, 3);
+// 「指定の到着時刻のない到着が多く含まれます。」は、どの文にも付けず、一覧の後ろに 1 回だけ書く
+const consultNote = (name) => (consultSpots(name).some((h) => h.designated_count * 2 < h.count && h.avg_minutes >= 30) ? '指定の到着時刻のない到着が多く含まれます。' : '');
 function consultSentences(name) {
-  return (S.res ? S.res.hotspots : []).filter((h) => h.partner === name && h.wait_minutes > 0).slice(0, 3).map((h) =>
-    `${placeLead(h, allPlaceless(name))}${h.band}に到着した${h.count}回の荷待ちが、平均${h.avg_minutes}分、最長${h.max_minutes}分でした。` +
-    (h.designated_count * 2 < h.count && h.avg_minutes >= 30 ? '指定の到着時刻のない到着が多く含まれます。' : '') +
+  return consultSpots(name).map((h) =>
+    `${placeLead(h, allPlaceless(name))}${h.band}に到着した${h.count}回の荷待ち（到着から荷役開始まで）が、平均${h.avg_minutes}分、最長${h.max_minutes}分でした。` +
     (h.shipper_handling_count > 0 ? '貴社側で荷役をしていただいた時間も含まれています。' : '') +
     (h.count < 3 ? '回数が少ないため、参考としてご覧ください。' : ''));
 }
-const topSpot = (name) => { const h = (S.res ? S.res.hotspots : []).find((x) => x.partner === name && x.wait_minutes > 0); return h && h.count >= 3 && h.avg_minutes >= 30 ? h : null; };
+const topSpot = (name) => { const h = reportSpots(name).find((x) => x.wait_minutes > 0); return h && h.count >= 3 && h.avg_minutes >= 30 ? h : null; };
 
 // 記録の表。HTML もコピーする文も、この形（列の見出し・行・注記・合計）から作る
 function recModel(p) {
@@ -894,7 +914,8 @@ function recModel(p) {
 // メールの組み立て。件名・宛先・本文の段落・記録の表・結びは、ここで 1 回だけ作り、画面の HTML とコピーする文の両方が使う
 function mailPeriod(p) {
   const y = String(new Date().getFullYear()), a = String(p.date_from), b = String(p.date_to);
-  const withYear = a.slice(0, 4) !== y || b.slice(0, 4) !== a.slice(0, 4);
+  // 年は、今年でないとき、または 1 年以上あいているときだけ書く。12/27〜1/6 のような年末年始は「12月27日〜1月6日」とする
+  const withYear = a.slice(0, 4) !== y || (b.slice(0, 4) !== a.slice(0, 4) && (Date.parse(b) - Date.parse(a)) / 86400000 > 330);
   return a === b ? jdate(a, withYear) : `${jdate(a, withYear)}〜${jdate(b, withYear)}`;
 }
 // 待ちを数え始める時刻の言い方。メールの文・画面の数字の注記が、実際の数え方（waiting_calc）と同じ言い方になるようにする
@@ -903,18 +924,21 @@ function waitFromJa(p) {
   return partnerRows(p.partner).some((r) => r.appointed) ? '到着（指定の到着時刻がある回は、その時刻）' : '到着';
 }
 function mailModel(p) {
-  const amt = mainAmt(p), wait = mainWait(p), spot = topSpot(p.partner);
+  // 合計と「1 時間以上の回数」は同じ数え方にする。受付の時刻がある記録は従来どおり受付から（表の待機の列と同じ）、ほかは実際に待った分（report_wait_min）で数える
+  const repRows = partnerRows(p.partner), byReport = !hasRec(p);
+  const amt = mainAmt(p), wait = byReport ? repRows.reduce((a, r) => a + r.report_wait_min, 0) : mainWait(p), spot = topSpot(p.partner);
   const prov = p.partner === PROVISIONAL_PARTNER;
-  const name = prov ? '（荷主の会社名）' : String(p.partner).replace(/\s*(御中|様)\s*$/, '');
+  const name = prov ? '（荷主の会社名）' : String(partnerLabel(p.partner)).replace(/\s*(御中|様)\s*$/, '');
   const period = mailPeriod(p);
+  const over1h = byReport ? repRows.filter((r) => r.report_wait_min >= 60).length : p.over_1h_count;
   const paras = [
     `今回は、${period}${p.date_from === p.date_to ? 'に' : 'の間に'}ご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。${waitFromJa(p)}から荷役が始まるまでにお待ちした時間は、合計で${hmj(wait)}でした。` +
-      (p.over_1h_count > 0 ? `そのうち、1時間以上お待ちした回が${p.over_1h_count}回ありました。` : ''),
-    (spot ? `とくに${noPlace(spot.place) ? '' : `${placeJa(spot.place)}では、`}${spot.band}に到着した${spot.count}回の待ち時間が、平均${spot.avg_minutes}分、最長${spot.max_minutes}分でした。` : '') +
+      (over1h > 0 ? `そのうち、1時間以上お待ちした回が${over1h}回ありました。` : ''),
+    (spot ? `とくに${noPlace(spot.place) ? '' : `${placeJa(spot.place)}では、`}${spot.band}に到着した${spot.count}回の待ち時間（到着から荷役開始まで）が、平均${spot.avg_minutes}分、最長${spot.max_minutes}分でした。` : '') +
       'ドライバーの拘束時間には荷待ちの時間も含まれます。2024年4月から時間外労働の上限規制が始まり、拘束時間の基準（改善基準告示）も改正されたため、荷待ちが長いと、その日のほかの運行にも影響が出ます。',
     '荷待ちを減らす方法を、貴社のご事情をうかがいながら、一緒に考えさせていただければと思っております。一度、短いお打ち合わせのお時間をいただけないでしょうか。到着時刻の調整や受付の予約、荷役の分担などについてご相談できればと考えております。',
   ];
-  if (amt > 0) paras.push(`なお、荷待ちと荷役を国の標準的運賃に当てはめた参考額は、${n0(amt)}円（税抜）でした。請求書ではなく、荷待ちの大きさを共通の基準で見ていただくための目安です。計算のしかたは、このメールの末尾に載せています。`);
+  if (amt > 0) paras.push(`なお、${handlerUnknown(p) || !(p.handling_fee > 0) ? '荷待ち' : '荷待ちと荷役'}を国の標準的運賃に当てはめた参考額は、${n0(amt)}円（税抜）でした。請求書ではなく、荷待ちの大きさを共通の基準で見ていただくための目安です。計算のしかたは、このメールの末尾に載せています。`);
   return { subject: `${MAIL_SUBJECT}（${period}）`, to: `${name} 物流ご担当者様`, name, prov, greet: 'いつもお世話になっております。', paras, lead: '記録の一覧を下に貼っておきます。', rec: recModel(p),
     close: ['お忙しいところ恐れ入りますが、ご検討いただけますと幸いです。', 'よろしくお願いいたします。'] };
 }
@@ -925,8 +949,8 @@ function calcModel(p) {
   const hu = handlerUnknown(p);
   const main = hasRec(p) ? '受付の時刻がある回は受付から数えた額です。内訳は本文の記録の表にあります。' : (hu ? `内訳は、待機時間料${n0(p.wait_fee)}円です。` : `内訳は、待機時間料${n0(p.wait_fee)}円、積込料・取卸料${n0(p.handling_fee)}円です。`);
   return {
-    mainHead: '参考額の合計は', mainAmt: `${n0(mainAmt(p))}円`, mainTail: `（税抜）です。${main}待機は合計${hmj(mainWait(p))}${hu ? 'でした。荷役をした人の記録がないため、荷役の時間と積込料・取卸料は含めていません。' : `、運転者の荷役は合計${hmj(p.handling_minutes)}でした。`}`,
-    calc: `計算は、国土交通省が告示した標準的運賃の別紙の表の単価に当てはめています。待機は、到着の時刻（指定の到着時刻があって実際の到着が早かったときは、指定の時刻）から数えます。最初の${t.free_minutes}分を除き、${t.unit_minutes}分までごとに通常の単価、到着から${t.threshold_minutes / 60}時間を超える部分は${t.unit_minutes}分までごとに2時間超の単価を使っています。貴社側で荷役をしていただいた時間も、待ち時間に含めています。`,
+    mainHead: '参考額の合計は', mainAmt: `${n0(mainAmt(p))}円`, mainTail: `（税抜）です。${main}待機は合計${hmj(mainWait(p))}${hu ? 'でした。荷役をした人の記録がないため、荷役の時間と積込料・取卸料は含めていません。' : `、運転者の荷役は合計${hmj(p.handling_minutes)}でした。`}${!hu && unknownHandlerCount(p) > 0 ? `荷役をした人が分からない${unknownHandlerCount(p)}回は、荷役の時間と積込料・取卸料に入れていません。` : ''}`,
+    calc: `計算は、国土交通省が告示した標準的運賃の別紙の表の単価に当てはめています。待機は、${hasRec(p) ? `${waitFromJa(p)}から` : '到着の時刻（指定の到着時刻があって実際の到着が早かったときは、指定の時刻）から'}数えます。最初の${t.free_minutes}分を除き、${t.unit_minutes}分までごとに通常の単価、${hasRec(p) ? '数え始めの時刻' : '到着'}から${t.threshold_minutes / 60}時間を超える部分は${t.unit_minutes}分までごとに2時間超の単価を使っています。${partnerRows(p.partner).some((r) => r.handler === '荷主側' && r.end) ? '貴社側で荷役をしていただいた時間も、待ち時間に含めています。' : ''}`,
     terms: '荷主等の都合とは、荷主や荷受人の責任で車が待たされたこと（準備が間に合わない、受付が始まらないなど）をいいます。' + (faultAssumed(p) ? '今回の記録には荷主等の都合かどうかの区別がないため、記録のすべての待ちを数えています。' : '渋滞や当社側の遅れによる待ちは含めていません。') + '附帯業務とは、荷物を運ぶ以外にドライバーが行った作業（検品、仕分け、ラベル貼りなど）で、告示では実費として別に収受するとされているため、参考額には入れていません。',
     source: `出典: 標準的運賃（${jdate(t.applies_from)}告示）の別紙の表。待機時間の数え方は国土交通省の Q&A 集 Q29、荷主側の荷役の時間を待機に含める扱いは貸切運賃料金適用方（参考例）第21項によります。${t.source_url}`,
   };
@@ -974,6 +998,7 @@ function draftHtml(p) {
     <p class="small">${esc(cm.source)}</p>
     ${cl.length ? `<h4>参考：${CONSULT_TITLE}</h4>
     <ul class="list">${cl.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+    ${consultNote(p.partner) ? `<p class="small" id="doc-consult-note">${esc(consultNote(p.partner))}</p>` : ''}
     <p>${esc(CONSULT_CLOSE)}</p>
     <h5 id="doc-pm-title">${esc(PM_PARTNER_TITLE)}</h5>
     <p class="small">${esc(PM_DEF)}</p>
@@ -1047,8 +1072,7 @@ function draftText(p) {
   const cm = calcModel(p);
   L.push(cm.mainHead + cm.mainAmt + cm.mainTail, cm.calc, cm.terms);
   if (hasRec(p)) L.push(`受付から数えた数字: ${receptionSentence(p)}`);
-  if (earlyShown(p)) L.push(`${earlyWord(p.partner)}を分けた数字: ${earlySentence(p)}`);
-  if (hasEarly(p)) L.push(earlyRule(p.partner));
+  // 早着の疑いの数字と定義は、画面の「社内向けの注意」にだけ出す。荷主に送る文には入れない（B7）
   docNotes(p).forEach((x) => L.push(x));
   if (rows.some((r) => r.post_wait)) L.push(POST_WAIT_NOTE);
   L.push('', '使った車種の単価（税抜・円）');
@@ -1057,7 +1081,7 @@ function draftText(p) {
   L.push(cm.source);
   const cl = consultSentences(p.partner);
   if (cl.length) {
-    L.push('', `参考：${CONSULT_TITLE}`, ...cl.map((x) => `・${x}`), CONSULT_CLOSE, '', PM_PARTNER_TITLE, [...(allPlaceless(p.partner) ? [] : ['場所']), '月', '回数', '平均の荷待ち（分）', '1 時間以上の回数'].join('\t'),
+    L.push('', `参考：${CONSULT_TITLE}`, ...cl.map((x) => `・${x}`), ...(consultNote(p.partner) ? [consultNote(p.partner)] : []), CONSULT_CLOSE, '', PM_PARTNER_TITLE, [...(allPlaceless(p.partner) ? [] : ['場所']), '月', '回数', '平均の荷待ち（分）', '1 時間以上の回数'].join('\t'),
       ...monthTable(p.partner).map((x) => [...(allPlaceless(p.partner) ? [] : [noPlace(x.place) ? '場所の記載なし' : x.place]), monthLabel(x.month), x.count, x.avg_minutes, x.over_1h_count].join('\t')), MONTH_CLOSE);
   }
   L.push('', CLAUSE_TITLE, ...clauseList(t).map((x) => `・${x}`), '',
@@ -1102,7 +1126,7 @@ const processHtml = () => `<aside id="process" aria-label="相談の進め方"><
 // 数字のタイルと、到着の時間帯ごとの待ち時間の帯（選んだ相手の記録から。手元で数えるだけ）
 function statsHtml(p) {
   const w = mainWait(p), h = Math.floor(w / 60), m = w % 60;
-  return `<div class="stat-grid" id="stats"><div class="stat is-empty hero"><span class="stat-l">待ち時間の合計</span><span class="stat-n">${h}<span class="stat-u">時間</span>${m}<span class="stat-u">分</span></span><span class="stat-d">${esc(p.partner)}。${esc(waitFromJa(p))}から荷役開始まで</span></div>` +
+  return `<div class="stat-grid" id="stats"><div class="stat is-empty hero"><span class="stat-l">待ち時間の合計</span><span class="stat-n">${h}<span class="stat-u">時間</span>${m}<span class="stat-u">分</span></span><span class="stat-d">${esc(partnerLabel(p.partner))}。${esc(waitFromJa(p))}から荷役開始まで</span></div>` +
     `<div class="stat"><span class="stat-l">参考額（税抜）</span><span class="stat-n">${n0(mainAmt(p))}<span class="stat-u">円</span></span><span class="stat-d">${hasRec(p) ? '受付から数えた額' : '到着から数えた額'}</span></div>` +
     `<div class="stat"><span class="stat-l">記録の件数</span><span class="stat-n">${p.count}<span class="stat-u">件</span></span><span class="stat-d">1 時間以上の待ち ${p.over_1h_count} 件</span></div></div>`;
 }
@@ -1178,17 +1202,17 @@ function renderResult() {
 /* ---------------------------------------------------------------- 荷主として使う（SPEC §42）。運送会社あての書面は出さず、受付の分析・荷主がすること・運送会社の書面との照合を出す */
 const MODE_KEY = 'waiting_page_mode_v1';
 function modeLoad() { try { return localStorage.getItem(MODE_KEY) === 'shipper' ? 'shipper' : 'carrier'; } catch (e) { return 'carrier'; } }
-function setMode(mode, rerender) {
+function setMode(mode, rerender, persist) {   // persist=false: 貼り付けの形から自動で切り替えたとき。次に開いたときの画面として覚えない
   S.mode = mode;
-  if (!S.noStore) { try { localStorage.setItem(MODE_KEY, mode); } catch (e) { /* 使えなくても、このページを開いている間は切り替わる */ } }
+  if (!S.noStore && persist !== false) { try { localStorage.setItem(MODE_KEY, mode); } catch (e) { /* 使えなくても、このページを開いている間は切り替わる */ } }
   const b = $('#b-mode');
   if (b) { b.textContent = mode === 'shipper' ? '運送会社の画面に戻す' : '荷主の画面にする'; b.setAttribute('aria-pressed', mode === 'shipper' ? 'true' : 'false'); }
   const n = $('#mode-note');
   if (n) {
-    n.hidden = mode !== 'shipper';
+    n.hidden = mode !== 'shipper' && !S.modeAuto;
     n.textContent = mode === 'shipper'
       ? (S.modeAuto ? '受付簿として読みました。荷主の画面にしています。' : '荷主の画面にしています。')
-      : '';
+      : (S.modeAuto ? '運送会社の表として読みました。運送会社の画面にしています。' : '');
   }
   document.body.classList.toggle('shipper-mode', mode === 'shipper');
   if (rerender !== false) renderResult();
@@ -1281,7 +1305,7 @@ function inferCarrier(docRows, ownRows) {
   return ranked.length && (ranked.length === 1 || ranked[0][1] > ranked[1][1]) ? ranked[0][0] : '';
 }
 const KEY_LABEL = { vehicle: '車番', place: '場所と到着の時刻', time: '到着の時刻' };
-const diffCell = (d, lim) => `<td class="num">${Math.abs(d) > lim ? `<b>${signed(d)}</b>` : signed(d)}</td>`;
+const diffCell = (d, lim) => `<td class="num">${Math.abs(d) >= lim ? `<b>${signed(d)}</b>` : signed(d)}</td>`;
 function crossResultHtml() {
   if (!S.cross) return '';
   const c = S.cross;
@@ -1299,7 +1323,7 @@ function crossResultHtml() {
     ${c.skipped && c.skipped.length ? `<p class="small" id="cross-skipped">列の数が見出しと違うので読まなかった行が ${c.skipped.length} 行あります（例: ${esc(c.skipped[0])}）。列を空白 2 つ以上かタブで区切って貼り直してください。</p>` : ''}
     ${c.carrier_errors ? `<p class="small">運送会社の書面の ${c.carrier_errors} 行は読めなかったので、照合から外しています。</p>` : ''}
     ${c.ambiguous.length ? `<div id="cross-ambiguous"><h3>どの回と同じか決められない行（${c.ambiguous.length} 件）</h3><p class="small">同じ日・場所に近い時刻の回が複数あります。</p><div class="scroll-x"><table class="par"><thead><tr><th>書面の行（日付・場所・到着・荷役開始）</th><th>自社の受付記録の候補</th></tr></thead><tbody>${c.ambiguous.map((g) => `<tr><td>${esc(g.carrier.date)} ${esc(g.carrier.place)} ${esc(g.carrier.arrive)} ${esc(g.carrier.start)}</td><td>${g.candidates.map((x) => `${esc(x.arrive)} ${esc(x.start)}${x.vehicle_no ? ' 車番 ' + esc(x.vehicle_no) : ''}`).join('<br>')}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
-    ${c.differ.length ? `<h3>時刻が ${lim} 分を超えて違う行（${c.differ.length} 組）</h3><p class="small">差は、自社の受付記録の時刻 − 運送会社の書面の時刻です。プラスは自社の時刻のほうが遅いことを示します。</p>
+    ${c.differ.length ? `<h3>時刻が ${lim} 分以上違う行（${c.differ.length} 組）</h3><p class="small">差は、自社の受付記録の時刻 − 運送会社の書面の時刻です。プラスは自社の時刻のほうが遅いことを示します。</p>
     <div class="scroll-x"><table class="par" id="cross-differ"><thead><tr><th>日付</th><th>車番・場所</th><th>見比べた項目</th><th>運送会社の到着</th><th>自社の受付</th><th>差（分）</th><th>運送会社の荷役開始</th><th>自社の作業開始</th><th>差（分）</th></tr></thead><tbody>${c.differ.map((p) => `<tr><td>${esc(p.date)}</td><td>${esc(p.vehicle || p.carrier.place)}</td><td>${KEY_LABEL[p.key]}</td><td>${esc(p.carrier.arrive)}</td><td>${esc(p.shipper.arrive)}</td>${diffCell(p.arrive_diff, lim)}<td>${esc(p.carrier.start)}</td><td>${esc(p.shipper.start)}</td>${diffCell(p.start_diff, lim)}</tr>`).join('')}</tbody></table></div>` : '<p class="empty">時刻が違う組はありません。</p>'}
     <div id="cross-only">${miss(c.only_carrier, '運送会社の書面にあって、自社の受付記録に無い行')}${miss(c.only_shipper, '自社の受付記録にあって、運送会社の書面に無い行')}</div></div>`;
 }
@@ -1624,7 +1648,9 @@ function pasteIn() {
   if (keep.length) undoSet({ year: S.year, label: `貼り付けた内容を表の後ろに足しました（足した ${m.added} 行、同じ行 ${m.merged} 行）。`, rows: keep.map((r) => ({ ...r })) });
   S.rows = m.rows.length ? m.rows : [blankRow(), blankRow(), blankRow()];
   if (pf.asks.includes(ASK_PARTNER)) S.askPartner = true;
+  // 貼るたびに表の形を見て画面を合わせる。荷主の受付簿なら荷主の画面、運送会社の列がある表なら運送会社の画面（自動で切り替えた画面は覚えない）
   if (pf.shipper_log && S.mode !== 'shipper') { S.modeAuto = true; setMode('shipper', false); }
+  else if (!pf.shipper_log && S.mode === 'shipper' && (pf.carrier_table || pf.memo_read)) { S.modeAuto = true; setMode('carrier', false); }
   $('#paste-msg').textContent = `${m.added} 行を足しました` + (m.merged ? `。同じ回の ${m.merged} 行は足さずに、空いた欄だけ埋めました${m.conflicts ? `（うち ${m.conflicts} 行は値が違うので、表の値を残しています）` : ''}` : '') +
     (keep.length ? `。これまでの記録 ${keep.length} 行は消えていません` : '');
   $('#paste-note').innerHTML = (faultDef ? [DEFAULT_FAULT_NOTE, ...pf.notes] : pf.notes).map((x) => `<span>${esc(x)}</span>`).join('<br>');
@@ -1643,9 +1669,10 @@ function csvIn(file) {
       const inp = csvToRows(String(fr.result));
       const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
       endExampleAuto();
-      S.rows = keep.concat(inp);
+      const m = WaitingShared.mergeRows(keep, inp, S.year);
+      S.rows = m.rows;
       if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
-      $('#paste-msg').textContent = `CSV の ${inp.length} 行を表の後ろに足しました`;
+      $('#paste-msg').textContent = `CSV の ${m.added} 行を表の後ろに足しました` + (m.merged ? `。同じ行を ${m.merged} 行まとめました` : '');
       renderTable(); doCalc();
     } catch (e) { $('#errs').innerHTML = `<div class="errs">${esc(e.message)}</div>`; }
   };
@@ -1661,9 +1688,10 @@ function csvPasteIn() {
     const inp = csvToRows(text);
     const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
     endExampleAuto();
-    S.rows = keep.concat(inp);
+    const m = WaitingShared.mergeRows(keep, inp, S.year);
+    S.rows = m.rows;
     if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
-    $('#csvpaste-msg').textContent = `CSV の ${inp.length} 行を表の後ろに足しました`;
+    $('#csvpaste-msg').textContent = `CSV の ${m.added} 行を表の後ろに足しました` + (m.merged ? `。同じ行を ${m.merged} 行まとめました` : '');
     renderTable(); doCalc();
   } catch (e) { $('#csvpaste-msg').textContent = e.message; }
 }
@@ -1800,7 +1828,7 @@ function init() {
     else if (t.id === 'b-prov-fill') fillProvisional();
     else if (t.id === 'b-handler-fill') fillHandler();
     else if (t.id === 'b-ask-ok') { S.askPartner = false; renderBoxes(); renderResult(); }
-    else if (t.id === 'b-clear') { endExampleAuto(); S.memoRead = null; $('#memo-read').innerHTML = ''; S.askPartner = false; $('#paste-note').innerHTML = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderBoxes(); renderResult(); }
+    else if (t.id === 'b-clear') { if (S.modeAuto && S.mode === 'shipper' && !S.guide) { S.modeAuto = false; setMode('carrier', false); } endExampleAuto(); S.memoRead = null; $('#memo-read').innerHTML = ''; S.askPartner = false; $('#paste-note').innerHTML = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderBoxes(); renderResult(); }
     else if (t.id === 'b-add') { endExampleAuto(); S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
     else if (t.id === 'b-paste') pasteIn();
     else if (t.id === 'b-g-sample') { const g = guidedState(); if (g && g !== 'choose') { $('#paste').value = gSampleText(g); $('#paste').focus(); } }
