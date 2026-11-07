@@ -198,6 +198,9 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 .ai-box .ai-head { gap: 8px 16px; }
 .ai-box .ai-confirm, .ai-box .ai-result { background: var(--card); border-radius: var(--r-s); }
 .ai-box .ai-off { margin: 0; }
+.prov { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.prov > b { flex: 1 0 100%; }
+.prov label { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .note { margin: 8px 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 500; font-size: var(--fs-1); border-radius: 0 var(--r-s) var(--r-s) 0; }
 .errs b { display: block; }
 .g-choices button { font-size: var(--fs-2); border-radius: var(--r-m); }
@@ -454,7 +457,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 const TARIFF = /*__TARIFF__*/null;
 const VECTORS = /*__VECTORS__*/null;
 const { HEADER_ALIASES, headerKey, COLUMNS, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, monthLabel, truncWarn, BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE,
-  CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, ASK_PARTNER } = WaitingShared;
+  CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, ASK_PARTNER, PROVISIONAL_PARTNER } = WaitingShared;
 const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Artifact 用の版（印刷と CSV の保存は使えないので、文と CSV をコピーする）
 
 
@@ -702,7 +705,32 @@ function errsHtml() {
   const notesHtml = rowNotes ? `<div class="note">${rowNotes}</div>` : '';
   if (!r.errors.length) return notesHtml;
   return `<div class="errs"><b>読めなかった行 ${new Set(r.errors.map((e) => e.row)).size} 行（計算から外しています）</b>` +
-    r.errors.map((e) => `<div>表の ${(S.idxMap[e.row - 1] ?? e.row - 1) + 1} 行目: ${esc(e.message)}</div>`).join('') + '</div>' + notesHtml;
+    r.errors.map((e) => `<div>表の ${(S.idxMap[e.row - 1] ?? e.row - 1) + 1} 行目: ${esc(errFix(e.message))}</div>`).join('') + '</div>' + notesHtml;
+}
+// 「○○がありません」には、どの列に何を入れるかを足す
+function errFix(m) {
+  const g = /^(日付|車種|到着|荷役開始|契約の相手)がありません$/.exec(m);
+  if (g) return `${m}（表の「${g[1]}」の列に入れてください）`;
+  if (m === '荷主等の都合の待機か（はい / いいえ）がありません') return `${m}（表の「荷主等の都合の待機か」の列に はい か いいえ を入れてください）`;
+  return m;
+}
+// 契約の相手が空の行は、仮の相手で計算している。その相手をまとめて入れる欄（結果の近くに出す）
+const provRows = () => (S.res ? S.res.rows.filter((r) => r.partner_provisional) : []);
+function provisionalHtml() {
+  const n = provRows().length;
+  if (!n || S.mode === 'shipper') return '';
+  return `<div class="note prov" id="prov-box"><b>契約の相手が空の ${n} 行は、仮の相手『${esc(PROVISIONAL_PARTNER)}』で計算しています。</b>
+    <label>この記録の荷主（契約の相手）<input type="text" id="prov-name" autocomplete="off" placeholder="例 ○○商事" aria-label="この記録の荷主（契約の相手）"></label>
+    <button type="button" id="b-prov-fill">全部の行に入れる</button></div>`;
+}
+function fillProvisional() {
+  const inp = $('#prov-name'), v = inp ? inp.value.trim() : '';
+  if (!v) { if (inp) inp.focus(); return; }
+  endExampleAuto();
+  let n = 0;
+  S.rows.forEach((r) => { if (!isBlank(r) && !String(r.partner || '').trim()) { r.partner = v; n += 1; } });
+  $('#bulk-msg').textContent = n ? `契約の相手が空の ${n} 行を『${v}』にしました` : '';
+  renderTable(); doCalc();
 }
 
 const partnerRows = (name) => (S.res ? S.res.rows.filter((r) => r.partner === name) : []);
@@ -815,7 +843,8 @@ function mailPeriod(p) {
 }
 function mailModel(p) {
   const amt = mainAmt(p), wait = mainWait(p), spot = topSpot(p.partner);
-  const name = String(p.partner).replace(/\s*(御中|様)\s*$/, '');
+  const prov = p.partner === PROVISIONAL_PARTNER;
+  const name = prov ? '（荷主の会社名）' : String(p.partner).replace(/\s*(御中|様)\s*$/, '');
   const period = mailPeriod(p);
   const paras = [
     `今回は、${period}の間にご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。到着してから荷役が始まるまでにお待ちした時間は、合計で${hmj(wait)}でした。` +
@@ -825,7 +854,7 @@ function mailModel(p) {
     '荷待ちを減らす方法を、貴社のご事情をうかがいながら、一緒に考えさせていただければと思っております。一度、短いお打ち合わせのお時間をいただけないでしょうか。到着時刻の調整や受付の予約、荷役の分担などについてご相談できればと考えております。',
   ];
   if (amt > 0) paras.push(`なお、荷待ちと荷役を国の標準的運賃に当てはめた参考額は、${n0(amt)}円（税抜）でした。請求書ではなく、荷待ちの大きさを共通の基準で見ていただくための目安です。計算のしかたは、このメールの末尾に載せています。`);
-  return { subject: `${MAIL_SUBJECT}（${period}）`, to: `${name} 物流ご担当者様`, name, greet: 'いつもお世話になっております。', paras, lead: '記録の一覧を下に貼っておきます。', rec: recModel(p),
+  return { subject: `${MAIL_SUBJECT}（${period}）`, to: `${name} 物流ご担当者様`, name, prov, greet: 'いつもお世話になっております。', paras, lead: '記録の一覧を下に貼っておきます。', rec: recModel(p),
     close: ['お忙しいところ恐れ入りますが、ご検討いただけますと幸いです。', 'よろしくお願いいたします。'] };
 }
 
@@ -856,9 +885,9 @@ function draftHtml(p) {
   const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((x) => `<td class="num">${n0(t.handling[x].normal[c])} / ${n0(t.handling[x].over_2h[c])}</td>`).join('')}</tr>`).join('');
   const cl = consultSentences(p.partner), cm = calcModel(p);
   const html = `<div class="mail">
-    <dl class="m-head"><dt>件名</dt><dd id="mail-subject">${esc(m.subject)}</dd><dt>宛先</dt><dd id="mail-to">${esc(m.to)}</dd></dl>
+    <dl class="m-head"><dt>件名</dt><dd id="mail-subject">${esc(m.subject)}</dd><dt>宛先</dt><dd id="mail-to">${m.prov ? `<span class="fill is-blank">${esc(m.name)}</span> 物流ご担当者様` : esc(m.to)}</dd></dl>
     <div class="m-body">
-      <p class="m-to">${esc(m.name)}<br>物流ご担当者様</p>
+      <p class="m-to">${m.prov ? `<span class="fill is-blank">${esc(m.name)}</span>` : esc(m.name)}<br>物流ご担当者様</p>
       <p>${esc(m.greet)}${fillSpan('company')}の${fillSpan('person')}です。</p>
       ${m.paras.map((x) => `<p>${esc(x)}</p>`).join('')}
       <p>${esc(m.lead)}</p>
@@ -987,6 +1016,7 @@ document.addEventListener('focusout', (e) => {
   const el = e.target.closest ? e.target.closest('[data-fill]') : null;
   if (el && !SENDER[el.dataset.fill]) { el.textContent = el.dataset.hint || SENDER_HINT[el.dataset.fill]; el.classList.add('is-blank'); }
 });
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'prov-name') { e.preventDefault(); fillProvisional(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.closest && e.target.closest('[data-fill]')) { e.preventDefault(); e.target.blur(); } });
 document.addEventListener('paste', (e) => {
   if (!(e.target.closest && e.target.closest('[data-fill]'))) return;
@@ -1053,7 +1083,7 @@ function renderResult() {
   const p = r.by_partner.find((x) => x.partner === sel);
   const tb = r.by_partner.map((x) => `<tr class="${x.partner === sel ? 'on' : ''}" data-pick="${esc(x.partner)}"><td class="c1">${esc(x.partner)}</td><td class="num" data-l="回数">${x.count}</td><td class="num" data-l="待機の合計">${hm(x.wait_minutes)}</td>` +
     `<td class="num" data-l="運転者の荷役の合計">${hm(x.handling_minutes)}</td><td class="num" data-l="参考額"><b>${n0(mainAmt(x))}</b>${hasRec(x) ? `<small class="small">　受付の時刻から数えた額（着いた時刻からだと ${n0(x.amount)} 円）</small>` : ''}${earlyShown(x) ? `<small class="small">　${earlyWord(x.partner)} ${noRecEarly(x).n} 回を除くと ${n0(mainAmt(x) - noRecEarly(x).amt)} 円</small>` : ''}</td><td class="num" data-l="1 時間以上">${x.over_1h_count}</td><td class="num" data-l="2 時間以上">${x.over_2h_count}</td></tr>`).join('');
-  $('#partners').innerHTML = `${statsHtml(p)}${heatHtml(p)}<h2>依頼元ごと<span class="small" title="運送を頼んできた会社">（?）</span><span class="small">　金額は税抜。行を押すと書面の相手が変わります</span></h2>
+  $('#partners').innerHTML = `${provisionalHtml()}${statsHtml(p)}${heatHtml(p)}<h2>依頼元ごと<span class="small" title="運送を頼んできた会社">（?）</span><span class="small">　金額は税抜。行を押すと書面の相手が変わります</span></h2>
     <div class="scroll-x"><table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th title="積み降ろしの作業">運転者の荷役の合計</th><th>請求の目安</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">待ちと荷役で 2 時間以上</th></tr></thead><tbody>${tb}</tbody></table></div>
     <details class="defs" id="head-defs"><summary>表の見出しの意味</summary><ul>
       <li><b>待機の合計</b>: 荷主側の荷役の時間を含む待機の分です。</li>
@@ -1341,7 +1371,7 @@ function collectRows() {
 function doCalc() {
   const rows = collectRows();
   if (!rows.length) { S.res = null; S.err = ''; } else {
-    try { S.res = calc(rows, S.year, TARIFF, S.defaults); S.err = ''; } catch (e) { S.res = null; S.err = e.message; }
+    try { S.res = calc(rows, S.year, TARIFF, S.mode === 'shipper' ? S.defaults : { ...S.defaults, provisional_partner: true }); S.err = ''; } catch (e) { S.res = null; S.err = e.message; }
   }
   S.bad = new Set(S.res ? S.res.errors.map((e) => S.idxMap[e.row - 1]) : []);
   document.querySelectorAll('#tbody tr').forEach((tr) => tr.classList.toggle('bad', S.bad.has(Number(tr.dataset.i))));
@@ -1679,6 +1709,7 @@ function init() {
     else if (t.id === 'b-cross') { S.carrierText = $('#cross-ta').value; S.crossOn = true; renderResult(); }
     else if (t.id === 'b-copynotice') copyNotice();
     else if (t.id === 'b-copyreply') copyReply();
+    else if (t.id === 'b-prov-fill') fillProvisional();
     else if (t.id === 'b-ask-ok') { S.askPartner = false; renderBoxes(); renderResult(); }
     else if (t.id === 'b-clear') { endExampleAuto(); S.memoRead = null; $('#memo-read').innerHTML = ''; S.askPartner = false; $('#paste-note').innerHTML = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderBoxes(); renderResult(); }
     else if (t.id === 'b-add') { endExampleAuto(); S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
