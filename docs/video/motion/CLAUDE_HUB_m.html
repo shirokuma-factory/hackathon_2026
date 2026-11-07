@@ -1,0 +1,132 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>CLAUDE_HUB_m</title>
+<style>
+:root{--ink:#05080c;--text:#ffffff;--muted:#9fb0c1;--warn:#f0c04a;--hl:#6cb6ff;--empty:#3a4757}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;background:#05080c;overflow:hidden}
+body{font-family:"Noto Sans JP","Yu Gothic","Meiryo",sans-serif;color:#fff;line-height:1.3}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px}
+.layer{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:960px 384px}
+svg{position:absolute;left:0;top:0;overflow:visible}
+.sh{text-shadow:0 4px 22px rgba(0,0,0,.65),0 0 5px rgba(0,0,0,.45)}
+.y{color:var(--warn)}
+.nm{font-size:30px;font-weight:700;letter-spacing:.02em;text-align:center}
+.sb{font-size:25px;font-weight:400;color:var(--muted);text-align:center;letter-spacing:.02em}
+</style></head><body data-duration="14.0">
+<div id="stage">
+ <div class="layer" id="bg"></div>
+ <div class="layer" id="fig"></div>
+ <div class="layer" id="txt"></div>
+</div>
+<script src="mkit_m.js"></script>
+<script>
+(function () {
+  var K = window.K, D = 14.0, CX = 960, CY = 384, RX = 700, RY = 176;
+  var bg = document.getElementById('bg'), fig = document.getElementById('fig'), txt = document.getElementById('txt');
+  /* 背景: 放射グラデーション、四隅の暗がり、リングの案内線 */
+  var bsv = K.el('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, bg);
+  var defs = K.el('defs', {}, bsv);
+  var rg = K.el('radialGradient', { id: 'rg', cx: '50%', cy: '37%', r: '75%' }, defs);
+  K.el('stop', { offset: '0', 'stop-color': '#0b1016' }, rg); K.el('stop', { offset: '1', 'stop-color': '#05080c' }, rg);
+  K.el('rect', { x: -120, y: -120, width: 2160, height: 1320, fill: 'url(#rg)' }, bsv);
+  var vg = K.el('radialGradient', { id: 'vg', cx: '50%', cy: '50%', r: '72%' }, defs);
+  K.el('stop', { offset: '.6', 'stop-color': '#000', 'stop-opacity': 0 }, vg); K.el('stop', { offset: '1', 'stop-color': '#000', 'stop-opacity': .45 }, vg);
+  K.el('rect', { x: -120, y: -120, width: 2160, height: 1320, fill: 'url(#vg)' }, bsv);
+  var guide = K.el('ellipse', { cx: CX, cy: CY, rx: RX, ry: RY, fill: 'none', stroke: 'rgba(255,255,255,.07)', 'stroke-width': 2, 'stroke-dasharray': '14 16', 'stroke-linecap': 'round' }, bsv);
+
+  var sv = K.el('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, fig);
+  var TOOLS = [
+    ['coder（Sonnet）', '実装と試験 1897 件'],
+    ['reviewer（Opus）', '反証レビュー'],
+    ['researcher（Opus）', '公的な出典 111 件の照合'],
+    ['Blender MCP', '3Dモデル 18 種'],
+    ['ComfyUI', 'MiniMax H3 の実写風の映像'],
+    ['DaVinci Resolve MCP', '動画の組み立て'],
+    ['ElevenLabs', 'ナレーション'],
+    ['Suno', 'BGM'],
+    ['Claude in Chrome', '素材探しと操作'],
+    ['GitHub', 'コミット 189 回']
+  ];
+  var BW = 330, BH = 124, WHITE = '#ffffff', YEL = '#f0c04a', GREY = '#3a4757', SW = 6, DA = '8 22';
+  var T0 = 1.3, STEP = 0.9, NR = 24;
+
+  /* 中央の箱 */
+  var cbox = K.el('g', {}, sv);
+  K.el('rect', { x: CX - BW / 2, y: CY - BH / 2, width: BW, height: BH, rx: 16, fill: 'rgba(18,26,35,.92)', stroke: '#2a3745', 'stroke-width': 1.5 }, cbox);
+  var ctop = K.el('rect', { x: CX - BW / 2, y: CY - BH / 2, width: BW, height: BH, rx: 16, fill: 'none', stroke: WHITE, 'stroke-width': 3 }, cbox);
+  var cn = K.div(txt, 'left:' + (CX - BW / 2) + 'px;top:' + (CY - 44) + 'px;width:' + BW + 'px;font-size:42px;font-weight:900;text-align:center;letter-spacing:.02em', 'Claude Code');
+  var cs = K.div(txt, 'left:' + (CX - BW / 2) + 'px;top:' + (CY + 12) + 'px;width:' + BW + 'px;font-size:25px;color:#9fb0c1;text-align:center', '本線　設計・判断・確認');
+  cn.className = 'sh'; cs.className = 'sh';
+
+  var items = TOOLS.map(function (t, k) {
+    var a = (-54 + 36 * k) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+    var x = CX + RX * ca, y = CY + RY * sa;
+    var dx = x - CX, dy = y - CY, len = Math.sqrt(dx * dx + dy * dy), ux = dx / len, uy = dy / len;
+    var tb = Math.min((BW / 2 + 6) / Math.max(Math.abs(ux), 1e-6), (BH / 2 + 6) / Math.max(Math.abs(uy), 1e-6));
+    var sx = CX + ux * tb, sy = CY + uy * tb;           /* 箱の縁 */
+    var ex = x - ux * (NR + 8), ey = y - uy * (NR + 8);  /* ノードの縁 */
+    var px = -uy * 13, py = ux * 13;                      /* 帰りの線のずらし */
+    var g = K.el('g', {}, sv);
+    var out = K.el('line', { x1: sx - px, y1: sy - py, x2: sx - px, y2: sy - py, stroke: WHITE, 'stroke-width': SW, 'stroke-linecap': 'round' }, g);
+    var bx1 = ex + px, by1 = ey + py, bx2 = sx + px, by2 = sy + py;  /* 帰りの線: ノード から 箱 */
+    var dash = K.el('line', { x1: bx1, y1: by1, x2: bx2, y2: by2, stroke: GREY, 'stroke-width': SW, 'stroke-linecap': 'round', 'stroke-dasharray': DA }, g);
+    var fill = K.el('line', { x1: bx1, y1: by1, x2: bx1, y2: by1, stroke: YEL, 'stroke-width': SW, 'stroke-linecap': 'round', 'stroke-dasharray': DA }, g);
+    var node = K.el('g', { transform: 'translate(' + x + ' ' + y + ')' }, g);
+    var inner = K.el('g', {}, node);
+    var ring = K.el('circle', { r: NR, fill: '#0b1016', stroke: WHITE, 'stroke-width': 3.5 }, inner);
+    var dot = K.el('circle', { r: 9, fill: YEL }, inner);
+    var above = sa < -0.01;
+    var lw = 420, lx = Math.max(96, Math.min(1824 - lw, x - lw / 2));
+    var nm = K.div(txt, 'left:' + lx + 'px;width:' + lw + 'px;' + (above ? 'bottom:' + (1080 - (y - NR - 12)) + 'px' : 'top:' + (y + NR + 12) + 'px'), '');
+    nm.className = 'sh';
+    nm.innerHTML = '<div class="nm">' + t[0] + '</div><div class="sb">' + t[1] + '</div>';
+    return { sx: sx, sy: sy, ex: ex, ey: ey, px: px, py: py, out: out, dash: dash, fill: fill, inner: inner, ring: ring, dot: dot,
+             n1: nm.children[0], n2: nm.children[1], bx1: bx1, by1: by1, bx2: bx2, by2: by2, start: T0 + STEP * k };
+  });
+
+  /* 最後の一行 */
+  var fin = K.div(txt, 'left:0;width:1920px;top:696px;text-align:center;font-size:48px;font-weight:700;letter-spacing:.04em;line-height:1',
+    '<span id="f1" style="display:inline-block">1人と Claude Code で</span> <span id="f2" class="y" style="display:inline-block;font-size:58px;font-weight:900">4日間</span>');
+  fin.className = 'sh';
+  var e1 = document.getElementById('f1'), e2 = document.getElementById('f2');
+  var ul = K.el('line', { x1: 0, y1: 0, x2: 0, y2: 0, stroke: YEL, 'stroke-width': 8, 'stroke-linecap': 'round' }, sv);
+  var ulx1 = 0, ulx2 = 0, uly = 0;
+  function measure() {
+    ulx1 = e2.offsetLeft + 4; ulx2 = e2.offsetLeft + e2.offsetWidth - 4;
+    uly = fin.offsetTop + e2.offsetTop + e2.offsetHeight + 3;
+  }
+  var F = K.P;
+  function render(s) {
+    var pc = F(s, 0.15, 0.6, K.E.out);
+    cbox.style.opacity = pc; cbox.style.transformOrigin = '960px 384px'; cbox.style.transform = 'scale(' + (0.92 + 0.08 * pc) + ')';
+    K.show(cn, F(s, 0.3, 0.5, K.E.out), 0, 14); K.show(cs, F(s, 0.5, 0.5, K.E.out), 0, 14);
+    items.forEach(function (it) {
+      var t = it.start;
+      var po = F(s, t, 0.35, K.E.mov);            /* 白い線が出る */
+      it.out.setAttribute('x2', K.lerp(it.sx - it.px, it.ex - it.px, po));
+      it.out.setAttribute('y2', K.lerp(it.sy - it.py, it.ey - it.py, po));
+      it.out.style.opacity = po > 0 ? 1 : 0;
+      var pp = F(s, t + 0.3, 0.35, K.E.out);       /* ノードが出る */
+      it.inner.setAttribute('transform', 'scale(' + (0.4 + 0.6 * pp) + ')');
+      it.inner.style.opacity = pp;
+      K.show(it.n1, pp, 0, 10);
+      it.dash.style.opacity = F(s, t + 0.5, 0.25, K.E.out) * 0.9;
+      var pf = F(s, t + 0.55, 0.45, K.E.mov);      /* 帰りの線が黄色で埋まる */
+      it.fill.setAttribute('x2', K.lerp(it.bx1, it.bx2, pf));
+      it.fill.setAttribute('y2', K.lerp(it.by1, it.by2, pf));
+      it.fill.style.opacity = pf > 0 ? 1 : 0;
+      K.show(it.n2, F(s, t + 0.55, 0.4, K.E.out), 0, 8); /* 結果の言葉 */
+      var pa = F(s, t + 0.95, 0.4, K.E.out);       /* 戻ったら輪が黄色になる */
+      it.ring.setAttribute('stroke', K.mix('#ffffff', YEL, pa)); it.dot.setAttribute('r', 9 * pa); it.dot.setAttribute('r', 9 * pa);
+    });
+    ctop.setAttribute('stroke', K.mix('#ffffff', YEL, F(s, T0 + STEP * 9 + 1.0, 0.5, K.E.out)));
+    K.show(e1, F(s, 10.7, 0.6, K.E.out), 0, 18); K.show(e2, F(s, 11.0, 0.6, K.E.out), 0, 18);
+    if (!ulx2) measure();
+    var pu = F(s, 11.5, 0.7, K.E.mov);
+    ul.setAttribute('x1', ulx1); ul.setAttribute('x2', K.lerp(ulx1, ulx2, pu));
+    ul.setAttribute('y1', uly); ul.setAttribute('y2', uly);
+    ul.style.opacity = pu > 0 ? 1 : 0;
+  }
+  K.setup(D, render);
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { measure(); window.__seek(0); });
+})();
+</script></body></html>

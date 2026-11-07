@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -31,7 +32,6 @@ XF = 8
 
 def dur(p: Path) -> float:
     r = subprocess.run([FF, "-hide_banner", "-i", str(p)], capture_output=True, text=True, encoding="utf-8", errors="replace")
-    import re
     m = re.search(r"Duration: (\d+):(\d+):([\d.]+)", r.stderr)
     return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))
 
@@ -54,14 +54,16 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--atempo", type=float, default=1.0)
     ap.add_argument("--kinetic", action="store_true", help="字幕を動く字幕（tools/video/make_kinetic.py）で描く")
+    ap.add_argument("--plan", default="tools/video/r5_plan.json", help="組み立ての表。shots・voice_tag・name・layout・kinetic_tool を表の中で指定できる")
     a = ap.parse_args()
     import make_subtitles as ms
     stamp = time.strftime("%H%M%S")
-    plan = json.loads((ROOT / "tools/video/r5_plan.json").read_text(encoding="utf-8"))
-    shots = {s["id"]: s for s in json.loads((ROOT / "docs/video/shots_r5.json").read_text(encoding="utf-8"))["shots"]}
+    plan = json.loads((ROOT / a.plan).read_text(encoding="utf-8"))
+    NAME = plan.get("name", "r5")
+    shots = {s["id"]: s for s in json.loads((ROOT / plan.get("shots", "docs/video/shots_r5.json")).read_text(encoding="utf-8"))["shots"]}
     vdir = OV / plan["voice_dir"]
     tag = plan["voice_tag"]
-    edl = {"timeline": "Backfull_r5", "fps": FPS, "video": {}, "audio": {}}
+    edl = {"timeline": f"Backfull_{NAME}", "fps": FPS, "video": {}, "audio": {}}
     V = lambda t: edl["video"].setdefault(str(t), [])
     A = lambda t: edl["audio"].setdefault(str(t), [])
     cards_all, voices, t = [], [], 0.0
@@ -157,9 +159,9 @@ def main() -> None:
             at = o["at"]
             st = at_t(at)
             p = OV / o["path"]
-            ln = o.get("len") or (card_t(o["until"]) - st if "until" in o else dur(p))
+            ln = o.get("len") or (card_t(o["until"]) - st if "until" in o else dur(p) - o.get("off", 0.0))
             ln = min(ln, blk_end - st)  # 図は自分の区間の中で終える（次の場面にはみ出さない）
-            V(o["track"]).append({"s": round(st * FPS), "L": round(ln * FPS), "off": 0, "path": str(p)})
+            V(o["track"]).append({"s": round(st * FPS), "L": round(ln * FPS), "off": round(o.get("off", 0.0) * FPS), "path": str(p)})
             if o.get("scrim"):
                 # 後ろの映像を暗く落とす幕（図の下、V3）。出入りは 0.3 秒のフェード
                 V(3).append({"s": round(st * FPS), "L": round(ln * FPS), "off": 0, "path": str(OV / "overlays/scrim.mov"), "fade_in": 9, "fade_out": 9})
@@ -183,13 +185,13 @@ def main() -> None:
         if sc[i]["s"] + sc[i]["L"] > sc[i + 1]["s"]:
             sc[i]["L"] = sc[i + 1]["s"] - sc[i]["s"] + 9
     # 字幕の改行と強調（数が合わなければ自動の改行）
-    lay_p = ROOT / "docs/video/subs_r5_layout.json"
+    lay_p = ROOT / plan.get("layout", "docs/video/subs_r5_layout.json")
     lay = json.loads(lay_p.read_text(encoding="utf-8"))["cards"] if lay_p.exists() else []
     if len(lay) == len(cards_all):
         out = []
         for c, Ls in zip(cards_all, lay):
             pieces = Ls.split("|")
-            n = [len(p.replace("*", "").replace("/", "")) for p in pieces]
+            n = [len(re.sub(r"\{[^}]*\}", "", p).replace("*", "").replace("/", "")) or 1 for p in pieces]
             tt, span = c["start"], c["end"] - c["start"]
             for p, k in zip(pieces, n):
                 e = tt + span * k / sum(n)
@@ -199,13 +201,13 @@ def main() -> None:
     else:
         print(f"注意: 字幕の割り付け {len(lay)} 枚と字幕 {len(cards_all)} 枚が合わないので、自動の改行にします")
     ms.STYLE = "clean"
-    ms.OUT = OV / "subs_r5"
+    ms.OUT = OV / f"subs_{NAME}"
     ms.OUT.mkdir(parents=True, exist_ok=True)
     with open(ms.OUT / "cards.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(cards_all, f, ensure_ascii=False, indent=1)
     sub = ms.OUT / f"subs_{stamp}.mov"
     if a.kinetic:
-        subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_kinetic.py"), "--cards", str(ms.OUT / "cards.json"),
+        subprocess.run(["uv", "run", "python", str(ROOT / plan.get("kinetic_tool", "tools/video/make_kinetic.py")), "--cards", str(ms.OUT / "cards.json"),
                         "--total", f"{total:.2f}", "--out", str(sub)], check=True)
     else:
         ms.render(cards_all, total)
@@ -235,7 +237,7 @@ def main() -> None:
         A(track).append({"s": round(max(0.0, at) * FPS), "L": round(dur(p) * FPS), "off": 0, "path": str(p), "gain_db": gain})
 
     LANDS = {"HOOK_m.mov": (2.4, None), "MG1_m.mov": (2.0, (0.9, 2.0)), "MG7_m.mov": (1.7, (0.6, 1.7)), "MG9_m.mov": (4.8, None),
-             "MG3_m.mov": (4.4, (3.3, 4.4)), "MG5_m.mov": (4.5, (3.5, 4.5)), "MG8_m.mov": (3.0, None)}
+             "MG3_m.mov": (4.4, (3.3, 4.4)), "MG3_m2.mov": (4.4, (3.3, 4.4)), "MG5_m.mov": (4.5, (3.5, 4.5)), "MG8_m.mov": (3.0, None)}
     for d in edl["video"].get("6", []):
         nm, s0 = Path(d["path"]).name, d["s"] / FPS
         if nm.startswith("TR_LINE"):
@@ -261,22 +263,21 @@ def main() -> None:
         elif nm.startswith("FLOW_KAGO"):
             cue(3, "whoosh_soft.wav", s0, -6)
     # 字幕の強調のうち数字を含むものが着地する瞬間に、弾む音（1・3・5 度を順に）
-    import re
     pk = 0
     for c in cards_all:
-        plain = c["text"].replace("/", "").replace("*", "")
+        plain = re.sub(r"\{[^}]*\}", "", c["text"]).replace("/", "").replace("*", "")
         dur_c = c["end"] - c["start"]
         pos = 0
-        for i, seg in enumerate(c["text"].replace("/", "").split("*")):
+        for i, seg in enumerate(re.sub(r"\{[^}]*\}", "", c["text"]).replace("/", "").split("*")):
             if i % 2 == 1 and re.search(r"[0-9０-９]", seg):
                 land = c["start"] + pos / max(1, len(plain)) * dur_c * 0.75 + 0.22
                 cue(4, ["pop_a.wav", "pop_b.wav", "pop_c.wav"][pk % 3], land, -5)
                 pk += 1
             pos += len(seg)
     # BGM
-    subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_bgm.py"), "--db", "-15", "--out", f"bgm_r5_{stamp}.wav",
+    subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_bgm.py"), "--db", "-15", "--out", f"bgm_{NAME}_{stamp}.wav",
                     "--total", f"{total:.2f}", "--voice", json.dumps(voices)], check=True)
-    A(5).append({"s": 0, "L": round(total * FPS), "off": 0, "path": str(OV / f"bgm/r04/bgm_r5_{stamp}.wav")})
+    A(5).append({"s": 0, "L": round(total * FPS), "off": 0, "path": str(OV / f"bgm/r04/bgm_{NAME}_{stamp}.wav")})
     # Resolve 側の台本の形（s, e, off, path, p, fade_in, fade_out, xfade_out）に直す
     for kind in ("video", "audio"):
         for tr, rows in edl[kind].items():
@@ -289,9 +290,9 @@ def main() -> None:
                     nxt = rows[i + 1] if i + 1 < len(rows) else None
                     d["xfade_out"] = XF if nxt and 0 <= nxt["s"] - d["e"] <= 1 and not d.get("fade_out") and (d["e"] - d["s"]) > 45 and (nxt["e"] - nxt["s"]) > 45 else 0
     edl["total"] = total
-    with open(ROOT / "docs/video/edl_r5.json", "w", encoding="utf-8", newline="\n") as f:
+    with open(ROOT / f"docs/video/edl_{NAME}.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(edl, f, ensure_ascii=False, indent=1)
-    print(f"r5: 合計 {total:.1f} 秒、字幕 {len(cards_all)} 枚 -> docs/video/edl_r5.json")
+    print(f"{NAME}: 合計 {total:.1f} 秒、字幕 {len(cards_all)} 枚 -> docs/video/edl_{NAME}.json")
 
 
 if __name__ == "__main__":

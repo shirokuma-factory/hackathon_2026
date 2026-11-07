@@ -1,0 +1,121 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>PREMISE_m</title><link rel="stylesheet" href="trailer_kit.css">
+<style>
+#blob{position:absolute;left:0;top:0;width:1920px;height:720px;background:radial-gradient(ellipse 60% 46% at 50% 42%,rgba(5,8,12,.62) 0%,rgba(5,8,12,.38) 58%,rgba(5,8,12,0) 100%)}
+.blk{position:absolute;width:880px;height:520px;opacity:0}
+.lab{position:absolute;left:0;top:116px;font-size:42px;font-weight:700;letter-spacing:.02em;color:var(--muted)}
+.big{position:absolute;left:0;top:156px;display:flex;align-items:baseline;font-size:210px;font-weight:900;line-height:1;letter-spacing:0;flex-wrap:nowrap}
+.big .u{font-size:94px;font-weight:700;opacity:0}
+.big>*{flex-shrink:0;white-space:nowrap}
+.big .n{display:inline-flex}
+.big .u.s{font-size:46px;margin-left:12px}
+.sub{position:absolute;left:0;font-size:40px;font-weight:700;letter-spacing:.02em;color:#fff;opacity:0}
+.sub.m{font-size:34px;color:var(--muted)}
+</style></head><body data-duration="16.0">
+<div id="stage">
+ <div class="layer" id="bg"><div id="blob"></div></div>
+ <div class="layer" id="fig"></div>
+ <div class="layer" id="txt">
+  <div class="blk" id="b0" style="left:96px;top:96px">
+   <div class="lab">国内の荷物の</div>
+   <div class="big sh tn"><span class="u">約</span><span class="n"></span><span class="u">割</span></div>
+   <div class="sub" style="top:410px">はトラックが運ぶ</div>
+  </div>
+  <div class="blk" id="b1" style="left:500px;top:170px">
+   <div class="lab">運転手の求人</div>
+   <div class="big sh tn"><span class="n"></span><span class="u">倍</span></div>
+   <div class="sub" style="top:410px;font-size:36px">仕事を探す人1人に約2.5件</div>
+   <div class="sub m" style="top:464px">平均年齢は50歳超え</div>
+  </div>
+  <div class="blk" id="b2" style="left:1000px;top:250px">
+   <div class="lab">2024年から残業は</div>
+   <div class="big sh tn"><span class="u">年</span><span class="n"></span><span class="u">時間</span><span class="u s">まで</span></div>
+   <div class="sub" style="top:410px">1人が運べる量が減った</div>
+  </div>
+ </div>
+</div>
+<script src="trailer_kit.js"></script>
+<script src="mkit_m.js"></script>
+<script>
+(function () {
+  var D = 16.0, P = K.P, E = K.E, N = 3;
+  var T0 = [0.3, 5.0, 10.0], CNT = 1.3, CS = 0.25; /* 数え上げは t0+0.25 から 1.3 秒 */
+  var FIN = [9, 2.5, 960], FMT = [0, 1, 0];
+  var figsvg = K.el('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, document.getElementById('fig'));
+  var POS = [[96, 96], [500, 170], [1000, 250]], SC = [1.6, 1.0, 1.0];
+
+  /* 線画のアイコン。pathLength=1 の要素を 0〜1 で描く */
+  function ico(i) {
+    var g = K.el('g', { transform: 'translate(' + POS[i][0] + ' ' + POS[i][1] + ') scale(' + SC[i] + ')' }, figsvg), parts = [];
+    function path(d, sw) { var p = K.el('path', { d: d, fill: 'none', stroke: '#ffffff', 'stroke-width': sw || 4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', pathLength: 1 }, g); parts.push(p); return p; }
+    function circ(cx, cy, r, sw) { var c = K.el('circle', { cx: cx, cy: cy, r: r, fill: 'none', stroke: '#ffffff', 'stroke-width': sw || 4, pathLength: 1, 'stroke-linecap': 'round' }, g); parts.push(c); return c; }
+    if (i === 0) {
+      var tg = K.el('g', { transform: 'scale(1.0)' }, g);
+      var t = K.truck(tg, 3); t.set('#ffffff', 0, 0);
+      t.all.forEach(function (n) { n.setAttribute('pathLength', 1); parts.push(n); });
+    } else if (i === 1) {
+      circ(44, 42, 16);
+      path('M14 92 Q14 66 44 66 Q74 66 74 92');
+      path('M26 36 Q26 12 44 12 Q62 12 62 36');
+      path('M20 36 H66 Q80 36 82 46');
+    } else {
+      circ(46, 46, 40);
+      path('M46 22 V46 L64 58');
+      path('M46 11 V15 M81 46 H77 M46 81 V77 M11 46 H15', 4);
+    }
+    return { g: g, parts: parts };
+  }
+  var icons = [0, 1, 2].map(ico);
+  function draw(p, v) {
+    if (v <= 0.0005) { p.style.opacity = 0; return; }
+    p.style.opacity = 1;
+    if (v >= 0.9995) { p.style.strokeDasharray = 'none'; return; }
+    p.style.strokeDasharray = '1 1'; p.style.strokeDashoffset = String(1 - v);
+  }
+
+  var blk = [], lab = [], big = [], units = [], num = [], subs = [], mot = [], ul = [];
+  for (var i = 0; i < N; i++) {
+    var b = document.getElementById('b' + i);
+    blk.push(b); lab.push(b.querySelector('.lab')); big.push(b.querySelector('.big'));
+    units.push([].slice.call(b.querySelectorAll('.u'))); num.push(b.querySelector('.n'));
+    subs.push([].slice.call(b.querySelectorAll('.sub')));
+    var s = K.el('svg', {}, b); ul.push(s); mot.push(null);
+    num[i].innerHTML = K.cells(FMT[i] ? '0.0' : '0');
+  }
+  function label(i, v) {
+    var x = FIN[i] * v;
+    return FMT[i] ? x.toFixed(1) : String(Math.round(x));
+  }
+
+  function render(s) {
+    for (var i = 0; i < N; i++) {
+      var t0 = T0[i];
+      /* 次の数字が出たら 35% に落とす */
+      var dim = i < N - 1 ? P(s, T0[i + 1], 0.6, E.mov) : 0;
+      var vis = P(s, t0, 0.2, E.out);
+      blk[i].style.opacity = vis * (1 - 0.65 * dim);
+      /* アイコン: 線を引く（0.9 秒、パーツ間 0.06 秒） */
+      var ic = icons[i];
+      ic.parts.forEach(function (p, k) { draw(p, E.mov(P(s, t0 + k * 0.05, 0.8))); });
+      ic.g.style.opacity = 1 - 0.65 * dim;
+      /* 小さい見出し */
+      K.show(lab[i], P(s, t0 + 0.12, 0.5), 0, 22);
+      /* 単位は数字より少し遅れて出る */
+      units[i].forEach(function (u, k) { K.show(u, P(s, t0 + 0.2 + k * 0.08, 0.5), 0, 26); });
+      /* 数え上げ: 最初に動き、最後はゆっくり */
+      var cp = P(s, t0 + CS, CNT, E.out);
+      var np = P(s, t0 + CS - 0.05, 0.3);
+      num[i].style.opacity = np;
+      num[i].innerHTML = K.cells(label(i, cp));
+      /* 補足 */
+      subs[i].forEach(function (e, k) { K.show(e, P(s, t0 + 1.35 + k * 0.1, 0.5), 0, 20); });
+      /* 印の線: 数字が着地したら引かれる。行き=白い実線、帰り=点線、黄色で埋まる */
+      if (!mot[i] && s >= t0 + 1.0) {
+        var w = big[i].offsetWidth || 400, ub = K.el('g', { transform: 'translate(0 382)' }, ul[i]);
+        mot[i] = K.motif(ub, 3, w * 0.34, w - 3, 0, 8);
+      }
+      if (mot[i]) mot[i].set(E.mov(P(s, t0 + 1.2, 0.45)), E.mov(P(s, t0 + 1.45, 0.45)), E.mov(P(s, t0 + 1.75, 0.55)));
+    }
+  }
+  K.setup(D, render);
+})();
+</script></body></html>
