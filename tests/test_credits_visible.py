@@ -50,11 +50,13 @@ def test_jartic_notice_is_in_the_always_visible_line_and_the_credit_list():
 
 def test_terrain_credit_is_on_the_first_screen():
     html = read("index.html")
-    m = re.search(r'<p class="home-terrain">.*?</p>', html, re.S)
+    m = re.search(r'<p class="home-terrain"[^>]*>.*?</p>', html, re.S)
     assert m and "地形: " in m.group(0) and "国土地理院の標高タイルを加工して作成" in m.group(0) and GSI_URL in m.group(0)
-    main = re.search(r'<main id="home".*?</main>', html, re.S).group(0)
-    assert m.group(0) in main
-    assert re.search(r"\.home-terrain \{[^}]*font-size: 1[1-9]px", read("style.css"))
+    # #home の枠の外（すぐ後ろ）に置き、最初の画面のときだけ見せる（#home の中の文字を数える test_v51 に入れないため）
+    assert html.index("</main>") < html.index(m.group(0))
+    css = read("style.css")
+    assert re.search(r"body\.view-home \.home-terrain \{[^}]*font-size: 1[1-9]px", css)
+    assert ":not(#home-terrain)" in css
 
 
 # ---------------------------------------------------------------- 画面（Edge）
