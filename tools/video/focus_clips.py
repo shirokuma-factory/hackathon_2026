@@ -63,6 +63,28 @@ PIECES = {
     "P12k": dict(take="R5c_kako", t_in=6.0, t_out=14.5),
     "P11kobe": dict(take="R5c_kobe", t_in=4.5, t_out=11.0),
     "P13": dict(take="R4_3x", t_in=0.0, t_out=18.0, speed=3, zmin=1.2, zmax=1.6, trans=0.5),
+    # 鹿児島版（r5）。録画は outputs/video/rec5/、出力は rec5/focus/。区間は旧 P1〜P13 と同じ
+    "P1g": dict(rec="rec5", take="R2g", t_in=2.4, t_out=14.4),
+    "P2g": dict(rec="rec5", take="R1g", t_in=4.0, t_out=11.8, drop_from=11.5),
+    "P3g": dict(rec="rec5", take="R2g", t_in=16.0, t_out=26.2, zmax=1.6),
+    "P4g": dict(rec="rec5", take="R3g", t_in=4.0, t_out=14.0,
+                manual=[dict(t0=4.0, t1=9.0, c=(960, 258), z=1.8)]),
+    "P5g": dict(rec="rec5", take="R4g", t_in=3.0, t_out=8.0),
+    "P6g": dict(rec="rec5", take="R4g", t_in=14.0, t_out=32.0, manual=[
+        dict(t0=14.0, t1=19.0, c=(420, 930), z=1.9),
+        dict(t0=19.0, t1=21.1, box=(846, 346, 1889, 459)),
+        dict(t0=28.0, t1=29.4, box=(846, 346, 1889, 459)),
+        dict(t0=29.4, t1=30.8, c=(1180, 230), z=1.9),
+        dict(t0=30.8, t1=32.1, box=(862, 758, 1589, 865)),
+    ]),
+    "P7g": dict(rec="rec5", take="R5ag", t_in=1.0, t_out=7.0),
+    "P8g": dict(rec="rec5", take="R5bg", t_in=1.5, t_out=9.37),
+    "P9g": dict(rec="rec5", take="R5cg", t_in=0.0, t_out=2.63, drop_from=0.0,
+                manual=[dict(t0=0.0, t1=2.63, c=(1250, 560), z=1.3)]),
+    "P10g": dict(rec="rec5", take="R5cg", t_in=2.0, t_out=6.5, drop_from=6.1),
+    "P11g": dict(rec="rec5", take="R5cg", t_in=10.0, t_out=16.5),
+    "P12g": dict(rec="rec5", take="R5cg", t_in=6.0, t_out=14.5),
+    "P13g": dict(rec="rec5", take="R4_3xg", t_in=0.0, t_out=18.0, speed=3, zmin=1.2, zmax=1.6, trans=0.5),
 }
 
 
@@ -279,7 +301,9 @@ def sheet(tiles, path):
 
 def make(pid):
     p = PIECES[pid]
-    src = REC / f"{p['take']}.mp4"
+    rec = REC.parent / p["rec"] if "rec" in p else REC
+    OUT = rec / "focus"
+    src = rec / f"{p['take']}.mp4"
     speed = p.get("speed", 1)
     t_in, t_out = p["t_in"], p["t_out"]
     zmin, zmax = p.get("zmin", 1.15), p.get("zmax", 2.6)

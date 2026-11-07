@@ -41,10 +41,12 @@ def hold(p: Path, need: float) -> Path:
     have = dur(p)
     if have >= need - 1e-3:
         return p
-    q = p.with_name(p.stem + f"_hold{int(need + 2)}" + (".mov" if p.suffix == ".mov" else ".mp4"))
+    q = p.with_name(p.stem + f"_hold{int(need + 2)}b" + (".mov" if p.suffix == ".mov" else ".mp4"))
     if not q.exists():
         codec = ["-c:v", "qtrle", "-pix_fmt", "argb"] if p.suffix == ".mov" else ["-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p"]
-        subprocess.run([FF, "-loglevel", "error", "-y", "-i", str(p), "-vf", f"tpad=stop_mode=clone:stop_duration={need - have + 2:.2f}", "-an", *codec, str(q)], check=True)
+        # 動く図（.mov）は最後に消えるので、消え始める前（終わりの 0.5 秒手前）のコマで止めて延ばす
+        cut = have - 0.5 if p.suffix == ".mov" else have
+        subprocess.run([FF, "-loglevel", "error", "-y", "-i", str(p), "-vf", f"trim=0:{cut:.3f},setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration={need - cut + 2:.2f}", "-an", *codec, str(q)], check=True)
     return q
 
 
