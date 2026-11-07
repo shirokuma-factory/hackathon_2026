@@ -130,8 +130,70 @@ def spans(line: str) -> list[tuple[str, tuple[int, int, int]]]:
     return out
 
 
+STYLE = "box"   # "box": 暗い帯の上に文字（r3 まで） / "clean": 帯なし、縁取りと柔らかい影、句読点なし（r4）
+
+
+def tv_lines(text: str) -> list[str]:
+    """テレビの字幕の書き方: 「、」で改行（2 行まで）、「。」は消す。"""
+    s = text.replace("。", "").strip()
+    parts = [p for p in s.split("、") if p]
+    if len(parts) <= 1:
+        return wrap(s) if len(s) > LINE else [s]
+    # 2 行に収まるよう、真ん中に近い「、」で分け、残りの「、」は空白にする
+    best = min(range(1, len(parts)), key=lambda k: abs(len("".join(parts[:k])) - len("".join(parts[k:]))))
+    return ["　".join(parts[:best]), "　".join(parts[best:])]
+
+
+_EMPH_FONT = {}
+
+
+def marked_spans(line: str) -> list[tuple[str, bool]]:
+    """「*強調*」の印を、(文字, 強調か) の並びにする。印が無ければ EMPH の正規表現で強調を決める。"""
+    if "*" in line:
+        parts = line.split("*")
+        return [(p, i % 2 == 1) for i, p in enumerate(parts) if p]
+    return [(s, col == YELLOW) for s, col in spans(line)]
+
+
+def card_image_clean(text: str, f, alpha: float, dy: int):
+    """帯なし。白い文字に細い縁取りと柔らかい影。強調は黄で 1.15 倍・太く、下の線（ベースライン）をそろえる。"""
+    from PIL import Image, ImageDraw, ImageFilter, ImageFont
+    lines = text.split("/") if ("/" in text or "*" in text) else tv_lines(text)
+    if f.size not in _EMPH_FONT:
+        fe = ImageFont.truetype(FONT, int(f.size * 1.15))
+        try:
+            fe.set_variation_by_axes([800])
+        except Exception:
+            pass
+        _EMPH_FONT[f.size] = fe
+    fe = _EMPH_FONT[f.size]
+    asc_n, asc_e = f.getmetrics()[0], fe.getmetrics()[0]
+    lh = 78
+    sh = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ds = ImageDraw.Draw(sh)
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    y0 = H - 150 - lh * len(lines) + dy
+    a = int(255 * alpha)
+    for k, x in enumerate(lines):
+        segs = marked_spans(x)
+        tw = sum(d.textlength(s, font=fe if e else f) for s, e in segs)
+        cx = (W - tw) / 2
+        base = y0 + k * lh + asc_e  # この行のベースライン
+        for s, e in segs:
+            ft = fe if e else f
+            y = base - (asc_e if e else asc_n)
+            ds.text((cx, y + 3), s, font=ft, fill=(0, 0, 0, int(210 * alpha)), stroke_width=7, stroke_fill=(0, 0, 0, int(210 * alpha)))
+            d.text((cx, y), s, font=ft, fill=(YELLOW if e else WHITE) + (a,), stroke_width=2, stroke_fill=(10, 14, 20, int(230 * alpha)))
+            cx += d.textlength(s, font=ft)
+    sh = sh.filter(ImageFilter.GaussianBlur(8))
+    return Image.alpha_composite(sh, im)
+
+
 def card_image(text: str, f, alpha: float, dy: int):
     from PIL import Image, ImageDraw
+    if STYLE == "clean":
+        return card_image_clean(text, f, alpha, dy)
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     lines = wrap(text)
@@ -150,7 +212,7 @@ def card_image(text: str, f, alpha: float, dy: int):
 
 def render(cards: list[dict], total: float) -> None:
     from PIL import Image, ImageFont
-    f = ImageFont.truetype(FONT, 46)
+    f = ImageFont.truetype(FONT, 52 if STYLE == "clean" else 46)
     try:
         f.set_variation_by_axes([600])
     except Exception:

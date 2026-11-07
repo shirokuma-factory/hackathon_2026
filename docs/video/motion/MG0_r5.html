@@ -1,0 +1,29 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>MG0</title><link rel="stylesheet" href="../graphics/common.css"><link rel="stylesheet" href="motion.css">
+<style>
+html,body{background:var(--bg)}
+#m0{position:absolute;left:150px;top:110px;right:150px}
+#m0 h1{font-size:72px;margin-bottom:40px}
+.r{display:flex;align-items:baseline;gap:28px;font-size:58px;font-weight:700;margin-bottom:34px;width:1560px;white-space:nowrap}
+.no{color:var(--muted);width:72px;font-size:66px}
+.tx{width:1180px}
+.wh{margin-left:auto;font-size:30px;font-weight:500;color:var(--muted);border:2px solid var(--line);border-radius:999px;padding:4px 22px}
+</style>
+</head><body data-duration="12.0">
+<div id="m0"><h1 data-at="0.2">Backfull でできること</h1>
+<div class="r" data-at="1.0"><span class="no">①</span><span class="tx">帰り便の偏りを地図で見る</span><span class="wh" data-at="7.2">運送会社</span></div>
+<div class="r" data-at="2.5"><span class="no">②</span><span class="tx">自社の帰りの空きを　配車表のファイルを入れるだけで見る</span><span class="wh" data-at="7.2">運送会社</span></div>
+<div class="r" data-at="4.0"><span class="no">③</span><span class="tx">荷待ちの損と相談の書面を作る</span><span class="wh" data-at="7.2">運送会社</span></div>
+<div class="r" data-at="5.5"><span class="no">④</span><span class="tx">荷物の送り方を比べて　帰り便とつなぐ</span><span class="wh" data-at="7.2">荷主</span></div>
+</div>
+<script src="motion.js"></script>
+<script>
+(function () {
+  var q = window.__seek, m = document.getElementById('m0');
+  window.__seek = function (ms) {
+    q(ms);
+    var s = ms / 1000;
+    m.style.opacity = 1 - Math.min(1, Math.max(0, (s - 11.7) / 0.2667));
+  };
+  window.__seek(0);
+})();
+</script></body></html>

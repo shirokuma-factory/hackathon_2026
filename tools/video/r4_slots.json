@@ -1,0 +1,118 @@
+{
+ "_説明": "r3 の V1 の区間（始まりの秒）を、新しい素材の切れ（path, off 秒, len 秒）に置き換える。len の合計は元の区間の長さと同じにする。p はズームなどの設定（空なら等倍）",
+ "6.0": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P1.mp4",
+   "off": 0,
+   "len": 12.0
+  }
+ ],
+ "18.0": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P2.mp4",
+   "off": 0,
+   "len": 7.8
+  }
+ ],
+ "25.8": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P3.mp4",
+   "off": 0,
+   "len": 10.2
+  }
+ ],
+ "36.0": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/kiriko/hands_1080.mp4",
+   "off": 0.3,
+   "len": 4.5
+  }
+ ],
+ "61.5": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P4.mp4",
+   "off": 0,
+   "len": 10.0
+  }
+ ],
+ "71.5": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P5.mp4",
+   "off": 0,
+   "len": 5.0
+  },
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P6.mp4",
+   "off": 0,
+   "len": 18.0
+  }
+ ],
+ "94.5": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/kiriko/desk_1080.mp4",
+   "off": 2.0,
+   "len": 3.0
+  }
+ ],
+ "97.5": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P7.mp4",
+   "off": 0,
+   "len": 6.0
+  }
+ ],
+ "103.5": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P8.mp4",
+   "off": 0,
+   "len": 7.87
+  }
+ ],
+ "111.37": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P9.mp4",
+   "off": 0,
+   "len": 2.63
+  }
+ ],
+ "114.0": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P10.mp4",
+   "off": 0,
+   "len": 4.5
+  },
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P11.mp4",
+   "off": 0,
+   "len": 6.5
+  },
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P12.mp4",
+   "off": 0,
+   "len": 8.5
+  }
+ ],
+ "154.0": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/rec4/focus/P13.mp4",
+   "off": 0,
+   "len": 6.0
+  }
+ ],
+ "_v3": {
+  "36.0": "C:/dev/hackathon_2026/outputs/video/overlays/note_gen_r4.mov",
+  "94.5": "C:/dev/hackathon_2026/outputs/video/overlays/note_gen_r4.mov"
+ },
+ "160.0": [
+  {
+   "path": "C:/dev/hackathon_2026/outputs/video/graphics/G4_r4_still.mp4",
+   "off": 0,
+   "len": 3.5,
+   "p": {
+    "ZoomX": 0.72,
+    "ZoomY": 0.72,
+    "Tilt": 160.0
+   }
+  }
+ ]
+}
