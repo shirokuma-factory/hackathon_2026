@@ -20,10 +20,10 @@ from pathlib import Path
 FFMPEG = "C:/ai/bin/ffmpeg.exe"
 FONT = "C:/Windows/Fonts/NotoSansJP-VF.ttf"
 W, H, FPS = 1920, 1080, 30
-SIZE, WEIGHT = 22, 500
+SIZE, WEIGHT = 16, 500  # 11/7 作成者「注釈はもっと小さく」で 22 から 16 に
 COLOR = (0xC9, 0xD3, 0xDE)
 OPACITY = 0.8
-LEFT, BASE_FROM_BOTTOM = 60, 26
+LEFT, BASE_FROM_BOTTOM = 60, 18
 FADE = 0.25
 
 

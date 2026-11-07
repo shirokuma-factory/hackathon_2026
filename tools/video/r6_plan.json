@@ -1,0 +1,362 @@
+{
+ "_説明": "r6 の組み立ての表（build_r5.py --plan で使う）。r5 からの変更: 一般向けの前提（P1）、4K から寄せた録画（rec6）、実写の素材に今のアプリをはめ込んだ場面、書面の見え方、始め方の流れ、Claude の道具の図、冒頭の環境音を外す",
+ "name": "r6",
+ "shots": "docs/video/shots_r6.json",
+ "voice_dir": "voice/tight_r6",
+ "voice_tag": "r6",
+ "layout": "docs/video/subs_r6_layout.json",
+ "kinetic_tool": "tools/video/make_kinetic2.py",
+ "blocks": [
+  {
+   "id": "H0",
+   "gap": 0,
+   "lead": 0.6,
+   "tail": 0.2,
+   "v1": [
+    {
+     "path": "comfy/C1v3_6s.mp4",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/HOOK_m.mov",
+     "at": {
+      "say": "ろくわり",
+      "land": 2.4
+     }
+    },
+    {
+     "track": 3,
+     "path": "overlays/note_ai_r4.mov",
+     "at": {
+      "t": 0
+     },
+     "len": 6.0
+    }
+   ]
+  },
+  {
+   "id": "P1",
+   "gap": 0,
+   "lead": 0.2,
+   "tail": 0.3,
+   "tr": true,
+   "v1": [
+    {
+     "path": "motion/FLOW_JP.mov",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/PREMISE_m.mov",
+     "off": 0.0,
+     "len": 5.0,
+     "at": {
+      "say": "きゅうわり",
+      "land": 1.5
+     }
+    },
+    {
+     "track": 5,
+     "path": "motion/PREMISE_m.mov",
+     "off": 5.0,
+     "len": 5.0,
+     "at": {
+      "say": "にてんご",
+      "land": 1.2
+     }
+    },
+    {
+     "track": 5,
+     "path": "motion/PREMISE_m.mov",
+     "off": 10.0,
+     "at": {
+      "say": "きゅうひゃく",
+      "land": 1.2
+     }
+    }
+   ],
+   "audio": [
+    {
+     "track": 4,
+     "path": "sfx/kit/land_soft.wav",
+     "at": {
+      "say": "きゅうわり",
+      "land": 0.0
+     }
+    },
+    {
+     "track": 4,
+     "path": "sfx/kit/land_soft.wav",
+     "at": {
+      "say": "にてんご",
+      "land": 0.0
+     }
+    },
+    {
+     "track": 4,
+     "path": "sfx/kit/land_soft.wav",
+     "at": {
+      "say": "きゅうひゃく",
+      "land": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "id": "H1",
+   "gap": 0,
+   "lead": 0.2,
+   "tail": 0.3,
+   "v1": [
+    {
+     "path": "motion/FLOW_JP.mov",
+     "off": 4.0,
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/MG7_m.mov",
+     "at": {
+      "say": "さんじゅうよん",
+      "land": 1.7
+     }
+    }
+   ]
+  },
+  {
+   "id": "H2",
+   "gap": 0.6,
+   "lead": 0.3,
+   "tail": 0.4,
+   "v1": [
+    {
+     "path": "rec6/focus/P1h.mp4",
+     "until": "たとえば"
+    },
+    {
+     "path": "motion/FLOW_KAGO.mov",
+     "until": "しかも"
+    },
+    {
+     "path": "rec6/focus/P3h.mp4",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/MG9_m.mov",
+     "at": {
+      "say": "荷を積まずに",
+      "land": 2.2
+     },
+     "scrim": true,
+     "until": "たとえば"
+    },
+    {
+     "track": 5,
+     "path": "motion/MG8_m.mov",
+     "at": {
+      "say": "会員制",
+      "land": 3.0
+     },
+     "scrim": true
+    }
+   ]
+  },
+  {
+   "id": "H3",
+   "gap": 0,
+   "lead": 0.3,
+   "tail": 0.3,
+   "tr": true,
+   "v1": [
+    {
+     "path": "stock/Crystal_Glass_With_Water_In_Red_Light_uhd_1276670.mp4",
+     "off": 1.0,
+     "until": "それをつなぐ"
+    },
+    {
+     "path": "motion/LOGO_B.mov",
+     "len": 6.0
+    }
+   ]
+  },
+  {
+   "id": "H4",
+   "gap": 0.6,
+   "lead": 0.3,
+   "tail": 0.4,
+   "v1": [
+    {
+     "path": "motion/MG0_r6.mov",
+     "until": "運送会社は記録"
+    },
+    {
+     "path": "rec6/focus/FLOW0h.mp4",
+     "fill": true
+    }
+   ]
+  },
+  {
+   "id": "R4",
+   "gap": 0.9,
+   "lead": 0.3,
+   "tail": 0.4,
+   "chapter": "motion/CHM2.mov",
+   "v1": [
+    {
+     "path": "stock/office_dive.mp4",
+     "len": 4.0
+    },
+    {
+     "path": "rec6/focus/P4h.mp4",
+     "until": "10月"
+    },
+    {
+     "path": "rec6/focus/P5h.mp4",
+     "until": "もう一つ"
+    },
+    {
+     "path": "rec6/focus/P6h.mp4",
+     "until": "その記録を貼ると"
+    },
+    {
+     "path": "rec6/focus/DOCh.mp4",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 2,
+     "path": "overlays/tag_c1_r6.mov",
+     "at": {
+      "t": 1.9
+     }
+    },
+    {
+     "track": 5,
+     "path": "motion/MG3_m2.mov",
+     "at": {
+      "say": "にじゅうびん",
+      "land": 4.4
+     },
+     "scrim": true,
+     "until": "もう一つ"
+    }
+   ]
+  },
+  {
+   "id": "R5",
+   "gap": 0.9,
+   "lead": 0.3,
+   "tail": 0.4,
+   "chapter": "motion/CHM3.mov",
+   "v1": [
+    {
+     "path": "stock/laptop_dive.mp4",
+     "len": 4.0
+    },
+    {
+     "path": "rec6/focus/P7h.mp4",
+     "until": "でも"
+    },
+    {
+     "path": "rec6/focus/P8h.mp4",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 2,
+     "path": "overlays/tag_c2_r4.mov",
+     "at": {
+      "t": 1.9
+     }
+    }
+   ]
+  },
+  {
+   "id": "R6",
+   "gap": 0.9,
+   "lead": 0.3,
+   "tail": 0.4,
+   "chapter": "motion/CHM4.mov",
+   "v1": [
+    {
+     "path": "rec6/focus/P9h.mp4",
+     "len": 2.63
+    },
+    {
+     "path": "rec6/focus/P10h.mp4",
+     "until": "値段は"
+    },
+    {
+     "path": "rec6/focus/P12h.mp4",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 5,
+     "path": "motion/MG5_m.mov",
+     "at": {
+      "say": "きゅうまんごせんえん",
+      "land": 4.5
+     },
+     "scrim": true
+    }
+   ]
+  },
+  {
+   "id": "R7",
+   "gap": 0.8,
+   "lead": 0.3,
+   "tail": 0.4,
+   "chapter": "motion/CHM5.mov",
+   "v1": [
+    {
+     "path": "rec/CC_rec_v2.mp4",
+     "len": 3.6
+    },
+    {
+     "path": "motion/CLAUDE_HUB_m.mov",
+     "fill": true
+    }
+   ],
+   "over": [
+    {
+     "track": 3,
+     "path": "rec/tag_cc.mov",
+     "at": {
+      "t": 0.1
+     },
+     "len": 3.4
+    }
+   ]
+  },
+  {
+   "id": "H8",
+   "gap": 0.9,
+   "lead": 0.3,
+   "tail": 0.3,
+   "v1": [
+    {
+     "path": "rec6/focus/P13h.mp4",
+     "until": "空気を運ぶ"
+    },
+    {
+     "path": "motion/LOGO_B.mov",
+     "len": 6.0
+    }
+   ]
+  }
+ ]
+}

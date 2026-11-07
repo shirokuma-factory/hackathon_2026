@@ -88,17 +88,31 @@ PIECES = {
 }
 
 
-def read_frames(path, t0, dur):
-    cmd = [FFMPEG, "-v", "error", "-ss", f"{t0}", "-t", f"{dur}", "-i", str(path),
+# 高解像度版（r6）。録画は outputs/video/rec6/（3840x2160）、出力は rec6/focus/（1920x1080）。区間は g と同じ。
+# 元が 4K なので 2 倍までの切り出しは元の解像度のまま（S=2）
+for _k in range(1, 14):
+    PIECES[f"P{_k}h"] = dict(PIECES[f"P{_k}g"], rec="rec6", S=2)
+# 使い始め方の流れ。FLOW0.mp4 は concat_flow0.py で FLOW0a〜d をつないだもの。やさしい構図（1.0〜1.6 倍）で、文字をくっきり見せる
+PIECES["FLOW0h"] = dict(rec="rec6", S=2, take="FLOW0", t_in=0.0, t_out=47.4, zmin=1.0, zmax=1.6, wide_z=1.0, trans=0.9)
+# 協議の書面。題 → 記録一覧 → 参考額の合計。スクロール中は書面の列（x≈1226）を中央に置く
+PIECES["DOCh"] = dict(rec="rec6", S=2, take="DOC", t_in=0.4, t_out=13.9, zmin=1.6, zmax=2.2, trans=0.9, manual=[
+    dict(t0=3.5, t1=10.3, c=(1226, 520), z=1.85)])
+
+
+def read_frames(path, t0, dur, S=1, down=False):
+    """S: 元動画の倍率（4K 録画なら 2）。down=True なら 1920x1080 に縮小して読む（枠の検出用）。"""
+    vf = ["-vf", f"scale={W}:{H}:flags=area"] if (down and S != 1) else []
+    cmd = [FFMPEG, "-v", "error", "-ss", f"{t0}", "-t", f"{dur}", "-i", str(path), *vf,
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
     pr = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    n = W * H * 3
+    sw, sh = (W, H) if (down or S == 1) else (W * S, H * S)
+    n = sw * sh * 3
     try:
         while True:
             b = pr.stdout.read(n)
             if len(b) < n:
                 break
-            yield np.frombuffer(b, np.uint8).reshape(H, W, 3)
+            yield np.frombuffer(b, np.uint8).reshape(sh, sw, 3)
     finally:
         pr.stdout.close()
         pr.wait()
@@ -278,7 +292,16 @@ def camera_factory(init, keys, trans, zmax):
 
 
 def render_frame(f, x0, y0, z):
-    M = np.array([[1 / z, 0, x0 + 0.5 / z - 0.5], [0, 1 / z, y0 + 0.5 / z - 0.5]], np.float32)
+    """f は (H*S, W*S) の元コマ。(x0, y0, z) は 1920x1080 の座標系。S>1 でも元の解像度のまま切り出す。"""
+    S = f.shape[1] // W
+    if S > 1 and S / z > 1.0:
+        # 縮小になるときは、先に面積平均で (W*z, H*z) に縮めてから切り出す（間引きによるにじみを避ける）
+        f = cv2.resize(f, (int(round(W * z)), int(round(H * z))), interpolation=cv2.INTER_AREA)
+        sc = z
+    else:
+        sc = float(S)
+    k = sc / z   # 出力 1 画素あたりの元画素数（<=1 なら拡大）
+    M = np.array([[k, 0, sc * x0 + 0.5 * k - 0.5], [0, k, sc * y0 + 0.5 * k - 0.5]], np.float32)
     return cv2.warpAffine(f, M, (W, H), flags=cv2.INTER_LANCZOS4 | cv2.WARP_INVERSE_MAP,
                           borderMode=cv2.BORDER_REPLICATE)
 
@@ -304,6 +327,7 @@ def make(pid):
     rec = REC.parent / p["rec"] if "rec" in p else REC
     OUT = rec / "focus"
     src = rec / f"{p['take']}.mp4"
+    S = p.get("S", 1)   # 元動画の倍率（rec6 は 3840x2160 なので 2）
     speed = p.get("speed", 1)
     t_in, t_out = p["t_in"], p["t_out"]
     zmin, zmax = p.get("zmin", 1.15), p.get("zmax", 2.6)
@@ -314,7 +338,7 @@ def make(pid):
     scan_end = min(t_out + 1.5, video_duration(src))
     dets, samples = [], []
     mid = int(round((t_out - t_in) * FPS / 2))
-    for i, f in enumerate(read_frames(src, t_in, scan_end - t_in)):
+    for i, f in enumerate(read_frames(src, t_in, scan_end - t_in, S, down=True)):
         if i % 3 == 0:
             dets.append((t_in + i / FPS, detect(f)))
         if i in (0, mid):
@@ -340,7 +364,7 @@ def make(pid):
         str(outp)], stdin=subprocess.PIPE)
     pick = {int((k + 0.5) * n / 12) for k in range(12)}
     tiles, log, last, i = [], [], None, 0
-    for k, f in enumerate(read_frames(src, t_in, dur * speed + 0.2)):
+    for k, f in enumerate(read_frames(src, t_in, dur * speed + 0.2, S)):
         if k % speed or i >= n:
             continue
         x0, y0, z = at(i / FPS)
