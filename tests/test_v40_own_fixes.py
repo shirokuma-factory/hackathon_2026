@@ -397,7 +397,7 @@ def test_ui_unreadable_files_formula_text_and_stop_scope(app, tmp_path):
     _set_files(page, files)
     page.wait(lambda: "自社のファイル: 2 件（読めなかった 2 件）" in _src(page), 120, "取り込み")
     msg = page.js("document.querySelector('#own-drop-msg').textContent")
-    assert "2 件を読みました" in msg and "読めなかった 2 件" in msg and "memo.csv" in msg
+    assert "ファイル 2 件" in msg and "を読みました" in msg and "読めなかった 2 件" in msg and "memo.csv" in msg
     # 3 つの数字の式は、押して開く説明に出る（title だけではない）
     page.js("Own.setTab('import')")
     assert page.js("document.querySelector('#own-fm summary').textContent") == "3 つの数字の式を見る"

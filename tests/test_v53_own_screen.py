@@ -34,11 +34,11 @@ MOCK_AI = """(function(){
 })();"""
 
 PLATE = "鹿児島 100 か 9001"
-HEAD = "運行日,車番,発地,着地,発時刻,着時刻,走行km,実空"
+HEAD = "運行日,車番,発地,着地,出庫,着時刻,実績値,実空"
 
 
 def odd_csv() -> str:
-    """見出しを変えた配車表（縦の形）。発時刻・走行km は列の名前だけでは役割が決まらない。実空の印で帰りは空車。"""
+    """見出しを変えた配車表（縦の形）。出庫・実績値 は列の名前だけでは役割が決まらない。実空の印で帰りは空車。"""
     rows = [HEAD]
     for d in range(1, 13):
         if d % 2:
@@ -128,7 +128,7 @@ def test_ai_button_needs_confirmation_and_sends_no_raw_values(app, tmp_path):
     page = app
     _import_odd(page, tmp_path)
     need = json.loads(page.js("JSON.stringify(Own.state.data.column_roles_needed.map(x => x.column))"))
-    assert "発時刻" in need and "走行km" in need, need
+    assert "出庫" in need and "実績値" in need, need
     page.js("window.__aiCalls.length = 0")
     page.wait(lambda: page.js("!!document.querySelector('#own-aibox [data-act=ai-cols]')"), 10, "AI のボタン")
     assert T(page, "#own-aibox [data-act=ai-cols]") == "AI に列を整理してもらう"
@@ -138,7 +138,7 @@ def test_ai_button_needs_confirmation_and_sends_no_raw_values(app, tmp_path):
     conf = T(page, ".o-aiconf")
     assert "この内容を Anthropic の API に送ります" in conf and "値そのものは送りません" in conf
     assert page.js("!!document.querySelector('.o-aiconf [data-act=ai-cols-send]') && !!document.querySelector('.o-aiconf [data-act=ai-cols-cancel]')")
-    assert "発時刻" in conf and "走行km" in conf and "HH:MM の時刻" in conf
+    assert "出庫" in conf and "実績値" in conf and "HH:MM の時刻" in conf
     for raw in ("鹿児島", "9001", "鹿屋", "江東", "681.9", "21:10"):
         assert raw not in conf, raw
     assert page.js("window.__aiCalls.length") == 0
@@ -150,8 +150,8 @@ def test_ai_button_needs_confirmation_and_sends_no_raw_values(app, tmp_path):
     page.js("document.querySelector('#own-aibox [data-act=ai-cols]').click()")
     time.sleep(0.3)
     cols = json.loads(page.js("JSON.stringify(Own.state.aiOwn.confirm.payload.columns)"))
-    reply = {"ok": True, "suggestions": [{"index": i, "role": "start_time" if c["header"] == "発時刻" else "ignore", "confidence": "medium", "reason_ja": "見出しと時刻の形が合います"} for i, c in enumerate(cols)]}
-    # 発時刻の列に、配車表の選択肢に無い役割（start_time）を混ぜても、画面は選択肢にある役割だけ受ける。ignore は「使わない」になる
+    reply = {"ok": True, "suggestions": [{"index": i, "role": "start_time" if c["header"] == "出庫" else "ignore", "confidence": "medium", "reason_ja": "見出しと時刻の形が合います"} for i, c in enumerate(cols)]}
+    # 出庫の列に、配車表の選択肢に無い役割（start_time）を混ぜても、画面は選択肢にある役割だけ受ける。ignore は「使わない」になる
     reply["suggestions"].append({"index": 99, "role": "date", "confidence": "high", "reason_ja": "知らない列"})
     page.js("window.__aiReply = %s" % json.dumps(reply))
     page.js("document.querySelector('.o-aiconf [data-act=ai-cols-send]').click()")
@@ -166,13 +166,13 @@ def test_ai_button_needs_confirmation_and_sends_no_raw_values(app, tmp_path):
     # 案は「AI の案」と出て、選択に入るが、「この案で決める」までは計算も記録も変わらない
     page.wait(lambda: page.js("!!document.querySelector('.o-aitag')"), 10, "AI の案")
     assert "AI の案" in T(page, "#own-roles")
-    assert page.js("document.querySelector('#own-roles select[data-role-col=\"発時刻\"]').value") == ""  # 選択肢に無い案は付かない
-    assert page.js("document.querySelector('#own-roles select[data-role-col=\"走行km\"]').value") == "skip"
-    assert "走行km" not in page.js("JSON.stringify(Own.state.roles)")  # 「この案で決める」までは記録も計算も変えない
+    assert page.js("document.querySelector('#own-roles select[data-role-col=\"出庫\"]').value") == ""  # 選択肢に無い案は付かない
+    assert page.js("document.querySelector('#own-roles select[data-role-col=\"実績値\"]').value") == "skip"
+    assert "実績値" not in page.js("JSON.stringify(Own.state.roles)")  # 「この案で決める」までは記録も計算も変えない
     _shot(page, "own_ai_suggest_1920.jpg", tmp_path)
     page.js("document.querySelector('.o-aitag [data-act=ai-apply]').click()")
-    page.wait(lambda: "走行km" in page.js("JSON.stringify(Own.state.roles)"), 20, "役割の記録")
-    assert json.loads(page.js("JSON.stringify(Own.state.roles)"))["haisha"]["走行km"] == "skip"
+    page.wait(lambda: "実績値" in page.js("JSON.stringify(Own.state.roles)"), 20, "役割の記録")
+    assert json.loads(page.js("JSON.stringify(Own.state.roles)"))["haisha"]["実績値"] == "skip"
     page.wait(lambda: not page.js("Own.state.busy"), 20, "再計算")
 
 

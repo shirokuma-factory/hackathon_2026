@@ -444,7 +444,7 @@ const OwnCalc = (() => {
     }
     const c = {};
     for (const r of ['date', 'from', 'to', 'weight', 'time', 'mark']) { const j = rl.indexOf(r); c[r] = j >= 0 ? j : null; }
-    { const jk = rl.indexOf('distance_km'), jd = rl.indexOf('dep_time'); c.km = jk >= 0 ? jk : null; c.dep = jd >= 0 ? jd : null; }
+    { const jk = rl.indexOf('distance_km'), jd = rl.indexOf('dep_time'); if (jk >= 0) c.km = jk; if (jd >= 0) c.dep = jd; } // 走行km・出発時刻の列がある表だけ、このキーが付く（own.py の cols と同じ形を保つ）
     if (c.date != null && (c.from != null || c.to != null)) {
       const title = titleMonth(rows, i) || (month != null ? [null, month] : null);
       const seen = new Map();
@@ -2916,7 +2916,7 @@ const OwnCalc = (() => {
 
     const hiredAll = wl ? wl.hired : [];
     const hiredCells = hiredAll.reduce((a, h) => a + h.cells, 0), hiredLegs = hiredAll.reduce((a, h) => a + h.legs, 0);
-    for (const f of used) if (f.noPlateCol) notices.push({ kind: 'no_plate_col', text_ja: `${f.name} には車番の列がないので、${NO_PLATE_LABEL_JA}として読みました（${NO_PLATE_NAME} と表示します）。複数の車が混ざったファイルのときは、車番の列を足してください。` });
+    for (const f of used) if (f.noPlateCol) notices.push({ kind: 'no_plate_col', text_ja: `${f.name} には車番の列がないので、${NO_PLATE_LABEL_JA}として読みました。画面では ${NO_PLATE_NAME} と表示します。複数の車が混ざったファイルのときは、車番の列を足してください。` });
     if (hiredAll.length) notices.push({ kind: 'hired', text_ja: `傭車の行 ${hiredAll.length} 行（${hiredAll.map((h) => `「${h.name}」`).join('')}）の ${hiredCells} 日ぶん（区間 ${hiredLegs} 件）は、自社の車ではないので読まず、傭車として別に数えました。` });
     for (const f of parsed) if (f.csvWarn.length) notices.push({ kind: 'csv_quote', text_ja: `${f.name} の ${f.csvWarn.map((w) => w.line).slice(0, 5).join('、')} 行目: ${f.csvWarn[0].reason}（${f.csvWarn.length} 件）。` });
     if (timeDropped.length) notices.push({ kind: 'time_dropped', text_ja: `「8時半ごろ着」のように時刻が読めないセル ${timeDropped.length} 件は、時刻だけ使わず、区間は読みました。` });
@@ -4721,7 +4721,7 @@ function go(files, fresh, mode) {
   if (fresh && S.mode === 'import') { S.noSave = false; offerRestore(files); } else if (fresh) S.restore = null;
   monthSave();
   const unread = (S.bad || []).concat((d.files_unread || []).map((u) => `${u.file}: ${u.reason}`));
-  setMsg(`${S.mode === 'sample' ? '架空の会社のサンプルを読みました。' : `ファイル ${d.files_read} 件（区間 ${(d.legs || []).length} 件）を読みました。`}${unread.length ? `読めなかった ${unread.length} 件: ${unread.join('。')}` : ''}`, false);
+  setMsg(`${S.mode === 'sample' ? '架空の会社のサンプルを読みました。' : `ファイル ${d.files_read} 件（区間 ${(d.legs || []).length} 件）を読みました。`}${(d.files || []).some((f) => f.no_plate_col) ? '車番の列がないので、車両 1 台（車番の列なし）として読みました。' : ''}${unread.length ? `読めなかった ${unread.length} 件: ${unread.join('。')}` : ''}`, false);
   render();
 }
 
