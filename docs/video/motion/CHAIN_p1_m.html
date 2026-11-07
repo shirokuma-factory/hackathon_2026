@@ -11,7 +11,7 @@ svg{position:absolute;left:0;top:0;overflow:visible}
 .sh{text-shadow:0 4px 22px rgba(0,0,0,.65),0 0 5px rgba(0,0,0,.45)}
 .y{color:var(--warn)}
 .c{text-align:center}
-</style></head><body data-duration="19.0">
+</style></head><body data-duration="20.6">
 <div id="stage">
  <div class="layer" id="bg"></div>
  <div class="layer" id="fig"></div>
@@ -22,7 +22,7 @@ svg{position:absolute;left:0;top:0;overflow:visible}
 (function () {
   /* 各項目が出始める秒。声に合わせた版（CHAIN_p1_m.html など）は make_chain_timed.py が TM を書き換えて作る */
   /* two: 声で言う 2 項目（運転手・2030 年度）だけを並べる（r10）。fadeTo: 最後の一文の間に連鎖を消す割合（1 で全部消す）。f2: 「6割」の一文が出る秒 */
-  var TM = {n2: 0.29, n3: 3.38, n3c: 6.51, n3d: 7.64, n1: 0.0, lim: 99.0, fade: 9.64, f2: 12.96, two: true, fadeTo: 1.0, D: 19.0};
+  var TM = {n2: 0.29, n3: 3.34, n3c: 8.13, n3d: 9.37, n1: 0.0, lim: 99.0, fade: 11.29, f2: 14.61, two: true, fadeTo: 1.0, D: 20.6};
   var K = window.K, D = TM.D, E = K.E, P = K.P;
   var fig = document.getElementById('fig'), txt = document.getElementById('txt');
   var sv = K.el('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, fig);
@@ -30,7 +30,7 @@ svg{position:absolute;left:0;top:0;overflow:visible}
   var fw = K.div(txt, 'left:0;top:0;width:1920px;height:1080px', '');
   var cg = K.el('g', {}, sv);           /* 連鎖の線画 */
   var fg = K.el('g', {}, sv);           /* 最後の一文の線画 */
-  var X1 = 350, X2 = TM.two ? 620 : 930, X3 = TM.two ? 1300 : 1560, AY = 470;
+  var X1 = 350, X2 = TM.two ? 620 : 930, X3 = TM.two ? 1350 : 1560, AY = 470;
   var WHITE = '#ffffff', YEL = '#f0c04a', MUT = '#9fb0c1', GREY = '#3a4757';
 
   function T(parent, x, y, w, size, weight, color, html) {
@@ -61,8 +61,9 @@ svg{position:absolute;left:0;top:0;overflow:visible}
   var n2d = T(cw, X2, 540, 560, 34, 400, MUT, '2024年から残業に年960時間の上限');
   /* ノード3 */
   var n3a = T(cw, X3, 296, 520, 44, 700, WHITE, '2030年度');
-  var n3b = T(cw, X3, 352, 520, 44, 400, MUT, '運ぶ力が');
-  var n3c = T(cw, X3, 404, 520, 88, 900, YEL, '約3分の1');
+  var n3b = T(cw, X3, 352, 560, 38, 400, MUT, TM.two ? 'トラックによる運送能力が' : '運ぶ力が');
+  /* r14: 2026年3月の検討会の提言（2030年度の不足 平均 約7%〜最大 約25%）に合わせる。two でない旧版は 2023 年の試算のまま */
+  var n3c = TM.two ? T(cw, X3, 412, 620, 72, 900, YEL, '最大 約4分の1') : T(cw, X3, 404, 520, 88, 900, YEL, '約3分の1');
   var n3d = T(cw, X3, 536, 520, 40, 700, WHITE, '足りなくなるおそれ');
 
   /* 矢印（白い実線が伸びる） */
@@ -72,7 +73,7 @@ svg{position:absolute;left:0;top:0;overflow:visible}
     h.style.opacity = 0;
     return { set: function (p, ph) { l.setAttribute('x2', K.lerp(x1, x2 - 4, p)); l.style.opacity = p > 0 ? 1 : 0; h.style.opacity = ph; } };
   }
-  var a1 = arrow(585, 660), a2 = arrow(X2 + 270, X3 - 220);
+  var a1 = arrow(585, 660), a2 = arrow(X2 + 270, X3 - (TM.two ? 320 : 220));
 
   /* 最後の一文 */
   var tr = K.truck(fg, 3.4); tr.set(WHITE, 0, 0); tr.g.style.opacity = 0;
@@ -80,9 +81,11 @@ svg{position:absolute;left:0;top:0;overflow:visible}
   var full = K.el('rect', { x: 61 - 58 * .4, y: 4, width: 58 * .4, height: 33, rx: 4, fill: 'rgba(255,255,255,.88)' }, tr.g);
   var empt = K.el('rect', { x: 3, y: 4, width: 58 * .6, height: 33, rx: 4, fill: 'none', stroke: YEL, 'stroke-width': 3, 'stroke-dasharray': '6 6', 'stroke-linecap': 'round' }, tr.g);
   full.style.opacity = 0; empt.style.opacity = 0;
-  place(tr.g, 960 - 48 * 1.8, 60, 1.8);
-  var f1 = T(fw, 960, 170, 1400, 56, 700, WHITE, '運ぶ人が足りないのに');
-  var f2 = T(fw, 960, 240, 1500, 96, 900, WHITE, '運べる量の<span class="y">6割</span>が使われていない');
+  /* 最後の一文の縦の位置。two の形では画面の縦の中央に寄せる（作成者の指摘 11/7、上に寄りすぎていた） */
+  var FY = TM.two ? 300 : 0;
+  place(tr.g, 960 - 48 * 1.8, 60 + FY, 1.8);
+  var f1 = T(fw, 960, 170 + FY, 1400, 56, 700, WHITE, '運ぶ人が足りないのに');
+  var f2 = T(fw, 960, 240 + FY, 1500, 96, 900, WHITE, '運べる量の<span class="y">6割</span>が使われていない');
 
   /* 着地時刻（秒） */
   var LAND = { n1big: TM.n1 + 0.9, n2big: TM.n2 + 0.8, limit: TM.lim + 0.6, n3big: TM.n3c + 0.8, final6: (TM.f2 === null ? TM.fade + 1.1 : TM.f2) + 0.6 };
@@ -121,7 +124,7 @@ svg{position:absolute;left:0;top:0;overflow:visible}
     /* 最後の一文 */
     var pt = P(s, F + 0.5, 0.6);
     tr.g.style.opacity = pt;
-    place(tr.g, 960 - 48 * 1.8, 60 + 12 * (1 - pt), 1.8);
+    place(tr.g, 960 - 48 * 1.8, 60 + FY + 12 * (1 - pt), 1.8);
     full.style.opacity = P(s, F + 1.0, 0.5);
     var F2 = TM.f2 === null ? F + 1.1 : TM.f2;
     empt.style.opacity = P(s, F2 + 0.3, 0.6);
