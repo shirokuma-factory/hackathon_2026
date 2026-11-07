@@ -74,7 +74,7 @@ def test_home_table_js_agrees_with_python():
         with edge_page(1200, 800, webgl=False) as page:
             page.goto(path.as_uri() + "?example=1")
             page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")
-            got = page.js("(" + json.dumps(js_rows) + ").map((rows) => { const r = evaluate({rows, from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 4})"
+            got = page.js("(" + json.dumps(js_rows) + ").map((rows) => { const r = evaluate({rows, from: '東京都', to: '鹿児島県', km: 492, recv: 'business', flex: 4})"
                           ".options.find((o) => o.id === 'home'); return {s: r.status, why: r.reasons.join(' / ')}; })")
         assert [g["s"] == "check" for g in got] == want, (path.name, got)
         # 理由の文に、丸め誤差の桁（e-16 など）を出さない
@@ -122,10 +122,10 @@ ROSEN_TABLE = NL.join([TAB.join(["", "〜50kg", "〜100kg", "〜200kg", "〜500k
                        TAB.join(["〜300km", "3,500", "5,200", "8,800", "14,000", "21,000"]),
                        TAB.join(["〜600km", "4,200", "6,400", "11,000", "17,000", "26,000"]),
                        TAB.join(["601km〜", "5,000", "7,600", "13,000", "20,000", "30,000"])])
-TAKUHAI_TABLE = NL.join([TAB.join(["", "60サイズ", "80サイズ", "100サイズ", "120サイズ"]),
-                         TAB.join(["関東", "900", "1,100", "1,300", "1,500"]),
-                         TAB.join(["関西", "1,000", "1,200", "1,400", "1,600"]),
-                         TAB.join(["九州・沖縄", "1,400", "1,700", "2,000", "2,300"])])
+TAKUHAI_TABLE = NL.join([TAB.join(["", "60サイズ", "80サイズ", "100サイズ", "120サイズ", "140サイズ"]),
+                         TAB.join(["関東", "900", "1,100", "1,300", "1,500", "1,700"]),
+                         TAB.join(["関西", "1,000", "1,200", "1,400", "1,600", "1,800"]),
+                         TAB.join(["九州・沖縄", "1,400", "1,700", "2,000", "2,300", "2,600"])])
 
 
 def test_pasted_contract_tables_from_excel_are_used_for_the_amounts():
@@ -140,13 +140,13 @@ def test_pasted_contract_tables_from_excel_are_used_for_the_amounts():
                 "set('#c-rtab'," + json.dumps(ROSEN_TABLE) + ");set('#c-ttab'," + json.dumps(TAKUHAI_TABLE) + ");})()")
         msgs = page.js("[document.querySelector('#c-rtab-msg').textContent, document.querySelector('#c-ttab-msg').textContent]")
         assert "3 行 × 5 列を読みました" in msgs[0] and "距離帯" in msgs[0], msgs
-        assert "3 行 × 4 列を読みました" in msgs[1], msgs
-        # 宅配: 関西 × 60 サイズ 1,000 円 × 4 個 = 4,000 円。路線便: 実重量 80kg → 450km（〜600km）× 〜100kg = 6,400 円
+        assert "3 行 × 5 列を読みました" in msgs[1], msgs
+        # 宅配: 1 個 20kg は重さで 140 サイズ（3 辺合計は 60cm でも）。関西 × 140 サイズ 1,800 円 × 4 個 = 7,200 円。路線便: 実重量 80kg → 450km（〜600km）× 〜100kg = 6,400 円
         a = json.loads(page.js("(function(){const a=amountsOf(S.res, readContract(), inputs());return JSON.stringify({t:a.takuhai, r:a.rosen});})()"))
-        assert a["t"]["amount"] == 4000 and "関西" in a["t"]["note"] and "60サイズ" in a["t"]["note"], a
+        assert a["t"]["amount"] == 7200 and "関西" in a["t"]["note"] and "140サイズ" in a["t"]["note"] and "重さ" in a["t"]["note"], a
         assert a["r"]["amount"] == 6400 and "〜600km" in a["r"]["note"] and "〜100kg" in a["r"]["note"], a
         text = page.js("document.querySelector('#cmp').textContent")
-        assert "4,000" in text and "6,400" in text and "貼り付けた運賃表" in text
+        assert "7,200" in text and "6,400" in text and "貼り付けた運賃表" in text
         # 保存され、再読み込みしても戻る（荷物の表も残る）
         page.goto(PAGE.as_uri())
         page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")

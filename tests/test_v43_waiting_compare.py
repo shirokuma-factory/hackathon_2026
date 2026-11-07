@@ -169,7 +169,7 @@ def test_compare_lite_decimal_weight_height_exponent_and_three_carriers():
         _wait_for(page, "!!document.querySelector('table.res')", "判定")
         # 200.0001kg × 10 個（2,000.001kg）は、帰り便にも 2t にも載らない（地図の照合と同じ）。ちょうど 2,000kg は載る
         out = json.loads(page.js("""(function(){
-          const by = (kg) => Object.fromEntries(evaluate({rows: [{n: 10, l: 100, w: 60, h: 50, kg}], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 4}).options.map((o) => [o.id, o.status]));
+          const by = (kg) => Object.fromEntries(evaluate({rows: [{n: 10, l: 100, w: 60, h: 50, kg}], from: '東京都', to: '鹿児島県', km: 492, recv: 'business', flex: 4}).options.map((o) => [o.id, o.status]));
           const ex = evaluate({rows: [{n: 2, l: 240, w: 60, h: 200, kg: 140}, {n: 2, l: 100, w: 60, h: 80, kg: 60}], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 4}).options.find((o) => o.id === 'kashikiri_2t');
           return JSON.stringify({over: by('200.0001'), exact: by('200'), zen: by('２００．０００１'), ex2t: ex.status, exWhy: ex.reasons.join('/'), e3: readNum('1e3'), inf: readNum('Infinity')});})()"""))
         assert out["over"]["home"] == "ng" and out["over"]["kashikiri_2t"] == "ng" and out["zen"]["home"] == "ng"

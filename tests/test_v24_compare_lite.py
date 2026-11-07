@@ -152,8 +152,8 @@ def test_g91_selftest_and_s6_in_headless_edge():
                   sum: document.querySelector('#sum').textContent, k4: document.querySelector('tr[data-opt=kashikiri_4t] .amount').textContent};
         })()""")
     assert got["o"] == {"takuhai": "o-ng", "kazai": "o-check", "akabane": "o-ng", "kei": "o-ng", "jitbox": "o-ng", "rosen": "o-check",
-                        "kashikiri_2t": "o-check", "kashikiri_4t": "o-ok", "home": "o-check"}   # 2t は高さ 200cm の荷がショートに入らず、ロングなら入る（地図の積付けと同じ。SPEC §43）
-    assert got["home"] and "126,060" in got["k4"]
+                        "kashikiri_2t": "o-check", "kashikiri_4t": "o-ok", "home": "o-ng"}   # 帰り便は T7 の区間（東京都→鹿児島県）だけ。東京→大阪は ×   # 2t は高さ 200cm の荷がショートに入らず、ロングなら入る（地図の積付けと同じ。SPEC §43）
+    assert not got["home"] and "126,060" in got["k4"]
     assert "合計: 4 個" in got["sum"] and "400" in got["sum"]
     q = got["quote"]
     assert "240×60×200cm、140kg を 2 個" in q and "東京都" in q and "大阪府" in q and "492km" in q and "法人" in q and "4 日" in q

@@ -59,7 +59,7 @@ def _filled() -> str:
     decks["tariff_4t_note"] = TARIFF_4T_NOTE
     # 帰り便の目安は、地図の画面のデモの便 T7 の「空き」で判定する（/api/b/match と同じ。SPEC §39）
     t7 = next(t for t in json.loads(CARRIERS.read_text(encoding="utf-8"))["trips"] if t["id"] == "T7")
-    home = {k: t7[k] for k in ("weight_slack_kg", "floor_free_m2", "max_piece_kg", "clear_height_mm", "unit_footprint_mm")}
+    home = {k: t7[k] for k in ("weight_slack_kg", "floor_free_m2", "max_piece_kg", "clear_height_mm", "unit_footprint_mm", "origin_code", "dest_code")}  # 出発地・着地の市区町村コード（先頭 2 桁が都道府県）。区間が違う荷には使えない
     # 宅配の架空の運賃の例（関東発・関西あて）。会社名・商品名・表への URL は載せない。サイズ・寸法と重さの上限・運賃（税込）・持込の減額だけ（SPEC §47）
     sg = json.loads(SAGAWA.read_text(encoding="utf-8"))
     pub_takuhai = {"origin": sg["origin_region"], "dest": sg["dest_region"], "tax": sg["tax"], "checked_on": sg["checked_on"],
