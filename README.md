@@ -4,7 +4,9 @@
 
 中小の運送会社と中小の荷主が、手元の記録だけで、荷待ちの相談・空いた帰りの提案・送り方の比べをするためのツールです。Built with Claude: Japan 2026 のテーマ 2「本来、誰にでも届くべきものを。」への提出作品です。
 
-〔デモ動画（3 分）: 作成者が YouTube に上げたあと、ここに動画の画像とリンクを入れる〕
+**デモ動画（3 分）:** https://youtu.be/D59OlKkG7W8
+
+[![デモ動画（YouTube、3 分）](https://img.youtube.com/vi/D59OlKkG7W8/maxresdefault.jpg)](https://youtu.be/D59OlKkG7W8)
 
 **今すぐ試す:** https://backfull-demo-720575644376.asia-northeast1.run.app/waiting.html （架空の荷待ちの記録が入っていて、開くとすぐ参考額と相談の文が出ます。インストール不要）
 
