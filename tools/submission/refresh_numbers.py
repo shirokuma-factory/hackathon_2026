@@ -22,7 +22,11 @@ def facts() -> dict:
     commits = int(run("git", "rev-list", "--count", "HEAD").strip())
     days = Counter(run("git", "log", "HEAD", "--date=format-local:%m-%d", "--pretty=%ad").split())
     days = dict(sorted(days.items()))
-    out = run(sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "--collect-only")
+    # 公開されるもの（git が追跡している試験ファイル）だけを数える。未追跡の試験ファイルは --ignore で外す
+    untracked = [x for x in run("git", "-c", "core.quotepath=false", "ls-files", "--others", "--exclude-standard", "tests").splitlines()
+                 if x.endswith(".py")]
+    out = run(sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "--collect-only",
+              *[f"--ignore={x}" for x in untracked])
     m = re.search(r"(\d+) tests? collected", out)
     tests = int(m.group(1)) if m else None
     # 公開されるもの（git が追跡しているファイル）だけを数える。未コミットの記録は数えない
