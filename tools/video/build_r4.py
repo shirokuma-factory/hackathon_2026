@@ -84,6 +84,10 @@ def main() -> None:
                         if "len" in v:
                             d["e"] = d["s"] + v["len"]
                 d["path"] = path
+                if kind == "video" and t == "1":
+                    for k, v in json.loads(slots_p.read_text(encoding="utf-8")).get("_p", {}).items():
+                        if abs(float(k) - d["s"] / FPS) < 0.02:
+                            d["p"] = {**(d.get("p") or {}), **v}
                 if kind == "video" and t == "3":
                     v3 = json.loads(slots_p.read_text(encoding="utf-8")).get("_v3", {})
                     for k, v in v3.items():
