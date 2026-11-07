@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -42,29 +43,34 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", type=float, default=BASE_DB, help="声のない所の BGM の大きさ（元の曲からの差、dB）")
     ap.add_argument("--out", default="bgm_duck.wav", help="Resolve に読み込み済みの名前は上書きしないこと")
+    ap.add_argument("--total", type=float, default=TOTAL, help="動画の長さ（秒）")
+    ap.add_argument("--voice", default=None, help='声の置き場所の JSON: [[秒, ファイル名, 頭を切る秒], ...]')
     a = ap.parse_args()
+    total = a.total
+    voices = [tuple(x) for x in json.loads(a.voice)] if a.voice else VOICE
+    cut_a = total - (SONG_LEN - CUT_B) + XF
     fit = D / "bgm_fit.wav"
     run(["-i", str(SRC), "-filter_complex",
-         f"[0]atrim=0:{CUT_A},asetpts=PTS-STARTPTS[a];[0]atrim={CUT_B},asetpts=PTS-STARTPTS[b];"
-         f"[a][b]acrossfade=d={XF}:c1=tri:c2=tri,atrim=0:{TOTAL},afade=t=in:d=0.8[o]",
+         f"[0]atrim=0:{cut_a},asetpts=PTS-STARTPTS[a];[0]atrim={CUT_B},asetpts=PTS-STARTPTS[b];"
+         f"[a][b]acrossfade=d={XF}:c1=tri:c2=tri,atrim=0:{total},afade=t=in:d=0.8[o]",
          "-map", "[o]", "-ar", "48000", str(fit)])
     voice = D / "voice_only.wav"
     ins, parts = [], []
-    for i, (t, f, skip) in enumerate(VOICE):
+    for i, (t, f, skip) in enumerate(voices):
         ins += ["-i", str(V / f)]
         ms = int(round(t * 1000))
         parts.append(f"[{i}]atrim={skip},asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo,adelay={ms}|{ms}[v{i}]")
-    mix = "".join(f"[v{i}]" for i in range(len(VOICE)))
-    run([*ins, "-filter_complex", ";".join(parts) + f";{mix}amix=inputs={len(VOICE)}:normalize=0,apad=whole_dur={TOTAL}[o]",
-         "-map", "[o]", "-t", str(TOTAL), str(voice)])
+    mix = "".join(f"[v{i}]" for i in range(len(voices)))
+    run([*ins, "-filter_complex", ";".join(parts) + f";{mix}amix=inputs={len(voices)}:normalize=0,apad=whole_dur={total}[o]",
+         "-map", "[o]", "-t", str(total), str(voice)])
     duck = D / a.out
     run(["-i", str(fit), "-i", str(voice), "-filter_complex",
          f"[0]volume={a.db}dB[m];[1]asplit=2[sc][x];[x]anullsink;"
-         f"[m][sc]sidechaincompress=threshold=0.015:ratio=10:attack=80:release=600:makeup=1,apad=whole_dur={TOTAL}[o]",
+         f"[m][sc]sidechaincompress=threshold=0.015:ratio=10:attack=80:release=600:makeup=1,apad=whole_dur={total}[o]",
          "-map", "[o]", str(duck)])
     run(["-i", str(duck), "-i", str(voice), "-filter_complex", "[0][1]amix=inputs=2:normalize=0[o]",
          "-map", "[o]", str(D / "check_mix.wav")])
-    print(f"CUT_A={CUT_A:.2f} CUT_B={CUT_B} -> {duck}")
+    print(f"CUT_A={cut_a:.2f} CUT_B={CUT_B} -> {duck}")
 
 
 if __name__ == "__main__":

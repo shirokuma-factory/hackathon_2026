@@ -1,0 +1,85 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>LOGO_v2</title><link rel="stylesheet" href="../graphics/common.css"><link rel="stylesheet" href="motion.css">
+<style>
+@font-face{font-family:"SegoeScriptB";src:url("file:///C:/Windows/Fonts/segoescb.ttf")}
+html,body{background:#05080c}
+#all{position:absolute;left:0;top:0;width:1920px;height:1080px}
+#tx{position:absolute;left:0;right:0;top:150px;padding:150px 0;text-align:center;font-family:"SegoeScriptB","Segoe Script",cursive;font-weight:700;font-size:230px;line-height:1.3;color:#fff;white-space:nowrap}
+#tx span{display:inline-block}
+#bl{display:inline-block;width:0;height:0;vertical-align:baseline}
+#sv{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:visible}
+#tag{position:absolute;left:0;right:0;top:640px;text-align:center;font-size:44px;color:var(--muted);opacity:0}
+</style>
+</head><body data-duration="6.0">
+<div id="all">
+<div id="tx"><span id="t">Backfull</span><span id="bl"></span></div>
+<svg id="sv" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+<path id="p0" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+<path id="p1" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="butt" opacity="0"/>
+<circle id="hd" r="7" fill="#fff" opacity="0"/>
+</svg>
+</div>
+<div id="tag">帰りの荷台を、中小の荷主の荷で埋める</div>
+<script>
+(function () {
+  var D = 6.0, ease = function (t) { return 1 - Math.pow(1 - t, 3); };
+  var eio = function (t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+  var pr = function (s, a, b) { return Math.min(1, Math.max(0, (s - a) / (b - a))); };
+  var $ = function (i) { return document.getElementById(i); };
+  var all = $('all'), tx = $('tx'), t = $('t'), tag = $('tag'), p0 = $('p0'), p1 = $('p1'), hd = $('hd'), sv = $('sv');
+  var LEN = 1, PL = 200;
+  function pathD(pts) { // Catmull-Rom を 3 次ベジェに直す（折れ目なし）
+    var d = 'M' + pts[0][0].toFixed(1) + ' ' + pts[0][1].toFixed(1);
+    for (var i = 0; i < pts.length - 1; i++) {
+      var a = pts[Math.max(0, i - 1)], b = pts[i], c = pts[i + 1], e = pts[Math.min(pts.length - 1, i + 2)];
+      d += 'C' + (b[0] + (c[0] - a[0]) / 6).toFixed(1) + ' ' + (b[1] + (c[1] - a[1]) / 6).toFixed(1) + ' ' +
+        (c[0] - (e[0] - b[0]) / 6).toFixed(1) + ' ' + (c[1] - (e[1] - b[1]) / 6).toFixed(1) + ' ' + c[0].toFixed(1) + ' ' + c[1].toFixed(1);
+    }
+    return d;
+  }
+  function layout() {
+    var r = t.getBoundingClientRect(), yb = $('bl').getBoundingClientRect().bottom, L = r.left, R = r.right, w = R - L;
+    var pts = [[-100, yb + 70], [L * 0.45, yb - 45], [L - 20, yb + 18], [L + w * 0.3, yb + 24], [L + w * 0.65, yb + 10],
+      [R + 10, yb - 8], [R + (1920 - R) * 0.45, yb - 60], [1920 + 20, yb + 0], [2020, yb + 40]];
+    var d = pathD(pts);
+    p0.setAttribute('d', d); p1.setAttribute('d', d);
+    LEN = p0.getTotalLength();
+    p0.style.strokeDasharray = LEN + ' ' + LEN;
+    p1.style.strokeDasharray = PL + ' ' + (LEN + PL);
+  }
+  function glow(g) {
+    var c = 'rgba(159,212,255,';
+    tx.style.textShadow = '0 0 6px ' + c + (0.95 * g) + '),0 0 18px ' + c + (0.85 * g) + '),0 0 40px ' + c + (0.65 * g) + '),0 0 90px ' + c + (0.45 * g) + ')';
+  }
+  function flick(s) { // 1.8〜2.2 秒に 2 回だけ小さく暗くなる
+    if (s < 1.8 || s >= 2.2) return 1;
+    var p = (s - 1.8) / 0.4;
+    return (p < 0.18 || (p >= 0.34 && p < 0.55)) ? 0.5 : 1;
+  }
+  window.__seek = function (ms) {
+    var s = ms / 1000, p = eio(pr(s, 0, 1.8));
+    var pt = p0.getPointAtLength(p * LEN), hx = pt.x;
+    p0.style.strokeDashoffset = LEN * (1 - p);
+    p0.style.filter = 'drop-shadow(0 0 5px rgba(159,212,255,.95)) drop-shadow(0 0 16px rgba(159,212,255,.6))';
+    p0.style.opacity = p > 0 ? 1 : 0;
+    var hv = s < 1.8 ? 1 : 1 - pr(s, 1.8, 2.1);
+    hd.setAttribute('cx', pt.x); hd.setAttribute('cy', pt.y);
+    hd.style.opacity = s <= 0 ? 0 : hv;
+    hd.style.filter = 'drop-shadow(0 0 6px #fff) drop-shadow(0 0 14px rgba(159,212,255,1)) drop-shadow(0 0 34px rgba(159,212,255,.9))';
+    // 文字はヘッドの x に合わせて左から現れる（にじみ 120px）
+    var m = 'linear-gradient(90deg,#000 ' + (hx - 120) + 'px,transparent ' + hx + 'px)';
+    tx.style.webkitMaskImage = m; tx.style.maskImage = m;
+    glow(flick(s));
+    // 光の脈：2.6〜4.2 秒に線の全長を一度だけ流れる
+    var q = pr(s, 2.6, 4.2), qe = q * q * (3 - 2 * q);
+    p1.style.strokeDashoffset = PL - qe * (LEN + PL);
+    p1.style.opacity = (q > 0 && q < 1) ? 1 : 0;
+    p1.style.filter = 'drop-shadow(0 0 6px rgba(159,212,255,1)) drop-shadow(0 0 18px rgba(159,212,255,.8))';
+    var k = ease(pr(s, 2.4, 2.8)), out = 1 - pr(s, D - 0.4, D - 1 / 30);
+    all.style.opacity = out;
+    tag.style.opacity = k * out;
+    tag.style.transform = 'translateY(' + (12 * (1 - k)) + 'px)';
+  };
+  layout(); window.__seek(0);
+  document.fonts.ready.then(function () { layout(); window.__seek(0); window.__ready = true; });
+})();
+</script></body></html>
