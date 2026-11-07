@@ -15,7 +15,7 @@
   "path": "C:/dev/hackathon_2026/outputs/video/motion/MG3_r4.mov"
  },
  "motion/MG5_v3.mov": {
-  "path": "C:/dev/hackathon_2026/outputs/video/motion/MG5_r5.mov"
+  "path": "C:/dev/hackathon_2026/outputs/video/motion/MG5_r6.mov"
  },
  "motion/AIL_v2.mov": {
   "path": "C:/dev/hackathon_2026/outputs/video/motion/AIL_v2_r4.mov"
@@ -29,9 +29,9 @@
   "len": 1013
  },
  "tight_r3/R5.wav": {
-  "path": "C:/dev/hackathon_2026/outputs/video/voice/tight_r4/R5_r4.wav",
+  "path": "C:/dev/hackathon_2026/outputs/video/voice/tight_r4/R5_r4b.wav",
   "off": 0,
-  "len": 546
+  "len": 556
  },
  "overlays/tag_c1_top.mov": {
   "path": "C:/dev/hackathon_2026/outputs/video/overlays/tag_c1_r4.mov"
@@ -41,5 +41,10 @@
  },
  "overlays/note_ai.mov": {
   "path": "C:/dev/hackathon_2026/outputs/video/overlays/note_ai_r4.mov"
+ },
+ "tight_r3/R6_v3.wav": {
+  "path": "C:/dev/hackathon_2026/outputs/video/voice/tight_r4/R6_r4b.wav",
+  "off": 0,
+  "len": 565
  }
 }

@@ -51,6 +51,17 @@ PIECES = {
     "P10": dict(take="R5c", t_in=2.0, t_out=6.5, drop_from=6.1),
     "P11": dict(take="R5c", t_in=10.0, t_out=16.5),
     "P12": dict(take="R5c", t_in=6.0, t_out=14.5),
+    # 神戸（28110）・加古川（28210）の録り直し分。R5c は神戸だと 7 便とも載らないので、載る場面は加古川の録画（R5c_kako）から取る
+    "P7k": dict(take="R5a_kobe", t_in=2.5, t_out=8.5),
+    "P8k": dict(take="R5b_kobe", t_in=1.8, t_out=9.67),
+    "P7ka": dict(take="R5a_kako", t_in=2.5, t_out=8.5),
+    "P8ka": dict(take="R5b_kako", t_in=1.8, t_out=9.67),
+    "P9k": dict(take="R5c_kako", t_in=0.0, t_out=2.63, drop_from=0.0,
+                manual=[dict(t0=0.0, t1=2.63, c=(1250, 560), z=1.3)]),
+    "P10k": dict(take="R5c_kako", t_in=2.0, t_out=6.5, drop_from=6.1),
+    "P11k": dict(take="R5c_kako", t_in=10.0, t_out=16.5),
+    "P12k": dict(take="R5c_kako", t_in=6.0, t_out=14.5),
+    "P11kobe": dict(take="R5c_kobe", t_in=4.5, t_out=11.0),
     "P13": dict(take="R4_3x", t_in=0.0, t_out=18.0, speed=3, zmin=1.2, zmax=1.6, trans=0.5),
 }
 

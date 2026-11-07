@@ -448,5 +448,269 @@
     "wait": 1.0
    }
   ]
+ },
+ {
+  "id": "R5a_kobe",
+  "url_path": "/index.html#v=compare&o=13104&l=fare&d=28110",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){ if(!window.__app) return false; const l=document.querySelector('#loading'); if(l && !l.classList.contains('done')) return false; const s=window.__rs=window.__rs||{n:0,t:0}; const now=Date.now(); if(now-s.t<1500) return false; const open=()=>document.querySelector('#cargo-toggle').getAttribute('aria-expanded')==='true'; if(s.n===0){ s.t=now; s.n=1; return false; } if(s.n===1){ if(!open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=2; return false; } if(s.n===2){ const e=document.querySelector('#sc-select'); e.value='S6'; e.dispatchEvent(new Event('change',{bubbles:true})); s.t=now; s.n=3; return false; } if(s.n===3){ document.querySelector('#ed-confirm').click(); s.t=now; s.n=4; return false; } if(s.n===4){ if(Work.scenarioId()!=='S6'){ s.n=2; s.t=now; return false; } if(open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=5; return false; } return now-s.t>=4000 && !!document.querySelector('.cc-row'); })()",
+  "steps": [
+   {
+    "wait": 1.5
+   },
+   {
+    "eval": "(function(){const rs=[...document.querySelectorAll('.cc-row')]; const a=rs.find(x=>/貸切\\s*2t/.test(x.textContent)); if(a)a.id='rec-2t';const b=rs.find(x=>x.textContent.trim().startsWith('宅配')); if(b)b.id='rec-takuhai'; document.querySelector('.cc').scrollIntoView({block:'center'});})()"
+   },
+   {
+    "wait": 0.3
+   },
+   {
+    "move": "#rec-takuhai"
+   },
+   {
+    "highlight": [
+     "#rec-takuhai",
+     2.5
+    ]
+   },
+   {
+    "move": "#rec-2t"
+   },
+   {
+    "highlight": [
+     "#rec-2t",
+     4.5
+    ]
+   },
+   {
+    "wait": 1.5
+   }
+  ]
+ },
+ {
+  "id": "R5b_kobe",
+  "url_path": "/compare_lite.html?example=1",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){const r=document.querySelector('table.res'); if(!r) return false; const s=window.__lk=window.__lk||{n:0,t:0}; const now=Date.now();if(s.n===0){const t=document.querySelector('#to'); t.value='兵庫県'; t.dispatchEvent(new Event('change',{bubbles:true})); const k=document.querySelector('#km'); k.value='522'; k.dispatchEvent(new Event('input',{bubbles:true})); k.dispatchEvent(new Event('change',{bubbles:true})); s.n=1; s.t=now; return false;}return now-s.t>1500 && /522km/.test(document.querySelector('tr[data-opt=kashikiri_2t]').innerText); })()",
+  "steps": [
+   {
+    "wait_for": "table.res"
+   },
+   {
+    "wait": 0.8
+   },
+   {
+    "move": "tr[data-opt=takuhai]"
+   },
+   {
+    "highlight": [
+     "tr[data-opt=takuhai]",
+     2.0
+    ]
+   },
+   {
+    "move": "tr[data-opt=akabane]"
+   },
+   {
+    "highlight": [
+     "tr[data-opt=akabane]",
+     2.0
+    ]
+   },
+   {
+    "scroll": [
+     null,
+     520
+    ]
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "move": "tr[data-opt=kashikiri_2t]"
+   },
+   {
+    "highlight": [
+     "tr[data-opt=kashikiri_2t]",
+     3.5
+    ]
+   },
+   {
+    "wait": 1.0
+   }
+  ]
+ },
+ {
+  "id": "R5c_kobe",
+  "url_path": "/index.html#v=find",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){ if(!window.__app) return false; const l=document.querySelector('#loading'); if(l && !l.classList.contains('done')) return false;const s=window.__rk=window.__rk||{n:0,t:0}; const now=Date.now(); if(now-s.t<1500) return false;if(s.n===0){ if(!document.querySelector('#f-list .f-card.ok')) return false; s.n=1; s.t=now; const i=document.querySelector('#f-dest-q'); i.focus(); i.dataset.typed='1'; i.value='神戸市中央区'; i.dispatchEvent(new Event('input',{bubbles:true})); return false; }if(s.n===1){ const li=document.querySelector('#f-sug li[data-c=\"28110\"]'); if(!li){ s.n=0; return false; } li.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true})); s.n=2; s.t=now; return false; }return now-s.t>=3500 && document.querySelector('#f-dest-q').value.includes('神戸市中央区') && /便中/.test(document.querySelector('#f-rsub').innerText); })()",
+  "steps": [
+   {
+    "wait": 2.0
+   },
+   {
+    "highlight": [
+     "#f-rsub",
+     3.0
+    ]
+   },
+   {
+    "move": "#f-list .f-card[data-t=T7]"
+   },
+   {
+    "highlight": [
+     "#f-list .f-card[data-t=T7] .f-why",
+     4.0
+    ]
+   },
+   {
+    "move": "#f-list .f-card[data-t=T1] .f-why"
+   },
+   {
+    "highlight": [
+     "#f-list .f-card[data-t=T1] .f-why",
+     5
+    ]
+   },
+   {
+    "wait": 1.5
+   }
+  ]
+ },
+ {
+  "id": "R5a_kako",
+  "url_path": "/index.html#v=compare&o=13104&l=fare&d=28210",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){ if(!window.__app) return false; const l=document.querySelector('#loading'); if(l && !l.classList.contains('done')) return false; const s=window.__rs=window.__rs||{n:0,t:0}; const now=Date.now(); if(now-s.t<1500) return false; const open=()=>document.querySelector('#cargo-toggle').getAttribute('aria-expanded')==='true'; if(s.n===0){ s.t=now; s.n=1; return false; } if(s.n===1){ if(!open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=2; return false; } if(s.n===2){ const e=document.querySelector('#sc-select'); e.value='S6'; e.dispatchEvent(new Event('change',{bubbles:true})); s.t=now; s.n=3; return false; } if(s.n===3){ document.querySelector('#ed-confirm').click(); s.t=now; s.n=4; return false; } if(s.n===4){ if(Work.scenarioId()!=='S6'){ s.n=2; s.t=now; return false; } if(open()) document.querySelector('#cargo-toggle').click(); s.t=now; s.n=5; return false; } return now-s.t>=4000 && !!document.querySelector('.cc-row'); })()",
+  "steps": [
+   {
+    "wait": 1.5
+   },
+   {
+    "eval": "(function(){const rs=[...document.querySelectorAll('.cc-row')]; const a=rs.find(x=>/貸切\\s*2t/.test(x.textContent)); if(a)a.id='rec-2t';const b=rs.find(x=>x.textContent.trim().startsWith('宅配')); if(b)b.id='rec-takuhai'; document.querySelector('.cc').scrollIntoView({block:'center'});})()"
+   },
+   {
+    "wait": 0.3
+   },
+   {
+    "move": "#rec-takuhai"
+   },
+   {
+    "highlight": [
+     "#rec-takuhai",
+     2.5
+    ]
+   },
+   {
+    "move": "#rec-2t"
+   },
+   {
+    "highlight": [
+     "#rec-2t",
+     4.5
+    ]
+   },
+   {
+    "wait": 1.5
+   }
+  ]
+ },
+ {
+  "id": "R5b_kako",
+  "url_path": "/compare_lite.html?example=1",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){const r=document.querySelector('table.res'); if(!r) return false; const s=window.__lk=window.__lk||{n:0,t:0}; const now=Date.now();if(s.n===0){const t=document.querySelector('#to'); t.value='兵庫県'; t.dispatchEvent(new Event('change',{bubbles:true})); const k=document.querySelector('#km'); k.value='556'; k.dispatchEvent(new Event('input',{bubbles:true})); k.dispatchEvent(new Event('change',{bubbles:true})); s.n=1; s.t=now; return false;}return now-s.t>1500 && /556km/.test(document.querySelector('tr[data-opt=kashikiri_2t]').innerText); })()",
+  "steps": [
+   {
+    "wait_for": "table.res"
+   },
+   {
+    "wait": 0.8
+   },
+   {
+    "move": "tr[data-opt=takuhai]"
+   },
+   {
+    "highlight": [
+     "tr[data-opt=takuhai]",
+     2.0
+    ]
+   },
+   {
+    "move": "tr[data-opt=akabane]"
+   },
+   {
+    "highlight": [
+     "tr[data-opt=akabane]",
+     2.0
+    ]
+   },
+   {
+    "scroll": [
+     null,
+     520
+    ]
+   },
+   {
+    "wait": 0.5
+   },
+   {
+    "move": "tr[data-opt=kashikiri_2t]"
+   },
+   {
+    "highlight": [
+     "tr[data-opt=kashikiri_2t]",
+     3.5
+    ]
+   },
+   {
+    "wait": 1.0
+   }
+  ]
+ },
+ {
+  "id": "R5c_kako",
+  "url_path": "/index.html#v=find",
+  "size": "1920x1080",
+  "cursor": true,
+  "ready_js": "(function(){ if(!window.__app) return false; const l=document.querySelector('#loading'); if(l && !l.classList.contains('done')) return false;const s=window.__rk=window.__rk||{n:0,t:0}; const now=Date.now(); if(now-s.t<1500) return false;if(s.n===0){ if(!document.querySelector('#f-list .f-card.ok')) return false; s.n=1; s.t=now; const i=document.querySelector('#f-dest-q'); i.focus(); i.dataset.typed='1'; i.value='加古川市'; i.dispatchEvent(new Event('input',{bubbles:true})); return false; }if(s.n===1){ const li=document.querySelector('#f-sug li[data-c=\"28210\"]'); if(!li){ s.n=0; return false; } li.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true})); s.n=2; s.t=now; return false; }return now-s.t>=3500 && document.querySelector('#f-dest-q').value.includes('加古川市') && /便中/.test(document.querySelector('#f-rsub').innerText); })()",
+  "steps": [
+   {
+    "wait": 2.0
+   },
+   {
+    "move": "#f-list .f-card[data-t=T7]"
+   },
+   {
+    "highlight": [
+     "#f-list .f-card[data-t=T7]",
+     3.0
+    ]
+   },
+   {
+    "highlight": [
+     "#f-list .f-card[data-t=T7] .f-price",
+     3.5
+    ]
+   },
+   {
+    "move": "#f-list .f-card[data-t=T6] .f-why"
+   },
+   {
+    "highlight": [
+     "#f-list .f-card[data-t=T6] .f-why",
+     5
+    ]
+   },
+   {
+    "wait": 1.5
+   }
+  ]
  }
 ]

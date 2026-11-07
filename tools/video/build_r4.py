@@ -123,7 +123,7 @@ def main() -> None:
     regen = {}
     for o, n in zip(old_a1, out["audio"]["1"]):
         nm = Path(n["path"]).name
-        if nm.endswith("_r4.wav"):
+        if nm.endswith("_r4.wav") or nm.endswith("_r4b.wav"):
             regen[nm.split("_")[0]] = (n["s"] - n["off"]) / FPS
     subs(delta, regen)
     shutil.copyfile(ROOT / "outputs/video/subs_r4/subs.mov", ROOT / f"outputs/video/subs_r4/subs_{stamp}.mov")
