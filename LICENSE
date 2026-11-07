@@ -24,4 +24,4 @@ SOFTWARE.
 This license covers the source code only. Files under data/ and web/data/ keep
 the terms of their original sources (OpenStreetMap: ODbL 1.0; 国土数値情報・e-Stat:
 政府標準利用規約 / CC BY 4.0 compatible; 国土交通省の告示: 著作権の対象外).
-See the "ライセンスとデータの条件" section of README.md.
+See docs/素材とデータの権利.md for each data source and its terms.
