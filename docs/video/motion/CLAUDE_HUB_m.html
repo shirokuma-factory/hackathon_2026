@@ -37,14 +37,14 @@ svg{position:absolute;left:0;top:0;overflow:visible}
   var TOOLS = [
     ['coder（Sonnet）', '実装と試験 1897 件'],
     ['reviewer（Opus）', '反証レビュー'],
-    ['researcher（Opus）', '公的な出典 111 件の照合'],
-    ['Blender MCP', '3Dモデル 18 種'],
+    ['researcher（Opus）', '公的資料の数字 111 件を照合'],
+    ['Blender', '3Dモデル 18 種'],
     ['ComfyUI', 'MiniMax H3 の実写風の映像'],
     ['DaVinci Resolve MCP', '動画の組み立て'],
     ['ElevenLabs', 'ナレーション'],
     ['Suno', 'BGM'],
     ['Claude in Chrome', '素材探しと操作'],
-    ['GitHub', 'コミット 189 回']
+    ['GitHub', 'コミット 190 回以上']
   ];
   var BW = 330, BH = 124, WHITE = '#ffffff', YEL = '#f0c04a', GREY = '#3a4757', SW = 6, DA = '8 22';
   var T0 = 1.3, STEP = 0.9, NR = 24;
@@ -85,7 +85,7 @@ svg{position:absolute;left:0;top:0;overflow:visible}
 
   /* 最後の一行 */
   var fin = K.div(txt, 'left:0;width:1920px;top:696px;text-align:center;font-size:48px;font-weight:700;letter-spacing:.04em;line-height:1',
-    '<span id="f1" style="display:inline-block">1人と Claude Code で</span> <span id="f2" class="y" style="display:inline-block;font-size:58px;font-weight:900">4日間</span>');
+    '<span id="f1" style="display:inline-block">1人と Claude Code で</span> <span id="f2" class="y" style="display:inline-block;font-size:58px;font-weight:900">5日間</span>');
   fin.className = 'sh';
   var e1 = document.getElementById('f1'), e2 = document.getElementById('f2');
   var ul = K.el('line', { x1: 0, y1: 0, x2: 0, y2: 0, stroke: YEL, 'stroke-width': 8, 'stroke-linecap': 'round' }, sv);

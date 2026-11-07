@@ -9,6 +9,10 @@ r4 までは r3 の時刻に間を足していたが、声を全部作り直し�
 - 声は ATEMPO 倍に速める（3 分に収めるため。1.0 なら速めない）
 
 使い方: uv run python tools/video/build_r5.py [--atempo 1.04]
+
+高解像度: --hd を付けると、字幕（動く字幕。kinetic_tool が make_kinetic2.py のとき）と出典の行を --scale 2
+（3840x2160）で描き、*_4k.mov の名前で EDL に書く（1080p 版の代わり）。組み立ては render_edl.py の
+--canvas 3840x2160 --out-height 1080 --prefer-hd で行う。
 """
 
 from __future__ import annotations
@@ -54,6 +58,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--atempo", type=float, default=1.0)
     ap.add_argument("--kinetic", action="store_true", help="字幕を動く字幕（tools/video/make_kinetic.py）で描く")
+    ap.add_argument("--hd", action="store_true", help="字幕と出典の行を 3840x2160（--scale 2）で描き、*_4k.mov を EDL に入れる")
     ap.add_argument("--plan", default="tools/video/r5_plan.json", help="組み立ての表。shots・voice_tag・name・layout・kinetic_tool を表の中で指定できる")
     a = ap.parse_args()
     import make_subtitles as ms
@@ -205,10 +210,13 @@ def main() -> None:
     ms.OUT.mkdir(parents=True, exist_ok=True)
     with open(ms.OUT / "cards.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(cards_all, f, ensure_ascii=False, indent=1)
-    sub = ms.OUT / f"subs_{stamp}.mov"
+    hd_tag = "_4k" if a.hd else ""
+    sub = ms.OUT / f"subs_{stamp}{hd_tag}.mov"
+    if a.hd and not (a.kinetic and plan.get("kinetic_tool", "").endswith(("make_kinetic2.py", "make_kinetic3.py"))):
+        raise SystemExit("--hd は --kinetic と、プランの kinetic_tool が make_kinetic2.py か make_kinetic3.py のときだけ使えます。")
     if a.kinetic:
         subprocess.run(["uv", "run", "python", str(ROOT / plan.get("kinetic_tool", "tools/video/make_kinetic.py")), "--cards", str(ms.OUT / "cards.json"),
-                        "--total", f"{total:.2f}", "--out", str(sub)], check=True)
+                        "--total", f"{total:.2f}", "--out", str(sub), *(["--scale", "2"] if a.hd else [])], check=True)
     else:
         ms.render(cards_all, total)
         (ms.OUT / "subs.mov").replace(sub)
@@ -222,12 +230,14 @@ def main() -> None:
             for k, txt in smap.items():
                 if nm.startswith(k):
                     sc.append({"start": d["s"] / FPS, "end": (d["s"] + d["L"]) / FPS, "text": txt})
+                    break  # 鍵は長い順。いちばん長く一致した鍵だけを使う
     sc.sort(key=lambda c: c["start"])
     sp = ms.OUT / "sources_cards.json"
     with open(sp, "w", encoding="utf-8", newline="\n") as f:
         json.dump(sc, f, ensure_ascii=False, indent=1)
-    smov = ms.OUT / f"sources_{stamp}.mov"
-    subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_sources.py"), "--cards", str(sp), "--total", str(total), "--out", str(smov)], check=True)
+    smov = ms.OUT / f"sources_{stamp}{hd_tag}.mov"
+    subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_sources.py"), "--cards", str(sp), "--total", str(total), "--out", str(smov),
+                    *(["--scale", "2"] if a.hd else [])], check=True)
     V(7).append({"s": 0, "L": round(total * FPS), "off": 0, "path": str(smov)})
     # 効果音（tools/video/sfx_synth.py の一式）を、動きに合わせて置く
     K = OV / "sfx/kit"

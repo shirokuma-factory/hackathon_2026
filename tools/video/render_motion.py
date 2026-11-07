@@ -8,10 +8,14 @@
 コマは実時間で撮らない。HTML に window.__seek(ms) があればそれを 1 コマずつ呼び、
 なければ document.getAnimations() を止めて currentTime を進める。
 長さは <body data-duration="秒"> で決める。Edge は tools/capture_web.py の edge_page で起動する。
+
+高解像度: --scale 2 でデバイス倍率 2（ページの CSS は 1920x1080 のまま、撮る絵は 3840x2160）にして、
+<名前>@2x.mov（qtrle argb、3840x2160）を通常の .mov の隣に書く（通常版と確認用の一覧は書き換えない）。
 """
 
 from __future__ import annotations
 
+import argparse
 import base64
 import io
 import shutil
@@ -23,6 +27,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 import capture_web as cw  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from edge_page_hd import edge_page_hd  # noqa: E402
 
 SRC = ROOT / "docs" / "video" / "motion"
 OUT = ROOT / "outputs" / "video" / "motion"
@@ -42,7 +49,7 @@ def find_ffmpeg() -> str:
     raise SystemExit("ffmpeg が見つかりません。")
 
 
-def capture_frames(page, name: str, frames_dir: Path) -> tuple[int, int]:
+def capture_frames(page, name: str, frames_dir: Path, scale: int = 1) -> tuple[int, int]:
     """全コマを PNG で frames_dir に書く。(コマ数, 下 300px に描かれたコマ数) を返す。"""
     from PIL import Image
 
@@ -68,10 +75,10 @@ def capture_frames(page, name: str, frames_dir: Path) -> tuple[int, int]:
         raw = base64.b64decode(r["data"])
         (frames_dir / f"{i + 1:04d}.png").write_bytes(raw)
         img = Image.open(io.BytesIO(raw)).convert("RGBA")
-        if img.size != (W, H):
+        if img.size != (W * scale, H * scale):
             raise RuntimeError(f"{name}: コマの大きさが {img.size} です")
         # 下 300px に不透明な画素があるか（アルファの最大値）
-        if img.crop((0, SUBTITLE_TOP, W, H)).getchannel("A").getextrema()[1] > 0:
+        if img.crop((0, SUBTITLE_TOP * scale, W * scale, H * scale)).getchannel("A").getextrema()[1] > 0:
             dirty += 1
     return n, dirty
 
@@ -110,17 +117,23 @@ def contact_sheet(frames_dir: Path, n: int, out: Path) -> None:
 
 
 def main() -> int:
-    names = sys.argv[1:] or sorted(p.stem for p in SRC.glob("MG*.html"))
+    ap = argparse.ArgumentParser()
+    ap.add_argument("names", nargs="*", help="省略すると docs/video/motion/MG*.html のすべて")
+    ap.add_argument("--scale", type=int, default=1, choices=(1, 2), help="2 で <名前>@2x.mov（3840x2160）を作る")
+    a = ap.parse_args()
+    names = a.names or sorted(p.stem for p in SRC.glob("MG*.html"))
     ffmpeg = find_ffmpeg()
     OUT.mkdir(parents=True, exist_ok=True)
-    with cw.edge_page(W, H) as page:
+    suffix = "@2x" if a.scale == 2 else ""
+    with edge_page_hd(W, H, a.scale) as page:
         for name in names:
             frames_dir = Path(tempfile.mkdtemp(prefix=f"motion_{name}_"))
             try:
-                n, dirty = capture_frames(page, name, frames_dir)
-                mov = OUT / f"{name}.mov"
+                n, dirty = capture_frames(page, name, frames_dir, a.scale)
+                mov = OUT / f"{name}{suffix}.mov"
                 encode(ffmpeg, frames_dir, mov)
-                contact_sheet(frames_dir, n, OUT / f"{name}_sheet.jpg")
+                if a.scale == 1:
+                    contact_sheet(frames_dir, n, OUT / f"{name}_sheet.jpg")
             finally:
                 shutil.rmtree(frames_dir, ignore_errors=True)
             print(f"保存: {mov}  {n} コマ ({n / FPS:.2f} 秒)  下300pxに描いたコマ={dirty}")

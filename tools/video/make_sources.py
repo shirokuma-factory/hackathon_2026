@@ -7,6 +7,7 @@
 
 使い方:
   uv run python tools/video/make_sources.py --cards sources_cards.json --total 176 --out outputs/video/subs/sources.mov
+  --scale 2 で 3840x2160（キャンバス・文字の大きさ・余白・ずらし・ぼかし・縁がすべて 2 倍）。
 """
 
 from __future__ import annotations
@@ -27,24 +28,26 @@ LEFT, BASE_FROM_BOTTOM = 60, 18
 FADE = 0.25
 
 
-def card_image(text: str, font, alpha: float):
-    """alpha（0〜1）の分だけ薄くした 1 枚。"""
+def card_image(text: str, font, alpha: float, S: int = 1):
+    """alpha（0〜1）の分だけ薄くした 1 枚。S は倍率（座標・縁・ぼかしを S 倍にする）。"""
     from PIL import Image, ImageDraw, ImageFilter
-    base_y = H - BASE_FROM_BOTTOM
+    W, H, LEFT = 1920 * S, 1080 * S, 60 * S
+    base_y = H - BASE_FROM_BOTTOM * S
     asc = font.getmetrics()[0]
     y = base_y - asc
     sh = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(sh).text((LEFT, y + 2), text, font=font, fill=(0, 0, 0, int(200 * alpha)),
-                            stroke_width=3, stroke_fill=(0, 0, 0, int(200 * alpha)))
-    sh = sh.filter(ImageFilter.GaussianBlur(4))
+    ImageDraw.Draw(sh).text((LEFT, y + 2 * S), text, font=font, fill=(0, 0, 0, int(200 * alpha)),
+                            stroke_width=3 * S, stroke_fill=(0, 0, 0, int(200 * alpha)))
+    sh = sh.filter(ImageFilter.GaussianBlur(4 * S))
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     ImageDraw.Draw(im).text((LEFT, y), text, font=font, fill=COLOR + (int(255 * OPACITY * alpha),))
     return Image.alpha_composite(sh, im)
 
 
-def render(cards: list[dict], total: float, out: Path) -> None:
+def render(cards: list[dict], total: float, out: Path, S: int = 1) -> None:
     from PIL import Image, ImageFont
-    font = ImageFont.truetype(FONT, SIZE)
+    W, H = 1920 * S, 1080 * S
+    font = ImageFont.truetype(FONT, SIZE * S)
     try:
         font.set_variation_by_axes([WEIGHT])
     except Exception:
@@ -63,7 +66,7 @@ def render(cards: list[dict], total: float, out: Path) -> None:
             if key not in made:
                 made[key] = f"t{len(made):03d}.png"
                 a = 1.0 if k == 0 else k / (nfade + 1)
-                card_image(text, font, a).save(d / made[key])
+                card_image(text, font, a, S).save(d / made[key])
             return made[key]
 
         lst, t = [], 0.0
@@ -98,9 +101,10 @@ def main() -> None:
     ap.add_argument("--cards", required=True, help="[{start, end, text}] の JSON")
     ap.add_argument("--total", type=float, required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--scale", type=int, default=1, choices=(1, 2), help="2 で 3840x2160")
     a = ap.parse_args()
     cards = json.loads(Path(a.cards).read_text(encoding="utf-8"))
-    render(cards, a.total, Path(a.out))
+    render(cards, a.total, Path(a.out), a.scale)
     print(f"出典 {len(cards)} 枚 -> {a.out}")
 
 

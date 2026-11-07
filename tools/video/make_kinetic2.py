@@ -18,6 +18,7 @@
 
 使い方:
   uv run python tools/video/make_kinetic2.py --cards outputs/video/subs_r6/cards.json --total 179.4 --out outputs/video/subs_r6/kinetic.mov
+  高解像度: --scale 2 で 3840x2160 に描く（レイアウトは 1920x1080 の座標のまま計算し、文字・影・線・位置・揺れを 2 倍の細かさで描く）。
   確認用に静止画も出せる: --stills DIR --still-times 0.1,0.3,1.5（暗い背景に重ねた 1080p の PNG）
 """
 
@@ -54,6 +55,7 @@ TYPE_STEP, DUR_TYPE = 0.03, 0.09
 DUR_MASK, MASK_SOFT = 0.55, 160
 SHAKE = ((3, -3), (-3, 2))   # 収まった瞬間の 2 コマ
 BG = (5, 8, 12)
+SCALE = 1                    # 描画の倍率（--scale）。レイアウトは常に 1920x1080 の座標で、描くときだけ掛ける
 
 
 @dataclass
@@ -151,13 +153,14 @@ def make_sprite(text: str, emph: bool, size: float, r: float, st: Style):
     t = text.rstrip(" ")
     if not t.strip():
         return None
-    f = K.font(size * r, st.weight(emph))
+    r_px = r * SCALE  # 絵の細かさ（r は論理上の倍率のまま返す）
+    f = K.font(size * r_px, st.weight(emph))
     asc, desc = f.getmetrics()
-    sp = st.sp_em * size * r
+    sp = st.sp_em * size * r_px
     adv = text_len(f, t, sp)
-    blur = (0.07 * size if st.big else 8) * r
-    off = (0.035 * size if st.big else 4) * r
-    sw = round(st.stroke * r)
+    blur = (0.07 * size if st.big else 8) * r_px
+    off = (0.035 * size if st.big else 4) * r_px
+    sw = round(st.stroke * r_px)
     pad = math.ceil(3 * blur + off + sw) + 4
     w, h = math.ceil(adv) + 2 * pad, asc + desc + 2 * pad
     by = pad + asc
@@ -169,7 +172,7 @@ def make_sprite(text: str, emph: bool, size: float, r: float, st: Style):
     mn = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw_str(ImageDraw.Draw(mn), pad, by, t, f, sp, fill=(K.YELLOW if emph else K.WHITE) + (255,),
              stroke_width=sw, stroke_fill=K.DARK + (255,))
-    return {"sh": sh, "mn": mn, "anchor": (pad + adv / 2, by - 0.35 * size * r), "r": r}
+    return {"sh": sh, "mn": mn, "anchor": (pad + adv / 2, by - 0.35 * size * r_px), "r": r}
 
 
 def layout(lines, st: Style, fit: float):
@@ -316,16 +319,17 @@ def chunk_state(c: dict, t: float):
 
 
 def mask_image(x0: float, x1: float, mp: float):
-    """左から右へ現れるやわらかいマスク（横方向の勾配を縦に伸ばす）。"""
+    """左から右へ現れるやわらかいマスク（横方向の勾配を縦に伸ばす）。x0・x1 は論理座標。"""
     from PIL import Image
-    edge = (x0 - 60) + mp * ((x1 + 60 + MASK_SOFT) - (x0 - 60))
-    row = Image.new("L", (W, 1))
+    S = SCALE
+    edge = ((x0 - 60) + mp * ((x1 + 60 + MASK_SOFT) - (x0 - 60))) * S
+    row = Image.new("L", (W * S, 1))
     vals = []
-    for x in range(W):
-        v = min(1.0, max(0.0, (edge - x) / MASK_SOFT))
+    for x in range(W * S):
+        v = min(1.0, max(0.0, (edge - x) / (MASK_SOFT * S)))
         vals.append(round(255 * v * v * (3 - 2 * v)))
     row.putdata(vals)
-    return row.resize((W, H), Image.NEAREST)
+    return row.resize((W * S, H * S), Image.NEAREST)
 
 
 def draw_card(cd: dict, states: tuple, exit_p: float, shake: tuple):
@@ -333,14 +337,15 @@ def draw_card(cd: dict, states: tuple, exit_p: float, shake: tuple):
     st = cd["style"]
     chunks = cd["chunks"]
     shx, shy = shake
-    canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    S = SCALE
+    canvas = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
     for idxs in cd["lines"]:
         vis = [i for i in idxs if states[i] is not None]
         if not vis:
             continue
-        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0)) if st.anim == "mask" else canvas
+        layer = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0)) if st.anim == "mask" else canvas
         # 帯（強調の背面）
-        bars = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        bars = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
         bd = ImageDraw.Draw(bars)
         for g, members in cd["groups"].items():
             if members[0] not in idxs or states[members[0]] is None:
@@ -359,12 +364,12 @@ def draw_card(cd: dict, states: tuple, exit_p: float, shake: tuple):
             if st.big:  # 大きい文字は、ベースラインの下に細い線を引く（帰りを埋める線の印）
                 th = max(6.0, 0.05 * c0["size"])
                 yb = c0["base"] + 0.14 * c0["size"] + s0[3] + shy
-                bd.rounded_rectangle((x0 + 8, yb, xe - 8, yb + th), radius=th / 2,
+                bd.rounded_rectangle(((x0 + 8) * S, yb * S, (xe - 8) * S, (yb + th) * S), radius=th * S / 2,
                                      fill=K.YELLOW + (round(255 * min(1.0, s0[0] * 2)),))
             else:
                 hgt = c0["size"] * 0.45
                 bot = c0["base"] + c0["size"] * 0.10 + s0[3] + shy
-                bd.rounded_rectangle((x0, bot - hgt, xe, bot), radius=hgt * 0.3,
+                bd.rounded_rectangle((x0 * S, (bot - hgt) * S, xe * S, bot * S), radius=hgt * S * 0.3,
                                      fill=K.YELLOW + (round(255 * 0.28 * min(1.0, s0[0] * 2)),))
         layer.alpha_composite(bars)
         for name in ("sh", "mn"):
@@ -380,7 +385,7 @@ def draw_card(cd: dict, states: tuple, exit_p: float, shake: tuple):
                     img = img.resize((max(1, round(img.width * k)), max(1, round(img.height * k))), Image.LANCZOS)
                 ax, ay = sp["anchor"]
                 gy = c["base"] - 0.35 * c["size"] + dy + shy
-                K.over(layer, K.fade(img, op), round(c["cx"] + dx + shx - ax * k), round(gy - ay * k))
+                K.over(layer, K.fade(img, op), round((c["cx"] + dx + shx) * S - ax * k), round(gy * S - ay * k))
         if st.anim == "mask":
             lx0 = min(chunks[i]["x"] for i in idxs)
             lx1 = max(chunks[i]["x"] + chunks[i]["vis"] for i in idxs)
@@ -388,8 +393,8 @@ def draw_card(cd: dict, states: tuple, exit_p: float, shake: tuple):
             canvas.alpha_composite(layer)
     if exit_p > 0:
         canvas = K.fade(canvas, 1 - exit_p ** 2)
-        full = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        full.paste(canvas, (0, -round(8 * exit_p)))
+        full = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
+        full.paste(canvas, (0, -round(8 * exit_p * S)))
         canvas = full
     return canvas
 
@@ -426,13 +431,13 @@ def render(cards: list[dict], total: float, out: Path, stills: Path | None = Non
         stills.mkdir(parents=True, exist_ok=True)
         for t in still_times or []:
             fs = frame_state(prep, tl, t)
-            img = draw_card(prep[fs[0]], *fs[1:]) if fs else Image.new("RGBA", (W, H), (0, 0, 0, 0))
-            bg = Image.new("RGBA", (W, H), BG + (255,))
+            img = draw_card(prep[fs[0]], *fs[1:]) if fs else Image.new("RGBA", (W * SCALE, H * SCALE), (0, 0, 0, 0))
+            bg = Image.new("RGBA", (W * SCALE, H * SCALE), BG + (255,))
             bg.alpha_composite(img)
             bg.convert("RGB").save(stills / f"still_{t:07.3f}.png")
         print(f"静止画 {len(still_times or [])} 枚 -> {stills}")
     tmp = Path(tempfile.mkdtemp(prefix="kinetic2_", dir=out.parent))
-    Image.new("RGBA", (W, H), (0, 0, 0, 0)).save(tmp / "blank.png")
+    Image.new("RGBA", (W * SCALE, H * SCALE), (0, 0, 0, 0)).save(tmp / "blank.png")
     names: dict = {}
     seq: list[list] = []  # [ファイル名, コマ数]
     for n in range(n_frames):
@@ -466,9 +471,12 @@ def main() -> None:
     ap.add_argument("--cards", required=True)
     ap.add_argument("--total", type=float, required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--scale", type=int, default=1, choices=(1, 2), help="2 で 3840x2160 に描く")
     ap.add_argument("--stills", help="確認用の静止画（暗い背景に重ねた 1080p）を出すフォルダ")
     ap.add_argument("--still-times", default="", help="静止画の時刻（秒）をカンマ区切りで")
     a = ap.parse_args()
+    global SCALE
+    SCALE = a.scale
     cards = json.loads(Path(a.cards).read_text(encoding="utf-8"))
     times = [float(x) for x in a.still_times.split(",") if x.strip()]
     render(cards, a.total, Path(a.out), Path(a.stills) if a.stills else None, times)
