@@ -28,8 +28,21 @@ PATH_RES = [
     re.compile(r"[A-Za-z]:\\Users\\", re.I),
     re.compile(r"C:" + "/Users/", re.I),  # この行が自分に当たらないよう分けて書く
     re.compile(r"/c/" + "Users/", re.I),
-    re.compile("\u4f5c\u6210\u8005"),  # 呼び名。この行が自分に当たらないようエスケープで書く
 ]
+
+
+def _private_re():
+    """作成者の呼び名など。追跡しない tools/submission/private_terms.txt か環境変数から読む。無ければ None（一般のパスだけ調べる）。"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("private_terms", ROOT / "tools" / "submission" / "private_terms.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.combined()
+
+
+_PRIV = _private_re()
+if _PRIV is not None:
+    PATH_RES.append(_PRIV)
 
 
 def git_files(paths=None):

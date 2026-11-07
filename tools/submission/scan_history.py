@@ -17,10 +17,17 @@ pats = {
  "slack": r"xox[baprs]-[A-Za-z0-9-]{10,}",
  "generic_assign": r"(?i)(api[_-]?key|secret|token|password|passwd)\s*[:=]\s*['\"][^'\"\s]{12,}['\"]",
  "bearer": r"(?i)authorization:\s*bearer\s+[A-Za-z0-9._-]{20,}",
- "win_userpath": r"(?i)C:[\/]+Users[\/]+tatsu",
+ "win_userpath": r"(?i)C:[\\/]+Users[\\/]+[^\\/\s]+",
  "email": r"[A-Za-z0-9._%+-]+@(gmail|yahoo|outlook|hotmail|icloud)\.[a-z.]+",
  "phone_jp": r"\b0[789]0-?\d{4}-?\d{4}\b",
 }
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+import private_terms  # 作成者の呼び名など。追跡しない private_terms.txt か環境変数 BACKFULL_PRIVATE_TERMS から読む
+_priv = private_terms.load()
+if _priv:
+    pats["private_term"] = "|".join(f"(?:{t})" for t in _priv)
+else:
+    print("private_term の確認は飛ばした", private_terms.SKIP_NOTE)
 cre = {k: re.compile(v) for k, v in pats.items()}
 p = subprocess.run(["git","-C",repo,"log","--all","-p","--no-color","--no-ext-diff","--text","--format=@@C %H %ad","--date=short"],capture_output=True)
 txt = p.stdout.decode("utf-8","replace")
