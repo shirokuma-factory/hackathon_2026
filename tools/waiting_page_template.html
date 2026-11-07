@@ -874,7 +874,6 @@ const consultNote = (name) => (consultSpots(name).some((h) => h.designated_count
 function consultSentences(name) {
   return consultSpots(name).map((h) =>
     `${placeLead(h, allPlaceless(name))}${h.band}に到着した${h.count}回の荷待ち（到着から荷役開始まで）が、平均${h.avg_minutes}分、最長${h.max_minutes}分でした。` +
-    (h.shipper_handling_count > 0 ? '貴社側で荷役をしていただいた時間も含まれています。' : '') +
     (h.count < 3 ? '回数が少ないため、参考としてご覧ください。' : ''));
 }
 const topSpot = (name) => { const h = reportSpots(name).find((x) => x.wait_minutes > 0); return h && h.count >= 3 && h.avg_minutes >= 30 ? h : null; };
@@ -924,15 +923,18 @@ function waitFromJa(p) {
   return partnerRows(p.partner).some((r) => r.appointed) ? '到着（指定の到着時刻がある回は、その時刻）' : '到着';
 }
 function mailModel(p) {
-  // 合計と「1 時間以上の回数」は同じ数え方にする。受付の時刻がある記録は従来どおり受付から（表の待機の列と同じ）、ほかは実際に待った分（report_wait_min）で数える
-  const repRows = partnerRows(p.partner), byReport = !hasRec(p);
-  const amt = mainAmt(p), wait = byReport ? repRows.reduce((a, r) => a + r.report_wait_min, 0) : mainWait(p), spot = topSpot(p.partner);
+  // 合計と「1 時間以上の回数」は、画面の数字のタイル・添付の記録の表の合計と同じ数え方（mainWait / over_1h_count）にする。本文の文が書く基準（waitFromJa）もこの数え方
+  const amt = mainAmt(p), wait = mainWait(p), spot = topSpot(p.partner);
+  // 合計の数え方は 1 回だけ書く。荷主側の荷役の時間は表の待機の列に入っている。荷主等の都合でない待ちは、合計にも表にも入れていない
+  const rowsP = partnerRows(p.partner);
+  const basisNotes = [rowsP.some((r) => r.handler === '荷主側' && r.end) ? '貴社側で荷役をしていただいた時間を含みます' : '', rowsP.some((r) => !r.shipper_fault) ? '荷主等の都合でない待ちは含めていません' : ''].filter(Boolean);
+  const basisJa = basisNotes.length ? `（${basisNotes.join('。')}）` : '';
   const prov = p.partner === PROVISIONAL_PARTNER;
   const name = prov ? '（荷主の会社名）' : String(partnerLabel(p.partner)).replace(/\s*(御中|様)\s*$/, '');
   const period = mailPeriod(p);
-  const over1h = byReport ? repRows.filter((r) => r.report_wait_min >= 60).length : p.over_1h_count;
+  const over1h = p.over_1h_count;
   const paras = [
-    `今回は、${period}${p.date_from === p.date_to ? 'に' : 'の間に'}ご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。${waitFromJa(p)}から荷役が始まるまでにお待ちした時間は、合計で${hmj(wait)}でした。` +
+    `今回は、${period}${p.date_from === p.date_to ? 'に' : 'の間に'}ご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。${waitFromJa(p)}から荷役が始まるまでにお待ちした時間は、合計で${hmj(wait)}${basisJa}でした。` +
       (over1h > 0 ? `そのうち、1時間以上お待ちした回が${over1h}回ありました。` : ''),
     (spot ? `とくに${noPlace(spot.place) ? '' : `${placeJa(spot.place)}では、`}${spot.band}に到着した${spot.count}回の待ち時間（到着から荷役開始まで）が、平均${spot.avg_minutes}分、最長${spot.max_minutes}分でした。` : '') +
       'ドライバーの拘束時間には荷待ちの時間も含まれます。2024年4月から時間外労働の上限規制が始まり、拘束時間の基準（改善基準告示）も改正されたため、荷待ちが長いと、その日のほかの運行にも影響が出ます。',

@@ -88,3 +88,46 @@ def test_full_example_email_keeps_its_wording():
         assert "渋滞や当社側の遅れによる待ちは含めていません" in t and "運転者の荷役は合計" in t
         assert "再計算してください" not in t and "場所の記入なし" not in t and "では、8時台に到着した" in t
         assert page.js("!document.querySelector('#fault-box') && !document.querySelector('#handler-box')")
+
+
+# 本文の合計・1 時間以上の回数は、画面の数字のタイルと添付の記録の表の合計と同じ数え方（2026-11-08）
+TOTALS_JS = r"""(function(){
+  const p = S.res.by_partner.find((x) => x.partner === S.partner) || S.res.by_partner[0];
+  const body = draftText(p);
+  const m = body.match(/合計で((?:\d+時間)?(?:\d+分)?)(?:（[^）]*）)?でした/), o = body.match(/1時間以上お待ちした回が(\d+)回/);
+  const tile = document.querySelector('#stats .hero .stat-n').innerText.replace(/\s+/g, '');
+  const tr = [...document.querySelectorAll('#wait-doc table.rec tr')].find((x) => x.children[0] && x.children[0].textContent.trim() === '合計');
+  const tot = tr ? tr.children : [];
+  return {body: m && m[1], over: o ? +o[1] : 0, tile, over_tile: p.over_1h_count, wait: p.wait_minutes,
+          rec_total: [...tot].map((c) => c.textContent), rows: 0};
+})()"""
+
+
+def _check_totals(page):
+    r = page.js(TOTALS_JS)
+    assert r["body"] and r["body"] == (r["tile"][:-2] if r["tile"].endswith("時間0分") else r["tile"]), r
+    assert r["over"] == r["over_tile"], r
+    assert str(r["wait"]) in r["rec_total"], r   # 添付の記録の表の合計（待機の分）
+    return r
+
+
+def test_example_email_total_matches_tile_and_attached_table():
+    _edge_or_skip()
+    import capture_web as cw
+    with cw.edge_page(1920, 1080) as page:
+        page.goto(WAITING.as_uri() + "?example=1")
+        page.wait(lambda: page.js("!!document.querySelector('#wait-doc table.rec')"), 30, "書面")
+        r = _check_totals(page)
+        assert r["body"] == "11時間22分" and r["wait"] == 682
+
+
+def test_sparse_paste_email_total_matches_tile_and_attached_table():
+    _edge_or_skip()
+    import capture_web as cw
+    with cw.edge_page(1920, 1080) as page:
+        _paste(page, PASTE5)
+        _check_totals(page)
+        page.js("document.querySelector('#b-fault-no').click()")
+        page.wait(lambda: page.js("!document.querySelector('#fault-box')"), 10, "都合の一括")
+        r = page.js(TOTALS_JS)
+        assert r["over"] == r["over_tile"], r

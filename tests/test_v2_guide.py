@@ -76,8 +76,18 @@ def test_spec13_7_sender_individual_makes_rosen_check():
 
 
 def test_spec30_1_rosen_label_names_no_carrier():
+    from shipcompare import estimate as est, tariffs
     r = row_of(estimate_all(make_shipment()), "rosen")
-    assert r.label == "路線便（積合せの公表運賃からの試算）"
+    # 読み込んだ表に合わせた名前（実在の表が手元にあれば公表運賃、なければ架空の表の例）。名前に会社名は出ない
+    assert r.label == est.row_label(est.ROSEN_LABEL, tariffs.load_tariff("rosen"))
+    assert r.label in ("路線便（積合せの公表運賃からの試算）", f"路線便（{est.SAMPLE_LABEL_NOTE}）")
+
+
+def test_spec30_1_rosen_label_without_private_tables(monkeypatch, tmp_path):
+    from shipcompare import estimate as est, tariffs
+    monkeypatch.setattr(tariffs, "PRIVATE_DIR", "no_such_private_dir")   # 公開リポジトリ・CI と同じ（実在の表なし）
+    r = row_of(estimate_all(make_shipment()), "rosen")
+    assert r.label == f"路線便（{est.SAMPLE_LABEL_NOTE}）"
 
 
 def test_spec13_7_corporate_scenarios_unchanged():

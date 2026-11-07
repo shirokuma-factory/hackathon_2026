@@ -56,9 +56,11 @@ def _call(port, method, path, body=None):
 def test_labels_and_sources_follow_spec_30_1():
     sc = load_scenario("S1")
     rows = {r.mode: r for r in estimate_all(sc["shipment"])}
-    assert rows["takuhai"].label == "宅配便（大手の公表運賃からの試算）"
-    assert rows["rosen"].label == "路線便（積合せの公表運賃からの試算）"
-    assert rows["jitbox"].label == "カゴ台車 1 本単位（公表運賃からの試算）"
+    # 名前の括弧の中は、読み込んだ表に合わせる（実在の表が手元にあれば公表運賃、なければ架空の表の例）
+    from shipcompare import estimate as est, tariffs
+    for m, base in (("takuhai", est.TAKUHAI_LABEL), ("rosen", est.ROSEN_LABEL), ("jitbox", est.JITBOX_LABEL)):
+        assert rows[m].label == est.row_label(base, tariffs.load_tariff(m))
+        assert rows[m].label in (base, base.split("（", 1)[0] + f"（{est.SAMPLE_LABEL_NOTE}）")
     for m in ("takuhai", "rosen", "jitbox"):
         assert rows[m].source.name in (ANON_SOURCE_NAME, SAMPLE_SOURCE_NAME) and not rows[m].source.url
     assert ANON_SOURCE_NAME == "大手の公表運賃をもとにした試算。会社名と各社の表は載せません（各社の利用条件のため）"
@@ -66,6 +68,15 @@ def test_labels_and_sources_follow_spec_30_1():
         text = json.dumps([r.label, r.reasons, r.notes, r.missing, [i.message for i in r.issues],
                            r.source.name if r.source else ""], ensure_ascii=False)
         assert not NAMES.search(text), text
+
+
+def test_labels_without_private_tables_use_the_sample_note(monkeypatch):
+    from shipcompare import estimate as est, tariffs
+    monkeypatch.setattr(tariffs, "PRIVATE_DIR", "no_such_private_dir")   # 公開リポジトリ・CI と同じ（実在の表なし）
+    rows = {r.mode: r for r in estimate_all(load_scenario("S1")["shipment"])}
+    assert rows["takuhai"].label == f"宅配便（{est.SAMPLE_LABEL_NOTE}）"
+    assert rows["rosen"].label == f"路線便（{est.SAMPLE_LABEL_NOTE}）"
+    assert rows["jitbox"].source.name == SAMPLE_SOURCE_NAME
 
 
 def test_round_100():

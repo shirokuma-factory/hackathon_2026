@@ -171,6 +171,7 @@ const WaitingShared = (() => {
   // 日時の欄（「2026/10/05 9:00」「10/5 9:00」「R8.10.5 9時00分」）の、時刻の前の日付の部分
   const DT_PREFIX = '(?:[0-9令和平成昭和元RHSrhs/\\-年月日.]+(?: ?\\([月火水木金土日祝]+\\))? )?';
   const DT_SPLIT = new RegExp('^([0-9令和平成昭和元RHSrhs/\\-年月日.]+(?: ?\\([月火水木金土日祝]+\\))?) ((?:[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?)|(?:[0-9]{1,2}時(?:[0-9]{1,2}分?|半)?))$');
+  const NO_HEADER_HINT = '1 行目に見出し（日付・到着・荷役開始…）を付けて貼り直してください。見出しが無いと、列の順で読むため、別の列を到着などとして読んでしまいます';
   const POS_NOTE = '見出しの行が無いので、列の順（日付、車番、車種、契約の相手、場所、到着、荷役開始、荷役終了、出発、荷役をした人、荷役の方法、荷主等の都合）で読みました';
   const UNKNOWN_HANDLER = '不明';
   const UNKNOWN_HANDLER_NOTE = '荷役をした人が分からないので、荷役の時間は待機にも積込料にも入れていません';
@@ -388,6 +389,17 @@ const WaitingShared = (() => {
     if (nz(text).includes(DRIVER_LABEL) && (!lines.some((ln) => ln.includes(String.fromCharCode(9))) || !lines.slice(0, 5).some(headLine))) {
       const drows = parseDriverText(text);
       const defaulted = [], notes = [];
+      // 「荷待ち記録」を含まない行のうち、日付で始まるメモの形の行（PC の LINE の本文欄に手で書いた「10/7 船橋DC 着8:05 呼ばれ9:50 終わり10:30」）は、メモとして読む。読めないものは行を挙げる
+      const otherLines = lines.filter((ln) => !ln.includes(DRIVER_LABEL)).map((ln) => nz(ln.split(String.fromCharCode(9)).pop()))
+        .filter((ln) => { const m = MEMO_DATE_RE.exec(ln); return m && ln.slice(m[0].length).trim(); });
+      if (otherLines.length) {
+        const memo = parseMemoText(otherLines.join('\n'));
+        if (memo) {
+          memo.rows.forEach((r) => { if (!r.partner) r.partner = MEMO_NO_PARTNER; drows.push(r); });
+          if (memo.rows.length) notes.push(`「荷待ち記録」の無い手書きのメモの行も読みました（${memo.rows.length} 件）。契約の相手が書かれていない行は『${MEMO_NO_PARTNER}』としています`);
+          if (memo.bad.length) notes.push(`読まなかった行（${memo.bad.length} 行）: ` + memo.bad.map(([ln, why]) => `「${memoClip(ln)}」は${why}`).join('、'));
+        } else notes.push(`読まなかった行（${otherLines.length} 行）: ` + otherLines.map((ln) => `「${memoClip(ln)}」`).join('、') + '。『着7:50』『呼ばれ9:40』のような言葉つきの時刻が無いので読めません');
+      }
       if (drows.length) {
         notes.push(`ドライバーの記録（荷待ち記録）を読みました（${drows.length} 件）。『相手』を契約の相手として読んでいます`);
         if (drows.some((r) => r.partner)) asks.push(ASK_PARTNER);
@@ -445,7 +457,12 @@ const WaitingShared = (() => {
         if (mapped[i] === null && name && !seen.has(name)) { seen.add(name); notes.push(`見出し『${name}』は読みませんでした`); }
       });
       body = lines.slice(headAt + 1);
-    } else notes.push(POS_NOTE);
+    } else {
+      notes.push(POS_NOTE);
+      // 見出しが無く、列の順で読むと到着の列が時刻にならないとき: 見出しを付けて貼り直してもらう
+      const c0 = (body[0] || '').split('\t');
+      if (c0.length && !/^\s*\d{1,2}[:：時]\d{0,2}/.test(c0[COLUMNS.indexOf('arrive')] || '')) notes.push(NO_HEADER_HINT);
+    }
     const rows = body.map((ln) => {
       const cells = ln.split('\t'), o = {};
       for (let i = 0; i < Math.min(cols.length, cells.length); i++) if (cols[i]) o[cols[i]] = cells[i].trim();

@@ -130,7 +130,7 @@ def test_b3_body_average_uses_actual_wait_for_no_rows_too():
         _paste(page, text)
         t = page.js("draftText(S.res.by_partner[0])")
         assert "平均90分、最長90分" in t and "到着から荷役開始まで" in t
-        assert "1時間以上お待ちした回が3回" in t
+        assert "1時間以上お待ちした回が1回" in t   # 本文の回数は表・タイルと同じ数え方（荷主等の都合の待ちだけ）。2026-11-08 r4b
         assert "平均30分" not in t
         # 別紙の月ごとの表も 3 回・平均 90 分で同じ
         assert page.js("monthTable('元請A')[0].avg_minutes") == 90
@@ -304,5 +304,6 @@ def test_mail_total_and_over_1h_count_use_same_basis_and_no_stale_shipper_handli
         _open(page)
         _paste(page, text)
         t = page.js("draftText(S.res.by_partner[0])")
-        assert "合計で4時間30分" in t and "1時間以上お待ちした回が3回" in t   # 90 分 × 3 回。全部 1 時間以上なので合計と回数が食い違わない
+        # 本文の合計と回数は、画面のタイル・添付の表と同じ数え方（荷主等の都合の待ち 90 分だけ）。数え方は 1 回だけ括弧で書く（2026-11-08 r4b）
+        assert "合計で1時間30分（荷主等の都合でない待ちは含めていません）でした" in t and "1時間以上お待ちした回が1回" in t
         assert "貴社側で荷役をしていただいた時間も含まれています" not in t

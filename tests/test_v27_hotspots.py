@@ -157,10 +157,10 @@ def test_g115_g116_g118_screen_basis_and_document(path):
         # G116: 書面にご相談が入り、その相手の上位 3 組を出す。Gメンの「恒常的」の文は書面に入れない
         d = info["doc"]
         assert "荷待ちを減らすためのご相談" in d and "恒常的" not in d
-        assert "江東区の地点07では、8時台に到着した5回の荷待ちが、平均98分、最長135分でした。" in d   # メールの形に 2026-11-07
-        assert "川崎市の地点12では、13時台に到着した2回の荷待ちが、平均40分、最長40分でした。指定の到着時刻のない到着が多く含まれます。" in d
-        assert "江東区の地点07では、10時台に到着した4回の荷待ちが、平均15分、最長20分でした。" in d
-        assert "江東区の地点07では、10時台に到着した4回の荷待ちが、平均15分、最長20分でした。指定" not in d   # 平均30分未満の組には付けない（§29.3）
+        assert "江東区の地点07では、8時台に到着した5回の荷待ち（到着から荷役開始まで）が、平均98分、最長135分でした。" in d   # 不具合探しの直しに合わせて 2026-11-08
+        assert "川崎市の地点12では、13時台に到着した2回の荷待ち（到着から荷役開始まで）が、平均40分、最長40分でした。" in d
+        assert "江東区の地点07では、10時台に到着した4回の荷待ち（到着から荷役開始まで）が、平均15分、最長20分でした。" in d
+        assert d.count("指定の到着時刻のない到着が多く含まれます。") == 1   # どの文にも付けず、一覧の後ろに 1 回だけ（§29.3）
         assert "江東区の地点07では、9時台に到着した" not in d   # 4 組目は出さない（上位 3 組まで）
         assert "荷待ちが減れば、待機時間料の対象も減ります。到着の時刻の指定、受付の予約、荷役を始める順番などの見直しをご相談させてください。" in d
         assert "荷待ちが残る場合に備えて、次回からの契約の書面に、" in d
@@ -169,11 +169,11 @@ def test_g115_g116_g118_screen_basis_and_document(path):
         page.js("document.querySelector('tr[data-pick=\"架空 B食品\"]').click()")
         d2 = page.js("document.querySelector('#wait-doc').textContent")
         consult = d2.split("荷待ちを減らすためのご相談")[1].split("参考：契約に入れていただきたい項目")[0]
-        assert "市川市の地点03では、8時台に到着した3回の荷待ちが、平均90分、最長100分でした。" in consult and "江東区" not in consult
+        assert "市川市の地点03では、8時台に到着した3回の荷待ち（到着から荷役開始まで）が、平均90分、最長100分でした。" in consult and "江東区" not in consult
         # コピーする文
         text = page.js("draftText(S.res.by_partner.find((x) => x.partner === S.partner))")
         assert "参考：荷待ちを減らすためのご相談" in text and "恒常的" not in text
-        assert "・市川市の地点03では、10時台に到着した2回の荷待ちが、平均15分、最長15分でした。回数が少ないため、参考としてご覧ください。" in text
+        assert "・市川市の地点03では、10時台に到着した2回の荷待ち（到着から荷役開始まで）が、平均15分、最長15分でした。回数が少ないため、参考としてご覧ください。" in text
         assert text.index("参考：荷待ちを減らすためのご相談") < text.index("参考：契約に入れていただきたい項目（案）")
         assert "荷待ちが残る場合に備えて、次回からの契約の書面に、" in text
 
@@ -188,7 +188,7 @@ def test_g116_copy_button_in_artifact_has_the_consult_section():
         page.wait(lambda: page.js("document.querySelector('#copybox').hidden === false"), 10, "枠")
         text = page.js("document.querySelector('#copyta').value")
     assert "参考：荷待ちを減らすためのご相談" in text and "恒常的" not in text
-    assert text.count("回の荷待ちが、平均") == 3   # 相手 A の上位 3 組
+    assert text.count("回の荷待ち（到着から荷役開始まで）が、平均") == 3   # 相手 A の上位 3 組
 
 
 def test_hotspot_texts_in_both_builds():

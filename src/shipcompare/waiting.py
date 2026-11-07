@@ -109,6 +109,7 @@ _ERA_START = {"令和": date(2019, 5, 1), "r": date(2019, 5, 1), "平成": date(
 # 日時の欄（「2026/10/05 9:00」「10/5 9:00」「R8.10.5 9時00分」）の、時刻の前の日付の部分
 _DT_PREFIX = r"(?:[0-9令和平成昭和元RHSrhs/\-年月日.]+(?: ?\([月火水木金土日祝]+\))? )?"
 _DT_SPLIT = r"([0-9令和平成昭和元RHSrhs/\-年月日.]+(?: ?\([月火水木金土日祝]+\))?) ((?:[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?)|(?:[0-9]{1,2}時(?:[0-9]{1,2}分?|半)?))"
+_NO_HEADER_HINT = "1 行目に見出し（日付・到着・荷役開始…）を付けて貼り直してください。見出しが無いと、列の順で読むため、別の列を到着などとして読んでしまいます"
 _POS_NOTE = ("見出しの行が無いので、列の順（日付、車番、車種、契約の相手、場所、到着、荷役開始、荷役終了、出発、荷役をした人、荷役の方法、荷主等の都合）で読みました")
 UNKNOWN_HANDLER = "不明"
 UNKNOWN_HANDLER_NOTE = "荷役をした人が分からないので、荷役の時間は待機にも積込料にも入れていません"
@@ -405,6 +406,28 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
         rows = parse_driver_text(text)
         notes = [f"{_ASK_NOTE_DRIVER}（{len(rows)} 件）。『相手』を契約の相手として読んでいます" if rows else ""]
         notes = [n for n in notes if n]
+        # 「荷待ち記録」を含まない行のうち、日付で始まるメモの形の行（PC の LINE の本文欄に手で書いた行）は、メモとして読む。読めないものは行を挙げる
+        other = []
+        for ln in lines:
+            if DRIVER_LABEL in ln:
+                continue
+            body_ln = _nz(ln.split(chr(9))[-1])
+            m = _MEMO_DATE_RE.match(body_ln)
+            if m and body_ln[m.end():].strip():
+                other.append(body_ln)
+        if other:
+            memo = parse_memo_text("\n".join(other))
+            if memo:
+                for r in memo["rows"]:
+                    if not r.get("partner"):
+                        r["partner"] = MEMO_NO_PARTNER
+                    rows.append(r)
+                if memo["rows"]:
+                    notes.append(f"「荷待ち記録」の無い手書きのメモの行も読みました（{len(memo['rows'])} 件）。契約の相手が書かれていない行は『{MEMO_NO_PARTNER}』としています")
+                if memo["bad"]:
+                    notes.append(f"読まなかった行（{len(memo['bad'])} 行）: " + "、".join(f"「{_memo_clip(l)}」は{why}" for l, why in memo["bad"]))
+            else:
+                notes.append(f"読まなかった行（{len(other)} 行）: " + "、".join(f"「{_memo_clip(l)}」" for l in other) + "。『着7:50』『呼ばれ9:40』のような言葉つきの時刻が無いので読めません")
         if any(r.get("partner") for r in rows):
             asks.append(ASK_PARTNER)
         defaulted: list[str] = []
@@ -472,6 +495,9 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
         lines = lines[head_at + 1:]
     else:
         notes.append(_POS_NOTE)
+        c0 = (lines[0].split("\t") if lines else [])
+        if c0 and not re.match(r"\s*\d{1,2}[:：時]\d{0,2}", c0[COLUMNS.index("arrive")] if len(c0) > COLUMNS.index("arrive") else ""):
+            notes.append(_NO_HEADER_HINT)
     rows = []
     for ln in lines:
         cells = ln.split("\t")
