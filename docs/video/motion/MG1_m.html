@@ -1,0 +1,71 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>MG1_m</title><link rel="stylesheet" href="trailer_kit.css">
+<style>
+#blob{position:absolute;left:0;top:0;width:1920px;height:780px;background:radial-gradient(ellipse 64% 44% at 50% 40%,rgba(5,8,12,.66) 0%,rgba(5,8,12,.42) 55%,rgba(5,8,12,0) 100%)}
+#head{left:96px;top:92px;font-size:64px;font-weight:700;letter-spacing:.02em}
+#cnt{left:96px;top:176px;display:flex;align-items:baseline;font-size:220px;font-weight:900;line-height:1.1}
+#cnt .u{font-size:99px;font-weight:700;margin-left:6px}
+.lbl{position:absolute;white-space:nowrap;font-weight:700;opacity:0}
+#lt{right:1180px;top:448px;font-size:40px;color:#fff}
+#lg{right:1180px;top:550px;font-size:44px;color:var(--warn)}
+</style></head><body data-duration="7.5">
+<div id="stage">
+ <div class="layer" id="bg"><div id="blob"></div></div>
+ <div class="layer" id="fig"><div class="lbl" id="lt">国の目標 44%（2028年度）</div><div class="lbl" id="lg">約5ポイント足りない</div></div>
+ <div class="layer" id="txt">
+  <div class="abs sh" id="head">営業用トラックの積載効率</div>
+  <div class="abs sh tn" id="cnt"><span id="num">0.00</span><span class="u">%</span></div>
+ </div>
+</div>
+<script src="trailer_kit.js"></script>
+<script>
+(function () {
+  var D = 7.5, X = 840, Y = 396, S = 1.0, F = 38.97, TG = 44;
+  var svg = TK.svg('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, TK.$('fig'));
+  /* 道の点線（背景の層）。ほかの図と同じ 14px の線と 16px の空き */
+  var bgsvg = TK.svg('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, TK.$('bg'));
+  var road = TK.svg('path', { d: 'M96 752 H1824', fill: 'none', stroke: 'rgba(255,255,255,.16)', 'stroke-width': 4, 'stroke-linecap': 'round', 'stroke-dasharray': '14 16', pathLength: 1 }, bgsvg);
+  var T = TK.trailer(svg, { x: X, y: Y, s: S, sw: 4 });
+  var defs = TK.svg('defs', {}, T.g), COLS = 20, ROWS = 10, cols = [];
+  for (var c = 0; c < COLS; c++) {
+    var cp = TK.svg('clipPath', { id: 'cp' + c }, defs);
+    var cr = TK.svg('rect', { x: 20 + c * 33, y: 230, width: 33, height: 0 }, cp);
+    var gg = TK.svg('g', { 'clip-path': 'url(#cp' + c + ')' }, T.g);
+    var ghosts = [];
+    for (var r = 0; r < ROWS; r++) {
+      var x = 20 + c * 33 + 3, y = 230 - (r + 1) * 21 + 3;
+      var gh = TK.svg('rect', { x: x, y: y, width: 27, height: 15, rx: 4, fill: 'none', stroke: 'rgba(159,176,193,.5)', 'stroke-width': 1.6 / S, 'stroke-dasharray': '5 5', 'stroke-linecap': 'round' }, T.g);
+      gh.style.opacity = 0; ghosts.push(gh);
+      TK.svg('rect', { x: x, y: y, width: 27, height: 15, rx: 4, fill: '#e3e9ef' }, gg);
+    }
+    cols.push({ cr: cr, ghosts: ghosts });
+  }
+  var ly = function (f) { return Y + (230 - f * 2.1) * S; };
+  var y44 = ly(TG), y39 = ly(F), xL = X - 70, xBox = X + 700 * S;
+  var tl = TK.svg('path', { d: 'M180 ' + y44 + ' H' + xBox, fill: 'none', stroke: '#f0c04a', 'stroke-width': 3, 'stroke-linecap': 'round', pathLength: 1 }, svg);
+  var ext = TK.svg('path', { d: 'M' + (xL - 2) + ' ' + y39 + ' H' + (X - 8), fill: 'none', stroke: 'rgba(255,255,255,.7)', 'stroke-width': 3, 'stroke-linecap': 'round', pathLength: 1 }, svg);
+  var br = TK.svg('path', { d: 'M' + (xL + 26) + ' ' + y44 + ' H' + xL + ' V' + y39 + ' H' + (xL + 26), fill: 'none', stroke: '#f0c04a', 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', pathLength: 1 }, svg);
+  var lt = TK.$('lt'), lg = TK.$('lg');
+  lt.style.top = (y44 - 56) + 'px'; lt.style.right = (1920 - xL + 24) + 'px';
+  lg.style.top = (y39 + 16) + 'px'; lg.style.right = (1920 - xL + 24) + 'px';
+  var hc = TK.split(TK.$('head')), num = TK.$('num'), cnt = TK.$('cnt');
+  TK.run(D, function (s) {
+    TK.draw(road, TK.mov(TK.pr(s, 0.1, 1.6)));
+    TK.trailerDraw(T, s, 0.2);
+    TK.reveal(hc, s, 0.1, 0.04, 0.55);
+    TK.rise(cnt, s, 0.55, 0.5, 20);
+    cols.forEach(function (q, c) {
+      var k = TK.out(TK.pr(s, 0.9 + c * 0.012, 2.3));
+      q.cr.setAttribute('y', 230 - F / 100 * 210 * k);
+      q.cr.setAttribute('height', F / 100 * 210 * k + 1);
+      var g = TK.out(TK.pr(s, 0.6 + c * 0.03, 1.1 + c * 0.03));
+      q.ghosts.forEach(function (gh) { gh.style.opacity = g; });
+    });
+    num.textContent = (F * TK.out(TK.pr(s, 0.9, 2.3))).toFixed(2);
+    TK.draw(tl, TK.mov(TK.pr(s, 3.2, 3.9)));
+    TK.rise(lt, s, 3.55, 0.5);
+    TK.draw(ext, TK.mov(TK.pr(s, 4.2, 4.5)));
+    TK.draw(br, TK.mov(TK.pr(s, 4.3, 4.75)));
+    TK.rise(lg, s, 4.6, 0.5);
+  });
+})();
+</script></body></html>

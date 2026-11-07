@@ -1,0 +1,95 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>MG5_m</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;background:transparent;overflow:hidden}
+body{font-family:"Noto Sans JP","Yu Gothic","Meiryo",sans-serif;color:#fff;font-weight:700}
+#stage,.L{position:absolute;left:0;top:0;width:1920px;height:1080px}
+.L{transform-origin:96px 160px}
+</style></head><body data-duration="8.5">
+<div id="stage"><div id="bg" class="L"></div><div id="fig" class="L"></div><div id="txt" class="L"></div></div>
+<script src="mkit_m.js"></script>
+<script>
+(function(){
+var K=window.K,P=K.P,E=K.E,D=8.5;
+var bg=document.getElementById('bg'),fig=document.getElementById('fig'),txt=document.getElementById('txt');
+K.div(bg,'left:0;top:0;width:1920px;height:760px;background:linear-gradient(180deg,rgba(5,8,12,.78) 0%,rgba(5,8,12,.62) 60%,rgba(5,8,12,0) 100%)');
+var svg=K.el('svg',{width:1920,height:1080,viewBox:'0 0 1920 1080'},fig);
+var X0=96,X1=1824,RX0=290,RX1=1640,Y1=214,Y2=272;
+/* 経路の 2 本: 上が行き（白の実線）、下が帰り（点線が黄色で埋まる） */
+var m1=K.motif(svg,RX0,RX1,RX1,Y1,6);   /* 実線だけ使う */
+var m2=K.motif(svg,RX0,RX0,RX1,Y2,6);   /* 点線とその黄色 */
+function node(x,y,c){return K.el('circle',{cx:x,cy:y,r:9,fill:'#05080c',stroke:c,'stroke-width':4},svg);}
+var nodes=[node(RX0,Y1,'#fff'),node(RX1,Y1,'#fff'),node(RX0,Y2,'#3a4757'),node(RX1,Y2,'#3a4757')];
+var g1=K.el('g',{},svg),t1=K.truck(g1,3.5);t1.set('#ffffff',0,.0);
+var g2=K.el('g',{},svg),t2=K.truck(g2,3.5);t2.set('#f0c04a',0,.16);
+/* 棒 */
+var BW=X1-X0,BH=28,R1=304,R2=416;
+var tr1=K.div(fig,'left:'+X0+'px;top:'+(R1+84)+'px;width:'+BW+'px;height:'+BH+'px;border-radius:14px;background:rgba(58,71,87,.55)');
+var tr2=K.div(fig,'left:'+X0+'px;top:'+(R2+84)+'px;width:'+BW+'px;height:'+BH+'px;border-radius:14px;background:rgba(58,71,87,.55)');
+var b1=K.div(fig,'left:'+X0+'px;top:'+(R1+84)+'px;height:'+BH+'px;border-radius:14px;background:#6cb6ff;width:0');
+var b2=K.div(fig,'left:'+X0+'px;top:'+(R2+84)+'px;height:'+BH+'px;border-radius:14px;background:#f0c04a;width:0');
+b1.style.background='linear-gradient(90deg,#4f93d6,#6cb6ff)';
+var W1=BW,W2=BW*95000/272610;
+/* 括弧（棒の差を示す） */
+var brk=K.el('path',{d:'M0 0',fill:'none',stroke:'#fff','stroke-width':6,'stroke-linecap':'round','stroke-linejoin':'round'},svg);
+var bx0=X0+W2+6,bx1=X1,by=R2+84+BH+28;
+/* 文字 */
+var title=K.div(txt,'left:96px;top:92px;font-size:40px;line-height:1.3;font-weight:700;color:#9fb0c1','焼酎グラスと陳列棚 400kg　東京→鹿児島');
+var c1=K.div(txt,'left:96px;top:'+(R1+6)+'px;font-size:40px;line-height:1.4;font-weight:700','2tトラックを借り切る');
+var v1=K.div(txt,'right:96px;top:'+(R1-16)+'px;font-size:64px;line-height:1.3;font-weight:900;font-variant-numeric:tabular-nums;text-align:right;color:#6cb6ff');
+var c2=K.div(txt,'left:96px;top:'+(R2+6)+'px;font-size:40px;line-height:1.4;font-weight:700','帰り便');
+var v2=K.div(txt,'right:96px;top:'+(R2-16)+'px;font-size:64px;line-height:1.3;font-weight:900;font-variant-numeric:tabular-nums;text-align:right;color:#f0c04a');
+var ct=K.div(txt,'left:0;top:552px;font-size:180px;line-height:1;font-weight:900;color:#f0c04a;font-variant-numeric:tabular-nums');
+var pre=K.div(txt,'left:0;top:620px;font-size:72px;line-height:1;font-weight:900;color:#f0c04a','約');
+var post=K.div(txt,'left:0;top:620px;font-size:81px;line-height:1;font-weight:900;color:#f0c04a','万円安い');
+var ul=K.div(txt,'left:0;top:736px;height:10px;border-radius:5px;background:#f0c04a;width:0');
+var tw=K.div(txt,'left:0;top:0;');
+var lab1=K.div(txt,'left:96px;top:152px;font-size:32px;font-weight:700;color:#9fb0c1;opacity:0','');
+var tT=K.div(txt,'left:96px;top:140px;font-size:44px;font-weight:900;opacity:0','東京'),tK=K.div(txt,'left:1700px;top:140px;font-size:44px;font-weight:900;opacity:0','鹿児島');
+tT.style.cssText+=';left:96px;top:'+((Y1+Y2)/2-26)+'px;opacity:0';tK.style.cssText+=';left:1688px;top:'+((Y1+Y2)/2-26)+'px;opacity:0';
+function yen(n){return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+ct.innerHTML=K.cells('17.8');
+var WID=pre.offsetWidth+ct.offsetWidth+post.offsetWidth+12;
+function render(s){
+  K.show(title,P(s,.2,.6),0,16);
+  K.show(tT,P(s,.3,.4),0,10);K.show(tK,P(s,.45,.4),0,10);
+  var n=P(s,.3,.4);nodes.forEach(function(c,i){c.style.opacity=i<2?n:P(s,2.4,.4);});
+  /* 行き: トラックが東京から鹿児島へ走り、白い実線が伸びる */
+  var pr=P(s,.7,1.7,E.mov);
+  m1.set(pr,0,0);
+  var tx=K.lerp(RX0,RX1,pr);
+  var a1=P(s,.5,.3)*(1-P(s,2.4,.4,E.inn));
+  g1.setAttribute('transform','translate('+(tx-38)+','+(Y1-50)+') scale(.8)');g1.setAttribute('opacity',a1);
+  /* 帰り: 点線が出て、帰り便が見つかると黄色で埋まる */
+  m2.set(0,P(s,2.5,.7,E.mov),P(s,3.3,1.5,E.mov));
+  var pf=P(s,3.3,1.5,E.mov);
+  g2.setAttribute('transform','translate('+(K.lerp(RX0,RX1,pf)-38)+','+(Y2-50)+') scale(.8)');
+  g2.setAttribute('opacity',P(s,3.1,.3));
+  /* 行 1 */
+  K.show(c1,P(s,1.0,.5),0,14);
+  var r1=P(s,1.2,1.2);
+  v1.innerHTML='約'+'<span style="font-size:64px">'+K.cells(yen(272610*r1))+'</span><span style="font-size:29px;margin-left:6px">円</span>';
+  v1.style.opacity=P(s,1.0,.4);
+  tr1.style.opacity=P(s,1.0,.4);tr2.style.opacity=P(s,3.2,.4);
+  b1.style.width=(W1*P(s,1.2,1.2))+'px';
+  /* 行 2 */
+  K.show(c2,P(s,3.2,.5),0,14);
+  var r2=P(s,3.5,1.2);
+  v2.innerHTML=K.cells(yen(95000*r2))+'<span style="font-size:29px;margin-left:6px">円</span>';
+  v2.style.opacity=P(s,3.2,.4);
+  b2.style.width=(W2*P(s,3.5,1.2))+'px';
+  /* 括弧と主役の数字 */
+  var bp=P(s,5.0,.6,E.mov),cx=(bx0+bx1)/2,half=(bx1-bx0)/2*bp;
+  brk.setAttribute('d','M'+(cx-half)+' '+(by-16)+' V'+by+' H'+(cx+half)+' V'+(by-16));
+  brk.style.opacity=bp>0?1:0;
+  var q=P(s,5.4,1.3);
+  ct.innerHTML=K.cells((17.8*q).toFixed(1));
+  var wid=WID;
+  var left=cx-wid/2;
+  pre.style.left=left+'px';ct.style.left=(left+pre.offsetWidth+4)+'px';post.style.left=(left+pre.offsetWidth+ct.offsetWidth+10)+'px';
+  var pa=P(s,5.3,.5);K.show(pre,pa,0,24);K.show(ct,pa,0,24);K.show(post,P(s,5.5,.5),0,24);
+  ul.style.left=left+'px';ul.style.width=(wid*P(s,6.5,.7,E.mov))+'px';ul.style.opacity=s>6.5?1:0;
+}
+K.setup(D,render);
+})();
+</script></body></html>

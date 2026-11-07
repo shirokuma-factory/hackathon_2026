@@ -17,7 +17,7 @@
    "over": [
     {
      "track": 5,
-     "path": "motion/HOOK_r4_s.mov",
+     "path": "motion/HOOK_m.mov",
      "at": {
       "t": 0.3
      }
@@ -62,14 +62,14 @@
    "over": [
     {
      "track": 5,
-     "path": "motion/MG1_r4_s.mov",
+     "path": "motion/MG1_m.mov",
      "at": {
       "t": 0.3
      }
     },
     {
      "track": 5,
-     "path": "motion/MG7_r4_s.mov",
+     "path": "motion/MG7_m.mov",
      "at": {
       "card": "2030"
      }
@@ -90,7 +90,8 @@
       "t": 0.9
      }
     }
-   ]
+   ],
+   "tr": true
   },
   {
    "id": "H2",
@@ -114,17 +115,19 @@
    "over": [
     {
      "track": 5,
-     "path": "motion/MG9_r5_s.mov",
+     "path": "motion/MG9_m.mov",
      "at": {
       "card": "少ない量"
-     }
+     },
+     "scrim": true
     },
     {
      "track": 5,
-     "path": "motion/MG8_r4_s.mov",
+     "path": "motion/MG8_m.mov",
      "at": {
       "card": "しかも"
-     }
+     },
+     "scrim": true
     }
    ],
    "audio": [
@@ -178,7 +181,8 @@
       "t": 0
      }
     }
-   ]
+   ],
+   "tr": true
   },
   {
    "id": "H4",
@@ -197,7 +201,7 @@
    "gap": 0.9,
    "lead": 0.3,
    "tail": 0.4,
-   "chapter": "motion/CH2_r4.mov",
+   "chapter": "motion/CHM2.mov",
    "v1": [
     {
      "path": "comfy/S02fl_s202_final.mp4",
@@ -235,10 +239,11 @@
     },
     {
      "track": 5,
-     "path": "motion/MG3_r5_s.mov",
+     "path": "motion/MG3_m.mov",
      "at": {
       "card": "この例では"
-     }
+     },
+     "scrim": true
     }
    ],
    "audio": [
@@ -263,7 +268,7 @@
    "gap": 0.9,
    "lead": 0.3,
    "tail": 0.4,
-   "chapter": "motion/CH3_r4.mov",
+   "chapter": "motion/CHM3.mov",
    "v1": [
     {
      "path": "kiriko/desk_1080.mp4",
@@ -302,7 +307,7 @@
    "gap": 0.9,
    "lead": 0.3,
    "tail": 0.4,
-   "chapter": "motion/CH4_r4.mov",
+   "chapter": "motion/CHM4.mov",
    "v1": [
     {
      "path": "rec5/focus/P9g.mp4",
@@ -324,10 +329,11 @@
    "over": [
     {
      "track": 5,
-     "path": "motion/MG5_r7_s.mov",
+     "path": "motion/MG5_m.mov",
      "at": {
       "card": "この例では"
-     }
+     },
+     "scrim": true
     }
    ],
    "audio": [
@@ -345,7 +351,7 @@
    "gap": 0.8,
    "lead": 0.3,
    "tail": 0.4,
-   "chapter": "motion/CH5_r4.mov",
+   "chapter": "motion/CHM5.mov",
    "v1": [
     {
      "path": "rec/CC_rec_v2.mp4",

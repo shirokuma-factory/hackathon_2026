@@ -1,0 +1,15 @@
+/* トラック（トレーラー）の図 4 本（HOOK_m / MG1_m / MG7_m / MG9_m）の共通の見た目 */
+:root{--ink:#05080c;--text:#ffffff;--muted:#9fb0c1;--warn:#f0c04a;--hl:#6cb6ff;--empty:#3a4757}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;background:transparent;overflow:hidden}
+body{font-family:"Noto Sans JP","Yu Gothic","Meiryo",sans-serif;color:#fff;line-height:1.3}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px}
+.layer{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:960px 330px}
+.abs{position:absolute;white-space:nowrap}
+.mk{display:inline-block;overflow:hidden;vertical-align:top;padding:.14em .03em;margin:-.14em -.03em}
+.mi{display:inline-block}
+.tn{font-variant-numeric:tabular-nums}
+.sh{text-shadow:0 4px 22px rgba(0,0,0,.65),0 0 5px rgba(0,0,0,.45)}
+.y{color:var(--warn)}
+.mut{color:var(--muted)}
+svg{position:absolute;left:0;top:0;overflow:visible}

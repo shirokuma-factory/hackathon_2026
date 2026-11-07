@@ -72,9 +72,12 @@ def main() -> None:
             if prev_last is not None:
                 prev_last["fade_out"] = FADE
             if b.get("chapter"):
-                V(6).append({"s": round(t * FPS), "L": round(1.8 * FPS), "off": 0, "path": str(OV / b["chapter"])})
+                V(6).append({"s": round(t * FPS), "L": round(2.4 * FPS), "off": 0, "path": str(OV / b["chapter"])})
             A(3).append({"s": round(max(0, t - 0.2) * FPS), "L": 27, "off": 0, "path": str(OV / "sfx/prepared/whoosh.wav")})
             t += b["gap"]
+        if b.get("tr"):
+            # 印の線が走るつなぎ（1.0 秒、0.5 秒の所で全面が暗い帯に隠れるので、そこが切れ目）
+            V(6).append({"s": round((t - 0.5) * FPS), "L": 30, "off": 0, "path": str(OV / "motion/TR_LINE.mov")})
         # 声（必要なら速める）
         src = vdir / f"{sid}_{tag}.wav"
         if a.atempo != 1.0:
@@ -139,6 +142,9 @@ def main() -> None:
             ln = o.get("len") or (card_t(o["until"]) - st if "until" in o else dur(p))
             ln = min(ln, blk_end - st + 1.0)
             V(o["track"]).append({"s": round(st * FPS), "L": round(ln * FPS), "off": 0, "path": str(p)})
+            if o.get("scrim"):
+                # 後ろの映像を暗く落とす幕（図の下、V3）。出入りは 0.3 秒のフェード
+                V(3).append({"s": round(st * FPS), "L": round(ln * FPS), "off": 0, "path": str(OV / "overlays/scrim.mov"), "fade_in": 9, "fade_out": 9})
         for o in b.get("audio", []):
             at = o["at"]
             st = (vs - b.get("lead", 0.3)) + at["t"] if "t" in at else card_t(at["card"])
