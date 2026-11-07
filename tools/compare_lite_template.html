@@ -685,10 +685,10 @@ const QKEY = 'compare_lite_quotes_v1';   // 見積の回答（会社名と額を
 const CKEY = 'compare_lite_contract_v1';
 const HKEY = 'compare_lite_history_v1';   // 出荷の記録（日付・区間・送り方・額。このブラウザの中だけ）
 const PKEY = 'compare_lite_cargo_v1';   // 荷物の表と区間の入力（再読み込みしても残す。このブラウザの中だけ。SPEC §42）
-const TK_MAXKG = { 60: 2, 80: 5, 100: 10, 120: 15, 140: 20, 160: 30, 180: 50, 200: 50, 260: 50 };   // サイズごとの 1 個の重さの上限（kg）。架空の表（sample_parcel.json）と同じ。表にない 120 は 100 と 140 の中間。会社ごとに違うので初期値
+const TK_MAXKG = { 60: 2, 80: 5, 100: 10, 120: 15, 140: 20, 160: 25, 180: 50, 200: 50, 260: 50 };   // サイズごとの 1 個の重さの上限（kg）。架空の表（sample_parcel.json）と同じ。表にない 120 は 100 と 140 の中間。会社ごとに違うので初期値
 // 3 辺合計と重さのどちらにも収まる、いちばん小さいサイズ（大きいほうのサイズに合わせる）
 const tkSizeOf = (p) => { const kg = Number(p.kg) || 0, s3 = sum3(p); const z = TK_SIZES.find((x) => s3 <= x && kg <= TK_MAXKG[x]); return z == null ? null : z; };
-const TK_WEIGHT_NOTE = (up) => `重さでサイズが上がる荷があります（${up.join('、')} サイズ）。サイズごとの重さの上限は 60=2kg・80=5kg・100=10kg・120=15kg・140=20kg・160=30kg・180 以上=50kg（初期値。会社ごとに違います）`;
+const TK_WEIGHT_NOTE = (up) => `重さでサイズが上がる荷があります（${up.join('、')} サイズ）。サイズごとの重さの上限は 60=2kg・80=5kg・100=10kg・120=15kg・140=20kg・160=25kg・180 以上=50kg（初期値。会社ごとに違います）`;
 const TK_SIZES = [60, 80, 100, 120, 140, 160, 180, 200, 260];   // 3 辺合計 cm 以内のサイズ。単価は利用者が入れる（このページは実在の会社の料金を持たない）
 const CMAX = 10000000;
 const nfkc = (v) => String(v == null ? '' : v).normalize('NFKC');
