@@ -6,7 +6,7 @@
    {
     "s": 0,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\comfy\\C1v3_6s_hold8b.mp4",
+    "path": "outputs/video/comfy/C1v3_6s_hold8b.mp4",
     "p": {},
     "e": 200,
     "xfade_out": 8
@@ -14,7 +14,7 @@
    {
     "s": 200,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\FLOW_JP.mov",
+    "path": "outputs/video/motion/FLOW_JP.mov",
     "p": {},
     "fade_out": 10,
     "e": 544,
@@ -23,7 +23,7 @@
    {
     "s": 562,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P1g_hold14b.mp4",
+    "path": "outputs/video/rec5/focus/P1g_hold14b.mp4",
     "p": {},
     "fade_in": 10,
     "e": 925,
@@ -32,7 +32,7 @@
    {
     "s": 925,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\FLOW_KAGO.mov",
+    "path": "outputs/video/motion/FLOW_KAGO.mov",
     "p": {},
     "e": 1127,
     "xfade_out": 8
@@ -40,7 +40,7 @@
    {
     "s": 1127,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P3g.mp4",
+    "path": "outputs/video/rec5/focus/P3g.mp4",
     "p": {},
     "e": 1258,
     "xfade_out": 8
@@ -48,7 +48,7 @@
    {
     "s": 1258,
     "off": 9,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\kiriko\\hands_1080_hold8b.mp4",
+    "path": "outputs/video/kiriko/hands_1080_hold8b.mp4",
     "p": {},
     "e": 1436,
     "xfade_out": 8
@@ -56,7 +56,7 @@
    {
     "s": 1436,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\LOGO_B.mov",
+    "path": "outputs/video/motion/LOGO_B.mov",
     "p": {},
     "fade_out": 10,
     "e": 1616,
@@ -65,7 +65,7 @@
    {
     "s": 1634,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\MG0_r6_hold16b.mov",
+    "path": "outputs/video/motion/MG0_r6_hold16b.mov",
     "p": {},
     "fade_in": 10,
     "fade_out": 10,
@@ -75,7 +75,7 @@
    {
     "s": 2092,
     "off": 23,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\comfy\\S02fl_s202_final.mp4",
+    "path": "outputs/video/comfy/S02fl_s202_final.mp4",
     "p": {},
     "fade_in": 10,
     "e": 2182,
@@ -84,7 +84,7 @@
    {
     "s": 2182,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P4g_hold13b.mp4",
+    "path": "outputs/video/rec5/focus/P4g_hold13b.mp4",
     "p": {},
     "e": 2533,
     "xfade_out": 8
@@ -92,7 +92,7 @@
    {
     "s": 2533,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P5g_hold7b.mp4",
+    "path": "outputs/video/rec5/focus/P5g_hold7b.mp4",
     "p": {},
     "e": 2701,
     "xfade_out": 8
@@ -100,7 +100,7 @@
    {
     "s": 2701,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P6g.mp4",
+    "path": "outputs/video/rec5/focus/P6g.mp4",
     "p": {},
     "fade_out": 10,
     "e": 3155,
@@ -109,7 +109,7 @@
    {
     "s": 3182,
     "off": 60,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\kiriko\\desk_1080.mp4",
+    "path": "outputs/video/kiriko/desk_1080.mp4",
     "p": {},
     "fade_in": 10,
     "e": 3272,
@@ -118,7 +118,7 @@
    {
     "s": 3272,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P7g_hold9b.mp4",
+    "path": "outputs/video/rec5/focus/P7g_hold9b.mp4",
     "p": {},
     "e": 3492,
     "xfade_out": 8
@@ -126,7 +126,7 @@
    {
     "s": 3492,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P8g_hold11b.mp4",
+    "path": "outputs/video/rec5/focus/P8g_hold11b.mp4",
     "p": {},
     "fade_out": 10,
     "e": 3762,
@@ -135,7 +135,7 @@
    {
     "s": 3789,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P9g.mp4",
+    "path": "outputs/video/rec5/focus/P9g.mp4",
     "p": {},
     "fade_in": 10,
     "e": 3868,
@@ -144,7 +144,7 @@
    {
     "s": 3868,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P10g_hold7b.mp4",
+    "path": "outputs/video/rec5/focus/P10g_hold7b.mp4",
     "p": {},
     "e": 4039,
     "xfade_out": 8
@@ -152,7 +152,7 @@
    {
     "s": 4039,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P11g.mp4",
+    "path": "outputs/video/rec5/focus/P11g.mp4",
     "p": {},
     "e": 4106,
     "xfade_out": 8
@@ -160,7 +160,7 @@
    {
     "s": 4106,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P12g_hold10b.mp4",
+    "path": "outputs/video/rec5/focus/P12g_hold10b.mp4",
     "p": {},
     "fade_out": 10,
     "e": 4372,
@@ -169,7 +169,7 @@
    {
     "s": 4396,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec\\CC_rec_v2.mp4",
+    "path": "outputs/video/rec/CC_rec_v2.mp4",
     "p": {},
     "fade_in": 10,
     "e": 4521,
@@ -178,7 +178,7 @@
    {
     "s": 4521,
     "off": 36,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\AIL_v2_r4_s.mov",
+    "path": "outputs/video/motion/AIL_v2_r4_s.mov",
     "p": {},
     "e": 4747,
     "xfade_out": 8
@@ -186,7 +186,7 @@
    {
     "s": 4747,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\graphics\\G1a_one_still3.mp4",
+    "path": "outputs/video/graphics/G1a_one_still3.mp4",
     "p": {},
     "fade_out": 10,
     "e": 4911,
@@ -195,7 +195,7 @@
    {
     "s": 4938,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\graphics\\G4_r4_s_still_hold6b.mp4",
+    "path": "outputs/video/graphics/G4_r4_s_still_hold6b.mp4",
     "p": {
      "ZoomX": 0.72,
      "ZoomY": 0.72,
@@ -208,7 +208,7 @@
    {
     "s": 5062,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec5\\focus\\P13g.mp4",
+    "path": "outputs/video/rec5/focus/P13g.mp4",
     "p": {},
     "e": 5192,
     "xfade_out": 8
@@ -216,7 +216,7 @@
    {
     "s": 5192,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\LOGO_B.mov",
+    "path": "outputs/video/motion/LOGO_B.mov",
     "p": {},
     "e": 5372,
     "xfade_out": 0
@@ -226,14 +226,14 @@
    {
     "s": 48,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\HOOK_m.mov",
+    "path": "outputs/video/motion/HOOK_m.mov",
     "e": 200,
     "p": {}
    },
    {
     "s": 234,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\MG1_m.mov",
+    "path": "outputs/video/motion/MG1_m.mov",
     "fade_out": 6,
     "e": 403,
     "p": {}
@@ -241,35 +241,35 @@
    {
     "s": 403,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\MG7_m.mov",
+    "path": "outputs/video/motion/MG7_m.mov",
     "e": 544,
     "p": {}
    },
    {
     "s": 721,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\MG9_m.mov",
+    "path": "outputs/video/motion/MG9_m.mov",
     "e": 991,
     "p": {}
    },
    {
     "s": 1145,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\MG8_m.mov",
+    "path": "outputs/video/motion/MG8_m.mov",
     "e": 1259,
     "p": {}
    },
    {
     "s": 2507,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\MG3_m.mov",
+    "path": "outputs/video/motion/MG3_m.mov",
     "e": 2747,
     "p": {}
    },
    {
     "s": 4070,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\MG5_m.mov",
+    "path": "outputs/video/motion/MG5_m.mov",
     "e": 4325,
     "p": {}
    }
@@ -278,14 +278,14 @@
    {
     "s": 0,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\overlays\\note_ai_r4.mov",
+    "path": "outputs/video/overlays/note_ai_r4.mov",
     "e": 180,
     "p": {}
    },
    {
     "s": 721,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\overlays\\scrim.mov",
+    "path": "outputs/video/overlays/scrim.mov",
     "fade_in": 9,
     "fade_out": 9,
     "e": 991,
@@ -294,7 +294,7 @@
    {
     "s": 1145,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\overlays\\scrim.mov",
+    "path": "outputs/video/overlays/scrim.mov",
     "fade_in": 9,
     "fade_out": 9,
     "e": 1259,
@@ -303,21 +303,21 @@
    {
     "s": 1258,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\overlays\\note_gen_r4.mov",
+    "path": "outputs/video/overlays/note_gen_r4.mov",
     "e": 1436,
     "p": {}
    },
    {
     "s": 2092,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\overlays\\note_ai_r4.mov",
+    "path": "outputs/video/overlays/note_ai_r4.mov",
     "e": 2182,
     "p": {}
    },
    {
     "s": 2507,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\overlays\\scrim.mov",
+    "path": "outputs/video/overlays/scrim.mov",
     "fade_in": 9,
     "fade_out": 9,
     "e": 2747,
@@ -326,14 +326,14 @@
    {
     "s": 3182,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\overlays\\note_gen_r4.mov",
+    "path": "outputs/video/overlays/note_gen_r4.mov",
     "e": 3272,
     "p": {}
    },
    {
     "s": 4070,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\overlays\\scrim.mov",
+    "path": "outputs/video/overlays/scrim.mov",
     "fade_in": 9,
     "fade_out": 9,
     "e": 4325,
@@ -342,7 +342,7 @@
    {
     "s": 4453,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\rec\\tag_cc.mov",
+    "path": "outputs/video/rec/tag_cc.mov",
     "e": 4572,
     "p": {}
    }
@@ -351,42 +351,42 @@
    {
     "s": 185,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\TR_LINE.mov",
+    "path": "outputs/video/motion/TR_LINE.mov",
     "e": 215,
     "p": {}
    },
    {
     "s": 1244,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\TR_LINE.mov",
+    "path": "outputs/video/motion/TR_LINE.mov",
     "e": 1274,
     "p": {}
    },
    {
     "s": 2065,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\CHM2.mov",
+    "path": "outputs/video/motion/CHM2.mov",
     "e": 2137,
     "p": {}
    },
    {
     "s": 3155,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\CHM3.mov",
+    "path": "outputs/video/motion/CHM3.mov",
     "e": 3227,
     "p": {}
    },
    {
     "s": 3762,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\CHM4.mov",
+    "path": "outputs/video/motion/CHM4.mov",
     "e": 3834,
     "p": {}
    },
    {
     "s": 4372,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\motion\\CHM5.mov",
+    "path": "outputs/video/motion/CHM5.mov",
     "e": 4444,
     "p": {}
    }
@@ -395,14 +395,14 @@
    {
     "s": 2149,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\overlays\\tag_c1_r5.mov",
+    "path": "outputs/video/overlays/tag_c1_r5.mov",
     "e": 2269,
     "p": {}
    },
    {
     "s": 3239,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\overlays\\tag_c2_r4.mov",
+    "path": "outputs/video/overlays/tag_c2_r4.mov",
     "e": 3359,
     "p": {}
    }
@@ -411,7 +411,7 @@
    {
     "s": 0,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\subs_r5\\subs_144126.mov",
+    "path": "outputs/video/subs_r5/subs_144126.mov",
     "e": 5381,
     "p": {}
    }
@@ -420,7 +420,7 @@
    {
     "s": 0,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\subs_r5\\sources_144126.mov",
+    "path": "outputs/video/subs_r5/sources_144126.mov",
     "e": 5381,
     "p": {}
    }
@@ -431,70 +431,70 @@
    {
     "s": 18,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\voice\\tight_r5\\H0_r5_t106.wav",
+    "path": "outputs/video/voice/tight_r5/H0_r5_t106.wav",
     "e": 194,
     "p": {}
    },
    {
     "s": 206,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\voice\\tight_r5\\H1_r5_t106.wav",
+    "path": "outputs/video/voice/tight_r5/H1_r5_t106.wav",
     "e": 535,
     "p": {}
    },
    {
     "s": 571,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\voice\\tight_r5\\H2_r5_t106.wav",
+    "path": "outputs/video/voice/tight_r5/H2_r5_t106.wav",
     "e": 1247,
     "p": {}
    },
    {
     "s": 1268,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\voice\\tight_r5\\H3_r5_t106.wav",
+    "path": "outputs/video/voice/tight_r5/H3_r5_t106.wav",
     "e": 1500,
     "p": {}
    },
    {
     "s": 1643,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\voice\\tight_r5\\H4_r5_t106.wav",
+    "path": "outputs/video/voice/tight_r5/H4_r5_t106.wav",
     "e": 2053,
     "p": {}
    },
    {
     "s": 2101,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\voice\\tight_r5\\R4_r5_t106.wav",
+    "path": "outputs/video/voice/tight_r5/R4_r5_t106.wav",
     "e": 3143,
     "p": {}
    },
    {
     "s": 3191,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\voice\\tight_r5\\R5_r5_t106.wav",
+    "path": "outputs/video/voice/tight_r5/R5_r5_t106.wav",
     "e": 3750,
     "p": {}
    },
    {
     "s": 3798,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\voice\\tight_r5\\R6_r5_t106.wav",
+    "path": "outputs/video/voice/tight_r5/R6_r5_t106.wav",
     "e": 4360,
     "p": {}
    },
    {
     "s": 4405,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\voice\\tight_r5\\R7_r5_t106.wav",
+    "path": "outputs/video/voice/tight_r5/R7_r5_t106.wav",
     "e": 4899,
     "p": {}
    },
    {
     "s": 4947,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\voice\\tight_r5\\H8_r5_t106.wav",
+    "path": "outputs/video/voice/tight_r5/H8_r5_t106.wav",
     "e": 5317,
     "p": {}
    }
@@ -503,14 +503,14 @@
    {
     "s": 0,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\prepared\\amb_highway.wav",
+    "path": "outputs/video/sfx/prepared/amb_highway.wav",
     "e": 270,
     "p": {}
    },
    {
     "s": 2092,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\prepared\\amb_office.wav",
+    "path": "outputs/video/sfx/prepared/amb_office.wav",
     "e": 2197,
     "p": {}
    }
@@ -519,7 +519,7 @@
    {
     "s": 185,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\whoosh_line.wav",
+    "path": "outputs/video/sfx/kit/whoosh_line.wav",
     "gain_db": -2,
     "e": 215,
     "p": {}
@@ -527,7 +527,7 @@
    {
     "s": 925,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\whoosh_soft.wav",
+    "path": "outputs/video/sfx/kit/whoosh_soft.wav",
     "gain_db": -6,
     "e": 946,
     "p": {}
@@ -535,7 +535,7 @@
    {
     "s": 1244,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\whoosh_line.wav",
+    "path": "outputs/video/sfx/kit/whoosh_line.wav",
     "gain_db": -2,
     "e": 1274,
     "p": {}
@@ -543,7 +543,7 @@
    {
     "s": 1445,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\whoosh_soft.wav",
+    "path": "outputs/video/sfx/kit/whoosh_soft.wav",
     "gain_db": -4,
     "e": 1466,
     "p": {}
@@ -551,7 +551,7 @@
    {
     "s": 2048,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\riser_soft.wav",
+    "path": "outputs/video/sfx/kit/riser_soft.wav",
     "gain_db": -3,
     "e": 2084,
     "p": {}
@@ -559,7 +559,7 @@
    {
     "s": 3138,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\riser_soft.wav",
+    "path": "outputs/video/sfx/kit/riser_soft.wav",
     "gain_db": -3,
     "e": 3174,
     "p": {}
@@ -567,7 +567,7 @@
    {
     "s": 3746,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\riser_soft.wav",
+    "path": "outputs/video/sfx/kit/riser_soft.wav",
     "gain_db": -3,
     "e": 3782,
     "p": {}
@@ -575,7 +575,7 @@
    {
     "s": 4355,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\riser_soft.wav",
+    "path": "outputs/video/sfx/kit/riser_soft.wav",
     "gain_db": -3,
     "e": 4391,
     "p": {}
@@ -583,7 +583,7 @@
    {
     "s": 5201,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\whoosh_soft.wav",
+    "path": "outputs/video/sfx/kit/whoosh_soft.wav",
     "gain_db": -4,
     "e": 5222,
     "p": {}
@@ -593,7 +593,7 @@
    {
     "s": 104,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_a.wav",
+    "path": "outputs/video/sfx/kit/pop_a.wav",
     "gain_db": -5,
     "e": 112,
     "p": {}
@@ -601,7 +601,7 @@
    {
     "s": 120,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\land_soft.wav",
+    "path": "outputs/video/sfx/kit/land_soft.wav",
     "gain_db": -2,
     "e": 147,
     "p": {}
@@ -609,7 +609,7 @@
    {
     "s": 261,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 263,
     "p": {}
@@ -617,7 +617,7 @@
    {
     "s": 263,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 265,
     "p": {}
@@ -625,7 +625,7 @@
    {
     "s": 265,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 267,
     "p": {}
@@ -633,7 +633,7 @@
    {
     "s": 267,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 269,
     "p": {}
@@ -641,7 +641,7 @@
    {
     "s": 269,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 271,
     "p": {}
@@ -649,7 +649,7 @@
    {
     "s": 272,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 274,
     "p": {}
@@ -657,7 +657,7 @@
    {
     "s": 274,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 276,
     "p": {}
@@ -665,7 +665,7 @@
    {
     "s": 276,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 278,
     "p": {}
@@ -673,7 +673,7 @@
    {
     "s": 278,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 280,
     "p": {}
@@ -681,7 +681,7 @@
    {
     "s": 280,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 282,
     "p": {}
@@ -689,7 +689,7 @@
    {
     "s": 282,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 284,
     "p": {}
@@ -697,7 +697,7 @@
    {
     "s": 284,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 286,
     "p": {}
@@ -705,7 +705,7 @@
    {
     "s": 286,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 288,
     "p": {}
@@ -713,7 +713,7 @@
    {
     "s": 288,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 290,
     "p": {}
@@ -721,7 +721,7 @@
    {
     "s": 290,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 292,
     "p": {}
@@ -729,7 +729,7 @@
    {
     "s": 294,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\land_soft.wav",
+    "path": "outputs/video/sfx/kit/land_soft.wav",
     "gain_db": -2,
     "e": 321,
     "p": {}
@@ -737,7 +737,7 @@
    {
     "s": 298,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_b.wav",
+    "path": "outputs/video/sfx/kit/pop_b.wav",
     "gain_db": -5,
     "e": 306,
     "p": {}
@@ -745,7 +745,7 @@
    {
     "s": 369,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_c.wav",
+    "path": "outputs/video/sfx/kit/pop_c.wav",
     "gain_db": -5,
     "e": 377,
     "p": {}
@@ -753,7 +753,7 @@
    {
     "s": 421,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 423,
     "p": {}
@@ -761,7 +761,7 @@
    {
     "s": 423,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 425,
     "p": {}
@@ -769,7 +769,7 @@
    {
     "s": 425,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 427,
     "p": {}
@@ -777,7 +777,7 @@
    {
     "s": 427,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 429,
     "p": {}
@@ -785,7 +785,7 @@
    {
     "s": 429,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 431,
     "p": {}
@@ -793,7 +793,7 @@
    {
     "s": 432,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 434,
     "p": {}
@@ -801,7 +801,7 @@
    {
     "s": 434,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 436,
     "p": {}
@@ -809,7 +809,7 @@
    {
     "s": 436,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 438,
     "p": {}
@@ -817,7 +817,7 @@
    {
     "s": 438,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 440,
     "p": {}
@@ -825,7 +825,7 @@
    {
     "s": 440,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 442,
     "p": {}
@@ -833,7 +833,7 @@
    {
     "s": 442,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 444,
     "p": {}
@@ -841,7 +841,7 @@
    {
     "s": 444,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 446,
     "p": {}
@@ -849,7 +849,7 @@
    {
     "s": 446,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 448,
     "p": {}
@@ -857,7 +857,7 @@
    {
     "s": 448,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 450,
     "p": {}
@@ -865,7 +865,7 @@
    {
     "s": 448,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_a.wav",
+    "path": "outputs/video/sfx/kit/pop_a.wav",
     "gain_db": -5,
     "e": 456,
     "p": {}
@@ -873,7 +873,7 @@
    {
     "s": 450,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 452,
     "p": {}
@@ -881,7 +881,7 @@
    {
     "s": 454,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\land_soft.wav",
+    "path": "outputs/video/sfx/kit/land_soft.wav",
     "gain_db": -2,
     "e": 481,
     "p": {}
@@ -889,7 +889,7 @@
    {
     "s": 865,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\land_soft.wav",
+    "path": "outputs/video/sfx/kit/land_soft.wav",
     "gain_db": -2,
     "e": 892,
     "p": {}
@@ -897,7 +897,7 @@
    {
     "s": 887,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_b.wav",
+    "path": "outputs/video/sfx/kit/pop_b.wav",
     "gain_db": -5,
     "e": 895,
     "p": {}
@@ -905,7 +905,7 @@
    {
     "s": 1087,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_c.wav",
+    "path": "outputs/video/sfx/kit/pop_c.wav",
     "gain_db": -5,
     "e": 1095,
     "p": {}
@@ -913,7 +913,7 @@
    {
     "s": 1235,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\land_soft.wav",
+    "path": "outputs/video/sfx/kit/land_soft.wav",
     "gain_db": -2,
     "e": 1262,
     "p": {}
@@ -921,7 +921,7 @@
    {
     "s": 1496,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\chime_logo.wav",
+    "path": "outputs/video/sfx/kit/chime_logo.wav",
     "gain_db": -3,
     "e": 1571,
     "p": {}
@@ -929,7 +929,7 @@
    {
     "s": 2042,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_a.wav",
+    "path": "outputs/video/sfx/kit/pop_a.wav",
     "gain_db": -5,
     "e": 2050,
     "p": {}
@@ -937,7 +937,7 @@
    {
     "s": 2188,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_b.wav",
+    "path": "outputs/video/sfx/kit/pop_b.wav",
     "gain_db": -5,
     "e": 2196,
     "p": {}
@@ -945,7 +945,7 @@
    {
     "s": 2591,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_c.wav",
+    "path": "outputs/video/sfx/kit/pop_c.wav",
     "gain_db": -5,
     "e": 2599,
     "p": {}
@@ -953,7 +953,7 @@
    {
     "s": 2606,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 2608,
     "p": {}
@@ -961,7 +961,7 @@
    {
     "s": 2608,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 2610,
     "p": {}
@@ -969,7 +969,7 @@
    {
     "s": 2610,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 2612,
     "p": {}
@@ -977,7 +977,7 @@
    {
     "s": 2612,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 2614,
     "p": {}
@@ -985,7 +985,7 @@
    {
     "s": 2614,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 2616,
     "p": {}
@@ -993,7 +993,7 @@
    {
     "s": 2616,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 2618,
     "p": {}
@@ -1001,7 +1001,7 @@
    {
     "s": 2619,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 2621,
     "p": {}
@@ -1009,7 +1009,7 @@
    {
     "s": 2621,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 2623,
     "p": {}
@@ -1017,7 +1017,7 @@
    {
     "s": 2623,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 2625,
     "p": {}
@@ -1025,7 +1025,7 @@
    {
     "s": 2625,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 2627,
     "p": {}
@@ -1033,7 +1033,7 @@
    {
     "s": 2627,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 2629,
     "p": {}
@@ -1041,7 +1041,7 @@
    {
     "s": 2629,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 2631,
     "p": {}
@@ -1049,7 +1049,7 @@
    {
     "s": 2631,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 2633,
     "p": {}
@@ -1057,7 +1057,7 @@
    {
     "s": 2633,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 2635,
     "p": {}
@@ -1065,7 +1065,7 @@
    {
     "s": 2635,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 2637,
     "p": {}
@@ -1073,7 +1073,7 @@
    {
     "s": 2637,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 2639,
     "p": {}
@@ -1081,7 +1081,7 @@
    {
     "s": 2639,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\land_soft.wav",
+    "path": "outputs/video/sfx/kit/land_soft.wav",
     "gain_db": -2,
     "e": 2666,
     "p": {}
@@ -1089,7 +1089,7 @@
    {
     "s": 3288,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_a.wav",
+    "path": "outputs/video/sfx/kit/pop_a.wav",
     "gain_db": -5,
     "e": 3296,
     "p": {}
@@ -1097,7 +1097,7 @@
    {
     "s": 3736,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_b.wav",
+    "path": "outputs/video/sfx/kit/pop_b.wav",
     "gain_db": -5,
     "e": 3744,
     "p": {}
@@ -1105,7 +1105,7 @@
    {
     "s": 4175,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 4177,
     "p": {}
@@ -1113,7 +1113,7 @@
    {
     "s": 4177,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 4179,
     "p": {}
@@ -1121,7 +1121,7 @@
    {
     "s": 4179,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 4181,
     "p": {}
@@ -1129,7 +1129,7 @@
    {
     "s": 4181,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 4183,
     "p": {}
@@ -1137,7 +1137,7 @@
    {
     "s": 4183,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 4185,
     "p": {}
@@ -1145,7 +1145,7 @@
    {
     "s": 4185,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 4187,
     "p": {}
@@ -1153,7 +1153,7 @@
    {
     "s": 4188,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 4190,
     "p": {}
@@ -1161,7 +1161,7 @@
    {
     "s": 4190,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 4192,
     "p": {}
@@ -1169,7 +1169,7 @@
    {
     "s": 4192,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 4194,
     "p": {}
@@ -1177,7 +1177,7 @@
    {
     "s": 4194,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 4196,
     "p": {}
@@ -1185,7 +1185,7 @@
    {
     "s": 4196,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_3.wav",
+    "path": "outputs/video/sfx/kit/tick_3.wav",
     "gain_db": -4,
     "e": 4198,
     "p": {}
@@ -1193,7 +1193,7 @@
    {
     "s": 4198,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_4.wav",
+    "path": "outputs/video/sfx/kit/tick_4.wav",
     "gain_db": -4,
     "e": 4200,
     "p": {}
@@ -1201,7 +1201,7 @@
    {
     "s": 4198,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_c.wav",
+    "path": "outputs/video/sfx/kit/pop_c.wav",
     "gain_db": -5,
     "e": 4206,
     "p": {}
@@ -1209,7 +1209,7 @@
    {
     "s": 4200,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_1.wav",
+    "path": "outputs/video/sfx/kit/tick_1.wav",
     "gain_db": -4,
     "e": 4202,
     "p": {}
@@ -1217,7 +1217,7 @@
    {
     "s": 4202,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\tick_2.wav",
+    "path": "outputs/video/sfx/kit/tick_2.wav",
     "gain_db": -4,
     "e": 4204,
     "p": {}
@@ -1225,7 +1225,7 @@
    {
     "s": 4205,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\land_soft.wav",
+    "path": "outputs/video/sfx/kit/land_soft.wav",
     "gain_db": -2,
     "e": 4232,
     "p": {}
@@ -1233,7 +1233,7 @@
    {
     "s": 4444,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_a.wav",
+    "path": "outputs/video/sfx/kit/pop_a.wav",
     "gain_db": -5,
     "e": 4452,
     "p": {}
@@ -1241,7 +1241,7 @@
    {
     "s": 4954,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\pop_b.wav",
+    "path": "outputs/video/sfx/kit/pop_b.wav",
     "gain_db": -5,
     "e": 4962,
     "p": {}
@@ -1249,7 +1249,7 @@
    {
     "s": 5252,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\sfx\\kit\\chime_logo.wav",
+    "path": "outputs/video/sfx/kit/chime_logo.wav",
     "gain_db": -3,
     "e": 5327,
     "p": {}
@@ -1259,7 +1259,7 @@
    {
     "s": 0,
     "off": 0,
-    "path": "C:\\dev\\hackathon_2026\\outputs\\video\\bgm\\r04\\bgm_r5_144126.wav",
+    "path": "outputs/video/bgm/r04/bgm_r5_144126.wav",
     "e": 5381,
     "p": {}
    }
