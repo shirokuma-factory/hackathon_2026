@@ -1,0 +1,131 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>CHAIN_m</title>
+<style>
+:root{--ink:#05080c;--text:#ffffff;--muted:#9fb0c1;--warn:#f0c04a;--hl:#6cb6ff;--empty:#3a4757}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;background:transparent;overflow:hidden}
+body{font-family:"Noto Sans JP","Yu Gothic","Meiryo",sans-serif;color:#fff;line-height:1.3}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px}
+.layer{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:960px 384px}
+.wrap{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:960px 470px}
+svg{position:absolute;left:0;top:0;overflow:visible}
+.sh{text-shadow:0 4px 22px rgba(0,0,0,.65),0 0 5px rgba(0,0,0,.45)}
+.y{color:var(--warn)}
+.c{text-align:center}
+</style></head><body data-duration="21.0">
+<div id="stage">
+ <div class="layer" id="bg"></div>
+ <div class="layer" id="fig"></div>
+ <div class="layer" id="txt"></div>
+</div>
+<script src="mkit_m.js"></script>
+<script>
+(function () {
+  /* 各項目が出始める秒。声に合わせた版（CHAIN_p1_m.html など）は make_chain_timed.py が TM を書き換えて作る */
+  var TM = {n1: 1.8, n2: 3.9, n3: 6.81, n3c: 9.9, n3d: 10.99, lim: 5.5, fade: 12.99, D: 21.0};
+  var K = window.K, D = TM.D, E = K.E, P = K.P;
+  var fig = document.getElementById('fig'), txt = document.getElementById('txt');
+  var sv = K.el('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, fig);
+  var cw = K.div(txt, 'left:0;top:0;width:1920px;height:1080px;transform-origin:960px 470px', '');
+  var fw = K.div(txt, 'left:0;top:0;width:1920px;height:1080px', '');
+  var cg = K.el('g', {}, sv);           /* 連鎖の線画 */
+  var fg = K.el('g', {}, sv);           /* 最後の一文の線画 */
+  var X1 = 350, X2 = 930, X3 = 1560, AY = 470;
+  var WHITE = '#ffffff', YEL = '#f0c04a', MUT = '#9fb0c1', GREY = '#3a4757';
+
+  function T(parent, x, y, w, size, weight, color, html) {
+    var d = K.div(parent, 'left:' + (x - w / 2) + 'px;top:' + y + 'px;width:' + w + 'px;text-align:center;font-size:' + size + 'px;font-weight:' + weight + ';color:' + color + ';letter-spacing:.03em;line-height:1.25', html);
+    d.className = 'sh'; d.style.opacity = 0; return d;
+  }
+  /* 運転手の線のアイコン 48x52 */
+  function driver(parent, sw) {
+    var g = K.el('g', {}, parent);
+    var parts = [
+      K.el('circle', { cx: 24, cy: 20, r: 10 }, g),
+      K.el('path', { d: 'M13 16 C13 6 35 6 35 16' }, g),
+      K.el('path', { d: 'M9 16 H39' }, g),
+      K.el('path', { d: 'M5 50 C5 36 13 33 24 33 C35 33 43 36 43 50' }, g)
+    ];
+    parts.forEach(function (n) { n.setAttribute('fill', 'none'); n.setAttribute('stroke', WHITE); n.setAttribute('stroke-width', sw); n.setAttribute('stroke-linecap', 'round'); n.setAttribute('stroke-linejoin', 'round'); });
+    return g;
+  }
+  function place(g, x, y, s) { g.setAttribute('transform', 'translate(' + x + ' ' + y + ') scale(' + s + ')'); }
+
+  /* ノード1 */
+  var tk = K.truck(cg, 3.4); tk.set(WHITE, 0, 0); tk.g.style.opacity = 0;
+  var n1a = T(cw, X1, 392, 560, 40, 400, MUT, '荷物の約9割を');
+  var n1b = T(cw, X1, 440, 560, 56, 900, WHITE, 'トラックが運ぶ');
+  /* ノード2 */
+  var dr = driver(cg, 3.4); dr.style.opacity = 0;
+  var n2b = T(cw, X2, 440, 560, 56, 900, WHITE, '運転手が足りない');
+  var n2d = T(cw, X2, 540, 560, 34, 400, MUT, '2024年から残業に年960時間の上限');
+  /* ノード3 */
+  var n3a = T(cw, X3, 296, 520, 44, 700, WHITE, '2030年度');
+  var n3b = T(cw, X3, 352, 520, 44, 400, MUT, '運ぶ力が');
+  var n3c = T(cw, X3, 404, 520, 88, 900, YEL, '約3分の1');
+  var n3d = T(cw, X3, 536, 520, 40, 700, WHITE, '足りなくなるおそれ');
+
+  /* 矢印（白い実線が伸びる） */
+  function arrow(x1, x2) {
+    var l = K.el('line', { x1: x1, y1: AY, x2: x1, y2: AY, stroke: WHITE, 'stroke-width': 6, 'stroke-linecap': 'round' }, cg);
+    var h = K.el('path', { d: 'M' + (x2 - 20) + ' ' + (AY - 16) + ' L' + x2 + ' ' + AY + ' L' + (x2 - 20) + ' ' + (AY + 16), fill: 'none', stroke: WHITE, 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, cg);
+    h.style.opacity = 0;
+    return { set: function (p, ph) { l.setAttribute('x2', K.lerp(x1, x2 - 4, p)); l.style.opacity = p > 0 ? 1 : 0; h.style.opacity = ph; } };
+  }
+  var a1 = arrow(585, 660), a2 = arrow(1200, 1340);
+
+  /* 最後の一文 */
+  var tr = K.truck(fg, 3.4); tr.set(WHITE, 0, 0); tr.g.style.opacity = 0;
+  /* 荷台: 前側（運転席側）の 4 割が埋まり、後ろ側の 6 割が点線の空き */
+  var full = K.el('rect', { x: 61 - 58 * .4, y: 4, width: 58 * .4, height: 33, rx: 4, fill: 'rgba(255,255,255,.88)' }, tr.g);
+  var empt = K.el('rect', { x: 3, y: 4, width: 58 * .6, height: 33, rx: 4, fill: 'none', stroke: YEL, 'stroke-width': 3, 'stroke-dasharray': '6 6', 'stroke-linecap': 'round' }, tr.g);
+  full.style.opacity = 0; empt.style.opacity = 0;
+  place(tr.g, 960 - 48 * 1.8, 60, 1.8);
+  var f1 = T(fw, 960, 170, 1400, 56, 700, WHITE, '運ぶ人が足りないのに');
+  var f2 = T(fw, 960, 240, 1500, 96, 900, WHITE, '運べる量の<span class="y">6割</span>が使われていない');
+
+  /* 着地時刻（秒） */
+  var LAND = { n1big: TM.n1 + 0.9, n2big: TM.n2 + 0.8, limit: TM.lim + 0.6, n3big: TM.n3c + 0.8, final6: TM.fade + 1.7 };
+  window.__land = LAND;
+
+  function render(s) {
+    /* ノード1 */
+    var p;
+    p = P(s, TM.n1, 0.6); tk.g.style.opacity = p;
+    tk.g.setAttribute('transform', 'translate(' + (X1 - 91) + ' ' + (268 + 14 * (1 - p)) + ') scale(1.9)');
+    K.show(n1a, P(s, TM.n1 + 0.15, 0.6), 0, 16);
+    K.show(n1b, P(s, TM.n1 + 0.3, 0.6), 0, 20);
+    /* 矢印1 */
+    a1.set(P(s, TM.n2 - 1.0, 0.8, E.mov), P(s, TM.n2 - 0.3, 0.2));
+    /* ノード2 */
+    dr.style.opacity = P(s, TM.n2, 0.6);
+    dr.setAttribute('transform', 'translate(' + (X2 - 46) + ' ' + (268 + 14 * (1 - P(s, TM.n2, 0.6))) + ') scale(1.9)');
+    K.show(n2b, P(s, TM.n2 + 0.2, 0.6), 0, 20);
+    K.show(n2d, P(s, TM.lim, 0.6), 0, 14);
+    /* 矢印2 */
+    a2.set(P(s, TM.n3 - 0.8, 0.8, E.mov), P(s, TM.n3 - 0.1, 0.2));
+    /* ノード3 */
+    K.show(n3a, P(s, TM.n3, 0.6), 0, 14);
+    K.show(n3b, P(s, TM.n3 + 0.3, 0.6), 0, 14);
+    var pc = P(s, TM.n3c, 0.8);
+    n3c.style.opacity = pc;
+    n3c.style.transform = 'translateY(' + (22 * (1 - pc)) + 'px) scale(' + (0.94 + 0.06 * pc) + ')';
+    K.show(n3d, P(s, TM.n3d, 0.6), 0, 14);
+    /* 13 秒: 連鎖を 30% に落とし、少し下げて縮める */
+    var F = TM.fade;
+    var d = P(s, F, 0.9, E.mov);
+    var op = 1 - 0.7 * d, dy = 70 * d, sc = 1 - 0.14 * d;
+    cw.style.opacity = op; cw.style.transform = 'translateY(' + dy + 'px) scale(' + sc + ')';
+    cg.style.opacity = op;
+    cg.setAttribute('transform', 'translate(960 ' + (470 + dy) + ') scale(' + sc + ') translate(-960 -470)');
+    /* 最後の一文 */
+    var pt = P(s, F + 0.5, 0.6);
+    tr.g.style.opacity = pt;
+    place(tr.g, 960 - 48 * 1.8, 60 + 12 * (1 - pt), 1.8);
+    full.style.opacity = P(s, F + 1.0, 0.5);
+    empt.style.opacity = P(s, F + 1.4, 0.6);
+    K.show(f1, P(s, F + 0.7, 0.6), 0, 16);
+    K.show(f2, P(s, F + 1.1, 0.6), 0, 20);
+  }
+  K.setup(D, render);
+})();
+</script></body></html>

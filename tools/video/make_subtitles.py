@@ -28,6 +28,7 @@ W, H, FPS = 1920, 1080, 30
 KEEP = 0.3  # silenceremove で残した無音の長さ（秒）
 LINE = 24   # 1 行の最大の字数
 MAXC = 44   # 1 枚の最大の字数（2 行）
+KEEP_DIR = None  # tight_voice.py の記録（*.keep.json）を置いたフォルダ。build_r5 がプランの voice_dir を入れる
 
 
 def silences(mp3: Path) -> list[tuple[float, float]]:
@@ -37,13 +38,30 @@ def silences(mp3: Path) -> list[tuple[float, float]]:
                        capture_output=True, text=True, encoding="utf-8", errors="replace")
     st = [float(x) for x in re.findall(r"silence_start: ([0-9.]+)", r.stderr)]
     en = [float(x) for x in re.findall(r"silence_end: ([0-9.]+)", r.stderr)]
-    return list(zip(st, en))
+    sil = list(zip(st, en))
+    # tight_voice.py で間ごとに残す長さを変えた声なら、その記録（<声の名前>.keep.json）の長さを 3 つ目に付ける
+    if KEEP_DIR is not None:
+        kp = Path(KEEP_DIR) / f"{Path(mp3).stem}.keep.json"
+        if kp.exists():
+            rec = json.loads(kp.read_text(encoding="utf-8"))
+            if [round(a, 3) for a, _ in sil] != [round(a, 3) for a, _ in rec["sil"]]:
+                raise SystemExit(f"{kp.name}: 記録した無音の位置と、いまの検出結果が合いません")
+            return [(a, b, k) for (a, b), k in zip(sil, rec["keep"])]
+    return sil
 
 
 def squeeze(t: float, sil: list[tuple[float, float]]) -> float:
     """元の音声の時刻 t を、無音を詰めたあとの時刻に直す。先頭の無音は全部、途中の無音は KEEP 秒を残して消えた。"""
     cut = 0.0
-    for i, (a, b) in enumerate(sil):
+    for i, s in enumerate(sil):
+        a, b = s[0], s[1]
+        if len(s) > 2:  # tight_voice.py の記録。残した長さが元より長い（間を足した）ときは cut が負になる
+            keep = s[2]
+            if t >= b:
+                cut += (b - a) - keep
+            elif t > a:
+                cut += max(0.0, (t - a) - keep)
+            continue
         keep = 0.0 if (i == 0 and a < 0.05) else KEEP
         if t >= b:
             cut += max(0.0, (b - a) - keep)

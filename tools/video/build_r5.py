@@ -31,6 +31,7 @@ sys.path.insert(0, str(ROOT / "tools" / "video"))
 FF = "C:/ai/bin/ffmpeg.exe"
 FPS = 30
 FADE = 10
+DIS = 0.6  # gap_style "dissolve" のときの重なりの秒数
 XF = 8
 
 
@@ -46,11 +47,20 @@ def hold(p: Path, need: float) -> Path:
     if have >= need - 1e-3:
         return p
     q = p.with_name(p.stem + f"_hold{int(need + 2)}b" + (".mov" if p.suffix == ".mov" else ".mp4"))
+    codec = ["-c:v", "qtrle", "-pix_fmt", "argb"] if p.suffix == ".mov" else ["-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p"]
+    # 動く図（.mov）は最後に消えるので、消え始める前（終わりの 0.5 秒手前）のコマで止めて延ばす
+    cut = have - 0.5 if p.suffix == ".mov" else have
     if not q.exists():
-        codec = ["-c:v", "qtrle", "-pix_fmt", "argb"] if p.suffix == ".mov" else ["-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p"]
-        # 動く図（.mov）は最後に消えるので、消え始める前（終わりの 0.5 秒手前）のコマで止めて延ばす
-        cut = have - 0.5 if p.suffix == ".mov" else have
-        subprocess.run([FF, "-loglevel", "error", "-y", "-i", str(p), "-vf", f"trim=0:{cut:.3f},setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration={need - cut + 2:.2f}", "-an", *codec, str(q)], check=True)
+        # trim フィルタの後ろの tpad は ffmpeg 7.1 では延ばさない（11/7 に確認。延びずに黒が出ていた）。入力側の -t で切る
+        subprocess.run([FF, "-loglevel", "error", "-y", "-t", f"{cut:.3f}", "-i", str(p), "-vf", f"tpad=stop_mode=clone:stop_duration={need - cut + 2:.2f}", "-an", *codec, str(q)], check=True)
+        if dur(q) < need - 1e-3:
+            raise SystemExit(f"{q.name}: 止めて延ばした版が {dur(q):.2f} 秒しかありません（必要 {need:.2f} 秒）")
+    # 4K の版（<名前>@2x / <名前>_4k / _h で終わる名前の <名前から _h を除く>_4k）があれば、同じように延ばした 4K 版も作る
+    stems = [p.stem] + ([p.stem[:-2]] if p.stem.endswith("_h") else [])
+    hd = next((p.with_name(st + tg + p.suffix) for st in stems for tg in ("@2x", "_4k") if p.with_name(st + tg + p.suffix).exists()), None)
+    q4 = q.with_name(q.stem + "_4k" + q.suffix)
+    if hd is not None and not q4.exists():
+        subprocess.run([FF, "-loglevel", "error", "-y", "-t", f"{cut:.3f}", "-i", str(hd), "-vf", f"tpad=stop_mode=clone:stop_duration={need - cut + 2:.2f}", "-an", *codec, str(q4)], check=True)
     return q
 
 
@@ -67,28 +77,38 @@ def main() -> None:
     NAME = plan.get("name", "r5")
     shots = {s["id"]: s for s in json.loads((ROOT / plan.get("shots", "docs/video/shots_r5.json")).read_text(encoding="utf-8"))["shots"]}
     vdir = OV / plan["voice_dir"]
+    ms.KEEP_DIR = vdir  # tight_voice.py で作った声なら、間ごとの残した長さ（*.keep.json）で時刻を直す
     tag = plan["voice_tag"]
     edl = {"timeline": f"Backfull_{NAME}", "fps": FPS, "video": {}, "audio": {}}
     V = lambda t: edl["video"].setdefault(str(t), [])
     A = lambda t: edl["audio"].setdefault(str(t), [])
     cards_all, voices, t = [], [], 0.0
+    blk_t: dict[str, float] = {}  # 区間の始まり（間の後、声の lead の前）の秒
     prev_last = None
     for b in plan["blocks"]:
         sid = b["id"]
+        dissolve = plan.get("gap_style") == "dissolve"
         if b.get("gap"):
             if prev_last is not None:
-                prev_last["fade_out"] = FADE
+                if dissolve:
+                    # 黒へ落とさず、前の場面を間（gap）と重なり（DIS）の分だけ延ばし、次の場面を上から溶かして出す
+                    prev_last["L"] += round((b["gap"] + DIS) * FPS)
+                    prev_last["path"] = str(hold(Path(prev_last.pop("_src")), (prev_last["off"] + prev_last["L"]) / FPS))
+                else:
+                    prev_last["fade_out"] = FADE
             if b.get("chapter"):
                 V(6).append({"s": round(t * FPS), "L": round(2.4 * FPS), "off": 0, "path": str(OV / b["chapter"])})
             t += b["gap"]
         if b.get("tr"):
             # 印の線が走るつなぎ（1.0 秒、0.5 秒の所で全面が暗い帯に隠れるので、そこが切れ目）
             V(6).append({"s": round((t - 0.5) * FPS), "L": 30, "off": 0, "path": str(OV / "motion/TR_LINE.mov")})
+        blk_t[sid] = t
         # 声（必要なら速める）
         src = vdir / f"{sid}_{tag}.wav"
         if a.atempo != 1.0:
             q = vdir / f"{sid}_{tag}_t{int(a.atempo * 100)}.wav"
-            if not q.exists():
+            # 声を作り直したときに古い速めた版を使わないよう、元のほうが新しければ作り直す
+            if not q.exists() or q.stat().st_mtime < src.stat().st_mtime:
                 subprocess.run([FF, "-loglevel", "error", "-y", "-i", str(src), "-af", f"atempo={a.atempo}", str(q)], check=True)
             src = q
         vd = dur(src)
@@ -151,9 +171,13 @@ def main() -> None:
             p = OV / pc["path"]
             off = pc.get("off", 0.0)
             p = hold(p, off + ln)
-            item = {"s": round(pos * FPS), "L": round(ln * FPS), "off": round(off * FPS), "path": str(p), "p": pc.get("p", {})}
+            item = {"s": round(pos * FPS), "L": round(ln * FPS), "off": round(off * FPS), "path": str(p), "p": pc.get("p", {}),
+                    "_src": str(OV / pc["path"])}
             if first and b.get("gap"):
-                item["fade_in"] = FADE
+                if dissolve and prev_last is not None:
+                    item["dissolve_in"] = round(DIS * FPS)
+                else:
+                    item["fade_in"] = FADE
             first = False
             V(1).append(item)
             prev_last = item
@@ -285,8 +309,23 @@ def main() -> None:
                 pk += 1
             pos += len(seg)
     # BGM
+    # プランの bgm: {"start_block": "P1"}（その区間から BGM を始める）、{"closing": WAV, "closing_block": "H8", "closing_lead": 秒}
+    # （その区間の少し前で今の曲を消し、締めの曲に替える）
+    bg = plan.get("bgm", {})
+    bgm_args = []
+    if bg.get("start_block"):
+        bgm_args += ["--start", f"{blk_t[bg['start_block']]:.2f}"]
+    if bg.get("closing"):
+        ca = blk_t[bg["closing_block"]] - bg.get("closing_lead", 0.0)
+        cl = ROOT / bg["closing"]
+        skip = max(0.0, dur(cl) - (total - ca))  # 曲の終わり（和音が消える所）を動画の終わりに合わせる
+        bgm_args += ["--end", f"{ca + 1.5:.2f}", "--closing", str(cl), "--closing-at", f"{ca:.2f}", "--closing-skip", f"{skip:.2f}"]
+        if "closing_db" in bg:
+            bgm_args += ["--closing-db", str(bg["closing_db"])]
+    elif bg.get("end_block"):
+        bgm_args += ["--end", f"{blk_t[bg['end_block']]:.2f}"]
     subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_bgm.py"), "--db", "-15", "--out", f"bgm_{NAME}_{stamp}.wav",
-                    "--total", f"{total:.2f}", "--voice", json.dumps(voices)], check=True)
+                    "--total", f"{total:.2f}", "--voice", json.dumps(voices), *bgm_args], check=True)
     A(5).append({"s": 0, "L": round(total * FPS), "off": 0, "path": str(OV / f"bgm/r04/bgm_{NAME}_{stamp}.wav")})
     # Resolve 側の台本の形（s, e, off, path, p, fade_in, fade_out, xfade_out）に直す
     for kind in ("video", "audio"):
@@ -294,6 +333,7 @@ def main() -> None:
             rows.sort(key=lambda d: d["s"])
             for i, d in enumerate(rows):
                 d["e"] = d["s"] + d.pop("L")
+                d.pop("_src", None)
                 d.setdefault("p", {})
             if kind == "video" and tr == "1":
                 for i, d in enumerate(rows):
