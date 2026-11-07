@@ -53,6 +53,7 @@ def hold(p: Path, need: float) -> Path:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--atempo", type=float, default=1.0)
+    ap.add_argument("--kinetic", action="store_true", help="字幕を動く字幕（tools/video/make_kinetic.py）で描く")
     a = ap.parse_args()
     import make_subtitles as ms
     stamp = time.strftime("%H%M%S")
@@ -165,9 +166,13 @@ def main() -> None:
     ms.OUT.mkdir(parents=True, exist_ok=True)
     with open(ms.OUT / "cards.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(cards_all, f, ensure_ascii=False, indent=1)
-    ms.render(cards_all, total)
     sub = ms.OUT / f"subs_{stamp}.mov"
-    (ms.OUT / "subs.mov").replace(sub)
+    if a.kinetic:
+        subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_kinetic.py"), "--cards", str(ms.OUT / "cards.json"),
+                        "--total", f"{total:.2f}", "--out", str(sub)], check=True)
+    else:
+        ms.render(cards_all, total)
+        (ms.OUT / "subs.mov").replace(sub)
     V(4).append({"s": 0, "L": round(total * FPS), "off": 0, "path": str(sub)})
     # 出典の行
     smap = json.loads((ROOT / "docs/video/sources_r4_map.json").read_text(encoding="utf-8"))
