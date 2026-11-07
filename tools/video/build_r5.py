@@ -73,7 +73,6 @@ def main() -> None:
                 prev_last["fade_out"] = FADE
             if b.get("chapter"):
                 V(6).append({"s": round(t * FPS), "L": round(2.4 * FPS), "off": 0, "path": str(OV / b["chapter"])})
-            A(3).append({"s": round(max(0, t - 0.2) * FPS), "L": 27, "off": 0, "path": str(OV / "sfx/prepared/whoosh.wav")})
             t += b["gap"]
         if b.get("tr"):
             # 印の線が走るつなぎ（1.0 秒、0.5 秒の所で全面が暗い帯に隠れるので、そこが切れ目）
@@ -95,6 +94,25 @@ def main() -> None:
             c["start"] = round(vs + c["start"] / a.atempo, 3)
             c["end"] = round(vs + c["end"] / a.atempo, 3)
         cards_all += cs
+
+        meta = json.loads((OV / "voice" / f"{sid}_{tag}.json").read_text(encoding="utf-8"))
+        al = meta["alignment"]
+        rd = "".join(al["characters"])
+        sil = ms.silences(OV / "voice" / f"{sid}_{tag}.mp3")
+
+        def say_t(txt: str) -> float:
+            """声がその言葉（読みの文字）を言い始める時刻（タイムラインの秒）。"""
+            i = rd.find(txt)
+            if i < 0:
+                raise SystemExit(f"{sid}: 読みに「{txt}」がありません")
+            return vs + ms.squeeze(al["character_start_times_seconds"][i], sil) / a.atempo
+
+        def at_t(at: dict) -> float:
+            if "t" in at:
+                return (vs - b.get("lead", 0.3)) + at["t"]
+            if "say" in at:
+                return say_t(at["say"]) - at.get("land", 0.0)
+            return card_t(at["card"]) - at.get("land", 0.0)
 
         def card_t(txt: str) -> float:
             for c in cs:
@@ -137,20 +155,33 @@ def main() -> None:
         blk_end = t
         for o in b.get("over", []):
             at = o["at"]
-            st = (vs - b.get("lead", 0.3)) + at["t"] if "t" in at else card_t(at["card"])
+            st = at_t(at)
             p = OV / o["path"]
             ln = o.get("len") or (card_t(o["until"]) - st if "until" in o else dur(p))
-            ln = min(ln, blk_end - st + 1.0)
+            ln = min(ln, blk_end - st)  # 図は自分の区間の中で終える（次の場面にはみ出さない）
             V(o["track"]).append({"s": round(st * FPS), "L": round(ln * FPS), "off": 0, "path": str(p)})
             if o.get("scrim"):
                 # 後ろの映像を暗く落とす幕（図の下、V3）。出入りは 0.3 秒のフェード
                 V(3).append({"s": round(st * FPS), "L": round(ln * FPS), "off": 0, "path": str(OV / "overlays/scrim.mov"), "fade_in": 9, "fade_out": 9})
         for o in b.get("audio", []):
             at = o["at"]
-            st = (vs - b.get("lead", 0.3)) + at["t"] if "t" in at else card_t(at["card"])
+            st = at_t(at)
             p = OV / o["path"]
             A(o["track"]).append({"s": round(max(0, st) * FPS), "L": round(dur(p) * FPS), "off": 0, "path": str(p)})
     total = t + 0.3
+    # 同じトラックの重ねるもの（図・名札・表示）が重ならないよう、次が出る瞬間に 0.2 秒で消して切り替える
+    for tr in ("2", "3", "5"):
+        rows = sorted([d for d in edl["video"].get(tr, []) if "scrim" not in d["path"]], key=lambda d: d["s"])
+        for i in range(len(rows) - 1):
+            cur, nxt = rows[i], rows[i + 1]
+            if cur["s"] + cur["L"] > nxt["s"]:
+                cur["L"] = max(6, nxt["s"] - cur["s"])
+                cur["fade_out"] = 6
+    # 暗くする幕も、図に合わせて切る
+    sc = sorted([d for d in edl["video"].get("3", []) if "scrim" in d["path"]], key=lambda d: d["s"])
+    for i in range(len(sc) - 1):
+        if sc[i]["s"] + sc[i]["L"] > sc[i + 1]["s"]:
+            sc[i]["L"] = sc[i + 1]["s"] - sc[i]["s"] + 9
     # 字幕の改行と強調（数が合わなければ自動の改行）
     lay_p = ROOT / "docs/video/subs_r5_layout.json"
     lay = json.loads(lay_p.read_text(encoding="utf-8"))["cards"] if lay_p.exists() else []
@@ -196,6 +227,52 @@ def main() -> None:
     smov = ms.OUT / f"sources_{stamp}.mov"
     subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_sources.py"), "--cards", str(sp), "--total", str(total), "--out", str(smov)], check=True)
     V(7).append({"s": 0, "L": round(total * FPS), "off": 0, "path": str(smov)})
+    # 効果音（tools/video/sfx_synth.py の一式）を、動きに合わせて置く
+    K = OV / "sfx/kit"
+
+    def cue(track: int, name: str, at: float, gain: float = 0.0) -> None:
+        p = K / name
+        A(track).append({"s": round(max(0.0, at) * FPS), "L": round(dur(p) * FPS), "off": 0, "path": str(p), "gain_db": gain})
+
+    LANDS = {"HOOK_m.mov": (2.4, None), "MG1_m.mov": (2.0, (0.9, 2.0)), "MG7_m.mov": (1.7, (0.6, 1.7)), "MG9_m.mov": (4.8, None),
+             "MG3_m.mov": (4.4, (3.3, 4.4)), "MG5_m.mov": (4.5, (3.5, 4.5)), "MG8_m.mov": (3.0, None)}
+    for d in edl["video"].get("6", []):
+        nm, s0 = Path(d["path"]).name, d["s"] / FPS
+        if nm.startswith("TR_LINE"):
+            cue(3, "whoosh_line.wav", s0, -2)
+        elif nm.startswith("CHM"):
+            cue(3, "riser_soft.wav", s0 + 0.45 - 1.0, -3)
+    for d in edl["video"].get("5", []):
+        nm, s0 = Path(d["path"]).name, d["s"] / FPS
+        if nm in LANDS:
+            land, win = LANDS[nm]
+            cue(4, "land_soft.wav", s0 + land, -2)
+            if win:
+                k, tt = 0, s0 + win[0]
+                while tt < s0 + win[1] - 0.05:
+                    cue(4, f"tick_{k % 4 + 1}.wav", tt, -4)
+                    tt += 0.07
+                    k += 1
+    for d in edl["video"].get("1", []):
+        nm, s0 = Path(d["path"]).name, d["s"] / FPS
+        if nm.startswith("LOGO_B"):
+            cue(3, "whoosh_soft.wav", s0 + 0.3, -4)
+            cue(4, "chime_logo.wav", s0 + 2.0, -3)
+        elif nm.startswith("FLOW_KAGO"):
+            cue(3, "whoosh_soft.wav", s0, -6)
+    # 字幕の強調のうち数字を含むものが着地する瞬間に、弾む音（1・3・5 度を順に）
+    import re
+    pk = 0
+    for c in cards_all:
+        plain = c["text"].replace("/", "").replace("*", "")
+        dur_c = c["end"] - c["start"]
+        pos = 0
+        for i, seg in enumerate(c["text"].replace("/", "").split("*")):
+            if i % 2 == 1 and re.search(r"[0-9０-９]", seg):
+                land = c["start"] + pos / max(1, len(plain)) * dur_c * 0.75 + 0.22
+                cue(4, ["pop_a.wav", "pop_b.wav", "pop_c.wav"][pk % 3], land, -5)
+                pk += 1
+            pos += len(seg)
     # BGM
     subprocess.run(["uv", "run", "python", str(ROOT / "tools/video/make_bgm.py"), "--db", "-15", "--out", f"bgm_r5_{stamp}.wav",
                     "--total", f"{total:.2f}", "--voice", json.dumps(voices)], check=True)

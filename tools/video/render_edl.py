@@ -67,7 +67,8 @@ def main() -> None:
             s, L, off = d["s"] / FPS, (d["e"] - d["s"]) / FPS, d["off"] / FPS
             args += ["-ss", f"{off:.3f}", "-t", f"{L:.3f}", "-i", d["path"]]
             ms = int(round(s * 1000))
-            fl.append(f"[{n}:a]aresample=48000,aformat=channel_layouts=stereo,adelay={ms}|{ms}[a{n}]")
+            g = d.get("gain_db", 0.0)
+            fl.append(f"[{n}:a]aresample=48000,aformat=channel_layouts=stereo,volume={g}dB,adelay={ms}|{ms}[a{n}]")
             aud.append(f"[a{n}]")
             n += 1
     fl.append("".join(aud) + f"amix=inputs={len(aud)}:normalize=0,apad=whole_dur={total:.3f}[aout]")
