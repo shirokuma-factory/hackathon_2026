@@ -182,5 +182,12 @@
       .then(({ ok, j }) => { if (!ok) throw new Error(j.error || '送れませんでした'); return j; });
   }
 
-  root.AiExplain = { mount, OFF_LINE, status: getStatus, ownColumns, _stepsHtml: stepsHtml, _resultHtml: resultHtml };
+  // 帰り便の案内文を読みやすく整える（SPEC §53.2）。negotiate.js が確認を取ったあとの本文だけを渡す
+  function offerPolish(text) {
+    return fetch('/api/ai/offer_polish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => { if (!ok) throw new Error(j.error || '送れませんでした'); return j; });
+  }
+
+  root.AiExplain = { mount, OFF_LINE, status: getStatus, ownColumns, offerPolish, _stepsHtml: stepsHtml, _resultHtml: resultHtml };
 })(window);

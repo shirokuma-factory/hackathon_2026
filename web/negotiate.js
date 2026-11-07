@@ -64,7 +64,6 @@ const Negotiate = (() => {
       ['always', '現在の返送の方法と、その条件（比べるため）'],
     ],
   };
-  const COMPARE = ['同じ荷物・全量であること', '集配の範囲', '積込と納品の日時', '荷役（誰が行うか）', '付帯料金と税の扱い', '必要な台数', '見積の期限'];
   const INTERNAL_CHECK = ['車格・床の空き・重量の余力', '追加の集荷で増える距離と時間', '次の運行との関係（帰庫の時刻・次の便への影響）', '荷役の設備と所要時間', '積み降ろしの順・混載の可否'];
 
   /* ------------------------------------------------------------ 金額（任意の社内の検討） */
@@ -123,16 +122,19 @@ const Negotiate = (() => {
         '※ 条件の確認のご連絡です。お受けできるかは、確認のあとでお伝えします。'].join('\n');
     }
     const type = p.type === 'returnable' ? 'returnable' : 'commodity';
+    // 「毎週」と書くのは、その曜日の帰りの便の 8 割以上が空車で、3 回以上あるときだけ。そうでなければ、記録にあったことだけを書く
+    const when = p.weekly ? `毎週${day}に、` : `これまでの記録では、${day}の帰りに、`;
+    const vacant = p.weekly ? '空きがあります' : '空きがありました';
     const intro = type === 'returnable'
-      ? `毎週${day}に、${from}から${to}へ戻る便に空きがあります。空の通い箱・パレットの返送にお使いいただけます。`
-      : `毎週${day}に、${from}から${to}へ戻るトラックに空きがあります。この方面へ出荷される荷物があれば、この便でお運びできます。`;
+      ? `${when}${from}から${to}へ戻る便に${vacant}。空の通い箱・パレットの返送にお使いいただけます。`
+      : `${when}${from}から${to}へ戻るトラックに${vacant}。この方面へ出荷される荷物があれば、この便でお運びできます。`;
     const confirmed = [];
     if (p.load.state === 'ok') confirmed.push(`・積込の条件: ${(p.load.note || '').trim() || '確認できています（内容は別途お伝えします）'}`);
     if (p.recv.state === 'ok') confirmed.push(`・受取の条件: ${(p.recv.note || '').trim() || '確認できています（内容は別途お伝えします）'}`);
     const asks = QUESTIONS[type].filter(([c]) => c === 'always' || (c === 'load' && p.load.state !== 'ok') || (c === 'recv' && p.recv.state !== 'ok')).map(([, t]) => `・${t}`);
     return [...head, '', intro, 'お運びできるかを確かめるため、次の点をお聞かせください。', '', '■確認できている条件', ...(confirmed.length ? confirmed : ['・現時点で、確認できている条件はありません']), '',
       '■お聞かせいただきたいこと', ...asks, '',
-      '■お見積りの前提', ...COMPARE.map((t) => `・${t}`), '上の条件で、総額をお出しします。', '',
+      'お見積りは、荷物の内容と日時を伺ってからお出しします。', '',
       '■進め方', 'まずは 1 回、お試しでいかがでしょうか。条件を伺ったうえで、お受けできるかとお見積りをお送りします。'].join('\n');
   }
 
@@ -210,6 +212,7 @@ const Negotiate = (() => {
   const S = {
     entry: null, view: 'result', pairKey: null, wd: null, type: 'commodity', load: { state: 'unconfirmed', note: '' }, recv: { state: 'unconfirmed', note: '' },
     hold: { action: 'hold', picks: [] }, econ: emptyEcon(), draft: newDraft(), regenAsk: false, copyMsg: '', lastCopied: null, sig: null, sawImport: false, gsub: 'type', picking: false, goal: '', goalDone: false,
+    aiAvail: false, aiAsked: false, polish: null, polishSeq: 0,
   };
   let ctx = { data: null, mode: 'sample', fileNames: [], error: '', useSample: null, pickFile: null };
   let root = null;
@@ -239,7 +242,8 @@ const Negotiate = (() => {
 
   function params(a) {
     const t = a.target, d = ctx.data;
-    return { type: S.type, fromMuni: placeMuni(d, a.pair.fr), toMuni: placeMuni(d, a.pair.to), weekday: t.weekday, load: S.load, recv: S.recv, hold: S.hold, econ: S.econ };
+    const c = t.confirmed || {};
+    return { weekly: c.trips >= 3 && c.empty >= 3 && c.empty / c.trips >= 0.8, type: S.type, fromMuni: placeMuni(d, a.pair.fr), toMuni: placeMuni(d, a.pair.to), weekday: t.weekday, load: S.load, recv: S.recv, hold: S.hold, econ: S.econ };
   }
   const draftKey = (a) => JSON.stringify([ctx.mode, a.pair.key, a.target.wd, S.type, S.load, S.recv, S.hold, ((S.econ && economics(S.econ).state) === 'skip')]);
   const kmText = (a) => (a.target.confirmed.empty ? n1(a.target.confirmed.empty_km) : '');
@@ -476,11 +480,76 @@ const Negotiate = (() => {
       <label class="neg-tl">案内文（【 】の宛先・社名・担当者名を書き換えてください）
         <textarea id="neg-text" class="o-ta" rows="${g ? 11 : 16}" spellcheck="false">${esc(S.draft.text)}</textarea></label>`}
       <div id="neg-live">${staleHtml(a)}<p class="neg-warn" id="neg-leak" ${lk.length ? '' : 'hidden'}>${lk.length ? `社内の情報（${esc(lk.join('、'))}）が文面に入っています。消してからコピーしてください。` : ''}</p></div>
+      ${none ? '' : `<div id="neg-ai" class="neg-ai">${aiHtml()}</div>`}
       <div class="neg-btns"><button type="button" class="btn-primary" id="neg-copy" data-act="copy" ${can && !lk.length ? '' : 'disabled aria-disabled="true"'}>文面をコピー</button>
         <button type="button" class="btn-sm" id="neg-regen" data-act="regen">今の条件で作り直す</button><button type="button" class="btn-sm" data-act="to-cond">条件に戻る</button></div>
       <p class="neg-note" id="neg-copymsg" role="status">${esc(S.copyMsg)}</p>
       <p class="neg-note">${g ? '送信や予約はしません。コピーするだけです。' : '送信や予約はしません。コピーするだけです。'}</p></div>`;
   }
+
+  /* ------------------------------------------------------------ AI で読みやすく整える（SPEC §53.2）
+     サーバーで開き、AiExplain.status が available と答えたときだけ出る（ファイルで開いた版・単独の版には AiExplain が無く、何も出ない）。
+     送るのは、確認の枠に出した案内文の本文だけ。「送る」を押すまで何も送らない。結果は案として出し、「この案に置き換える」を押すまで文面は変わらない */
+  const POLISH_NOTE = '送るのはこの文だけです（社内の情報が入っていないことを確かめてあります）。送った内容は保存しません。費用の目安は 1 回 $0.002 以下です。';
+  function aiProbe() {
+    if (S.aiAsked || typeof AiExplain === 'undefined' || !AiExplain.status) return;
+    S.aiAsked = true;
+    AiExplain.status().then((st) => { if (st && st.available) { S.aiAvail = true; paintAi(); } }).catch(() => {});
+  }
+  function paintAi() { const el = root && root.querySelector('#neg-ai'); if (el) el.innerHTML = aiHtml(); }
+  function aiHtml() {
+    aiProbe();
+    if (!S.aiAvail || typeof AiExplain === 'undefined' || !AiExplain.offerPolish) return '';
+    const P = S.polish;
+    if (!P) return '<div class="neg-aibtns"><button type="button" class="btn-sm" id="neg-ai-ask" data-act="ai-ask">AI で読みやすく整える</button></div>';
+    if (P.phase === 'confirm') {
+      return `<div class="neg-aibox" id="neg-ai-confirm"><b>この文を Anthropic の API に送ります</b>
+        <pre class="neg-aitext" id="neg-ai-sent">${esc(P.text)}</pre><p class="neg-note">${POLISH_NOTE}</p>
+        <div class="neg-aibtns"><button type="button" class="btn-primary" id="neg-ai-send" data-act="ai-send">送る</button><button type="button" class="btn-sm" id="neg-ai-cancel" data-act="ai-close">やめる</button></div></div>`;
+    }
+    if (P.phase === 'busy') return '<div class="neg-aibox" id="neg-ai-busy" role="status"><p>Haiku 5.5 が文を整えています…</p></div>';
+    if (P.phase === 'error') return `<div class="neg-aibox"><p class="neg-warn" id="neg-ai-msg">${esc(P.msg)}</p><div class="neg-aibtns"><button type="button" class="btn-sm" data-act="ai-close">閉じる</button></div></div>`;
+    const r = P.res, ok = r.ready;
+    return `<div class="neg-aibox" id="neg-ai-result"><b>${ok ? 'AI の案' : '確認が必要な案'}</b>
+      ${ok ? '' : `<p class="neg-warn" id="neg-ai-problems">元の文と食い違う点があります。内容を確かめてから使ってください。</p><ul class="neg-ailist">${(r.problems || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`}
+      <pre class="neg-aitext" id="neg-ai-proposal">${esc(r.text)}</pre>
+      <p class="neg-note">元の文は、置き換えるまで変わりません。</p>
+      <div class="neg-aibtns"><button type="button" class="btn-primary" id="neg-ai-replace" data-act="ai-replace">この案に置き換える</button><button type="button" class="btn-sm" id="neg-ai-close" data-act="ai-close">閉じる</button></div></div>`;
+  }
+  function aiAsk() {
+    const ta = root.querySelector('#neg-text'), a = A();
+    if (!ta || !a) return;
+    S.draft.text = ta.value;
+    if (!S.draft.text.trim()) return;
+    const toks = internalTokens(ctx.data, a.model.rows, { fr: a.pair.fr, to: a.pair.to, kmText: kmText(a), econ: S.econ });
+    const lk = leaks(S.draft.text, toks);
+    if (lk.length) { S.polish = { phase: 'error', msg: `社内の情報（${lk.join('、')}）が文面に入っています。消してからコピーしてください。AI には送っていません。` }; paintAi(); return; }
+    S.polish = { phase: 'confirm', text: S.draft.text };   // 確認の枠に出した本文を、そのまま送る
+    paintAi();
+  }
+  function aiSend() {
+    const P = S.polish;
+    if (!P || P.phase !== 'confirm') return;
+    const seq = ++S.polishSeq, text = P.text;
+    S.polish = { phase: 'busy', text };
+    paintAi();
+    AiExplain.offerPolish(text).then((res) => {
+      if (seq !== S.polishSeq || !S.polish || S.polish.phase !== 'busy') return;
+      S.polish = { phase: 'result', text, res }; paintAi();
+    }).catch((e) => {
+      if (seq !== S.polishSeq || !S.polish || S.polish.phase !== 'busy') return;
+      S.polish = { phase: 'error', msg: `${e && e.message ? e.message : '整えられませんでした'}。今の文のままお使いください。` }; paintAi();
+    });
+  }
+  function aiReplace() {
+    const P = S.polish;
+    if (!P || P.phase !== 'result' || !P.res) return;
+    S.draft.text = P.res.text;   // gen は変えない: 手で直した文と同じ扱いになり、条件を変えても保護される
+    S.copyMsg = 'AI の案に置き換えました。内容を確かめてからコピーしてください';
+    S.polish = null; S.polishSeq++;
+    render();
+  }
+  const aiClose = () => { S.polish = null; S.polishSeq++; paintAi(); };
 
   function guidedHtml() {
     const n = guidedStep();
@@ -536,6 +605,7 @@ const Negotiate = (() => {
   function render() {
     closeTrip();
     const r = getRoot();
+    if (S.view !== 'draft' && S.polish) { S.polish = null; S.polishSeq++; }
     if (ctx.mode === 'import' && !(ctx.guided && S.picking)) { S.entry = 'file'; S.sawImport = true; S.picking = false; } else if (S.sawImport && ctx.mode !== 'import') { S.sawImport = false; if (S.entry === 'file') S.entry = 'sample'; }
     const sig = `${ctx.mode}|${(ctx.data && ctx.data.month) || ''}|${((ctx.data && ctx.data.legs) || []).length}`;
     if (S.sig !== sig) { if (S.sig !== null) { S.pairKey = null; S.wd = null; } S.sig = sig; }
@@ -638,12 +708,16 @@ const Negotiate = (() => {
       const a = A(), ta = root.querySelector('#neg-text');
       if (ta) S.draft.text = ta.value;
       if (isEdited(S.draft)) { S.regenAsk = true; render(); }
-      else if (a) { regenerate(S.draft, buildDraft(params(a)), draftKey(a)); S.copyMsg = '現在の条件で文面を作り直しました'; render(); }
+      else if (a) { regenerate(S.draft, buildDraft(params(a)), draftKey(a)); S.copyMsg = '現在の条件で文面を作り直しました'; S.polish = null; S.polishSeq++; render(); }
     }
-    else if (act === 'regen-yes') { const a = A(); if (a) { regenerate(S.draft, buildDraft(params(a)), draftKey(a)); S.copyMsg = '現在の条件で文面を作り直しました'; } S.regenAsk = false; render(); }
+    else if (act === 'regen-yes') { const a = A(); if (a) { regenerate(S.draft, buildDraft(params(a)), draftKey(a)); S.copyMsg = '現在の条件で文面を作り直しました'; S.polish = null; S.polishSeq++; } S.regenAsk = false; render(); }
     else if (act === 'regen-no') { S.regenAsk = false; render(); }
     else if (act === 'trip-close') closeTrip();
     else if (act === 'copy') copyNow();
+    else if (act === 'ai-ask') aiAsk();
+    else if (act === 'ai-send') aiSend();
+    else if (act === 'ai-close') aiClose();
+    else if (act === 'ai-replace') aiReplace();
   }
 
   function onChange(e) {

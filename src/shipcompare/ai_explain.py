@@ -772,6 +772,116 @@ def own_columns(body: Any, client_id: str, public: bool) -> dict[str, Any]:
     return res
 
 
+# ---------------------------------------------------------------- 帰り便の案内文を読みやすく整える（SPEC §53.2）
+# 送るのは、画面で確認を取った案内文の本文だけ。Haiku 1 回、構造化出力なし（本文をそのまま受ける）。
+# 戻りの文は Python で機械照合する（【】・曜日・…周辺・数字・長さ）。通らなければ「確認が必要な案」として返す。再試行はしない。
+
+POLISH_MODEL = MODEL_HAIKU
+POLISH_MAX_TOKENS = 1500
+POLISH_EFFORT = "low"
+POLISH_MAX_INPUT_CHARS = 4000
+SYS_POLISH = ("あなたは運送会社の配車担当です。帰り便の空きを荷主に知らせる最初の連絡の案内文を、自然で短い日本語のビジネスメールに書き直します。"
+              "守ること: (1) 事実（曜日、場所の言い方「…周辺」、車両や荷物の言葉）は元の文のとおりに残す。"
+              "(2) 【 】で囲んだ部分（宛先・社名・担当者名など）は、文字を変えず、すべてそのまま残す。"
+              "(3) 数字は元の文にあるものだけを、元の書き方（「1 回」など）のまま使う。新しい数字・金額・約束・条件を足さない。"
+              "(4) 荷主への質問は、初めての連絡でいちばん大事な 3〜4 件に絞る。残りの質問は消し、代わりに「詳しい条件は、ご関心があればあらためて伺います。」の 1 行を入れる。"
+              "(5) 元の文より長くしない。出力は書き直した案内文の本文だけ（前置き・説明・見出しの記号を付けない）。")
+_PH_RE = re.compile(r"【[^】]*】")
+_WD_RE = re.compile(r"([月火水木金土日])曜")
+_PLACE_RE = re.compile(r"[一-龥々ヶ]+周辺")
+
+
+def clean_polish(body: Any) -> str:
+    text = body.get("text") if isinstance(body, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        raise AiError("整える文がありません")
+    text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")
+    if len(text) > POLISH_MAX_INPUT_CHARS:
+        raise AiError(f"整えられる文は {POLISH_MAX_INPUT_CHARS} 字までです", "too_large", 413)
+    return text
+
+
+def polish_problems(src: str, out: str) -> list[str]:
+    """戻りの文の機械照合。問題の文（日本語）の一覧を返す。空なら通った。"""
+    a, b = unicodedata.normalize("NFKC", src), unicodedata.normalize("NFKC", out)
+    probs: list[str] = []
+    if not out.strip():
+        return ["AI の答えが空でした"]
+    ph_in, ph_out = set(_PH_RE.findall(src)), set(_PH_RE.findall(out))
+    for k in sorted(ph_in - ph_out):
+        probs.append(f"{k} が消えています")
+    for k in sorted(ph_out - ph_in):
+        probs.append(f"元の文にない {k} が入っています")
+    wd_in, wd_out = set(_WD_RE.findall(a)), set(_WD_RE.findall(b))
+    for k in sorted(wd_in - wd_out):
+        probs.append(f"曜日「{k}曜」が消えています")
+    for k in sorted(wd_out - wd_in):
+        probs.append(f"元の文にない曜日「{k}曜」が入っています")
+    pl_in, pl_out = set(_PLACE_RE.findall(a)), set(_PLACE_RE.findall(b))
+    for k in sorted(pl_in - pl_out):
+        probs.append(f"場所「{k}」が消えています")
+    for k in sorted(pl_out - pl_in):
+        probs.append(f"元の文にない場所「{k}」が入っています")
+    n_in, n_out = _numbers(a), _numbers(b)
+    for k in sorted(n_in - n_out, key=str):
+        probs.append(f"数字「{k}」が消えています")
+    for k in sorted(n_out - n_in, key=str):
+        probs.append(f"元の文にない数字「{k}」が入っています")
+    if re.search(r"[〇一二三四五六七八九十百千万]+\s*円", b) and not re.search(r"[〇一二三四五六七八九十百千万]+\s*円", a):
+        probs.append("元の文にない金額が入っています")
+    if len(out.strip()) > len(src.strip()):
+        probs.append(f"元の文より長くなっています（{len(out.strip())} 字 / 元 {len(src.strip())} 字）")
+    return probs
+
+
+def _call_polish(client: Any, text: str) -> tuple[Any, dict[str, Any]]:
+    kw: dict[str, Any] = dict(model=POLISH_MODEL, max_tokens=POLISH_MAX_TOKENS, system=SYS_POLISH,
+                              messages=[{"role": "user", "content": text}], output_config={"effort": POLISH_EFFORT})
+    t0 = time.perf_counter()
+    resp = client.messages.create(**kw)
+    ms = int((time.perf_counter() - t0) * 1000)
+    tin, tout = _usage(resp)
+    rec = {"step": "offer_polish", "model": POLISH_MODEL, "label": MODEL_LABEL[POLISH_MODEL], "input_tokens": tin, "output_tokens": tout, "ms": ms,
+           "cost_usd": round(cost_usd(POLISH_MODEL, tin, tout), 6), "stop_reason": getattr(resp, "stop_reason", None)}
+    if getattr(resp, "stop_reason", None) == "refusal":
+        raise _Refused(rec)  # type: ignore[arg-type]
+    return resp, rec
+
+
+def offer_polish(body: Any, client_id: str, public: bool) -> dict[str, Any]:
+    """POST /api/ai/offer_polish。同期で返す（Haiku 1 回）。同じ文の結果は上限に数えない。"""
+    st = status(public)
+    if not st["available"]:
+        raise AiError(polish_reason_text(st["reason"]), "unavailable", 403)
+    text = clean_polish(body)
+    key = "polish:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+    hit = CACHE.get(key)
+    if hit is not None:
+        return dict(hit, cached=True)
+    LIMITER.reserve(client_id)
+    try:
+        resp, rec = _call_polish(make_client(), text)
+    except _Refused:
+        raise AiError("AI が文の整えを断りました。今の文のままお使いください", "refused", 502) from None
+    except Exception as e:  # noqa: BLE001  メッセージにキーが入ることはないが、型名だけを返す
+        raise AiError(f"AI に整えてもらえませんでした（{type(e).__name__}）。今の文のままお使いください", "api_error", 502) from None
+    if getattr(resp, "stop_reason", None) == "max_tokens":
+        raise AiError("AI の答えが途中で切れました。今の文のままお使いください", "truncated", 502)
+    out = _text_of(resp).strip()
+    problems = polish_problems(text, out)
+    res = {"ok": True, "ready": not problems, "text": out, "problems": problems, "step": rec, "cached": False}
+    if not problems:
+        CACHE.put(key, res)
+    return res
+
+
+def polish_reason_text(reason: str) -> str:
+    return {"disabled": "AI による文の整えは、このサーバーでは使えない設定です",
+            "public_off": "公開版では AI による文の整えを止めています",
+            "no_key": "AI による文の整えに必要な設定がありません",
+            "no_sdk": "AI による文の整えに必要な部品（anthropic）が入っていません"}.get(reason, "AI による文の整えは今は使えません")
+
+
 def own_reason_text(reason: str) -> str:
     return {"disabled": "AI による列の整理は、このサーバーでは使えない設定です",
             "public_off": "公開版では AI による列の整理を止めています",

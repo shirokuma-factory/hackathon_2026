@@ -730,3 +730,11 @@ body.own-nomap #own-sheet, body.own-nomap #own-right, body.own-nomap #own-view {
 .own-tag.pick { pointer-events: auto; cursor: pointer; }
 .own-tag.pick:hover { border-color: #fff; }
 .own-tag.pick:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+/* 案内文を AI で読みやすく整える（web/negotiate.js。SPEC §53.2） */
+.neg-ai { margin: 4px 0; }
+.neg-aibox { margin: 8px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.04); }
+.neg-aitext { margin: 6px 0; padding: 8px 10px; max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,255,255,.04); }
+.neg-ailist { margin: 4px 0 6px; padding-left: 20px; }
+.neg-aibtns { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 2px; }
+.neg-aibtns button { min-height: 36px; padding: 0 14px; font-size: 13px; }
+@media (max-width: 600px) { .neg-aibtns { flex-direction: column; align-items: stretch; } .neg-aibtns button { min-height: 44px; } }
