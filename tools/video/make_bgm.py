@@ -64,17 +64,39 @@ def main() -> None:
              "-map", "[o]", "-ar", "48000", str(fit)])
         cut_a = round(cut_a, 2)
     else:
+        # 曲を置く秒は Python で計算して並べる。ffmpeg 7.1 の adelay がこの組み方では効かず、
+        # 冒頭のフックに BGM が鳴り、締めの曲が入らなかった（11/7 に音を測って判明）
+        import numpy as np
+        import wave as _wave
+        SR = 48000
+
+        def dec(p, t0, t1):
+            raw = subprocess.run([FF, "-v", "error", "-ss", f"{t0}", "-t", f"{t1 - t0}", "-i", str(p), "-ac", "2", "-ar", str(SR),
+                                  "-f", "f32le", "-"], capture_output=True, check=True).stdout
+            return np.frombuffer(raw, np.float32).reshape(-1, 2).copy()
+
+        def fade(x, fin, fout):
+            n = len(x)
+            if fin:
+                k = min(n, int(fin * SR)); x[:k] *= np.linspace(0, 1, k)[:, None]
+            if fout:
+                k = min(n, int(fout * SR)); x[n - k:] *= np.linspace(1, 0, k)[:, None]
+            return x
+
+        out = np.zeros((int(total * SR) + 1, 2), np.float32)
         L = a.end - a.start
-        chain = (f"[0]atrim=0:{L + 0.01},asetpts=PTS-STARTPTS,aresample=48000,afade=t=in:d=1.5,afade=t=out:st={L - 2.5}:d=2.5,"
-                 f"adelay={st_ms}|{st_ms},apad=whole_dur={total},atrim=0:{total}[m]")
+        m = fade(dec(SRC, 0, L), 1.5, 2.5)
+        i0 = int(a.start * SR)
+        out[i0:i0 + len(m)] += m[:len(out) - i0]
         if a.closing:
             cdb = a.db if a.closing_db is None else a.closing_db
-            c_ms = int(round(a.closing_at * 1000))
-            chain += (f";[1]aresample=48000,aformat=channel_layouts=stereo,atrim={a.closing_skip}:{a.closing_skip + total - a.closing_at},asetpts=PTS-STARTPTS,afade=t=in:d=2.0,"
-                      f"volume={cdb - a.db}dB,adelay={c_ms}|{c_ms},apad=whole_dur={total},atrim=0:{total}[c];[m][c]amix=inputs=2:normalize=0[o]")
-            run(["-i", str(SRC), "-i", a.closing, "-filter_complex", chain, "-map", "[o]", str(fit)])
-        else:
-            run(["-i", str(SRC), "-filter_complex", chain.replace("[m]", "[o]"), "-map", "[o]", str(fit)])
+            c = dec(a.closing, a.closing_skip, a.closing_skip + total - a.closing_at)
+            c = fade(c, 2.0, 0) * (10 ** ((cdb - a.db) / 20))
+            j0 = int(a.closing_at * SR)
+            out[j0:j0 + len(c)] += c[:len(out) - j0]
+        with _wave.open(str(fit), "wb") as w:
+            w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
+            w.writeframes((np.clip(out, -1, 1) * 32767).astype("<i2").tobytes())
         cut_a = None
     voice = D / "voice_only.wav"
     ins, parts = [], []

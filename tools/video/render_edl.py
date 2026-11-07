@@ -73,8 +73,9 @@ def main() -> None:
             clipped = d["e"] > limit
             if clipped:
                 L = (limit - d["s"]) / FPS
-            path = hd_sibling(d["path"]) if a.prefer_hd else d["path"]
-            used_hd += path != d["path"]
+            src = d["path"] if Path(d["path"]).is_absolute() else str(ROOT / d["path"])  # r11 から EDL は相対パス
+            path = hd_sibling(src) if a.prefer_hd else src
+            used_hd += path != src
             args += ["-ss", f"{off:.3f}", "-t", f"{L + 0.05:.3f}", "-i", path]
             p = d.get("p") or {}
             chain = [f"[{n}:v]fps={FPS}", "format=yuva420p", f"trim=duration={L:.3f}", "setpts=PTS-STARTPTS"]
@@ -113,7 +114,7 @@ def main() -> None:
             if d["s"] >= limit:
                 continue
             s, L, off = d["s"] / FPS, (min(d["e"], limit) - d["s"]) / FPS, d["off"] / FPS
-            args += ["-ss", f"{off:.3f}", "-t", f"{L:.3f}", "-i", d["path"]]
+            args += ["-ss", f"{off:.3f}", "-t", f"{L:.3f}", "-i", d["path"] if Path(d["path"]).is_absolute() else str(ROOT / d["path"])]
             ms = int(round(s * 1000))
             g = d.get("gain_db", 0.0)
             fl.append(f"[{n}:a]aresample=48000,aformat=channel_layouts=stereo,volume={g}dB,adelay={ms}|{ms}[a{n}]")
