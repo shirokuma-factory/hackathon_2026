@@ -219,8 +219,9 @@ def test_g98_post_wait_text_column_and_article_34_wording_in_both_uis():
         assert "荷役のあとの待ちを荷主等の都合として数える" in src
         assert "「到着後、荷送人又は荷受人の責により待機した時間」" in src
         assert "標準運送約款 第 34 条（標準貨物自動車運送約款）" in src
-        assert "荷役のあとの待ち ${r.post_wait_min} 分を含む" in src
         assert "既定では数えず" in src
+    assert "荷役のあとの待ち ${r.post_wait_min} 分を含む" in OWN_JS
+    assert "荷役のあとの待ち${r.post_wait_min}分も、待ち時間に含めています。" in page   # メールの形に 2026-11-07
     assert "r.post_wait ? 'はい' : ''" in page and "r.post_wait ? 'はい' : ''" in OWN_JS   # CSV の入力列
 
 
