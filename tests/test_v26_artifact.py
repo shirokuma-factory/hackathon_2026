@@ -71,14 +71,15 @@ def test_g101_artifact_files_are_up_to_date_and_have_the_host_shape(path, title,
 @pytest.mark.parametrize("path,title,mod", PAGES)
 def test_g102_no_network_no_print_no_download(path, title, mod):
     html = path.read_text(encoding="utf-8")
-    for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts", "import(", "navigator.serviceWorker"):
+    for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts", "import(", "navigator.serviceWorker", "createElement('script')"):
         assert bad not in html, bad
     assert not re.search(r"<script[^>]+src\s*=", html, re.I)
     assert not re.search(r"<link\b", html, re.I)
     assert not re.search(r"@import|url\(", html, re.I)
-    assert not re.search(r"<(img|iframe|embed|object|video|audio|source|form)\b", html, re.I)
+    assert not re.search(r"<(iframe|embed|object|video|audio|source|form)\b", html, re.I)
+    assert not re.search(r"<img(?![^>]*src=\"data:image/webp;base64,)", html, re.I)   # 絵は data URI の WebP だけ（通信しない。2026-11-07 第 2 回）
     assert "window.print" not in html and "@media print" not in html and "@page" not in html
-    assert "download" not in html.lower()
+    assert "download" not in re.sub(r"data:image/webp;base64,[A-Za-z0-9+/=]+", "", html).lower()
     assert "createObjectURL" not in html and "new Blob" not in html
     assert not re.search(r"\b(alert|confirm|prompt)\(", html)
     # リンクは href の文字（利用者が押す先）のみ。script・stylesheet の外部読み込みは無い
@@ -92,22 +93,22 @@ _COLOR_WORDS = r"(?<![-\w])(white|black|red|green|blue|gray|grey|yellow|orange|p
 @pytest.mark.parametrize("path,title,mod", PAGES)
 def test_g103_every_color_is_a_token_outside_the_theme_blocks(path, title, mod):
     css = _css_of(path.read_text(encoding="utf-8"))
-    # 色の定義は、裸の :root、prefers-color-scheme の中の :root:not([data-theme="light"])、:root[data-theme="dark"] の 3 か所
-    assert re.search(r"^:root \{ --bg: #", css, re.M)
-    assert re.search(r"@media \(prefers-color-scheme: dark\) \{ :root:not\(\[data-theme=\"light\"\]\) \{[^}]*color-scheme: dark;", css)
+    # デザインの作り直し 2026-11-07: 色の定義は tools/ui_kit.css の 3 か所（裸の :root、prefers-color-scheme の中の :root:not([data-theme="light"])、:root[data-theme="dark"]）。複数行の書き方
+    assert re.search(r"^:root \{[^}]*--bg: #", css, re.M)
+    assert re.search(r"@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme=\"light\"\]\) \{[^}]*color-scheme: dark;", css)
     assert re.search(r"^:root\[data-theme=\"dark\"\] \{[^}]*color-scheme: dark;", css, re.M)
     rest = re.sub(r"^:root \{[^}]*\}\n", "", css, flags=re.M)
-    rest = re.sub(r"@media \(prefers-color-scheme: dark\) \{ :root:not\(\[data-theme=\"light\"\]\) \{[^}]*\} \}\n", "", rest)
+    rest = re.sub(r"@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme=\"light\"\]\) \{[^}]*\}\s*\}\n", "", rest)
     rest = re.sub(r"^:root\[data-theme=\"dark\"\] \{[^}]*\}\n", "", rest, flags=re.M)
     assert not re.search(r"#[0-9a-fA-F]{3,8}\b", rest), re.findall(r"[^\n]*#[0-9a-fA-F]{3,8}\b[^\n]*", rest)[:3]
-    assert not re.search(r"\b(rgb|rgba|hsl|hsla|oklch|oklab|lab|color-mix)\(", rest)
+    assert not re.search(r"\b(rgb|rgba|hsl|hsla|oklch|oklab|lab|color-mix)\(", rest), re.findall(r"[^\n]*\b(?:rgb|rgba|color-mix)\([^\n]*", rest)[:3]
     assert not re.search(_COLOR_WORDS, rest, re.I), re.findall(r"[^\n]*" + _COLOR_WORDS + r"[^\n]*", rest, re.I)[:3]
-    # 暗い側は明るい側と同じ名前の色を全部持つ
+    # 暗い側の色の名前は、明るい側にもある（明るい側は文字・間隔の変数も持つ）
     light = set(re.findall(r"--([a-z0-9-]+):", re.search(r"^:root \{([^}]*)\}", css, re.M).group(1)))
     dark = set(re.findall(r"--([a-z0-9-]+):", re.search(r"^:root\[data-theme=\"dark\"\] \{([^}]*)\}", css, re.M).group(1)))
-    assert light == dark and len(light) >= 12
+    assert dark <= light and len(dark) >= 12
     # body の明示の背景と、横の余白（決まった書き方）
-    assert re.search(r"^body \{[^}]*background: var\(--bg\);", css, re.M)
+    assert re.search(r"^body \{[^}]*background-color: var\(--bg\);", css, re.M)
     assert "padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));" in css
     assert "padding-block:" in css
     assert "[hidden] { display: none !important; }" in css
@@ -131,7 +132,7 @@ def test_g104_selftest_passes_for_both_artifact_builds():
     nw = len(json.loads(VECTORS_W.read_text(encoding="utf-8"))["cases"])
     nc = len(json.loads(VECTORS_C.read_text(encoding="utf-8"))["cases"])
     with cw.edge_page(1440, 900) as page:
-        for path, expect in ((WAIT, f"SELFTEST PASS {nw + 4}/{nw + 4}"), (CMP, f"SELFTEST PASS {nc + 42}/{nc + 42}")):
+        for path, expect in ((WAIT, f"SELFTEST PASS {nw + 4}/{nw + 4}"), (CMP, f"SELFTEST PASS {nc + 50}/{nc + 50}")):
             page.goto(_shell(path) + "?selftest=1")
             page.wait(lambda: page.js("document.querySelector('#selftest') && document.querySelector('#selftest').textContent.length > 0"), 30, "自己確認")
             assert page.js("document.querySelector('#selftest').textContent") == expect
@@ -189,7 +190,7 @@ def test_g106_copy_buttons_forget_two_step_and_csv_paste():
         page.js("window.__copied = null; Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: (t) => { window.__copied = t; return Promise.resolve(); }}}); document.querySelector('#b-copycsv').click()")
         page.wait(lambda: page.js("window.__copied !== null && document.querySelector('#copymsg').textContent.includes('コピーしました')"), 10, "コピー")
         csv = page.js("window.__copied")
-        assert csv.startswith("﻿日付,") and csv.count("\r\n") == 19
+        assert csv.startswith("﻿日付,") and csv.count("\r\n") == 13   # SPEC §46: 見出し + 選んだ相手（架空 元請A物流）の 12 行だけ
         assert page.js("document.querySelector('#copybox').hidden") is True
         # CSV の貼り付けで読み戻せる
         page.js("document.querySelector('#b-clear').click()")

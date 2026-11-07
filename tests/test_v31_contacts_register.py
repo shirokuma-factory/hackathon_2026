@@ -198,7 +198,8 @@ def test_g141_9_arc_trips_get_the_note():
 def test_g141_13_no_duplicated_fiction_mark():
     js = (WEB / "find.js").read_text(encoding="utf-8")
     assert "${esc(sc.name)}（架空）" not in js
-    assert "const fict = " in js and "esc(fict(sc.name))" in js
+    # 例の荷の名前は exLabel にまとめた（2026-11-07）。名前は fict を通し、画面に出すときは esc を通す
+    assert "const fict = " in js and "fict(sc.name)" in js and "esc(exLabel(F.ex))" in js
 
 
 def test_g141_16_request_uses_chosen_place_and_road_distance():
@@ -222,7 +223,7 @@ def test_g141_16_api_passes_place(srv):
 def test_g141_16_work_js_sends_place():
     js = (WEB / "work.js").read_text(encoding="utf-8")
     assert "place: W.place" in js or "{ place: W.place }" in js
-    assert "W.place = " in js and "W.place]" in js  # 版の署名にも入れる
+    assert "W.place = " in js and "W.place, pickedMode()]" in js  # 版の署名にも入れる（比べる方法の選択も署名に加わった）
 
 
 def test_g141_17_published_sources_have_no_repo_file_names():
@@ -232,5 +233,5 @@ def test_g141_17_published_sources_have_no_repo_file_names():
         i = html.index("const SOURCES = [")
         sources = html[i:html.index("];", i)]
         assert not pat.search(sources), (path.name, pat.search(sources))
-        assert "国土交通省 標準的運賃（2024 年 3 月 22 日告示）" in sources
+        assert "貸切の額: 国の標準的運賃（2024 年 3 月 22 日告示）" in sources  # 文言の直し 2026-11-07
         assert not pat.search(html), (path.name, pat.search(html).group(0))

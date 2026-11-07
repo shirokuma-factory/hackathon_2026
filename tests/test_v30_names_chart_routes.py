@@ -145,13 +145,15 @@ def test_chart_html_ratio_and_marks():
             one: CompareChart.ratioOf([cards[0], cards[2]])};
         })()""")
     assert round(out["ratio"], 2) == 15.01 and "約 15 倍" in out["text"]
-    assert out["rows"] == 4 and out["cheap"] == 1 and out["off"] == ["使えない", "問い合わせ"] and out["mark"] == "最安"
-    assert out["est"] == "試算" and out["days"][:2] == ["発送日+1日", "運転のみ 1 日"] and out["one"] is None
+    # 鉄道・船・飛行機の行が加わった（額は出さず「日数と額は見積で確認」）ため、行数と「要見積」の欄が変わった
+    assert out["rows"] == 5 and out["cheap"] == 1 and out["off"][0] == "—" and "日数と額は見積で確認" in out["off"] and out["mark"] == "最安"
+    assert out["est"] == "概算"  # 文言の直し 2026-11-07（試算→概算）
+    assert out["days"][:2] == ["発送日+1日", "運転だけで 1 日"]  # 文言の直し 2026-11-07 and out["one"] is None
 
 
 def test_routes_js_has_final_failure_message_and_straight_label():
     js = (ROOT / "web" / "routes.js").read_text(encoding="utf-8")
-    assert "経路を取得できませんでした（直線の弧で表示しています）" in js
+    assert "道を調べられなかったため、直線で出しています。" in js  # 文言の直し 2026-11-07
     # 取得が終わったあとに「取得しています」を残さない: ループのあとで note を必ず置き換える
     tail = js[js.index("// すべての取得が終わったあと"):]
     assert "cur.note = " in tail.split("render();")[0] and "直線 " in js

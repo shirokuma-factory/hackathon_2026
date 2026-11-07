@@ -85,7 +85,7 @@ def _js_options(ref: dict) -> dict:
     import build_own_sample as bos
     return {
         "year": bos.YEAR, "mon": bos.MON, "places": ref["places"], "base": ref["base"], "dock": ref["dock"],
-        "aliases": {"known": [[a, p] for a, p in bos.KNOWN], "proposed": [[a, p] for a, p in bos.PROPOSED]},
+        "aliases": {"known": [[a, p] for a, p in bos.KNOWN], "proposed": [[a, p, bos.UNCONFIRMED_PID] for a, p in bos.PROPOSED]},
         "estKm": {"|".join(sorted((ref["base"], ref["dock"]))): bos.OSRM_KM},
         "vehicles": ref["vehicles"], "driverLabels": bos.DRIVER_LABEL,
     }
@@ -122,7 +122,8 @@ def _strip(d: dict) -> dict:
     for k in ("claude", "route", "paper", "company", "fiction", "unplaced", "encodings", "version", "month", "year_choice", "period", "failed", "files_read", "files_unread",
               "column_roles_needed", "shape_signatures", "layouts", "needs_month", "month_choice", "digitaco_duplicates", "notices", "geo",
               "year_choices", "months", "hired", "time_dropped", "haisha_choice",  # SPEC §42 で JS だけが足した項目
-              "multi_month", "month_label", "months_detail", "files_used", "file_order"):  # SPEC §43 で JS だけが足した項目
+              "multi_month", "month_label", "months_detail", "files_used", "file_order",  # SPEC §43 で JS だけが足した項目
+              "merged_places", "base_basis", "max_load_raised"):  # SPEC §47・r6a で JS だけが足した項目
         d.pop(k, None)
     for c in d["columns"]:
         c.pop("claude_note", None)
@@ -170,8 +171,8 @@ def test_g145_js_and_python_give_the_same_result_on_the_three_raw_csvs(local_ser
     _close(a, b, "$", diffs, {})
     assert not diffs, f"{len(diffs)} 件の違い: " + " | ".join(diffs[:8])
     # 中身が空の一致になっていないこと
-    assert len(b["legs"]) == 107 and len(b["insights"]) == 6 and len(b["confirm"]) == 7 and len(b["unreadable"]) == 3
-    assert b["kpis"]["actual_rate"]["value"] == pytest.approx(0.7761887643518305)
+    assert len(b["legs"]) == 107 and len(b["insights"]) == 7 and len(b["confirm"]) == 7 and len(b["unreadable"]) == 3
+    assert b["kpis"]["actual_rate"]["value"] == pytest.approx(0.773166385485318)
     # 文字コード
     assert res_sjis["enc"] == ["Shift_JIS"] * 3, res_sjis["enc"]
     diffs2: list[str] = []
@@ -272,12 +273,12 @@ def test_g146_import_by_input_and_drop_sends_nothing_to_the_api_and_can_go_back(
     assert d["counts"]["legs"] == 107 and d["counts"]["unreadable"] == 3
     assert d["counts"]["loaded"] + d["counts"]["empty"] + d["counts"]["unknown"] == 107
     assert [f["encoding"] for f in d["files"]] == ["UTF-8"] * 3
-    right = page.js("document.querySelector('#own-right').innerText")
+    right = page.js("document.querySelector('#own-right').textContent")  # 全国の値・別の数え方は、数字の下の閉じた「詳しく」にある
     pct = f"{d['kpis']['actual_rate']['value'] * 100:.1f}"
     assert "実車率" in right and pct in right and "全国 62.15%" in right and "全国 39.08%" in right
     assert "式が違います" in right and "比べられるのは実車率だけです" in right
     assert page.js("Own.state.mode") == "import" and "サンプルに戻す" in _src_text(page)
-    assert "自社のファイルを分析しています" in page.js("document.querySelector('#own-notes .f-n1').textContent")
+    assert "自社のファイルの数字です" in page.js("document.querySelector('#own-notes .f-n1').textContent")
     # 左の 3 つのタブも、取り込んだ結果で描き直される
     left = page.js("document.querySelector('#own-body').innerText")
     for f in RAW_NAMES:
@@ -289,12 +290,13 @@ def test_g146_import_by_input_and_drop_sends_nothing_to_the_api_and_can_go_back(
     assert page.js("document.querySelectorAll('#own-body .o-card').length") == len(d["confirm"])
     # 地図: 市区町村の名前の先頭で置けた 2 地点と、置けなかった地点の一覧
     placed = {p["short"] for p in d["places"].values() if p.get("lon") is not None}
-    assert placed == {"加古川", "江東"}
-    assert {u["name"] for u in d["unplaced"]} == {"辰巳", "辰巳倉庫", "辰巳DC3"}
+    assert placed == {"鹿屋", "江東"}
+    assert {u["name"] for u in d["unplaced"]} == {"辰巳"}  # SPEC §47: 辰巳・辰巳倉庫・辰巳DC3 は施設名を外すと同じ名前なので、1 つの地点にまとめる
+    assert [sorted(m["names"]) for m in d["merged_places"]] == [sorted(["辰巳", "辰巳倉庫", "辰巳DC3"])]
     assert page.js("document.querySelectorAll('.own-tag').length") == 2
     assert page.js("Own.layers().length") == 3
     page.js("Own.setTab('import')")
-    assert page.js("document.querySelectorAll('#own-body .o-up').length") == 3
+    assert page.js("document.querySelectorAll('#own-body .o-up').length") == 1  # SPEC §47: 辰巳・辰巳倉庫・辰巳DC3 は 1 つの地点（辰巳）にまとめる
     # 2) 落とす（本物のドラッグ・ドロップのイベント）。サンプルに戻してから
     page.js("document.querySelector('#own-src [data-act=reset]').click()")
     page.wait(lambda: "サンプル（架空の会社）" in _src_text(page), 10, "サンプルに戻る")
@@ -313,7 +315,7 @@ def test_g146_import_by_input_and_drop_sends_nothing_to_the_api_and_can_go_back(
     page.js("document.querySelector('#own-src [data-act=reset]').click()")
     page.wait(lambda: page.js("Own.state.mode") == "sample", 10, "戻る")
     assert "サンプル（架空の会社）" in _src_text(page) and "サンプルに戻す" not in _src_text(page)
-    assert page.js("Own.state.data.insights.length") == 6 and page.js("Own.state.data.confirm.length") == 7
+    assert page.js("Own.state.data.insights.length") == 7 and page.js("Own.state.data.confirm.length") == 7
 
 
 def test_g146_shift_jis_file_and_unreadable_files_are_reported_in_the_page(app, tmp_path):
@@ -350,8 +352,8 @@ def test_g146_unplaced_place_can_be_put_on_the_map_by_a_municipality_name(app):
     page.js("document.querySelector('.o-up[data-name=\"辰巳\"] button[data-act=alias]').click()")
     page.wait(lambda: page.js("Own.state.data.unplaced.length") == 0, 20, "別名で計算し直し")
     d2 = page.js("Own.state.data")
-    # 辰巳・辰巳倉庫・辰巳DC3 が 江東区 に入り、行き先の 30 分以上の停車が、サンプル（Python）の 11 回になる
-    assert sum(r["long_stops"] or 0 for r in d2["table"] if r["dir"] == "out") == 11 > out_ls
+    # 辰巳・辰巳倉庫・辰巳DC3 が 江東区 に入り、行き先の 30 分以上の停車が、サンプル（Python）の 10 回になる
+    assert sum(r["long_stops"] or 0 for r in d2["table"] if r["dir"] == "out") == 10 > out_ls
     assert len([p for p in d2["places"].values() if p.get("lon") is not None]) == 2
     assert "地図に置けない地点はありません" in page.js("document.querySelector('#own-body').innerText")
     _to_sample(page)
@@ -389,7 +391,7 @@ def test_g147_unit_cost_shows_formula_and_is_hidden_when_empty(app):
     txt = page.js("document.querySelector('#own-cost-out').innerText")
     assert f"{round(long_min / 60, 1):.1f} 時間 × 3,000 円/時 = {round(round(long_min / 60, 1) * 3000):,} 円" in txt, txt
     assert "停車の費用" in page.js("[...document.querySelectorAll('#own-tw th')].map(t => t.textContent)")
-    assert "削減額の約束ではありません" in page.js("document.querySelector('#own-right').innerText")
+    assert "入れた単価で計算した目安です" in page.js("document.querySelector('#own-right').innerText")
     # 消すと、また出ない
     for sel in ("#own-perkm", "#own-perhour"):
         page.js(f"(function(){{const e = document.querySelector('{sel}'); e.value = ''; e.dispatchEvent(new Event('input', {{bubbles: true}}));}})()")
@@ -419,7 +421,7 @@ def test_g148_copy_leg_csv_and_text(app):
     lines = csv_text.strip("\n").split("\n")
     assert lines[0].startswith("区間ID,日付,車番,出発地,到着地,向き,距離km,距離の出どころ,判定,判定の根拠")
     assert len(lines) == 1 + 107
-    assert sum(1 for ln in lines[1:] if ",実車," in ln) == 69 and sum(1 for ln in lines[1:] if ",空車," in ln) == 20 and sum(1 for ln in lines[1:] if ",不明," in ln) == 18
+    assert sum(1 for ln in lines[1:] if ",実車," in ln) == 70 and sum(1 for ln in lines[1:] if ",空車," in ln) == 20 and sum(1 for ln in lines[1:] if ",不明," in ln) == 17
     assert "デジタコの実空区分" in csv_text and "配車表の（空）の印" in csv_text
     assert "コピーしました" in page.js("document.querySelector('#own-copy-msg').textContent")
     assert page.js("document.querySelector('#own-copy-ta').value") == csv_text  # 画面の欄にも同じ内容（コピーが使えない環境の予備）

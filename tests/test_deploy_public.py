@@ -134,7 +134,7 @@ def test_route_public_serves_existing_cache(mod, pub, monkeypatch, tmp_path):
 # ---------------------------------------------------------------- /api/b の来訪者ごとの状態
 
 B_SHIPMENT = {"shipment": {"items": [{"count": 1, "length_cm": 30, "width_cm": 30, "height_cm": 30, "weight_kg": 5}]},
-              "dest_code": "28110"}
+              "dest_code": "27128"}  # 2026-11-07 見本の鹿児島化: T1 の着地は 28110（神戸）から 27128（大阪）に変わった
 
 
 def _holds(port, sid):
@@ -148,7 +148,7 @@ def test_b_state_isolated_per_session(pub):
     port = pub.server_address[1]
     a, b = "session-aaaaaaaa", "session-bbbbbbbb"
     trips = _holds(port, a)["trips"]
-    trip_id = next(t["id"] for t in trips if t["dest_code"] == "28110")
+    trip_id = next(t["id"] for t in trips if t["dest_code"] == "27128")
     st, _, raw = req(port, "POST", "/api/b/hold", {**B_SHIPMENT, "trip_id": trip_id}, {"X-Demo-Session": a})
     assert st == 200, raw
     assert len(_holds(port, a)["holds"]) == 1

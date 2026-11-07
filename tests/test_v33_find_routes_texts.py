@@ -37,7 +37,7 @@ def test_pages_have_data_favicon_and_t7_source():
         assert 'rel="icon" href="data:image/svg+xml' in _read(ROOT / "tools" / name), name
     for name in ("waiting.html", "compare_lite.html"):
         assert 'rel="icon" href="data:image/svg+xml' in _read(WEB / name), name
-    src = "空きが重さ 2,000kg・床 6.0m²（車両は最大 2,700kg・床 13.64m²）"
+    src = "空き（重さ 2,000kg・床 6.0m²）で見ています"   # 文言の直し 2026-11-07
     assert src in _read(ROOT / "tools" / "compare_lite_template.html")
     assert src in _read(WEB / "compare_lite.html")
 
@@ -47,7 +47,7 @@ def test_routes_labels_and_cards():
     assert "rail: '鉄道'" in js and "rail: '電車'" not in js
     assert "ferry: '船'" in js
     assert "なし（つながる航路がありません）" in js
-    assert "貨物駅を回るため、道路より長くなります" in js and "s.km > 2 * tk.km" in js
+    assert "貨物駅を通るため、トラックより長くなります。" in js and "s.km > 2 * tk.km" in js
     assert "function modeState(m)" in js and "modeState," in js
     # 画面に出す文で「電車」「フェリー」を手段の名前に使わない（航路・経路の説明の「フェリー」は残してよい）
     assert "'電車'" not in js

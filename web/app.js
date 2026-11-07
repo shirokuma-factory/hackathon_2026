@@ -15,11 +15,12 @@ const PALETTE = ['#1b4469', '#1f5784', '#2570a3', '#3189c0', '#4aa3d8', '#77c0ea
 const GRAY = [120, 130, 146, 44];
 const FILL_ALPHA = 204;
 const JAPAN_BOUNDS = [[129.2, 31.0], [146.2, 45.8]];
+const GUIDE_JP_BOUNDS = [[129.6, 30.95], [146.0, 45.6]];   // 案内の全国: 鹿児島県の南端から北海道の北東端まで（沖縄県は入れない）
 
 const $ = (s) => document.querySelector(s);
 const App = {}; // 見方の切り替えなど、market.js から呼ぶ入口
 const S = {
-  view: 'market', hubSel: null, hubLineKey: '', hubLine: null,
+  view: 'market', guide: '', hubSel: null, hubLineKey: '', hubLine: null,
   origin: '13104', layer: 'km', sel: -1, meta: null, idx: null, muni: null, pref: null, routes: null, estimate: null, estTok: 0, fareStamp: {},
   od: {}, route: null, selFeature: null, t: 0, playing: false, version: 0, selectedAt: 0, lastTick: 0,
   ambient: null, ambientAlpha: 1, hover: -1, byIndex: new Map(),
@@ -163,14 +164,14 @@ async function getJSON(u) {
       if (r.status === 404) break;
     } catch (e) { status = ''; }
   }
-  throw new LoadError(`データ「${u}」を読み込めませんでした${status}。通信が途切れたか、サーバーが止まっている可能性があります。`);
+  throw new LoadError(`読み込めませんでした${status}。通信を確かめて、読み直してください。`);
 }
 // 読み込みの失敗を、利用者に見せる日本語の文にする。日本語を含まない英語の文（Failed to fetch など）はそのまま見せない
 function jpLoadMessage(e) {
   const m = String((e && e.message) || e || '');
   if (e instanceof LoadError || /[぀-ヿ一-鿿]/.test(m)) return m;
-  if (/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return 'データを読み込めませんでした。通信が途切れたか、サーバーが止まっている可能性があります。';
-  return '画面の準備に失敗しました。';
+  if (/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return '読み込めませんでした。通信を確かめて、読み直してください。';
+  return '画面を読み込めませんでした。読み直してください。';
 }
 // 読み直しの案内。retry があればその処理をもう一度やり、なければページを読み込み直す
 function showLoadNotice(text, retry) {
@@ -199,15 +200,15 @@ function fillColor(f) {
   return [...paletteColor(c, classCount()), Math.round(FILL_ALPHA * Rt.fillScale())]; // 手段を強調しているときは塗りを薄くして、下の道路・線路を見せる
 }
 
-const FERRY_SHORT = '計算できない（海を渡る経路）';
+const FERRY_SHORT = '船が要るため計算できません';
 function valueText(i) {
   const od = curOd();
-  if (od.km[i] === null) return '経路なし';
+  if (od.km[i] === null) return '道がありません';
   const ferry = od.ferry && od.ferry[i];
-  if (S.layer === 'km') return `${od.km[i].toFixed(1)} km${ferry ? '（フェリーを含む経路の可能性）' : ''}`;
+  if (S.layer === 'km') return `${od.km[i].toFixed(1)} km${ferry ? '（船を使う道かもしれません）' : ''}`;
   if (ferry) return FERRY_SHORT;
   if (S.layer === 'days') return `運転 ${od.days[i]}日`;
-  return od.fare[i] === null ? '表の範囲外（200km未満）または積載量超過' : `約${fmt(od.fare[i])}円（${S.fareVehicleNote || '2t・税抜'}）`;
+  return od.fare[i] === null ? '200 km 未満か、重すぎて計算できません' : `約${fmt(od.fare[i])}円（${S.fareVehicleNote || '2t・税抜'}）`;
 }
 
 // munis: 画面に入る分だけに絞った市区町村の地物、prefs: 同じく県境の輪（cull.js）の配列。画面が動いて余白を出るまでは同じ参照
@@ -219,7 +220,7 @@ function staticLayers(munis, prefs) {
     getFillColor: fillColor, getLineColor: [8, 12, 20, 120], lineWidthMinPixels: 0.4, lineWidthUnits: 'pixels', getLineWidth: 0.5,
     autoHighlight: true, highlightColor: [255, 255, 255, 54],
     updateTriggers: { getFillColor: [S.origin, S.layer, S.version, Rt.focus] },
-    transitions: { getFillColor: { duration: 650, easing: ease } },
+    transitions: { getFillColor: { duration: MapFx.ms(300), easing: ease } },
   }));
   list.push(new L.PathLayer({
     id: 'pref', data: prefs, getPath: (d) => d, beforeId: firstLabelId,
@@ -263,6 +264,7 @@ function buildAmbient() {
   // 長い経路ほどゆっくり進むように、時間の長さを距離に比例させる
   const items = [];
   paths.forEach((p, pi) => {
+    if (!Rt.pathOk('truck', p.pts)) return;   // 海をまたぐ弧は実際の道ではないので、トラックの粒子は走らせない（背景の線だけ）
     const dur = 6 + p.len / 120;
     for (const sh of [0, -PERIOD]) items.push({ path: p.pts, ts: p.cum.map((c) => (c / p.len) * dur + phases[pi] + sh) });
   });
@@ -375,11 +377,13 @@ function dynamicLayers(now) {
     })));
   } else if (r) {
     const reveal = ease(clamp01((now - S.selectedAt) / 1100));
+    const unk = r.kind === 'arc' && !Rt.pathOk('truck', r.path);   // 実際の道が無く、弧が海をまたぐときは細い点線（経路は不明。乗り物は出さない）
     const shown = reveal < 1 ? slicePath(r, reveal) : r.path;
     out.push(new L.PathLayer({
-      id: 'route-base', data: [{ p: shown }], getPath: (d) => d.p, getColor: [92, 200, 255, 90], widthMinPixels: 2.4,
-      getWidth: 2, widthUnits: 'pixels', capRounded: true, jointRounded: true,
-      updateTriggers: { getPath: [reveal < 1 ? reveal : 1, S.selectedAt] },
+      id: 'route-base', data: [{ p: shown }], getPath: (d) => d.p, getColor: [92, 200, 255, unk ? 120 : 90], widthMinPixels: unk ? 1.4 : 2.4,
+      getWidth: unk ? 1.2 : 2, widthUnits: 'pixels', capRounded: !unk, jointRounded: true,
+      extensions: unk && typeof deck.PathStyleExtension === 'function' ? [new deck.PathStyleExtension({ dash: true })] : [], getDashArray: [3, 3], dashJustified: true,
+      updateTriggers: { getPath: [reveal < 1 ? reveal : 1, S.selectedAt], getWidth: [unk] },
     }));
     const dest = r.path[r.path.length - 1];
     const destD = stableData('dest-r', dest, () => [{ p: dest }]);
@@ -403,6 +407,7 @@ function dynamicLayers(now) {
 }
 
 function frame(now) {
+  if (S.view === 'home') { S.lastTick = now; requestAnimationFrame(frame); return; }   // 最初の画面では地図を描かない
   PERF.tick(now);
   // 時間の帯の再生
   const dt = Math.min(0.1, (now - (S.lastTick || now)) / 1000);
@@ -414,7 +419,8 @@ function frame(now) {
     if (S.t >= axis) { S.t = 0; }
     updateTime();
   }
-  const targetAlpha = S.sel >= 0 ? 0.28 : 1;
+  // 案内の「送り方を比べる」は、着地を選ぶまで背景の細い線（新宿から全国への扇）を描かない（r4a 指摘6）
+  const targetAlpha = (S.view === 'compare' && document.body.classList.contains('guided')) ? 0 : S.sel >= 0 ? 0.28 : 1;   // 案内の比べるは、選んだ後も背景の細い線を出さない
   S.ambientAlpha += (targetAlpha - S.ambientAlpha) * Math.min(1, dt * 3);
   const zoom = map.getZoom();
   // 市区町村・県境は画面に入る分だけを層に渡す（画面の外の頂点を毎フレーム処理しない。SPEC §19.5）
@@ -423,7 +429,10 @@ function frame(now) {
   const cp = S.view === 'market' ? null : Cull.view('pref', prefRings(), Cull.bboxOfCoords, map);
   PERF.mark('cull', tc);
   const sk = `${S.origin}|${S.layer}|${S.version}|${Rt.focus}|${cm ? cm.v : 0}|${cp ? cp.v : 0}`; // 値・出発地・手段の強調・絞り込みが変わったときだけ層を作り直す（色が更新される）
-  if (cm && (!S.staticLayers || S.staticKey !== sk)) { S.staticLayers = staticLayers(cm.items, cp.items); S.staticKey = sk; }
+  // 画面の層から一度外れた層（全国の物流傾向では県境などを出さない）は deck.gl に片付けられ、同じ物を戻すと初期化の assert で落ちる。片付け済みなら作り直す
+  const usedHere = S.view === 'find' || S.view === 'own' ? [1] : [0, 1];   // この見方が実際に出す層（県境だけ、または両方）
+  const spent = !!S.staticLayers && usedHere.some((i) => String(S.staticLayers[i].lifecycle).startsWith('Finalized'));
+  if (cm && (!S.staticLayers || S.staticKey !== sk || spent)) { S.staticLayers = staticLayers(cm.items, cp.items); S.staticKey = sk; }
   let layers;
   const tl0 = performance.now();
   if (S.view === 'market') layers = V.Market.layers(now, zoom);
@@ -443,13 +452,13 @@ function frame(now) {
 /* ------------------------------------------------------------ 時間の帯 */
 
 const axisMax = () => { const tl = Rt.timeline(); return tl ? tl.M * 1.06 : 1; };
-const NOTE_TT = '所要時間は時刻表で確認';
+const NOTE_TT = '時間は時刻表で確かめてください';
 // 時間の帯: トラックの区間だけ分で進む。電車・船・飛行機の区間は固定の幅の帯で、時間は表さない（SPEC §17.2）
 function setupTimebar() {
   const tl = Rt.timeline(), cb = document.body.classList;
   if (!tl) { cb.remove('has-route'); $('#truck-tag').classList.remove('on'); return; }
   const M = tl.M, axis = axisMax();
-  $('#tb-end').textContent = tl.single ? `到着 運転${fmtMin(M)}` : `トラックの区間 計${fmtMin(tl.truckMin)}`;
+  $('#tb-end').textContent = tl.single ? `到着 運転${fmtMin(M)}` : `トラックで走る時間 計${fmtMin(tl.truckMin)}`;
   let t = '', lab = '';
   const pc = (v) => ((v / axis) * 100).toFixed(2);
   if (tl.single) {
@@ -542,7 +551,7 @@ function bindTimebar() {
 function renderLegend() {
   const od = curOd(), m = S.meta.layers[S.layer], edges = od.edges[S.layer], n = edges.length - 1;
   $('#lg-title').textContent = m.label;
-  $('#lg-unit').textContent = S.layer === 'km' ? 'km' : S.layer === 'days' ? '日（運転のみ・1日9時間まで）' : '円（載る最小の車格・税抜）';
+  $('#lg-unit').textContent = S.layer === 'km' ? 'km' : S.layer === 'days' ? '日（運転のみ・1日9時間まで）' : '円（荷物が載るいちばん小さい車・税抜）';
   $('#lg-bar').innerHTML = Array.from({ length: n }, (_, i) => `<i style="background:${rgbCss(paletteColor(i, n))}"></i>`).join('');
   const t = $('#lg-ticks');
   t.className = 'lg-ticks' + (S.layer === 'days' ? ' discrete' : '');
@@ -558,8 +567,8 @@ function renderLegend() {
       return `<span style="position:absolute;left:${pos}%;transform:${tf};flex:none">${fmtB(v)}</span>`;
     }).join('');
   }
-  $('#lg-null').textContent = S.layer === 'fare' ? '値なし（経路なし・フェリーの可能性・表の範囲外）'
-    : S.layer === 'days' ? '値なし（経路なし・フェリーの可能性）' : '値なし（経路がない着地）';
+  $('#lg-null').textContent = S.layer === 'fare' ? '数字なし（道がない・船が要る・200km 未満）'
+    : S.layer === 'days' ? '数字なし（道がない・船が要る）' : '数字なし（道がない届け先）';
 }
 
 /* ------------------------------------------------------------ 選択と詳細パネル */
@@ -569,6 +578,7 @@ const MODES = [
   { key: 'kashikiri', label: '貸切' }, { key: 'rail', label: '鉄道' }, { key: 'ferry', label: '船' },
 ];
 const CHIP = { '公開条件に合う': 'ok', '要確認': 'check', '使えない': 'no', '計算できない': 'na' };
+const CHIP_WORD = { '公開条件に合う': '使える', '要確認': '確認が要る', '計算できない': '額は出せません' };   // 画面に出す語（API の状態の語は変えない。文言の直し 2026-11-07）
 // カードに添えるサムネイル（SPEC §19.6）。貸切は車種（2t・4t・10t）で選ぶ
 const CARD_MODEL = { takuhai: 'box_80', rosen: 'truck', jitbox: 'roll_cage', rail: 'freight_train', ferry: 'ferry' };
 // 公表運賃から出した額は百円の単位に丸め、「試算」と付けて出す（SPEC §30.1）
@@ -591,8 +601,8 @@ function buildCards(i, est) {
       const hn = Hubs.nearest(S.origin, i);
       cards.push({ label: m.label, key: m.key, routeNone: m.key === 'ferry' && S.shipNone, model: CARD_MODEL[m.key], status: '計算できない', amount: null, dim: true, hub: hn && !(m.key === 'ferry' && S.shipNone) ? { kind: m.key, ...hn[m.key] } : null, // 航路が無い着地では、最寄りの港と点線のボタンは出さない（レビュー F5）
        
-        none: m.key === 'ferry' && S.shipNone ? 'なし（つながる航路がありません）' : '運賃表を使えません。各社への問い合わせが必要です',
-        tip: m.key === 'rail' ? 'JR貨物の運賃は二次利用できないため、金額は出していません' : 'フェリーの運賃は一次資料で確かめられなかったため、金額は出していません' });
+        none: m.key === 'ferry' && S.shipNone ? 'なし（つながる航路がありません）' : '料金表がないため、各社に問い合わせてください。',
+        tip: m.key === 'rail' ? 'JR 貨物の運賃は公開の決まりで載せられないため、金額は出していません。' : 'フェリーの運賃は確かめられなかったため、金額は出していません。' });
       continue;
     }
     const r = est.rows.find((x) => x.group === m.key);
@@ -608,18 +618,18 @@ function buildCards(i, est) {
     let dayText = days;
     if (m.key === 'kashikiri') {
       const g = est.geo, o = est.osrm_kashikiri;
-      if (est.kashikiri_basis === 'road') tip = `道路距離 ${est.distance_km !== undefined && est.distance_km !== null ? est.distance_km : (g && g.km)}km で計算した国の目安です` + (tip ? `。${tip}` : '');
-      else if (est.route !== 'other') tip = `想定距離 ${est.assumed_km}km で計算した国の目安です` + (tip ? `。${tip}` : '');
-      else tip = `OSRM の道路距離 ${g.km}km で計算した国の目安です。会社ごとに違います`;
-      if (o && est.route !== 'other' && o.amount !== r.amount) tip += `。OSRM の道路距離 ${o.km}km で計算すると ${fmt(o.amount)}円です`;
-      if (g && g.days) dayText = `運転だけで${g.days}日（積込み・荷待ちを除く）`;
+      if (est.kashikiri_basis === 'road') tip = `道路で ${est.distance_km !== undefined && est.distance_km !== null ? est.distance_km : (g && g.km)} km として、国の標準的運賃で計算しました` + (tip ? `。${tip}` : '');
+      else if (est.route !== 'other') tip = `${est.assumed_km} km として計算した国の目安です` + (tip ? `。${tip}` : '');
+      else tip = `道路で ${g.km} km として計算した国の目安です。会社ごとに違います`;
+      if (o && est.route !== 'other' && o.amount !== r.amount) tip += `。実際の道のりの ${o.km} km で計算すると ${fmt(o.amount)} 円です`;
+      if (g && g.days) dayText = `運転だけで ${g.days} 日（積み降ろしと荷待ちは別）`;
       if (g && g.origin_note) tip += `。${g.origin_note}`;
     }
     const isEst = ESTIMATE_GROUPS.includes(m.key);
     // 路線便の試算が出せる区間の限り（比べるページには額が無い理由）は、吹き出しだけでなくカードの本文に出す（SPEC §32 #5）
     const rosenNote = m.key === 'rosen' ? r.notes.find((x) => x.startsWith('路線便の試算は')) : null;
     cards.push({ label: m.label, model: cardModel(m.key, r), sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, note: rosenNote || (r.detail && r.detail.load_note) || '',
-      amount: isEst ? round100(r.amount) : r.amount, low: isEst ? round100(r.low) : r.low, high: isEst ? round100(r.high) : r.high, est: isEst, days: dayText, tip, why: r.status === '要確認' ? ((r.reasons && r.reasons[0]) || (r.issues && r.issues[0] && r.issues[0].message) || '条件の確認が必要です') : '', src: srcOf(r) });
+      amount: isEst ? round100(r.amount) : r.amount, low: isEst ? round100(r.low) : r.low, high: isEst ? round100(r.high) : r.high, est: isEst, days: dayText, tip, why: r.status === '要確認' ? ((r.reasons && r.reasons[0]) || (r.issues && r.issues[0] && r.issues[0].message) || '条件を確かめてください') : '', src: srcOf(r) });
   }
   return cards;
 }
@@ -627,10 +637,10 @@ function buildCards(i, est) {
 // 鉄道とフェリーのカード: 出発地・着地それぞれの最寄りの貨物駅・港と直線距離（Python が計算済み。運賃は出さない）
 function hubHtml(h) {
   const nm = h.kind === 'rail' ? '貨物駅' : '港';
-  const row = (lbl, x) => `<div class="hrow"><span class="k">${lbl}</span><span class="v">${escapeHtml(x.hub.name)}</span><span class="d num">直線 ${x.km.toFixed(1)}km</span></div>`;
-  return `<div class="hubinfo">${row(`出発地に近い${nm}`, h.o)}${row(`着地に近い${nm}`, h.d)}` +
-    `<button class="hub-btn" data-hub="${h.kind}" aria-pressed="${S.hubSel === h.kind}">地図に点線を出す</button>` +
-    `<div class="hub-note">直線距離で、${h.kind === 'rail' ? '線路' : '航路'}や道路の長さではありません。点線は経路の形ではなく、つなぎ方の目安です。OSM に登録された${h.kind === 'rail' ? '主な貨物駅' : '100km 以上のフェリー航路の端にある港'}の中から選んでいます。</div></div>`;
+  const row = (lbl, x) => `<div class="hrow"><span class="k">${lbl}</span><span class="v">${escapeHtml(x.hub.name)}</span><span class="d num">直線で ${x.km.toFixed(1)} km</span></div>`;
+  return `<div class="hubinfo">${row(`集荷地に近い${nm}`, h.o)}${row(`届け先に近い${nm}`, h.d)}` +
+    `<button class="hub-btn" data-hub="${h.kind}" aria-pressed="${S.hubSel === h.kind}">地図に出す</button>` +
+    `<div class="hub-note">直線の距離です（${h.kind === 'rail' ? '線路' : '航路'}の長さとは別）。<br>点線はつなぎ方の目安です。</div></div>`;
 }
 
 // 額が出ているのが貸切だけのとき、荷の重さ・床が車のどれだけかを出す。小さな荷は「この荷に貸切は過大」（比べるページと同じ基準: 重さも床も 25% 未満）。
@@ -646,14 +656,13 @@ function charterOnlyNote(cards) {
   if (!(kg > 0)) return '';
   const pc = (v) => Math.max(1, Math.round(v * 100));
   const kgUse = kg / cls.kg, floorUse = floor / cls.floor, over = kgUse < 0.25 && floorUse < 0.25;
-  return `<div class="cards-note charter-only${over ? ' excessive' : ''}" role="note"><b>${over ? 'この荷に貸切は過大です。' : '額が出ているのは貸切だけです。'}</b> ` +
-    `荷は ${fmt(Math.round(kg))}kg・床 ${(Math.round(floor * 10) / 10).toLocaleString('ja-JP')}m² で、${priced[0].sub}の最大積載の約 ${pc(kgUse)}%・床の約 ${pc(floorUse)}% です。` +
-    `${over ? '貸切は荷の量に関わらず 1 台分の運賃がかかります。' : ''}宅配・路線便は公開の料金表がなく額が出ません。荷主向けの比べるページ（compare_lite.html）で自社の契約単価を入れて比べるか、見積依頼文で各社に聞いてください。</div>`;
+  return `<div class="cards-note charter-only${over ? ' excessive' : ''}" role="note"><b>${over ? 'この荷物に貸切は大きすぎます。' : '金額が出るのは貸切だけです。'}</b> ` +
+    `荷物は${priced[0].sub}の重さの ${pc(kgUse)}%、床の ${pc(floorUse)}% を使います。<br>宅配・路線便: 料金表なし</div>`;
 }
 
 function renderCards(cards) {
   const max = Math.max(0, ...cards.map((c) => c.amount || 0));
-  $('#cards').innerHTML = (typeof CompareChart !== 'undefined' ? CompareChart.html(cards) : '') + '<p class="cards-note">公開条件に合っても、その会社がこの出荷を受けるかは見積で確かめます。金額は税抜です。</p>' + charterOnlyNote(cards) + cards.map((c, n) => {
+  $('#cards').innerHTML = (typeof CompareChart !== 'undefined' ? CompareChart.html(cards, S.pickLabel, document.body.classList.contains('guided')) : '') + '<p class="cards-note">金額は税抜です。引き受けてもらえるかは見積で確かめてください。</p>' + charterOnlyNote(cards) + '<details class="cards-more"><summary>送り方ごとの金額の出どころ</summary>' + cards.map((c, n) => {
     const amt = c.amount !== null && c.amount !== undefined
       ? `<div class="amt"><b class="num" data-to="${c.amount}">${fmt(c.amount)}</b><span>円（税抜${c.est ? '・試算' : ''}）</span>` +
         (c.low && c.high ? `<span class="range num">${fmt(c.low)}〜${fmt(c.high)}円の幅</span>` : '') + '</div>' +
@@ -665,13 +674,16 @@ function renderCards(cards) {
     // 補足は押す・Enter で本文として開く（title だけに置かない。レビュー F06）
     const tip = c.tip ? `<button type="button" class="tip" aria-expanded="false" aria-controls="tip-${n}">補足</button>` : '';
     const foot = src || tip ? `<div class="foot">${src}${tip}</div>` + (c.tip ? `<div class="tip-body" id="tip-${n}" hidden>${escapeHtml(c.tip)}</div>` : '') : '';
-    const basis = (c.tip || '').split('。').filter((x) => /想定距離|道路距離|国の目安です|積付けは公表例の荷台での目安です/.test(x)).map((x) => `<div class="note basis">${escapeHtml(x)}</div>`).join('');
+    const basis = (c.tip || '').split('。').filter((x) => /想定距離|道路距離|国の目安です|国の標準的運賃で計算しました|積付けは公表例の荷台での目安です/.test(x)).map((x) => `<div class="note basis">${escapeHtml(x)}</div>`).join('');
     const none = c.amount === null || c.amount === undefined ? `<span class="amt-none">${escapeHtml(c.none)}</span>` : '';
     const hub = c.hub ? hubHtml(c.hub) : '';
     const th = c.model ? M3D.thumb(c.model, 80, 50, 'mth-card') : '';
     return `<article class="card${c.dim ? ' dim' : ''}${none ? ' none' : ''}" style="--n:${n}"><div class="top">${th}<h3>${c.label}${c.sub ? `<small>${c.sub}</small>` : ''}</h3>` +
-      `${none}<span class="chip ${CHIP[c.status] || 'na'}">${c.status}</span></div>${amt}${note}${basis}${meta}${hub}${foot}</article>`;
-  }).join('');
+      `${none}<span class="chip ${CHIP[c.status] || 'na'}">${CHIP_WORD[c.status] || c.status}</span></div>${amt}${note}${basis}${meta}${hub}${foot}</article>`;
+  }).join('') + '</details>';
+  // 案内の表示は操作部品を 8 つまでに抑えるため、鉄道・船・飛行機の欄は閉じた「手段ごとの内訳」の中へ移す
+  if (document.body.classList.contains('guided')) { const alt = document.querySelector('#cards .cc-alt'), more = document.querySelector('#cards .cards-more'); if (alt && more) more.insertBefore(alt, more.children[1] || null); }
+  syncPick();
   requestAnimationFrame(() => requestAnimationFrame(() => {
     document.querySelectorAll('#cards .bar i').forEach((el) => { el.style.width = el.dataset.w + '%'; });
   }));
@@ -687,10 +699,19 @@ function renderCards(cards) {
   });
 }
 
+// 送り方の選択（比べの表の丸ボタン）。選んだあとにだけ「見積依頼文を作る」を出す
+function syncPick() {
+  const r = document.querySelector('#cards input[name="cc-pick"]:checked'), btn = $('#make-request'), hint = $('#pick-hint');
+  S.pickLabel = r ? r.value : null;
+  if (btn) btn.hidden = !r;
+  if (hint) hint.textContent = r ? `選んだ送り方: ${r.value}（このまま依頼文を作れます）` : '送り方を1つ選ぶと、依頼文を作れます。';
+}
+
 function select(i, { fly = true, fromSearch = false } = {}) {
   if (i < 0) return;
   const od = curOd(), code = S.idx.codes[i];
-  if (code === S.origin) { toast('出発地と同じ市区町村です。別の着地を選んでください'); return; }
+  if (code === S.origin) { toast('集荷地と同じ市区町村です。別の届け先を選んでください。'); return; }
+  if (S.sel !== i) S.pickLabel = null;   // 着地が変わったら、選んだ送り方は選び直す
   S.sel = i;
   S.selFeature = S.byIndex.get(i) || null;
   const o = S.meta.origins.find((x) => x.code === S.origin), a = [o.lon, o.lat], b = [S.idx.lon[i], S.idx.lat[i]];
@@ -710,6 +731,7 @@ function select(i, { fly = true, fromSearch = false } = {}) {
   setupTimebar();
   document.body.classList.add('has-detail');
   $('#detail').setAttribute('aria-hidden', 'false');
+  syncPick();
   writeHash();
 }
 
@@ -723,8 +745,10 @@ function renderDetail(i, demo) {
   $('#s-km').innerHTML = km === null ? '—' : `${km.toFixed(1)}<small>km</small>`;
   $('#s-time').innerHTML = min === null ? '—' : fmtMin(min).replace(/(\d+)(時間|分)/g, '$1<small>$2</small>');
   $('#s-days').innerHTML = days === null ? '—' : `${days}<small>日</small>`;
-  $('#route-kind').textContent = ferry ? 'フェリーを含む経路の可能性があります（平均速度 25km/h 未満）。運転日数と貸切の額は出しません'
-    : '経路の形: 道路は OSRM、線路は国土数値情報（鉄道データ）と OSM の貨物専用線、航路と空港は OSM。手段のカードで選べます';
+  $('#route-kind').textContent = '距離と日数の数え方を見る';
+  const rn = document.querySelector('.route-note p');
+  if (rn) rn.textContent = (ferry ? '船を使う道かもしれないため、運転日数と貸切の額は出していません。' : '') +
+    '道のりは地図データから出した目安で、大型車が通れるとは限りません。日数は1日9時間の運転で数え、積み降ろし・荷待ち・休憩は入れていません。';
   S.estimate = null;
   $('#cards').scrollTop = 0;
   refreshEstimate();
@@ -735,7 +759,7 @@ const estimateBody = () => ({ shipment: Work.confirmedShipment(), origin_code: S
 async function refreshEstimate() {
   if (S.sel < 0) return;
   const i = S.sel, tok = ++S.estTok;
-  if (!document.querySelector('#cards .card')) $('#cards').innerHTML = '<p class="cards-note">目安額を計算しています</p>';
+  if (!document.querySelector('#cards .card')) $('#cards').innerHTML = '<p class="cards-note">費用を計算しています</p>';
   try {
     const est = await Work.api('/api/estimate', estimateBody());
     if (tok !== S.estTok || S.sel !== i) return;
@@ -757,9 +781,9 @@ async function refreshFareLayer() {
     od.cls.fare = r.cls;
     if (r.edges.length) od.edges.fare = r.edges;
     S.fareStamp[o] = stamp;
-    S.fareVehicleNote = r.total_kg === null ? '2t・税抜' : `合計${Math.round(r.total_kg)}kg が載る最小の車格・税抜`;
+    S.fareVehicleNote = r.total_kg === null ? '2t・税抜' : `合計${Math.round(r.total_kg)}kg が載るいちばん小さい車・税抜`;
     if (o === S.origin) { S.version++; renderLegend(); }
-  } catch (e) { toast('貸切の層を計算し直せませんでした: ' + e.message); }
+  } catch (e) { toast('貸切の運賃の色を出せませんでした。'); }
 }
 
 function onCargoChange() {
@@ -774,11 +798,12 @@ App.onRt = (first) => {
   // 横棒の図の船の行は、経路の有無で「なし」か「問い合わせ」を変える。経路の読み込みが終わってから変わったときだけ、カードを作り直す
   if (S.estimate && S.sel >= 0 && shipNoneNow() !== S.shipNone) renderCards(buildCards(S.sel, S.estimate));
   if (first && S.pendingFit && S.view === 'compare' && S.sel >= 0) { S.pendingFit = false; Rt.fit(); }
+  syncGuideBar();   // 案内の凡例の手段ごとの線の見本を、経路の読み込みに合わせる
 };
 
 function deselect() {
   Rt.clear();
-  S.sel = -1; S.selFeature = null; S.route = null; S.t = 0;
+  S.sel = -1; S.selFeature = null; S.route = null; S.t = 0; S.pickLabel = null;
   setPlaying(false);
   document.body.classList.remove('has-detail', 'has-route');
   $('#detail').setAttribute('aria-hidden', 'true');
@@ -790,23 +815,58 @@ function padding() {
   const w = innerWidth, h = innerHeight;
   const left = Math.round($('#panel').getBoundingClientRect().right + 36);
   const dw = $('#detail').offsetWidth || 400;
-  return { top: Math.round(h * 0.1), bottom: 190, left: Math.min(left, w * 0.34), right: dw + 70 };
+  // 案内の表示では条件の欄が閉じている（left が 36 になる）ので、届け先の端が左の端で切れないよう余白を取る
+  const g = document.body.classList.contains('guided');
+  return { top: Math.round(h * 0.1), bottom: 190, left: g ? Math.max(left, w > 600 ? 130 : 24) : Math.min(left, w * 0.34), right: dw + 70 };
 }
 function fitRoute() {
   const pts = S.route.path;
   let x0 = 999, y0 = 999, x1 = -999, y1 = -999;
   for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
-  map.fitBounds([[x0, y0], [x1, y1]], { padding: padding(), maxZoom: 8.6, duration: 2200, essential: true, curve: 1.5 });
+  const a = pts[0], b = pts[pts.length - 1];
+  map.fitBounds([[x0, y0], [x1, y1]], { padding: padding(), maxZoom: 8.6, ...MapFx.cam(2000, { curve: 1.5 }), ...MapFx.selectCam(a, b, 1900) });
 }
+/* 案内の表示で、地図に重なる欄を除いた「地図の空き」を、fitBounds の余白（画素）で返す。
+   左の欄（狭い画面では下の欄）、上の帯、下の凡例、開いている県のカード（右上。狭い画面では上いっぱい）を避ける。market.js の区間の寄せもこれを使う */
+function guideFree() {
+  const w = innerWidth, h = innerHeight, vis = (e) => (e && e.getClientRects().length ? e.getBoundingClientRect() : null);
+  let l = 16, t = 16, r = 16, b = 16;
+  const bar = vis($('#guide-bar')); if (bar) t = Math.max(t, Math.round(bar.bottom + 12));
+  const lg = vis($('#g-legend')); if (lg && lg.top > h * 0.5 && lg.width > w * 0.5) b = Math.max(b, Math.round(h - lg.top + 12));
+  const pn = vis($('#m-guide'));
+  if (pn) { if (pn.width > w * 0.8) b = Math.max(b, Math.round(h - pn.top + 12)); else l = Math.max(l, Math.round(pn.right + 24)); }
+  const card = vis(document.getElementById('pref-card'));
+  if (card) {
+    if (card.width <= w * 0.8) r = Math.max(r, Math.round(w - card.left + 16));
+    else if (!document.body.classList.contains('m-has-pair')) t = Math.max(t, Math.round(card.bottom + 10));   // 狭い画面ではカードが上いっぱいに出る。区間を選んでいるときは、両端が見える範囲が残らないのでカードを避けない
+  }
+  return { top: t, bottom: b, left: l, right: r };
+}
+window.guideFree = guideFree;
+addEventListener('m-cardchange', () => {   // 県のカードを開閉したら、カードに隠れないよう地図を寄せ直す（案内の全国の表示だけ）
+  if (S.view !== 'market' || !document.body.classList.contains('guided')) return;
+  if (innerWidth <= 600 && V.Market.selected()) return;   // 狭い画面で区間を選んでいるときは、カードを開いても地図を動かさない
+  setTimeout(() => { if (V.Market.selected()) V.Market.refit(); else fitJapan(true); }, 0);
+});
 function fitJapan(animate) {
-  const pad = S.view === 'market'
+  const guided = MapFx.guided3d();
+  const pad = guided && S.view === 'market' && innerWidth > 1100 ? { top: 70, bottom: 130, left: 420, right: 60 }
+    : S.view === 'market'
     ? { top: 165, bottom: 100, left: 400, right: ($('#m-right').offsetWidth || 480) + 90 }
     : S.view === 'find'
       ? { top: 60, bottom: 100, left: 420, right: ($('#find-right').offsetWidth || 480) + 70 }
     : S.view === 'own'
       ? { top: 60, bottom: 130, left: 480, right: ($('#own-right').offsetWidth || 540) + 70 }
     : { top: 20, bottom: 110, left: 60, right: 110 };
-  map.fitBounds(JAPAN_BOUNDS, { padding: pad, duration: animate ? 1800 : 0 });
+  if (guided && S.view === 'market') {   // 案内の全国の物流傾向: 九州（鹿児島）から北海道までの全体を、左の欄・上の帯・下の凡例・県のカードを除いた範囲の中央に収める
+    map.fitBounds(GUIDE_JP_BOUNDS, { padding: guideFree(), ownPadding: true, maxZoom: 7.4, ...MapFx.rest(), ...MapFx.cam(animate ? 1800 : 0) });
+    return;
+  }
+  if (guided) {   // 傾けると上下が縮んで日本が小さくなるので、傾けない場合の収まりより少し寄る（傾けた分の高さを使う）
+    const cam = map.cameraForBounds(JAPAN_BOUNDS, { padding: pad, bearing: MapFx.rest().bearing });
+    if (cam) { map.easeTo({ center: cam.center, zoom: Math.max(3.4, cam.zoom + (innerWidth > 600 ? 0.32 : 0.2)), ...MapFx.rest(), ...MapFx.cam(animate ? 1800 : 0) }); return; }
+  }
+  map.fitBounds(JAPAN_BOUNDS, { padding: pad, ...MapFx.cam(animate ? 1800 : 0) });
 }
 
 /* ------------------------------------------------------------ 検索 */
@@ -821,9 +881,9 @@ function bindSearch() {
     const res = [];
     for (let i = 0; i < S.idx.names.length; i++) {
       const n = S.idx.names[i], pn = S.idx.prefs[i] + n;
-      let k = n.startsWith(v) ? 0 : n.includes(v) ? 1 : pn.includes(v) ? 2 : -1;
-      if (k >= 0 && S.routes[`${S.origin}-${S.idx.codes[i]}`]) k = -1; // デモの区間を先頭に
-      if (k >= 0) res.push([k, i]);
+      const k = n.startsWith(v) ? 0 : n.includes(v) ? 1 : pn.includes(v) ? 2 : -1;
+      if (k < 0) continue;
+      res.push([S.routes[`${S.origin}-${S.idx.codes[i]}`] ? k - 3 : k, i]); // デモの区間を先頭に（候補から外さない。並べ替えのときだけ小さい値にする）
     }
     res.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
     items = res.slice(0, 8).map((x) => x[1]);
@@ -834,7 +894,17 @@ function bindSearch() {
     ul.classList.add('open');
     q.setAttribute('aria-expanded', 'true');
   };
-  const pick = (i) => { close(); q.blur(); select(i, { fromSearch: true }); };
+  const pick = (i) => {
+    close(); q.blur(); select(i, { fromSearch: true });
+    // 案内の表示: 届け先を選んだあとのフォーカスは、結果の欄の次の主ボタン（見積依頼文を作る）へ移す（body に落とさない）
+    if (S.guide) {
+      let n = 0;
+      const t = setInterval(() => {
+        const b = $('#make-request');
+        if (b && !b.hidden && !b.closest('[inert]')) { b.focus({ preventScroll: true }); clearInterval(t); } else if (++n > 40) clearInterval(t);
+      }, 100);
+    }
+  };
   q.addEventListener('input', render);
   q.addEventListener('focus', () => { if (q.value.trim() && S.sel < 0) render(); });
   q.addEventListener('keydown', (e) => {
@@ -857,11 +927,13 @@ function bindSearch() {
 /* ------------------------------------------------------------ 状態の URL */
 
 function writeHash() {
+  if (S.view === 'home') return;   // 最初の画面ではアドレスを書かない（戻る・進むの履歴を壊さない）
   if (S.view === 'market') { V.Market.syncHash(); return; }
   const p = new URLSearchParams();
   p.set('v', S.view);
   if (S.view === 'find') V.Find.hashParams(p);
   if (S.view === 'own') V.Own.hashParams(p);
+  if (S.guide) p.set('g', S.guide);
   if (S.view !== 'compare') { history.replaceState(null, '', '#' + p.toString()); return; }
   p.set('o', S.origin);
   p.set('l', S.layer);
@@ -882,7 +954,7 @@ async function setOrigin(code) {
   try { await loadOrigin(code); } catch (e) {   // この出発地のデータだけ読めなかった。ほかの出発地と見方は使える
     console.error(e);
     $('#origin').value = S.origin;
-    showLoadNotice(`出発地のデータを読み込めませんでした。${jpLoadMessage(e)} 前の出発地のままです。`, () => setOrigin(code));
+    showLoadNotice(`集荷地を変えられませんでした。前の集荷地のままです。`, () => setOrigin(code));
     return;
   }
   S.origin = code;
@@ -917,8 +989,102 @@ function hoverTag(info) {
 const DETAIL_FLAGS = ['has-detail', 'has-route', 'has-work'];
 function applyViewClasses() {
   const c = document.body.classList;
-  for (const v of ['market', 'find', 'compare', 'own']) c.toggle('view-' + v, S.view === v);
-  document.querySelectorAll('#views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)));
+  for (const v of ['market', 'find', 'compare', 'own', 'home']) c.toggle('view-' + v, S.view === v);
+  document.querySelectorAll('#views button[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)));
+  applyGuide();
+  if (S.view !== 'home') { const hv = document.querySelector('.home-hero video'); if (hv) hv.remove(); if (window.Hero3D) Hero3D.stop(); }   // 最初の画面を離れたら背景の映像と 3D は止める（3D は資源も解放）
+  else if (typeof loadHeroLoop === 'function' && document.readyState === 'complete') loadHeroLoop();   // 最初の画面へ戻ったら、また 3D を始める
+}
+/* 案内の表示の地図は傾けた 3D（map_fx.js の rest）。入るときに傾け、出る（全部を見る・別の見方）ときに真上へ戻す。乗り物は v2 の 3D に替える（models3d.js の skin） */
+let was3d = false;
+function syncTilt() {
+  if (typeof map === 'undefined' || !map) return;
+  const now = MapFx.guided3d();
+  if (now === was3d) return;
+  was3d = now;
+  try { M3D.setSkin(now); } catch (e) { /* 3D の部品が無いとき */ }
+  if (now) { if (S.view === 'market' && !V.Market.selected()) fitJapan(true); else map.easeTo({ ...MapFx.rest(), duration: MapFx.ms(1200) }); }   // 全国の物流傾向は、傾けながら上位 5 区間に寄せる
+  else if (map.getPitch() > 0.5 && !(S.view === 'market' && V.Muni && V.Muni.state && V.Muni.state.col3d)) map.easeTo({ pitch: 0, bearing: 0, duration: MapFx.ms(900) });
+  setBasemapGuide(now);
+}
+// 案内の表示では、国外の地名と県名の名札（地図の上の名札と二重になる）を出さない。filter は元の値を覚えておいて戻す
+const BASEMAP_ORIG = new Map();
+const JAPAN_BOXES = [[129.2, 30.8, 132.2, 34.3], [130.8, 33, 135.2, 36.2], [135, 33, 142.6, 41.8], [139, 38, 146.2, 45.8], [122.8, 24, 131.6, 27.4]];
+const JAPAN_WITHIN = { type: 'MultiPolygon', coordinates: JAPAN_BOXES.map(([x0, y0, x1, y1]) => [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]]) };
+function setBasemapGuide(on) {
+  try {
+    for (const l of map.getStyle().layers) {
+      if (l.type !== 'symbol' || !/^label_/.test(l.id) || /water/.test(l.id)) continue;
+      if (!BASEMAP_ORIG.has(l.id)) BASEMAP_ORIG.set(l.id, { f: l.filter || null });
+      const o = BASEMAP_ORIG.get(l.id);
+      if (on) {
+        if (l.id === 'label_state') map.setLayoutProperty(l.id, 'visibility', 'none');
+        else map.setFilter(l.id, o.f ? ['all', o.f, ['within', JAPAN_WITHIN]] : ['within', JAPAN_WITHIN]);
+      } else {
+        if (l.id === 'label_state') map.setLayoutProperty(l.id, 'visibility', 'visible');
+        else map.setFilter(l.id, o.f);
+      }
+    }
+  } catch (e) { /* 背景の地図の層が違うとき（地名の絞り込みだけ諦める） */ }
+}
+// 案内の表示（SPEC §44 追記）: 目的から入ったときは、その目的に答えるものだけを出す。#...&g=... があるとき。自社の運行は own.js が自分で扱う
+// 案内の表示では、地図の canvas と出典のリンクを最初の Tab の止まり先から外す（案内の欄の操作に先に届くように）。全部を見るに戻したら元へ。自社の運行は own.js が自分で扱う
+function syncMapTabStops() {
+  const b = document.body.classList;
+  if (b.contains('own-guided') || b.contains('view-own')) return;
+  const on = b.contains('guided');
+  for (const e of document.querySelectorAll('.maplibregl-canvas, .maplibregl-ctrl-attrib a')) {
+    if (on) e.setAttribute('tabindex', '-1'); else if (e.classList.contains('maplibregl-canvas')) e.setAttribute('tabindex', '0'); else e.removeAttribute('tabindex');
+  }
+}
+function applyGuide() {
+  document.body.classList.toggle('guided', !!S.guide && ['compare', 'market', 'find'].includes(S.view));
+  syncTilt();
+  syncMapTabStops();
+  const ac = document.querySelector('.maplibregl-ctrl-attrib');
+  if (ac && !ac.dataset.tabWatch && window.MutationObserver) { ac.dataset.tabWatch = '1'; new MutationObserver(syncMapTabStops).observe(ac, { childList: true, subtree: true }); }   // 出典の欄は地図の読み込みで作り直されるので、そのたびに合わせる
+  const t = document.getElementById('g-toggle');
+  if (t) t.textContent = '全部を見る';
+  syncGuideBar();
+}
+// 案内の表示の 1 行の凡例と、送り方を比べるの段の表示（1 条件 → 2 結果 → 3 見積依頼文）
+const GUIDE_LEGEND = {
+  // 先頭の 3 項目だけを常に出す。残りは「凡例・出典」を開いたときに出る
+  market: '<span class="g-k"><i class="sw-line"></i>青い線: 荷が多い向き</span><span class="g-k"><i class="sw-dash"></i>橙の点線: 帰りが空く向き</span><span class="g-k g-more"><i class="sw sw-out"></i>出荷が多い県<i class="sw sw-in g-sw2"></i>入荷が多い県</span><span class="g-k g-src">出典: 物流センサス（国土交通省、e-Stat）を加工して作成</span>',
+  find: '<span class="g-k">細い線は帰りの空きやすさの統計です。便はすべて例です。</span>',
+};
+const LAYER_WORD = { km: '道路距離', days: '運転日数', fare: '貸切の目安額' };
+function syncGuideBar() {
+  const b = document.body.classList, g = b.contains('guided');
+  const lg = document.getElementById('g-legend'), st = document.getElementById('g-steps');
+  if (lg) {
+    const html = !g ? '' : S.view === 'compare'
+      ? `<span class="g-k">色は${LAYER_WORD[S.layer] || '道路距離'}（濃いほど大きい）</span>${(Rt.guideLegend && S.sel >= 0 ? Rt.guideLegend() : '')}<span class="g-k g-more">線と車の絵は道の目安で、実際の便ではありません。</span>`
+      : (GUIDE_LEGEND[S.view] || '');
+    if (lg.dataset.k !== html) { lg.dataset.k = html; lg.innerHTML = html; }
+    lg.hidden = !html;
+  }
+  const at = document.getElementById('attr-toggle');
+  if (at) { const w = g && (S.view === 'market' || S.view === 'compare') ? '色の見方と出典' : '出典'; if (at.textContent !== w) at.textContent = w; }
+  if (st) {
+    // 段の表示: 送り方を比べる（条件 → 結果 → 見積依頼文）、全国の物流傾向と空きを探す（区間を選ぶ → 空きを探す）
+    const on = g && (S.view === 'compare' || S.view === 'market' || S.view === 'find');
+    const n = S.view === 'find' ? 2 : S.view === 'market' ? 1 : b.contains('has-work') ? 3 : b.contains('has-detail') ? 2 : 1;
+    const labels = S.view === 'compare' ? ['荷物と行き先', '送り方と費用', '見積の依頼文'] : ['行き先の県を選ぶ', '空いた帰り便を探す'];
+    const key = on ? `${S.view}${n}` : '';
+    if (st.dataset.n !== key) {
+      st.dataset.n = key;
+      st.innerHTML = on ? labels.map((t, i) => `<li${i + 1 === n ? ' aria-current="step"' : ''}><b>${i + 1}</b> ${t}</li>`).join('') : '';
+    }
+    st.hidden = !on;
+  }
+}
+function setGuide(g) {
+  S.guide = g || '';
+  if (S.view === 'own' && !S.guide && V.Own && V.Own.setGuided) V.Own.setGuided(false, '');   // 自社の運行の「全部を見る」
+  applyGuide();
+  if (S.view === 'market') { V.Market.syncHash(); const p = new URLSearchParams(location.hash.slice(1)); if (S.guide) p.set('g', S.guide); else p.delete('g'); history.replaceState(null, '', '#' + p.toString()); } else writeHash();
+  if (map) requestAnimationFrame(() => map.resize());
 }
 function setView(v) {
   if (v === S.view) return;
@@ -937,6 +1103,8 @@ function setView(v) {
   $('#hover-tag').classList.remove('on');
   S.view = v;
   applyViewClasses();
+  if (v === 'home') { setHubLegend(); return; }   // 最初の画面。地図や見方の開始はしない（選ばれたときに始める）
+  if (prev === 'home') { map.resize(); requestAnimationFrame(() => focusHeading(v)); }
   if (v === 'compare') {
     c.add(...(S.savedFlags || []));
     Rt.resume();
@@ -949,12 +1117,33 @@ function setView(v) {
     V.Own.enter();
   } else {
     fitJapan(true);
-    V.Find.enter(prev === 'market' ? V.Market.pairNames() : null);
+    V.Find.enter((prev === 'market' ? V.Market.pairNames() : null) || V.Find.pairFromHash(new URLSearchParams(location.hash.slice(1))));
   }
   writeHash();
   setHubLegend();
 }
 App.setView = setView;
+App.writeHash = () => writeHash();
+App.repickPair = () => {   // 空きを探すから、全国の物流傾向（案内）へ戻って区間を選び直す。いま選んでいる区間は選んだままにする
+  let k = '';
+  try { const pr = V.Find.state.pair, ix = V.Market.state.prefIdx; if (pr && ix && ix.has(pr.from) && ix.has(pr.to)) k = `${ix.get(pr.from)}-${ix.get(pr.to)}`; } catch (e) { k = ''; }
+  goHash('#v=market&g=1' + (k ? `&p=${k}` : ''));
+};
+const HEADING_OF = { compare: '#panel .p-title', market: '#m-now-h', find: '#find-view .p-title', own: '#own-view .p-title' };
+function focusHeading(v) {
+  const sel = (S.guide && v === 'market') ? '#mg-h' : (HEADING_OF[v] || '');
+  // 自社の運行の案内では見出し（.p-title）を隠して手順ごとの見出しを出すので、見えている最初の見出しに移す（案内では右の手順の欄 #own-sheet の見出し）
+  const go = () => {
+    const list = [...document.querySelectorAll(v === 'own' ? '#own-view .p-title, #own-view h2, #own-view h3, #own-sheet h2, #own-sheet h3' : sel)];
+    const h = list.find((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
+    if (!h) return;
+    if (!h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1');
+    h.focus({ preventScroll: true });
+  };
+  go();
+  // 表示の組み立て（自社の運行など）の途中でフォーカスが body に落ちることがあるので、落ちていたら短い間隔で数回かけ直す
+  for (const ms of [250, 700, 1500]) setTimeout(() => { const a = document.activeElement; if (!a || a === document.body) go(); }, ms);
+}
 // 送り方を比べるへ移り、発地（無ければ今のまま）と着地を選ぶ（市場を見る・空きを探すから、SPEC §30.3・§30.5）
 App.compareTo = async (originCode, destCode) => {
   setView('compare');
@@ -992,7 +1181,7 @@ function setHubSel(kind) {
     const ln = currentHubLine();
     if (ln) {
       const pts = ln.path, xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
-      map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: padding(), maxZoom: 8.6, duration: 1600, essential: true, curve: 1.4 });
+      map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: padding(), maxZoom: 8.6, ...MapFx.cam(1600, { curve: 1.4 }) });
     }
   }
 }
@@ -1029,7 +1218,7 @@ function showViewMissing(view) {
 function softFail(view, e) {
   console.error(e);
   S.missingViews = S.missingViews || {};
-  S.missingViews[view] = { mods: [], text: `「${VIEW_MODULES[view].label}」のデータを読み込めませんでした。${jpLoadMessage(e)} ほかの見方は使えます。` };
+  S.missingViews[view] = { mods: [], text: `この画面を開けませんでした。ほかの画面は使えます。` };
   return null;
 }
 const STUBS = {};
@@ -1043,11 +1232,11 @@ const modType = (f) => { try { return f(); } catch (e) { return 'undefined'; } }
 function guardModules() {
   const R = window.__scriptRetry, failedSrc = R && R.failed.length ? R.failed.join('、') : '';
   const coreMissing = Object.keys(CORE_MODULES).filter((k) => modType(CORE_MODULES[k]) === 'undefined');
-  if (coreMissing.length) throw new Error(`部品 ${coreMissing.join('・')} が読み込めませんでした（読み直しても読めません）。ページを読み込み直してください`);
+  if (coreMissing.length) throw new Error(`読み込めませんでした。通信を確かめて、ページを読み直してください。`);
   S.missingViews = {};
   for (const [view, v] of Object.entries(VIEW_MODULES)) {
     const miss = Object.keys(v.mods).filter((k) => modType(v.mods[k]) === 'undefined');
-    if (miss.length) S.missingViews[view] = { mods: miss, text: `「${v.label}」の部品（${miss.join('・')}）を読み込めませんでした${failedSrc ? `（${failedSrc}）` : ''}。ほかの見方は使えます。この見方を使うには、ページを読み込み直してください` };
+    if (miss.length) S.missingViews[view] = { mods: miss, text: `この画面を開けませんでした。ほかの画面は使えます。ページを読み直すと開けることがあります。` };
   }
 }
 
@@ -1067,7 +1256,8 @@ async function main() {
     '22101', '22130', '23106', '24201', '25201', '26104', '27128', '28110', '29201', '30201', '31201', '32201', '33101', '34101', '35203',
     '36201', '37201', '38201', '39201', '40131', '41201', '42201', '43101', '44201', '45201', '46201', '47201', '27140', '14100', '23101'];
   const p = new URLSearchParams(location.hash.slice(1));
-  S.view = ['market', 'find', 'compare', 'own'].includes(p.get('v')) ? p.get('v') : (p.get('o') || p.get('l') || p.get('d')) ? 'compare' : 'market';
+  S.view = urlTarget() || 'home';   // 開く先がアドレスに無いときは最初の画面（戻るで来た場合）
+  S.guide = urlGuide();
   V.Market.readHash(p);
   V.Muni.readHash(p);
   if (p.get('o') && meta.origins.some((o) => o.code === p.get('o'))) S.origin = p.get('o');
@@ -1091,6 +1281,7 @@ async function main() {
     pixelRatio: PERF.pixelRatio(), // 高解像度の画面で画素数が増えすぎないようにする（画質の段で変わる）
   });
   map.touchZoomRotate.disableRotation();
+  try { map.getCanvas().setAttribute('aria-label', '日本地図。物流の統計と経路を描いています。キーボードでは矢印キーで動かし、プラスとマイナスで拡大・縮小できます'); map.getCanvas().setAttribute('role', 'application'); } catch (e) { /* 地図の部品が無いとき */ }
   Sheet.init(map); // 幅 600px 以下のパネルと、fitBounds の余白（SPEC §30.7）
   // 空きを探す・つなぐ: 左のパネルの高さを、下の注意と凡例の欄の上端までに限る（重ならないように、SPEC §31.5 #7）。値が変わるときだけ書く
   const fn = document.querySelector('#find-notes');
@@ -1108,6 +1299,7 @@ async function main() {
     getCursor: ({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab'),
     onHover: (info) => { if (S.view === 'market') V.Market.hover(info); else if (S.view === 'compare') hoverTag(info); },
     pickingRadius: 6,
+    effects: MapFx.effects(),   // 3D の乗り物に当てる光（map_fx.js）
     onClick: (info) => { if (S.view === 'market') { V.Market.click(info); return; } if (S.view === 'find') { V.Find.click(info); return; } if (S.view !== 'compare') return; if (Work.isOpen()) Work.closeWork(); if (info.object && info.layer && info.layer.id === 'muni' && info.object.properties.i >= 0) select(info.object.properties.i); },
   });
   map.addControl(overlay);
@@ -1132,14 +1324,15 @@ async function main() {
   V.Market.afterStart();
   V.Muni.init();
   V.Muni.afterStart();
+  setupMarketNow(!p.get('n'));
   V.Find.readHash(p);
   await V.Find.init();
-  if (S.view === 'find') V.Find.enter(null);
+  if (S.view === 'find') V.Find.enter(V.Find.pairFromHash(new URLSearchParams(location.hash.slice(1))));
   V.Own.readHash(p);
   await V.Own.init();
   if (S.view === 'own') V.Own.enter();
   setHubLegend();
-  document.querySelectorAll('#views button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  document.querySelectorAll('#views button[data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
   // 閉じているパネルの中のボタンに Tab が入らないようにする（aria-hidden の値に合わせて inert を付け外しする）
   for (const id of ['detail', 'work']) {
     const el = document.getElementById(id);
@@ -1148,11 +1341,6 @@ async function main() {
     new MutationObserver(sync).observe(el, { attributes: true, attributeFilter: ['aria-hidden'] });
     sync();
   }
-  // アドレスの #v=... だけを書き換えたとき、開いたまま画面を切り替える。writeHash などは replaceState で書くので、この通知は出ない（ループしない）
-  window.addEventListener('hashchange', () => {
-    const q = new URLSearchParams(location.hash.slice(1)), v = q.get('v');
-    if (['market', 'find', 'compare', 'own'].includes(v) && v !== S.view) setView(v);
-  });
   document.querySelector('.tgl[data-toggle="hubs"]').addEventListener('click', () => setHubs(!Hubs.on));
   document.querySelector('.tgl[data-toggle="jartic"]').addEventListener('click', (e) => {
     const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
@@ -1162,6 +1350,7 @@ async function main() {
   document.querySelector('.tgl[data-toggle="conc"]').addEventListener('click', (e) => V.Muni.setConc(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
   document.querySelector('.tgl[data-toggle="fac"]').addEventListener('click', (e) => V.Muni.setFac(e.currentTarget.getAttribute('aria-pressed') !== 'true'));
   if (p.get('hubs') === '1') setHubs(true);
+  $('#cards').addEventListener('change', (e) => { if (e.target.closest('input[name="cc-pick"]')) syncPick(); });
   $('#cards').addEventListener('click', (e) => {
     const b = e.target.closest('.hub-btn'); if (b) setHubSel(b.dataset.hub);
     const t = e.target.closest('.tip');
@@ -1170,8 +1359,8 @@ async function main() {
 
   $('#origin').addEventListener('change', (e) => setOrigin(e.target.value));
   document.querySelectorAll('.lyr[data-layer]').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.layer)));
-  $('#close').addEventListener('click', () => { deselect(); fitJapan(true); });
-  $('#home').addEventListener('click', () => {
+  $('#close').addEventListener('click', () => { deselect(); fitJapan(true); const q = $('#q'); if (q) q.focus({ preventScroll: true }); });   // 条件に戻る: 届け先の欄へ
+  $('#home-jp').addEventListener('click', () => {
     if (S.view === 'market') V.Market.deselect(false);
     else if (S.sel >= 0) deselect();
     fitJapan(true);
@@ -1213,11 +1402,288 @@ async function main() {
   window.__app = { WARM, S, Market: V.Market, Muni: V.Muni, Hubs, Find: V.Find, Own: V.Own, Rt, setView, setHubs, setHubSel, select, setLayer, setOrigin, map: () => map, refreshEstimate };
 }
 
-main().catch((e) => {
+/* 全国の物流傾向: 選んでいる区間と今の表示条件を地図のそばに出し、全国の指標と区間の順位は選んだときだけ開く */
+function setupMarketNow(noN) {
+  const b = document.body, q = (s) => document.querySelector(s);
+  b.classList.add('m-right-collapsed');
+  q('#m-rfold').setAttribute('aria-expanded', 'false');
+  const cb = q('[data-fold="m-calc"]');
+  if (cb && cb.getAttribute('aria-expanded') === 'true') cb.click();
+  if (S.guide) { const cd = q('#m-credits-d'); if (cd) { cd.open = false; b.classList.remove('cr-open'); } }   // 案内の表示では出典は閉じておく（開けば読める）
+  const sum = q('#open-sum'), rank = q('#open-rank');
+  sum.addEventListener('click', () => b.classList.toggle('m-sum-open'));
+  q('#mg-next').addEventListener('click', () => {   // 選んだ区間（荷が多い向きの発地 pf と着地 pt）をアドレスで空きを探すへ渡す
+    const r = V.Market.pairNames(), p = new URLSearchParams({ v: 'find', g: '1' });
+    if (r) { p.set('pf', r.from); p.set('pt', r.to); }
+    goHash('#' + p.toString());
+  });
+  q('#mg-rows').addEventListener('click', (e) => {
+    const bt = e.target.closest('.mg-row');
+    if (!bt) return;
+    V.Market.select(bt.dataset.k, { fly: true });
+    // 一覧の行は選ぶたびに作り直されてフォーカスが消えるので、次の主なボタンへ移す（キーボードで選んだあとも Tab で戻らなくてよい）
+    setTimeout(() => { const nx = q('#mg-next'); if (nx && !nx.disabled) nx.focus({ preventScroll: true }); }, 60);
+  });
+  if (S.guide && noN) {   // 案内の表示は、上位 5 区間だけを地図に出す
+    const ms = V.Market.state; ms.n = 5; V.Market.refresh(false);
+  }
+  rank.addEventListener('click', () => q('#m-rfold').click());
+  const txt = (s) => ((q(s) || {}).textContent || '').replace(/\s+/g, ' ').trim();
+  const pressed = (s) => { const e = q(s + ' [aria-pressed="true"]'); return e ? e.textContent.trim() : ''; };
+  let hadPair = b.classList.contains('m-has-pair'), lastG = null;
+  const sync = () => {
+    const gNow = b.classList.contains('guided') && b.classList.contains('view-market');
+    if (gNow !== lastG) { lastG = gNow; try { V.Market.syncMarkers(); } catch (e) { /* 地図が無いとき */ } }   // 案内の表示に入る・出るとき、上位 5 区間の番号を出し入れする
+    const so = b.classList.contains('m-sum-open'), ro = !b.classList.contains('m-right-collapsed');
+    sum.setAttribute('aria-expanded', String(so)); sum.textContent = so ? '全国の指標を閉じる' : '全国の指標を見る';
+    rank.setAttribute('aria-expanded', String(ro)); rank.textContent = ro ? '区間の順位を閉じる' : '区間の順位を見る';
+    try {   // 案内の表示: 帰りが空きやすい区間の上位 3 件（物流センサス）
+      const st = V.Market.state, P = st.d && st.d.prefs;
+      if (P) {
+        const sk = st.sel;
+        // 帰りが空きやすい向き（荷が多い向きの逆）で書く。数字は、その向きに足りない荷の量（不足量 = 荷が多い向きの量 − 逆向きの量）。番号は地図の番号と同じ
+        q('#mg-rows').innerHTML = st.rows.slice(0, 5).map((r, i) => `<li><button type="button" class="mg-row" data-k="${escapeHtml(r.k)}" aria-pressed="${r.k === sk}"><span class="mg-no num" aria-hidden="true">${i + 1}</span><span class="mg-pair">${escapeHtml(P[r.ti])} → ${escapeHtml(P[r.fi])}</span><span class="num mg-short">足りない荷 ${Math.round(r.short).toLocaleString('ja-JP')} t</span></button></li>`).join('');
+        const sr = st.rows.find((r) => r.k === sk), n0 = (v) => Math.round(v).toLocaleString('ja-JP');
+        q('#mg-sel').textContent = sr ? `${P[sr.ti]}から${P[sr.fi]}へ帰る荷は ${n0(sr.back)} t で、行きの ${n0(sr.go)} t より少なくなっています。` : '上の一覧から 1 つ選んでください。';
+      }
+    } catch (e) { /* 区間が読めていないときは空のまま */ }
+    try {   // 案内: 区間を選ぶまでは主ボタンを押せない（選んだ区間の帰り便を探す）
+      const nx = q('#mg-next'), pn = V.Market.pairNames(), has = !!pn;
+      const fit = has && V.Find.hasReturn(pn) ? V.Find.fitState(pn) : true;   // 帰りの便があっても、載る例の荷が無ければ（null は調べている最中）主ボタンは出さない
+      if (has && fit === null) V.Find.checkFit(pn).then(() => sync());
+      const noFit = has && fit === false;
+      const noAnswer = has && (!V.Find.hasReturn(pn) || noFit);   // 選んだ区間の帰りの向きに合う架空の便が 1 つも無いときは、行き先が空の結果になるので主ボタンを出さない
+      if (noAnswer) { const sl = q('#mg-sel'); if (sl) sl.textContent += noFit ? ' この向きの例の便には、例の荷物が載りません。別の向きを選んでください。' : ' この向きの例の便は、まだありません。別の向きを選んでください。'; }
+      if (nx) { nx.hidden = noAnswer || !has; nx.disabled = !has; /* 区間を選ぶまでは、押せない主ボタンを出さない */ const t = has ? 'この向きで帰り便を探す' : '向きを選ぶ'; if (nx.dataset.t !== t) { nx.dataset.t = t; nx.innerHTML = has ? `${t}<small class="mg-badge">架空のデモ</small>` : t; } }
+    } catch (e) { /* 区間が読めていないとき */ }
+    q('#m-now-cond').textContent = `${pressed('#m-mode')}／${pressed('#m-scope')}ごと／上位 ${txt('#m-n-out')}／${txt('#m-km-out')}`;
+    let r = null; try { r = V.Market.pairNames(); } catch (e) { r = null; }
+    q('#m-now-sel').textContent = r ? `選んだ向き: ${r.from} → ${r.to}` : '地図の矢印を押すと、その向きの数字がここに出ます。';
+    const pair = b.classList.contains('m-has-pair');
+    if (pair && !hadPair && !ro) q('#m-rfold').click();   // 区間を選んだら、その説明が見えるように右の欄を開く
+    hadPair = pair;
+  };
+  const ob = new MutationObserver(sync);
+  ob.observe(b, { attributes: true, attributeFilter: ['class'] });
+  for (const s of ['#m-count', '#m-scope', '#m-mode', '#m-n-out', '#m-km-out', '#m-tbody']) { const e = q(s); if (e) ob.observe(e, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-pressed'] }); }
+  sync();
+}
+
+function bootFailed(e) {
   console.error(e);
+  BOOT.state = 'failed';
   // 地図そのものに要るデータが読めなかった。英語の誤りは出さず、日本語の文と「読み直す」を出す
   const l = $('#loading');
   if (l) { l.classList.remove('done'); l.textContent = ''; }
-  showLoadNotice(`読み込みに失敗しました。${jpLoadMessage(e)}`, null);
-  if (l) l.appendChild(document.querySelector('#load-notice'));
-});
+  const m = String((e && e.message) || e || '');
+  const head = /webgl/i.test(m) ? 'この端末では地図を出せません。下の地図なしの画面を使ってください。' : jpLoadMessage(e);
+  showLoadNotice(head, null);
+  const n = document.querySelector('#load-notice');
+  // 地図が無くても答えに届くように、最初の画面と、地図なしの版へのリンクを出す
+  const nav = document.createElement('div'); nav.className = 'load-fail-nav';
+  const back = document.createElement('button'); back.type = 'button'; back.className = 'btn-link'; back.id = 'fail-home'; back.textContent = '最初の画面に戻る';
+  back.addEventListener('click', () => { n.remove(); if (l) l.remove(); goHome(); });
+  const lite = (href, t) => { const a = document.createElement('a'); a.href = href; a.className = 'fail-lite'; a.textContent = t; return a; };
+  nav.append(back, lite('own_lite.html', '自社の運行を地図なしで開く'), lite('compare_lite.html', '送り方を地図なしで比べる'));
+  n.appendChild(nav);
+  if (l) l.appendChild(n);
+  if (/webgl/i.test(m) && urlTarget() === 'market') marketWithoutWebgl(n);
+}
+// 地図を描けない端末でも、全国の物流傾向の答え（帰りが空きやすい向きの上位 5 区間）が読めるように、静止画の日本地図と表を出す
+async function marketWithoutWebgl(n) {
+  try {
+    const d = await getJSON('data/market.json'), P = d.prefs;
+    const rows = d.modes.truck.pairs.filter((p) => p[6] >= 200).slice(0, 5);
+    const box = document.createElement('div');
+    box.className = 'load-fail-market';
+    box.innerHTML = '<img src="img/home_map.jpg" alt="日本地図の静止画（地図を動かせない端末の代わりです）" loading="lazy" decoding="async">' +
+      '<p class="lfm-h">帰りが空きやすい向きの上位 5 つ（営業用トラック）</p>' +
+      `<ol>${rows.map((p, i) => `<li><span class="mg-no num" aria-hidden="true">${i + 1}</span><span class="mg-pair">${escapeHtml(P[p[1]])} → ${escapeHtml(P[p[0]])}</span><span class="num mg-short">足りない荷 ${Math.round(p[5]).toLocaleString('ja-JP')} t</span></li>`).join('')}</ol>` +
+      '<p class="lfm-s">数字は、その向きに足りない荷の量です。</p>';
+    n.appendChild(box);
+  } catch (e) { /* 統計が読めないときは、案内の文だけを残す */ }
+}
+
+/* ------------------------------------------------------------ 最初の画面と起動（SPEC §44）
+   アドレスに開く先（#v=... か旧い比較の条件）が無いときは、最初の画面で役割を選ばせる。
+   地図と統計の読み込み（main）は、地図の要る画面が選ばれたときに始める。最初の画面は、地図のデータを待たない */
+const VIEW_NAMES = ['market', 'find', 'compare', 'own'];
+function urlTarget() {
+  const p = new URLSearchParams(location.hash.slice(1)), v = p.get('v');
+  if (VIEW_NAMES.includes(v)) return v;
+  return (p.get('o') || p.get('l') || p.get('d')) ? 'compare' : null;
+}
+const urlGuide = () => new URLSearchParams(location.hash.slice(1)).get('g') || '';
+const urlRole = () => { const r = new URLSearchParams(location.hash.slice(1)).get('r'); return r === 'shipper' || r === 'carrier' ? r : ''; };
+const BOOT = { state: 'idle' };   // idle → running → ready か failed
+function boot() {
+  if (BOOT.state !== 'idle') return;
+  BOOT.state = 'running';
+  main().then(() => {
+    BOOT.state = 'ready';
+    S.guide = urlGuide();
+    const want = urlTarget() || 'home';   // 読み込み中に戻る・進むが押されたときの追いつき
+    if (want !== S.view) setView(want);
+    else { applyGuide(); if (BOOT.focus) focusHeading(S.view); }
+    if (S.view === 'market' && document.body.classList.contains('guided') && !V.Market.selected()) fitJapan(false);   // 上位 5 区間が決まったあとで、その線に寄せ直す
+  }).catch(bootFailed);
+}
+// 最初の画面の 2 段目: 役割を選ぶと、その役割の目的を大きな選択肢で出す
+function renderHomeStep(focus) {
+  const r = urlRole();
+  document.getElementById('home-step1').hidden = !!r;
+  document.getElementById('home-step2').hidden = !r;
+  document.querySelectorAll('#home-step2 [data-for]').forEach((e) => { e.hidden = e.dataset.for !== r; });
+  document.getElementById('home').classList.toggle('home-step-2', !!r);
+  const h = document.getElementById('home-h');
+  h.textContent = r === 'shipper' ? '荷主の方: 何をしますか' : r === 'carrier' ? '運送会社の方: 何をしますか' : 'どちらの作業をしますか';
+  if (focus) h.focus({ preventScroll: true });   // 役割を選んだあと、隠れた段のボタンにフォーカスが残らないよう見出しへ移す
+}
+// 役割の選択・戻る・進むで、いまのアドレスの開く先に画面を合わせる
+// 最初の画面から地図の画面へ移るときの 300ms の切り替え（動きを減らす設定では CSS が止める）
+function fadeInView() {
+  const b = document.body;
+  b.classList.add('view-fade');
+  setTimeout(() => b.classList.remove('view-fade'), 420);
+}
+function syncToUrl() {
+  const t = urlTarget();
+  if (t && document.body.classList.contains('view-home')) fadeInView();
+  if (BOOT.state === 'idle') { if (t) { document.body.className = 'view-' + t; fadeInView(); boot(); } else { document.body.className = 'view-home'; renderHomeStep(true); } return; }
+  if (BOOT.state === 'failed') { if (!t) { document.body.className = 'view-home'; renderHomeStep(true); } else location.reload(); return; }
+  if (BOOT.state === 'ready') {
+    const want = t || 'home';
+    S.guide = urlGuide();
+    if (want !== S.view) setView(want); else applyGuide();
+    if (!t) renderHomeStep();
+  }
+  if (!t) { const h = document.getElementById('home-h'); if (h) h.focus({ preventScroll: true }); }
+}
+function goHash(h) {
+  history.pushState(null, '', location.pathname + location.search + h);
+  BOOT.focus = true;   // 起動後、選んだ画面の見出しにフォーカスを置く
+  syncToUrl();
+}
+const goHome = () => goHash('');
+document.querySelectorAll('#home [data-role]').forEach((b) => b.addEventListener('click', () => goHash('#r=' + b.dataset.role)));
+document.querySelectorAll('#home [data-go]').forEach((b) => b.addEventListener('click', () => goHash('#' + b.dataset.go)));
+document.querySelectorAll('[data-home]').forEach((b) => b.addEventListener('click', goHome));
+document.getElementById('g-toggle').addEventListener('click', () => setGuide(''));
+window.addEventListener('hashchange', syncToUrl);
+new MutationObserver(() => syncGuideBar()).observe(document.body, { attributes: true, attributeFilter: ['class'] });   // 段の表示（条件・結果・見積依頼文）と凡例を、選択や作業の開閉に合わせる
+/* 最初の画面の背景の短いループ映像。最初の描画のあとで読み込み、動きを減らす設定・狭い画面・通信量を抑える設定では読み込まない。
+   絵の上に重ねるだけ（位置は絶対指定）なので、読み込みで配置は動かない。映像が読めなければ、そのまま静止画 */
+function loadHeroLoop() {
+  const box = document.querySelector('.home-hero');
+  if (!box || box.querySelector('video') || box.querySelector('canvas') || MapFx.reduced() || innerWidth <= 700) return;
+  const c = navigator.connection;
+  if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) return;
+  /* 使える端末では three.js の 3D（hero3d.js）を先に試す。WebGL がない・4 秒以内に読めないときだけ、今までの映像にする */
+  // three.js の背景は、経路の色（青の実線・橙の点線）と木の密度が Blender の映像に届くまで、?hero3d=1 のときだけ使う（2026-11-07 本線の判断）
+  if (/[?&]hero3d=1(&|$)/.test(location.search) && window.Hero3D && Hero3D.capable()) { Hero3D.start(box).then((ok) => { if (!ok && S.view === 'home') loadHeroVideo(box); }); return; }
+  loadHeroVideo(box);
+}
+// 確認用: ?hero=v4 / ?hero=v5 で、物流網が広がる背景（img/hero/v4/・v5/）を使う。作成者が採ったら既定に入れ替える（2026-11-07）
+const HERO_VER = (location.search.match(/[?&]hero=(v4|v5|v6|v7)(&|$)/) || [])[1];
+const HERO_DIR = HERO_VER ? 'img/hero/' + HERO_VER + '/' : 'img/hero/';
+(function heroPreview() {
+  if (HERO_DIR === 'img/hero/') return;
+  const pic = document.querySelector('.home-hero picture');
+  if (!pic) return;
+  const phone = matchMedia('(max-width: 700px)').matches;
+  pic.querySelectorAll('source').forEach((s) => { s.srcset = s.srcset.replace('img/hero/', HERO_DIR).replace(HERO_DIR + 'hero_800.webp', HERO_DIR + 'hero_portrait_720.webp'); });
+  const im = pic.querySelector('img'); if (im) im.src = HERO_DIR + (phone ? 'hero_portrait_720.webp' : 'hero_1920.webp');
+  document.documentElement.style.setProperty('--hero-pos-x', '50%');
+  document.documentElement.style.setProperty('--hero-pos-y', phone ? '0%' : '50%');
+})();
+/* 背景の映像に合わせた場面の字幕。時刻と位置は HERO_DIR + 'scenes.json'（{segments:[{key,t0,t1,anchor:{x,y}}]}、x・y は映像の幅・高さに対する 0〜1）、
+   文言はここの HERO_CAPTIONS。JSON がなければ何も出さない。パネル（.home-wrap）と名前（.home-brand）に重ならない位置へ寄せる */
+const HERO_CAPTIONS = {
+  kanto: ['関東', '拠点で荷待ちが起きています'],
+  kansai: ['関西 → 関東', '帰りは空車で戻っています'],
+  kyushu: ['鹿児島 → 東京', '長距離の帰りは空車になりがちです'],
+  chihou: ['地方', '帰りの荷が少ない'],
+  zenkoku: ['全国', '物流網と荷の流れ'],
+};
+const HeroCaptions = (function () {
+  let segs = null, raf = 0, cur = null, hideTimer = 0;
+  const el = () => document.getElementById('home-cap');
+  const R = (e) => e.getBoundingClientRect();
+  function hit(a, b, m) { return a.left < b.right + m && b.left < a.right + m && a.top < b.bottom + m && b.top < a.bottom + m; }
+  function place(seg, c) {
+    const vw = innerWidth, vh = innerHeight, w = c.offsetWidth, h = c.offsetHeight, m = 16;
+    const vid = document.querySelector('.home-hero video'), iw = (vid && vid.videoWidth) || 1920, ih = (vid && vid.videoHeight) || 1080;
+    const k = Math.max(vw / iw, vh / ih), ox = (vw - iw * k) / 2, oy = (vh - ih * k) / 2;
+    const ax = ox + seg.anchor.x * iw * k, ay = oy + seg.anchor.y * ih * k;
+    const brand = document.getElementById('home-brand');
+    const avoid = [document.querySelector('.home-wrap'), brand].filter(Boolean).map(R);
+    const clampX = (x) => Math.min(vw - w - m, Math.max(m, x)), clampY = (y) => Math.min(vh - h - m, Math.max(m, y));
+    const ok = (x, y) => { const r = { left: x, top: y, right: x + w, bottom: y + h }; return avoid.every((a) => !hit(r, a, 8)); };
+    const cands = [[ax + 16, ay - h / 2], [ax - 16 - w, ay - h / 2], [ax - w / 2, ay - 16 - h], [ax - w / 2, ay + 16]];
+    for (const [x, y] of cands) { const cx = clampX(x), cy = clampY(y); if (ok(cx, cy)) return [cx, cy]; }
+    /* どこも重なるときは、名前の下の帯か、パネルの下の帯の空いている所に置く */
+    const pr = avoid[0], top = brand ? R(brand).bottom + 16 : m;
+    const ys = [clampY(top), clampY(pr ? pr.bottom + 16 : vh)];
+    for (const y of ys) { const cx = clampX(ax - w / 2); if (ok(cx, y)) return [cx, y]; }
+    return [clampX(ax - w / 2), ys[0]];
+  }
+  function show(seg) {
+    const c = el(); if (!c) return;
+    clearTimeout(hideTimer);
+    const t = HERO_CAPTIONS[seg.key] || [seg.label || '', seg.line || ''];
+    c.querySelector('.hc-label').textContent = t[0]; c.querySelector('.hc-line').textContent = t[1];
+    c.hidden = false;
+    const [x, y] = place(seg, c);
+    c.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+    requestAnimationFrame(() => c.classList.add('on'));
+  }
+  function hide() {
+    const c = el(); if (!c) return;
+    c.classList.remove('on');
+    clearTimeout(hideTimer); hideTimer = setTimeout(() => { if (!cur) c.hidden = true; }, 320);
+  }
+  function update(t) {
+    const seg = (segs && segs.find((s) => t >= s.t0 && t < s.t1)) || null;
+    if (seg === cur) return;
+    cur = seg;
+    if (seg) show(seg); else hide();
+  }
+  function tick() {
+    raf = 0;
+    if (document.hidden || !document.body.classList.contains('view-home') || !segs) return;
+    const v = document.querySelector('.home-hero video');
+    if (v && v.readyState >= 2 && !v.paused) update(v.currentTime);
+    raf = requestAnimationFrame(tick);
+  }
+  function run() { if (!raf && segs) raf = requestAnimationFrame(tick); }
+  function load(json) {
+    segs = json && Array.isArray(json.segments) ? json.segments.filter((s) => s && s.anchor && s.t1 > s.t0) : null;
+    if (segs && !segs.length) segs = null;
+    cur = null; if (!segs) hide(); else run();
+  }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { if (raf) cancelAnimationFrame(raf); raf = 0; } else run(); });
+  function init() {
+    if (MapFx.reduced() || innerWidth <= 700) return;
+    fetch(HERO_DIR + 'scenes.json').then((r) => (r.ok ? r.json() : null)).then(load).catch(() => {});
+  }
+  return { init, load, update, run };
+})();
+window.HeroCaptions = HeroCaptions;
+function loadHeroVideo(box) {
+  if (!box || box.querySelector('video')) return;
+  const v = document.createElement('video');
+  v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true; v.preload = 'auto'; v.setAttribute('aria-hidden', 'true'); v.tabIndex = -1;
+  v.poster = HERO_DIR + 'hero_1920.webp';
+  for (const [f, t] of [['hero_loop.webm', 'video/webm'], ['hero_loop.mp4', 'video/mp4']]) { const s = document.createElement('source'); s.src = HERO_DIR + f; s.type = t; v.appendChild(s); }
+  v.addEventListener('playing', () => v.classList.add('on'), { once: true });
+  v.addEventListener('error', () => v.remove(), true);
+  box.appendChild(v);
+  const p = v.play(); if (p && p.catch) p.catch(() => {});
+  HeroCaptions.init();
+}
+if (document.body.classList.contains('view-home')) {
+  const go = () => requestAnimationFrame(() => setTimeout(loadHeroLoop, 400));
+  if (document.readyState === 'complete') go(); else window.addEventListener('load', go, { once: true });
+}
+if (urlTarget()) boot();
+else { document.body.className = 'view-home'; renderHomeStep(); }

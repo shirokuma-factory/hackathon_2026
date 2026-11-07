@@ -52,9 +52,9 @@ def test_g143_8_mode_labels_are_rail_and_ship():
 
 def test_g143_10_app_name_is_backfull():
     html = read("index.html")
-    assert "<title>Backfull - 帰りの荷台を、中小の荷主の荷で埋める</title>" in html
-    assert '<div class="brand"><b>Backfull</b><span>試作</span></div>' in html
-    assert "帰りの荷台を、中小の荷主の荷で埋める</p>" in html and "スポット出荷マップ</b>" not in html
+    assert "<title>Backfull - 帰り便と中小の荷主の荷物をつなぐ</title>" in html  # 文言の直し 2026-11-07
+    assert '<h1 id="home-h" tabindex="-1">どちらの作業をしますか</h1>' in html   # 見出しは 1 つの短い問い（第 8 部 r4）。名前は title
+    assert '<h1 class="p-title" tabindex="-1">送り方を比べる</h1>' in html and "スポット出荷マップ</b>" not in html
 
 
 def test_g143_11_summary_separates_the_two_ranges():
@@ -85,13 +85,14 @@ def test_g143_3_7_chart_sentence_ratio_and_ship_row():
         open_("#v=compare&o=13104&l=km")
         h = lambda cards: page.js(f"CompareChart.html({json.dumps(cards, ensure_ascii=False)})")  # noqa: E731
         html = h(one)
-        assert "額が出るのは貸切だけです。宅配・路線便・カゴ台車はこの区間の表を持たないため問い合わせです" in html
+        assert "条件がそろって額が出るのは貸切だけです。宅配・路線便・カゴ台車は料金表がないため、問い合わせが要ります。" in html  # 文言の直し 2026-11-07
         assert "倍" not in html and "最安" not in html
         html = h(two)
         assert "約 2.6 倍" in html and "額が出るのは" not in html
         assert "なし（つながる航路がありません）" in h(ship_none)
         ask = h(ship_ask)
-        assert "なし（つながる航路がありません）" not in ask and ">問い合わせ<" in ask
+        assert "なし（つながる航路がありません）" not in ask and "日数と額は見積で確認" in ask   # 鉄道・船は額を出さない（v5.0: 公表の運賃表を持たない）
+        assert "金額は見積で確かめます" in ask   # 文言の直し 2026-11-07
         assert not page.js("window.__errs.length") and not page.js("window.__con.length"), page.js("window.__con")
 
 
@@ -118,8 +119,8 @@ def test_g143_10_header_and_title_at_1920():
         _watch(page)
         open_("#v=compare&o=13104&l=km")
         assert page.js("document.title").startswith("Backfull")
-        assert page.js("document.querySelector('.brand b').textContent") == "Backfull"
-        assert page.js("document.querySelector('.brand-sub').textContent") == "帰りの荷台を、中小の荷主の荷で埋める"
+        assert page.js("document.querySelector('#panel .p-title').textContent") == "送り方を比べる"
+        assert "荷物と届け先を入れると" in page.js("document.querySelector('.brand-sub').textContent")
         assert not page.js("window.__errs.length") and not page.js("window.__con.length"), page.js("window.__con")
 
 

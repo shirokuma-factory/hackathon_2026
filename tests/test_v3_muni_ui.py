@@ -16,7 +16,7 @@ from shipcompare import geo, muni
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTICE = "推定です。公開の統計に市区町村単位の流動はありません。県の値を業種の従業者数と人口で分けた目安です"
-P31_MESSAGE = "物流拠点（国土数値情報 P31）は再配布できないため、この版では表示しません"
+P31_MESSAGE = "物流拠点の地図は公開の決まりで載せられません。"   # 文言の直し 2026-11-07
 ATTRIBUTIONS = [
     "国土数値情報（物流拠点データ）（国土交通省）2013年",
     "国土数値情報（空港データ）（国土交通省）を加工して作成",
@@ -68,10 +68,13 @@ def test_spec18_ui_notice_text_is_in_the_page():
     assert json.loads(read("web/data/muni.json"))["disclaimer"] == NOTICE
 
 
-def test_spec18_ui_formula_text_comes_from_the_json():
+def test_spec18_ui_formula_text_is_a_small_table():
     html = read("web/index.html")
     assert 'id="mu-formula-text"' in html and "<details" in html[html.index('id="mu-notice"'):html.index('id="mlg-scroll"')]
-    assert "U.d.formula" in read("web/muni.js") or "d.formula" in read("web/muni.js")
+    # 文言の直し 2026-11-07: 式の全文は画面に出さず、入力の表（5 行）にした。全文は docs/guide/画面の文言の補足.md
+    js = read("web/muni.js")
+    assert "FORMULA_ROWS" in js and "renderFormula" in js and "d.formula" not in js
+    assert "2026-11-04" not in js
     assert json.loads(read("web/data/muni.json"))["formula"] == muni.FORMULA
 
 
@@ -81,7 +84,7 @@ def test_spec18_ui_scope_toggle_and_layer_buttons_exist():
     assert 'data-toggle="conc"' in html and "物流の<br>集積" in html
     assert 'data-toggle="fac"' in html
     js = read("web/muni.js")
-    assert "ColumnLayer" in js and "pitch: on && U.active ? 55 : 0" in js
+    assert "ColumnLayer" in js and "pitch: on && U.active ? 55" not in js and "map.easeTo({ pitch: 0, duration: MapFx.ms(1300)" in js  # 柱の表示も真上から見る（pitch 0）
 
 
 # ---------------------------------------------------------------- 出典と P31 の文言

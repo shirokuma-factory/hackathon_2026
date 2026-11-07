@@ -108,8 +108,8 @@ def test_s1_shelf_trip_floor_is_unit_footprint_not_truck_floor():
     assert not ok and any("床の空き 0.88m²" in r for r in reasons)
     b = spaceb.Board()
     with pytest.raises(spaceb.BoardError, match="床の空き"):
-        b.hold("T1", pieces(20, 100, 70, 10, 0.5))
-    one = pieces(1, 100, 70, 10, 0.5)  # 0.70m² は 1 口 0.88m² に入る
+        b.hold("T1", pieces(20, 100, 70, 10, 0.5, dest="27128"))
+    one = pieces(1, 100, 70, 10, 0.5, dest="27128")  # 0.70m² は 1 口 0.88m² に入る
     assert spaceb.match(one, t1)[0] is True
 
 
@@ -122,7 +122,7 @@ def test_s1_inside_rb_upper_uses_unit_footprint_and_other_types_use_truck_floor(
 
 def test_s1_hold_on_shelf_reduces_unit_floor():
     b = spaceb.Board()
-    b.hold("T1", pieces(1, 100, 70, 10, 0.5))
+    b.hold("T1", pieces(1, 100, 70, 10, 0.5, dest="27128"))
     t1 = next(t for t in b.trips() if t["id"] == "T1")
     assert t1["remaining_floor_m2"] == pytest.approx(0.88 - 0.70) and t1["floor_free_m2"] == pytest.approx(0.88)
 

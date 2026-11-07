@@ -6,7 +6,32 @@ Artifact の置き場の決まり: doctype・html・head・body の各タグを�
 
 from __future__ import annotations
 
+import base64
 import re
+from pathlib import Path
+
+UI_KIT = Path(__file__).resolve().parent / "ui_kit.css"
+KIT_MARK = "/*__UI_KIT__*/"
+
+
+def inline_kit(html: str) -> str:
+    """テンプレートの /*__UI_KIT__*/ の所に、デザインキット（tools/ui_kit.css）をそのまま埋め込む（デザインの作り直し 2026-11-07）。"""
+    if html.count(KIT_MARK) != 1:
+        raise SystemExit(f"テンプレートに {KIT_MARK} が 1 つありません")
+    return inline_ill(html.replace(KIT_MARK, UI_KIT.read_text(encoding="utf-8").strip()))
+
+
+ILL_DIR = Path(__file__).resolve().parents[1] / "web" / "img" / "ui"
+ILL_RE = re.compile(r"@@ILL:([a-z_]+):(128|256)@@")
+
+
+def inline_ill(html: str) -> str:
+    """テンプレートの @@ILL:名前:128|256@@ を、web/img/ui/ の WebP の data URI に置き換える（単独ページは通信しないため。2026-11-07 第 2 回）。"""
+    def one(m: re.Match) -> str:
+        data = (ILL_DIR / f"{m.group(1)}_{m.group(2)}.webp").read_bytes()
+        return "data:image/webp;base64," + base64.b64encode(data).decode("ascii")
+    return ILL_RE.sub(one, html)
+
 
 VIEWPORT_META = '<meta name="claude:viewport-fit-sides" content="cover">'
 

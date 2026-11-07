@@ -4,59 +4,37 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%231f4e79%27/%3E%3Cpath d=%27M6 20h20M8 20V11h11v9M19 14h4l3 3v3%27 stroke=%27white%27 stroke-width=%272%27 fill=%27none%27/%3E%3C/svg%3E">
-<title>荷待ち・荷役の記録から協議の書面を作る</title>
+<title>荷待ちの記録から相談の書面を作る</title>
 <!-- このファイルは tools/build_waiting_page.py が tools/waiting_page_template.html から作ります。直すときはテンプレートを直してください。 -->
+<script>/*LOCAL-ONLY-START*/
+if (!document.documentElement.hasAttribute('data-theme')) document.documentElement.setAttribute('data-theme', 'dark');
+/*LOCAL-ONLY-END*/</script>
 <style>
-:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #626b7c; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --warn-bg: #fdecea; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #97a1b3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a90; --warn-bg: #3a1f1d; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; color-scheme: dark; } }
-:root[data-theme="dark"] { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --faint: #97a1b3; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a90; --warn-bg: #3a1f1d; --hi: #1d2a40; --head-bg: #232a35; --row-line: #272e3a; --field: #141922; --placeholder: #5c6578; color-scheme: dark; }
-* { box-sizing: border-box; }
-body { margin: 0; padding-block: 0 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--bg); color: var(--text); font: 14px/1.65 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; overflow-wrap: anywhere; }
-[hidden] { display: none !important; }
+/*__UI_KIT__*/
 .col-in, .col-out { min-width: 0; }
 .scroll-x { overflow-x: auto; max-width: 100%; }
-header.top { padding: 14px 0 8px; }
-header.top h1 { margin: 0 0 4px; font-size: 20px; }
-header.top p { margin: 0; color: var(--muted); font-size: 13px; }
-header.top p.shipper-line { margin: 6px 0 2px; padding: 6px 10px; border-left: 4px solid var(--accent); background: var(--hi); color: var(--text); }
-.protect { margin: 6px 0 12px; padding: 8px 14px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; font-size: 13px; }
 .protect p { margin: 2px 0; }
-main { display: grid; grid-template-columns: minmax(0, 800px) minmax(0, 1fr); gap: 16px; padding: 0; align-items: start; }
-@media (max-width: 1500px) { main { grid-template-columns: minmax(0, 1fr); } }
-section.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
-section.card h2 { margin: 0 0 6px; font-size: 15px; }
-.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 6px 0; font-size: 13px; }
 #hotspots td.num, #hotspots th { white-space: nowrap; }
 #hotspots td.small { min-width: 260px; }
-.bar small, .small { color: var(--muted); font-size: 12px; }
-button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--text); cursor: pointer; }
-button:hover { background: var(--hi); }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-button.primary:hover { background: var(--accent-hover); }
-select, input[type=text], textarea { font: inherit; font-size: 12.5px; color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: 5px; }
+#hotspots td.c1, #placemonth td.c1 { white-space: nowrap; min-width: 7em; } /* 「江東区 地点07」のような場所が縦に折れない。表が広いときは .scroll-x で横に動かす */
 .tw { overflow: auto; max-height: 440px; border: 1px solid var(--line); border-radius: 8px; }
 table.in { border-collapse: collapse; width: 100%; font-size: 12.5px; }
 table.in th { position: sticky; top: 0; z-index: 1; background: var(--head-bg); text-align: left; font-weight: 500; font-size: 11px; color: var(--muted); padding: 4px 4px; border-bottom: 1px solid var(--line); line-height: 1.3; }
 table.in td { padding: 2px; border-bottom: 1px solid var(--row-line); }
 table.in td.n { color: var(--faint); text-align: right; padding: 0 6px; font-size: 11px; }
 table.in tr.bad td { background: var(--warn-bg); }
-table.in input, table.in select { width: 100%; height: 26px; padding: 0 4px; }
 table.in input[data-k=date] { min-width: 11ch; }   /* 2026-10-15 が欠けずに見える幅 */
 .del { border: 0; background: none; color: var(--faint); padding: 0 6px; min-width: 24px; min-height: 24px; }
 .errs { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--warn); border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: 12.5px; }
 .errs b { display: block; }
-details { margin-top: 8px; }
-details summary { cursor: pointer; font-weight: 700; font-size: 13px; }
-/* 押せる所は高さ 24px 以上（採点 r2） */
-select, summary { min-height: 24px; box-sizing: border-box; }
-summary { padding-block: 3px; }
 .ask-co a, #backmap a, #maplink a, #process a, #driver-line a { display: inline-block; min-height: 24px; line-height: 24px; }
 
-textarea { width: 100%; padding: 6px 8px; resize: vertical; }
-table.par, table.rec { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 6px 0; }
-table.par th, table.rec th { text-align: right; font-weight: 500; color: var(--muted); font-size: 11.5px; padding: 4px 6px; border-bottom: 1px solid var(--line); line-height: 1.35; }
+table.par, table.rec { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 12.5px; margin: 6px 0; }   /* 線で区切らず、行の間の余白と薄い地で分ける */
+table.par th, table.rec th { text-align: right; font-weight: 500; color: var(--muted); font-size: 11.5px; padding: 4px 8px; line-height: 1.35; }
 table.par th:first-child, table.rec th:first-child { text-align: left; }
-table.par td, table.rec td { padding: 4px 6px; border-bottom: 1px solid var(--row-line); }
+table.par td, table.rec td { padding: 7px 8px; background: var(--head-bg); }
+table.par td:first-child, table.rec td:first-child { border-radius: 8px 0 0 8px; }
+table.par td:last-child, table.rec td:last-child { border-radius: 0 8px 8px 0; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.par { min-width: 560px; }
 table.in td.n { white-space: nowrap; }
@@ -66,9 +44,11 @@ table.rec td, table.rec th { white-space: nowrap; }
 .rec-w { overflow-x: auto; }
 table.rec small, table.rec th small { display: block; color: var(--faint); font-size: 10.5px; font-weight: 400; }
 table.rec th { white-space: normal; }
+table.rec th.nw { white-space: nowrap; min-width: 5.5em; }
+sup.fn { font-size: 10px; color: var(--faint); margin-left: 2px; }
+.rec-notes { margin: 2px 0 8px; padding-left: 1.6em; }
 table.rec td small { white-space: normal; max-width: 11em; }   /* 到着の欄の注記（受付・早着の疑い）で表が横に伸びすぎないように */
 .wrap { display: flex; gap: 14px; align-items: flex-start; }
-#wait-doc { flex: 1 1 0; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: var(--card); }
 #wait-doc h3 { margin: 0 0 8px; font-size: 16px; }
 #wait-doc h4 { margin: 12px 0 2px; font-size: 13px; }
 #wait-doc h5 { margin: 8px 0 2px; font-size: 12.5px; }
@@ -76,15 +56,12 @@ table.rec td small { white-space: normal; max-width: 11em; }   /* 到着の欄�
 dl.dl { display: grid; grid-template-columns: 56px 1fr; gap: 2px 8px; margin: 0; }
 dl.dl dt { color: var(--faint); font-size: 12px; } dl.dl dd { margin: 0; }
 ul.list { margin: 4px 0; padding-left: 18px; }
-.sentence { margin-top: 10px; padding: 8px 10px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; }
-aside#process { flex: 0 0 270px; border: 1px solid var(--accent); border-radius: 8px; background: var(--hi); padding: 10px 12px; font-size: 12.5px; position: sticky; top: 8px; }
 aside#process b { display: block; margin-bottom: 4px; font-size: 13.5px; }
 aside#process ul { margin: 0; padding-left: 16px; } aside#process li { margin-bottom: 6px; overflow-wrap: anywhere; }
 .basis ul { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); }
 .empty { color: var(--muted); margin: 10px 2px; }
 #selftest { display: none; margin: 8px 0; padding: 8px 12px; border: 2px solid var(--text); border-radius: 8px; background: var(--card); font-weight: 700; white-space: pre-wrap; }
 body.selftest #selftest { display: block; }
-.note { margin: 6px 0; padding: 6px 10px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 700; font-size: 12.5px; }
 .note:empty { display: none; }
 .w-in::placeholder { color: var(--placeholder); }
 #shipper-hours td.num { white-space: nowrap; }
@@ -110,9 +87,9 @@ details.defs ul { margin: 4px 0; padding-left: 18px; font-size: 12.5px; }
   #hotspots, #placemonth { min-width: 0; }
   #hotspots, #placemonth, #hotspots tbody, #placemonth tbody { display: block; }
   #hotspots thead, #placemonth thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  #hotspots tr, #placemonth tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  #hotspots tr, #placemonth tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 8px 10px; margin: 0 0 6px; border-radius: 8px; background: var(--head-bg); }
   #hotspots tr::before, #placemonth tr::before { content: ""; order: 2; flex: 0 0 100%; height: 0; }
-  #hotspots td, #placemonth td { padding: 0; border: 0; min-width: 0; text-align: left; white-space: normal; overflow-wrap: break-word; }
+  #hotspots td, #placemonth td { padding: 0; border: 0; border-radius: 0; background: none; min-width: 0; text-align: left; white-space: normal; overflow-wrap: break-word; }
   #hotspots td.c1, #placemonth td.c1 { order: 1; font-weight: 700; flex: 0 1 auto; }
   #hotspots td.num, #placemonth td.num { order: 3; flex: 0 0 auto; white-space: nowrap; }
   #hotspots td[data-l]::before, #placemonth td[data-l]::before { content: attr(data-l) " "; color: var(--muted); font-size: 11px; font-weight: 400; }
@@ -123,7 +100,7 @@ details.defs ul { margin: 4px 0; padding-left: 18px; font-size: 12.5px; }
   #partners table.par:not(#hotspots):not(#placemonth) { min-width: 0; }
   #partners table.par:not(#hotspots):not(#placemonth), #partners table.par:not(#hotspots):not(#placemonth) tbody { display: block; }
   #partners table.par:not(#hotspots):not(#placemonth) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  #partners table.par:not(#hotspots):not(#placemonth) tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  #partners table.par:not(#hotspots):not(#placemonth) tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 8px 10px; margin: 0 0 6px; border-radius: 8px; background: var(--head-bg); }
   #partners table.par:not(#hotspots):not(#placemonth) tr.on { background: var(--hi); }
   #partners table.par:not(#hotspots):not(#placemonth) tr::before { content: ""; order: 2; flex: 0 0 100%; height: 0; }
   #partners table.par:not(#hotspots):not(#placemonth) td { padding: 0; border: 0; background: none; min-width: 0; text-align: left; white-space: normal; overflow-wrap: break-word; }
@@ -131,13 +108,179 @@ details.defs ul { margin: 4px 0; padding-left: 18px; font-size: 12.5px; }
   #partners table.par:not(#hotspots):not(#placemonth) td.num { order: 3; flex: 0 0 auto; white-space: nowrap; }
   #partners table.par:not(#hotspots):not(#placemonth) td[data-l]::before { content: attr(data-l) " "; color: var(--muted); font-size: 11px; font-weight: 400; }
 }
+/* SPEC §46: 案内の入口（#g）、書面の協議に使う額、メモの読み取り結果 */
+.fold { margin: 8px 0; }
+body:not(.guided):not(.demo) details.fold > summary { display: none; }
+#result-d > summary { display: none; }   /* 結果は最初から開いたままにする（デザインの作り直し 2026-11-07） */
+body.demo #basis, body.demo #notes-fold { display: none; }
+.hdr-more { margin: 6px 0; }
+.hdr-more > summary { cursor: pointer; }
+#guide h2 { margin: 0 0 4px; font-size: 16px; }
+.g-choices { display: grid; gap: 10px; margin: 12px 0; }
+.g-choices button small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.g-choices button.primary small { color: var(--on-accent); }
+#g-bar { margin: 4px 0; font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+body.guided header.top > :not(h1):not(#g-bar):not(#g-lead) { display: none !important; }
+body.guided #basis { display: none; }
+body.g-choose main, body.g-choose .protect { display: none; }
+body.g-step #input > .g-hide, body.g-step #paste-d > summary, body.g-step #paste-d > p.small { display: none; }
+body.g-step #input { display: flex; flex-direction: column; }
+body.g-step #paste-d { order: -1; margin-top: 0; }
+body.g-step.no-rows #result { display: none; }
+body.g-step main { grid-template-columns: minmax(0, 1fr); max-width: 860px; margin: 0 auto; }
+body.guided header.top, body.guided .protect { max-width: 860px; margin-inline: auto; }
+body.g-choose header.top { max-width: 640px; }
+details.doc-alt { margin: 6px 0; }
+#memo-read ul { margin: 4px 0; padding-left: 0; list-style: none; }
+#memo-read li { margin: 6px 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; }
+#memo-read label { display: inline-flex; align-items: center; gap: 4px; margin: 2px 8px 2px 0; font-size: 12px; color: var(--muted); }
+#memo-read input { width: 9em; min-height: 24px; padding: 0 6px; }
+#memo-read select { min-height: 24px; }
+#memo-read .chk { color: var(--warn); font-weight: 700; }
+#cross-recalc { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 10px; background: var(--hi); }
+#cross-recalc .big { font-size: 18px; }
+#reply-ta { margin-top: 6px; }
+/* ---------- 荷待ちの書面: 入力 → 結果（数字のタイル・時間帯の帯・場所の表・書面）（デザインの作り直し 2026-11-07） ---------- */
+body { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+.page-head { max-width: 1500px; margin: 0 auto; }
+header.top, .protect, main, #guide { max-width: 1500px; margin-inline: auto; }
+header.top { padding: 0 0 8px; }
+header.top h1 { font-size: var(--fs-4); margin: 0 0 4px; }
+header.top p { margin: 4px 0; color: var(--muted); font-size: var(--fs-1); }
+header.top p.shipper-line { padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--hi); color: var(--text); border-radius: 0 var(--r-s) var(--r-s) 0; }
+.protect { margin: 0 auto 16px; padding: 8px 16px; border: 1px solid var(--line-soft); border-left: 4px solid var(--chk); border-radius: var(--r-m); background: var(--card); font-weight: 500; font-size: var(--fs-1); }
+.protect p { margin: 2px 0; }
+main { display: grid; grid-template-columns: minmax(0, 720px) minmax(0, 1fr); gap: 24px; padding: 0; align-items: start; }
+@media (max-width: 1500px) { main { grid-template-columns: minmax(0, 1fr); } }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0; font-size: var(--fs-1); }
+.bar small { color: var(--muted); }
+details { margin-top: 8px; }
+details summary { cursor: pointer; font-weight: 700; font-size: var(--fs-1); }
+select, input[type=text], textarea { font-size: var(--fs-1); }
+textarea { width: 100%; resize: vertical; }
+.tw { overflow: auto; max-height: 440px; border: 1px solid var(--line); border-radius: var(--r-s); }
+table.in input, table.in select { width: 100%; height: 32px; min-height: 32px; padding: 0 6px; font-size: 13px; }
+.keep { color: var(--muted); font-size: 12px; }
+#paste { min-height: 132px; font-size: var(--fs-2); }
+/* 結果の数字のタイル・時間帯の帯 */
+#partners .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 8px; }
+@media (max-width: 420px) { #partners .stat-grid { grid-template-columns: 1fr 1fr; } #partners .stat-grid .stat:first-child { grid-column: 1 / -1; } }
+.heat-card { margin: 0 0 16px; padding: 16px; background: var(--card-2); border: 1px solid var(--line-soft); border-radius: var(--r-m); }
+.heat-card h3 { font-size: var(--fs-1); margin-bottom: 8px; }
+.heat { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; }
+.heat > span { display: block; position: relative; height: 40px; border-radius: 6px; background: var(--head-bg); overflow: hidden; }
+.heat > span::after { content: ""; position: absolute; inset: 0; background: var(--empty); opacity: var(--v); }
+.heat > span.z::after { display: none; }
+.heat-ax { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; margin-top: 4px; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; text-align: center; }
+.heat-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+/* 表: 場所・相手 */
+table.par th, table.rec th { font-size: 11.5px; padding: 4px 8px; }
+table.par td, table.rec td { padding: 12px 8px; background: var(--card-2); font-size: var(--fs-1); }
+td.num { font-variant-numeric: tabular-nums; }
+#partners h2, #draft-area h2 { font-size: var(--fs-3); margin: 24px 0 8px; }
+#partners h2:first-child { margin-top: 0; }
+/* 例を入れた最初の画面は、数字・帯・Claude の欄・表の要点だけにする（記録を触ると全部出る） */
+body.demo #partners p:not(.ai-off), body.demo #partners h2 .small, body.demo #head-defs, body.demo .heat-card h3 .small { display: none; }
+@media (min-width: 601px) { body.demo #hotspots td.c3 { display: none; } }
+@media (min-width: 601px) { body.demo #partners > h2 + .scroll-x th:nth-child(3), body.demo #partners > h2 + .scroll-x td:nth-child(3), body.demo #partners > h2 + .scroll-x th:nth-child(n+6), body.demo #partners > h2 + .scroll-x td:nth-child(n+6) { display: none; } }
+body.demo #partners .stat .stat-d, body.demo #hotspots th:last-child { display: none; }
+@media (min-width: 601px) { body.demo #hotspots th:nth-child(7), body.demo #hotspots td:nth-child(7) { display: none; } }
+@media (min-width: 1001px) { .app-header .app-page { display: none; } }
+/* 書面のカード */
+#wait-doc { flex: 1 1 0; min-width: 0; border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 24px; background: var(--card); box-shadow: var(--elev-1); font-size: var(--fs-1); }
+#wait-doc h3 { font-size: var(--fs-3); }
+.main-amt { padding: 16px; border: 1px solid var(--accent); border-radius: var(--r-m); background: var(--hi); }
+.main-amt .big { font-size: var(--fs-4); font-variant-numeric: tabular-nums; }
+.sentence { margin-top: 12px; padding: 12px 16px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 500; border-radius: 0 var(--r-s) var(--r-s) 0; }
+aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--card-2); padding: 16px; font-size: var(--fs-1); position: sticky; top: 16px; }
+/* Claude で説明文を作る箱（web/ai_explain.js が入れる）。書面のカードの上に見える形で出す */
+.ai-box { margin: 8px 0 16px; padding: 16px; background: var(--card-2); border: 1px solid var(--line-soft); border-radius: var(--r-m); }
+.ai-box .ai-head { gap: 8px 16px; }
+.ai-box .ai-confirm, .ai-box .ai-result { background: var(--card); border-radius: var(--r-s); }
+.ai-box .ai-off { margin: 0; }
+.note { margin: 8px 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--hi); font-weight: 500; font-size: var(--fs-1); border-radius: 0 var(--r-s) var(--r-s) 0; }
+.errs b { display: block; }
+.g-choices button { font-size: var(--fs-2); border-radius: var(--r-m); }
+#guide { max-width: 640px; }
+/* ---------- 第 2 回（2026-11-07）: 時間帯の図・表・書面を用紙の見た目に ---------- */
+.heat { height: 96px; align-items: stretch; gap: 3px; }
+.heat > span { height: 100%; background: var(--head-bg); border-radius: 4px; }
+.heat > span::after { inset: auto 0 0 0; height: var(--h); border-radius: 4px; }
+.heat-legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.heat-legend .lg { display: inline-flex; align-items: center; gap: 8px; }
+.heat-scale { display: inline-block; width: 72px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--head-bg), var(--empty)); }
+.side-col { display: contents; }
+.empty-state { padding: 32px 16px; }
+.empty-state .ill { margin: 0 auto; }
+#draft-area h2 { display: flex; align-items: center; gap: 16px; }
+#draft-area h2 .ill { margin: -8px 0; }
+#wait-doc .empty-state { padding: 64px 16px; }
+@media (max-width: 1099px) { .side-col > .ai-box { order: -1; } .wrap { flex-wrap: wrap; } .side-col { display: flex; flex-direction: column; width: 100%; gap: 8px; } }
+@media (min-width: 1100px) {
+  body { background: radial-gradient(1000px 520px at 82% -6%, var(--hi), var(--none) 66%) no-repeat var(--bg); background-color: var(--bg); }
+  .page-head, header.top, .protect, main, #guide { width: min(100% - 96px, 1280px); max-width: none; }
+  .app-header { padding: 24px 0 8px; }
+  header.top { padding-bottom: 16px; }
+  header.top h1 { font-size: var(--fs-5); letter-spacing: -0.01em; }
+  main { grid-template-columns: 384px minmax(0, 1fr); gap: 40px; }
+  .col-in { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: thin; padding: 0 4px 8px 0; margin-right: -4px; }
+  #input { padding: 24px; }
+  #result { background: none; border: 0; box-shadow: none; padding: 0; margin: 0; }
+  #result-d { margin: 0; }
+  #partners .stat-grid { grid-template-columns: 1.5fr 1.2fr 1fr; gap: 16px; margin: 0 0 24px; }
+  #partners .stat { padding: 24px; border-radius: var(--r-l); background: var(--card); box-shadow: var(--elev-1); }
+  #partners .stat.hero { background: linear-gradient(135deg, var(--hi), var(--card) 75%); border-color: var(--line); }
+  #partners .stat .stat-n { font-size: 40px; white-space: nowrap; }
+  #partners .stat.hero .stat-n { font-size: 56px; }
+  #partners .stat:nth-child(3) .stat-n { font-size: 32px; }
+  .heat-card { padding: 24px 32px; margin-bottom: 8px; background: var(--card); box-shadow: var(--elev-1); border-radius: var(--r-l); }
+  .heat-card h3 { font-size: var(--fs-3); margin-bottom: 16px; }
+  .heat-card h3 .small { font-weight: 400; margin-left: 8px; }
+  .heat { height: 144px; gap: 4px; }
+  .heat-ax { gap: 4px; font-size: 12px; margin-top: 8px; }
+  #partners h2 { margin: 40px 0 16px; padding-top: 32px; border-top: 1px solid var(--line-soft); font-size: var(--fs-4); }
+  #partners h2:first-child { padding-top: 0; border-top: 0; margin-top: 0; }
+  #partners h2 .small { font-size: var(--fs-1); font-weight: 400; margin-left: 8px; }
+  #partners h3 { font-size: var(--fs-3); margin: 32px 0 8px; }
+  table.par { border-spacing: 0; min-width: 0; font-size: var(--fs-1); margin: 0; }
+  table.par th { padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 12px; letter-spacing: 0.02em; white-space: nowrap; }
+  table.par td { padding: 16px; background: none; border-bottom: 1px solid var(--row-line); font-variant-numeric: tabular-nums; }
+  table.par td:first-child, table.par td:last-child { border-radius: 0; }
+  table.par tbody tr:last-child td { border-bottom: 0; }
+  table.par tr[data-pick]:hover td { background: var(--card-2); }
+  table.par tr.on td { background: var(--hi); }
+  table.par tr.on td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  table.par td.num b { font-size: var(--fs-2); }
+  table.par td.c1 { font-weight: 500; }
+  .wrap { gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+  /* 書面は右の列に収まらない（表が 13 列ある）ので、入力の欄の下も使って全幅に置く */
+  .col-out, #result, #result-d, #result-d::details-content { display: contents; }
+  #partners { grid-column: 2; grid-row: 1; min-width: 0; }
+  #draft-area { grid-column: 1 / -1; margin-top: 24px; padding-top: 40px; border-top: 1px solid var(--line-soft); min-width: 0; }
+  #draft-area > h2 { font-size: var(--fs-4); margin: 0 0 16px; }
+  #draft-area .wrap > #wait-doc { flex: 1 1 0; min-width: 0; }
+  .side-col { display: flex; flex-direction: column; gap: 16px; flex: 0 0 232px; position: sticky; top: 16px; }
+  .side-col aside#process { position: static; flex: none; }
+  .side-col .ai-box { margin: 0; }
+  #wait-doc { --text: var(--paper-text); --muted: var(--paper-muted); --line: var(--paper-line); --line-soft: var(--paper-soft); --row-line: var(--paper-soft); --head-bg: var(--paper-head); --card: var(--paper); --card-2: var(--paper-head); --hi: var(--paper-hi); --accent: var(--paper-accent); --warn: var(--paper-ng); --ok: var(--paper-ok); --chk: var(--paper-chk); --elev-1: none; --btn: var(--paper); --field: var(--paper);
+    color: var(--paper-text); background: var(--paper); border: 0; border-radius: 4px; padding: 48px 24px 120px; min-height: 720px; position: relative; box-shadow: var(--paper-shadow); }
+  #wait-doc dl.dl dt, #wait-doc table.rec small, #wait-doc table.rec th small, #wait-doc sup.fn { color: var(--paper-faint); }
+  #wait-doc::after { content: "印"; position: absolute; right: 24px; bottom: 40px; width: 64px; height: 64px; border: 1.5px dashed var(--paper-dash); border-radius: 50%; display: grid; place-items: center; color: var(--paper-dash); font-size: 14px; }
+  #wait-doc h3 { font-size: var(--fs-4); margin-bottom: 16px; }
+  #wait-doc table.rec td { background: none; border-bottom: 1px solid var(--row-line); }
+  #wait-doc table.rec { border-spacing: 0; font-size: 11px; }
+  #wait-doc table.rec th, #wait-doc table.rec td { padding-left: 3px; padding-right: 3px; }
+  #wait-doc table.rec td:first-child, #wait-doc table.rec td:last-child { border-radius: 0; }
+  #wait-doc .main-amt { background: var(--hi); }
+}
 /*PRINT-START*/
 @page { size: A4 portrait; margin: 12mm; }
 @media print {
-  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #626b7c; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --warn-bg: #fdecea; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; color-scheme: light; }
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --faint: #626b7c; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --warn-bg: #fdecea; --hi: #eef4fd; --head-bg: #eceff4; --row-line: #eceff4; --field: #ffffff; --placeholder: #a9b0bd; --btn: #ffffff; --radius: 0; color-scheme: light; }
+  #result-d::details-content { content-visibility: visible; display: block; }   /* 例の結果の枠は閉じていても、印刷では中身を出す */
   /* 書面だけを A4 縦に流す。隠すものは display:none にして、余白の白紙ページが出ないようにする */
   html, body { background: #fff; margin: 0; padding: 0; }
-  header.top, .protect, #selftest, .col-in, #partners, #draft-area > h2, #draft-area > .bar, #draft-area > .ask, aside#process { display: none !important; }
+  header.top, .app-header, .protect, #selftest, .col-in, #partners, #ai-box, #draft-area > h2, #draft-area > .bar, #draft-area > .ask, aside#process { display: none !important; }
   main, .col-out, section.card, #draft-area, .wrap { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; width: auto; }
   #wait-doc { border: 0; padding: 0; width: auto; color: #000; font-size: 9.5pt; line-height: 1.5; }
   #wait-doc h3 { font-size: 13pt; }
@@ -150,28 +293,44 @@ details.defs ul { margin: 4px 0; padding-left: 18px; font-size: 12.5px; }
   #wait-doc table.rec tr { break-inside: avoid; }
   #wait-doc small, #wait-doc .small { color: #000; }
   #wait-doc .sentence { border-left: 4px solid #000; background: none; break-inside: avoid; }
+  #wait-doc .main-amt { background: none; border: 2px solid #000; }
   #wait-doc .printnote { display: block; margin-top: 8px; font-size: 8.5pt; border-top: 1px solid #000; padding-top: 4px; }
 }
 </style>
 </head>
 <body>
+<div class="app-header page-head"><span class="wm"><i class="wm-mark" aria-hidden="true"></i>Backfull</span><span class="app-page">荷待ちの書面</span></div>
 <header class="top">
-  <p class="backmap small" id="backmap"></p>
-  <h1>荷待ち・荷役の記録から、契約の相手との協議の書面を作る</h1>
-  <p>運送会社が自社の記録を手で入れて使うページです。サーバーも インストールも要りません。ファイルを開くだけで動きます。</p>
-  <p class="shipper-line" id="shipper-line"><b>荷主の方へ:</b> 自社の受付の記録（日付・運送会社・施設・受付の時刻・荷役開始）を下の「Excel から貼り付ける」に貼ると、施設ごと・月ごとの平均の荷待ちと、到着の時間帯ごとの集中が出ます（受付の時刻を到着として読みます）。「荷主として使う」にすると、荷主がすること（受付開始の時刻、予約の枠、早着の通知文）と、運送会社の書面との照合も出ます。</p>
-  <div class="bar" id="mode-bar"><button type="button" id="b-mode" aria-pressed="false">荷主として使う</button><small>自社の受付記録を分析する使い方に切り替えます（運送会社あての書面は出しません）。受付・呼出・作業開始の列がある記録を貼ると、自動で切り替わります。</small></div>
-  <p class="note" id="mode-note" hidden></p>
-  <p class="small" id="driver-line">ドライバーが現場で時刻を押して LINE に貼る文（「荷待ち記録」で始まる文）は、下の「Excel から貼り付ける」にそのまま貼れます。</p>
+  <h1 id="h1">荷待ちの記録から、荷主に出す相談の書面を作る</h1>
+  <p id="g-bar" hidden><a href="index.html" id="g-home">最初の画面に戻る</a><a href="#g" id="g-again">最初から選ぶ</a><a href="#all" id="g-all">すべての欄を出す</a></p>
+  <p id="g-lead" class="small" hidden></p>
+  <p id="hdr-priv">ファイルを開くだけで使えます。記録は外に送りません。</p>
+  <details class="hdr-more" id="hdr-more"><summary>荷主の方・ドライバーの方</summary>
+    <p class="backmap small" id="backmap"></p>
+    <p class="shipper-line" id="shipper-line"><b>荷主の方へ:</b> 受付簿を貼ると、待ちの多い施設と時間帯が分かります。</p>
+    <div class="bar" id="mode-bar"><button type="button" id="b-mode" aria-pressed="false">荷主の画面にする</button><small>待ちの多い時間帯を出します。</small></div>
+    <p class="note" id="mode-note" hidden></p>
+    <p class="small" id="driver-line">ドライバーの LINE の文は、下の欄にそのまま貼れます。</p>
+  </details>
 </header>
+<section class="card" id="guide" hidden>
+  <h2>何から始めますか</h2>
+  <div class="g-choices">
+    <button type="button" class="primary btn-primary" data-g="driver"><span>ドライバーの LINE を貼る</span><small>LINE の「荷待ち記録」、スマホのメモ</small></button>
+    <button type="button" data-g="excel"><span>Excel の表を貼る</span><small>日報や記録を書いた表</small></button>
+    <button type="button" data-g="shipper"><span>届いた書面を受付簿と見比べる（荷主の方）</span><small>受付簿と、運送会社から届いた書面を使います</small></button>
+  </div>
+</section>
 <div class="protect" id="protect"></div>
 <main>
   <div class="col-in">
     <section class="card" id="input">
-      <h2>荷待ち・荷役の記録を入れる</h2>
-      <p class="small">運送を頼まれた相手ごとに入れます。1 行 = 1 か所での 1 回の荷待ち・荷役です。指定の到着時刻と附帯業務は、あるときだけ入れます。</p>
+      <h2 class="g-hide">荷待ち・荷役の記録を入れる</h2>
+      <details class="fold" id="table-fold" open>
+        <summary>表を開いて直す・行を足す</summary>
+      <p class="small">1 行に 1 回の荷待ちを書きます。指定の時刻と附帯業務は、あるときだけ入れます。</p>
       <div class="bar">
-        <label>年（M/D で入れた日付に使います）<select id="year"></select></label>
+        <label>年（月/日だけの日付に付ける年）<select id="year"></select></label>
         <button type="button" id="b-example">例を入れる</button>
         <button type="button" id="b-clear">表を空にする</button>
         <button type="button" id="b-csvin">CSV を読み込む</button>
@@ -182,26 +341,30 @@ details.defs ul { margin: 4px 0; padding-left: 18px; font-size: 12.5px; }
       <p class="note" id="undo-note" hidden><span id="undo-text"></span> <button type="button" id="b-undo">元に戻す</button></p>
       <div class="bar" id="bulk">
         <label>相手<select id="bulk-partner" aria-label="まとめて変える相手"></select></label>
-        <button type="button" id="b-fault-yes">この相手の行をすべて荷主等の都合にする</button>
-        <button type="button" id="b-fault-no">この相手の行をすべて荷主等の都合でないにする</button>
-        <button type="button" id="b-fill-partner">契約の相手を下の行に埋める</button>
-        <button type="button" id="b-fill-class">車種を下の行に埋める</button>
+        <button type="button" id="b-fault-yes">この相手の行を全部「荷主の都合」にする</button>
+        <button type="button" id="b-fault-no">この相手の行を全部「荷主の都合ではない」にする</button>
+        <button type="button" id="b-fill-partner">空いた相手の欄を上の行と同じにする</button>
+        <button type="button" id="b-fill-class">空いた車種の欄を上の行と同じにする</button>
         <small id="bulk-msg"></small>
       </div>
       <p class="note" id="broken-note" hidden>保存した記録が読めませんでした（消していません）。このページで記録を入れ直すと、読めなかった保存の内容はこのブラウザの別の保存場所（waiting_page_rows_v1_broken）に移してから、新しい記録を保存します。</p>
       <p class="keep" id="keep">記録はこのブラウザの中にだけ保存されます。別の PC には移りません<span id="keep-msg"></span></p>
       <div class="tw"><table class="in" aria-label="荷待ち・荷役の記録の表"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
-      <div class="bar"><button type="button" id="b-add">行を足す</button><small>時刻は HH:MM（日付をまたぐ時刻は翌日として扱います）。荷役終了は荷役をしたときに入れます。</small></div>
+      <div class="bar"><button type="button" id="b-add">行を足す</button><small>時刻は 9:30 のように入れます。夜中をまたぐと翌日として数えます。</small></div>
+      </details>
+      <details class="fold" id="notes-fold" open>
+        <summary id="notes-sum">読めなかった所</summary>
       <p class="note" id="paste-note"></p>
       <div id="errs"></div>
       <div id="defaults-box"></div>
       <div id="ask-box"></div>
-      <details open>
+      </details>
+      <details open id="paste-d">
         <summary>Excel から貼り付ける</summary>
-        <p class="small">Excel の表をコピーして貼り付けます（タブ区切り）。ドライバーの『荷待ち記録』の文（LINE の文を何件まとめてでも）もそのまま読みます。1 行目が見出しなら、列の順は問わず見出しの名前で読みます（積み始め・積み終わり・受付・積んだ人なども読みます）。車種と荷役の方法が空欄の行は、既定の値で計算して、あとでまとめて選べます。見出しが無いときだけ、列の順は上の表と同じにしてください。日付は 10月5日・R8.10.5・2026/10/5、時刻は 9:00:00・9時00分・5時半・0900、車種は 4t車・4トン・中型車、荷主等の都合は ○ / × でも読みます。</p>
-        <textarea id="paste" rows="3" placeholder="ここに貼り付け" aria-label="Excel から貼り付ける欄"></textarea>
+        <textarea id="paste" rows="6" placeholder="ここに貼り付け&#10;列の順: 見出しがあれば自由&#10;日付の例: 10/5、R8.10.5&#10;時刻の例: 9:00、9時半、0900&#10;車種の例: 4t車、中型&#10;荷主の都合: ○ / × でも可" aria-label="Excel から貼り付ける欄"></textarea>
         <div class="bar"><button type="button" id="b-paste">貼り付けた内容を表に入れる</button><span class="small" id="paste-msg"></span></div>
       </details>
+      <div id="memo-read"></div>
       <div id="csvpaste-box" hidden>
         <p class="small">CSV の文（「CSV をコピー」で取り出したもの）を貼り付けて、表の後ろに足すこともできます。</p>
         <textarea id="csvpaste" rows="3" placeholder="ここに CSV の文を貼り付け" aria-label="CSV の文を貼り付ける欄"></textarea>
@@ -212,8 +375,11 @@ details.defs ul { margin: 4px 0; padding-left: 18px; font-size: 12.5px; }
   </div>
   <div class="col-out">
     <section class="card res" id="result">
-      <div id="partners"></div>
-      <div id="draft-area"></div>
+      <details id="result-d" open>
+        <summary>例の結果を見る</summary>
+        <div id="partners"></div>
+        <div id="draft-area"></div>
+      </details>
     </section>
   </div>
 </main>
@@ -221,7 +387,8 @@ details.defs ul { margin: 4px 0; padding-left: 18px; font-size: 12.5px; }
 
 <script>
 "use strict";
-/* 通信はしません（外部へ送る API も、外部の script も使いません）。入れた記録はこのページの中だけで計算します。
+/* このページ自体は通信をしません（外部へ送る API も、外部の script も、ここには書きません）。入れた記録はこのページの中だけで計算します。
+   例外は説明文の自動作成だけです。サーバー（http）で開いたときに限り、末尾の読み込みが ai_explain.js を足します。ファイルで開いたとき・単独の版では何も起きません（SPEC §53）。
    計算は src/shipcompare/waiting.py と同じ数え方です。同じ試験表（tests/data/waiting_vectors.json）を ?selftest=1 で通します。 */
 /*__WAITING_CALC__*/
 const TARIFF = /*__TARIFF__*/null;
@@ -244,6 +411,11 @@ const COLS = [
   { k: 'side_work', t: '附帯業務の内容', w: 104 }, { k: 'side_min', t: '附帯業務の分', ph: '20', w: 56 },
   { k: 'post_wait', t: '荷役のあとの待ちを荷主等の都合として数える', sel: ['', 'はい'], w: 120 },
 ];
+// 言葉の説明（書面の初出で使う）
+const TERMS = [
+  ['荷主等の都合', '荷主や荷受人の責任で車が待たされたこと（荷主側の準備が間に合わない、受付が始まらない、など）です。渋滞や自社の遅れによる待ちは含みません。'],
+  ['附帯業務', '荷物を運ぶ以外にドライバーがした作業（検品、仕分け、ラベル貼りなど）です。告示では実費として別に収受するとされ、この参考額には入れていません。'],
+];
 const PROTECT = [
   '参考額は告示の表に当てた計算です。請求するか、いくらにするかは運送会社が決めます。法的な判断は弁護士・運輸支局などに確かめてください',
   '入れた記録はこの PC の中だけで計算し、外に送りません',
@@ -259,8 +431,14 @@ const BASIS = [
   'トラック・物流Gメンの情報提供の窓口があります（荷主には元請けを含みます）。',
   '数え方は標準的運賃（2024 年 3 月 22 日告示）の別紙の表と、Q&A 集 Q29（到着時刻から数える。最初の 30 分を差し引く）です。積込料・取卸料の数え方は告示の文言からの読み取りで、Q&A の例で確かめたのは待機時間料だけです。',
 ];
+// 書面に載せる、荷主が照らし合わせるページの URL。http(s) で開いているときだけ分かる。それ以外は書き入れる欄にする
+function crossPageAddress() {
+  try { if (/^https?:$/.test(location.protocol)) return location.origin + location.pathname + '#g=shipper'; } catch (e) { /* 取れないときは書き入れる欄 */ }
+  return '（このページを開いている URL を書き入れてください。末尾に #g=shipper を付けると荷主向けの入口が開きます）';
+}
 const gmenBasis = () => WaitingShared.gmenBasis(S.res ? S.res.by_partner : []);
-const basisHtml = () => `<h2>根拠</h2><ul>${[...BASIS, BASIS_FACTS[0], gmenBasis(), BASIS_FACTS[1]].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+const BASIS_ROWS = ['単価: 標準的運賃（2024 年告示）', '数え始め: 着いた時刻から', '差し引き: 最初の 30 分', '荷主側の荷役: 待機に含める', '出典の全文: docs/guide/画面の文言の補足.md'];
+const basisHtml = () => `<details id="basis-d"><summary>金額の決まり方</summary><ul>${BASIS_ROWS.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><details id="basis-full"><summary>出典の全文</summary><ul>${[...BASIS, BASIS_FACTS[0], gmenBasis(), BASIS_FACTS[1]].map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details></details>`;
 const PROCESS = [
   '次回からの契約の書面に、待機時間料と積込料・取卸料の欄を入れてもらうよう頼みます。過去分を求めるかどうかは、運送会社が決めます。',
   '国交省のリーフレットは、記録を待機時間料などを収受する根拠にできると書いています。',
@@ -278,8 +456,8 @@ const earlyWord = (name) => (fromReception(name) ? '早い時刻の受付' : '�
 const earlyRule = (name) => (fromReception(name) ? EARLY_RULE_RECEPTION : EARLY_RULE);
 const DEFAULT_CLASS = '中型', DEFAULT_METHOD = '手積み';   // 車種・荷役の方法が空欄の行を計算する既定（画面に出して、まとめて選び直せる）
 const FAULT_DEFAULT_DOC = '荷主等の都合の欄が貼り付けの記録に無かったため、この表の行は荷主等の都合の待機として（はい）計算しています。荷主等の都合でない待機が含まれるときは、その行を除いて再計算してください。';
-const ASK_PARTNER_TEXT = '貼り付けた「荷主」（または記録の「相手」）を契約の相手として読みました。荷物を受け取る着荷主は、運送を頼まれた契約の相手と違うことがあります。契約の相手が合っているか表で確かめてください。';
-const DEFAULT_FAULT_NOTE = '荷主等の都合の欄が無いので『はい』として計算しました。違う行は『いいえ』に変えてください';
+const ASK_PARTNER_TEXT = '貼った荷主の名前を、運送を頼んできた会社として読みました。荷物の受け取り先と違うときは表で直してください。';
+const DEFAULT_FAULT_NOTE = '荷主の都合で待ったかの列が無いので、全部「はい」で計算しました。違う行は表で「いいえ」にしてください。';
 const POST_WAIT_NOTE = '「荷役のあとの待ちを荷主等の都合として数える」を はい にした行は、出発 − 荷役終了 も待機の分に足しています。標準運送約款 第 34 条の「到着後、荷送人又は荷受人の責により待機した時間」に当たるかは、契約の相手と確かめてください。';
 
 /* ---------------------------------------------------------------- 自己確認（?selftest=1） */
@@ -300,7 +478,7 @@ function runSelftest() {
     const got = calc(rows, c.year, TARIFF, c.defaults);
     const exp = c.expect;
     const out = { rows: got.rows, by_partner: got.by_partner, hotspots: got.hotspots, by_place_month: got.by_place_month, errors: got.errors };
-    if (c.paste) { out.input_rows = rows; out.defaulted = pf.defaulted; out.notes = pf.notes; out.asks = pf.asks; out.shipper_log = pf.shipper_log; }
+    if (c.paste) { out.input_rows = rows; out.defaulted = pf.defaulted; out.notes = pf.notes; out.asks = pf.asks; out.shipper_log = pf.shipper_log;  if (pf.memo_read) out.memo_read = pf.memo_read; }
     if (!deepEqual(out, exp)) {
       const bad = Object.keys(exp).filter((k) => !deepEqual(out[k], exp[k]));
       fails.push(`${c.name}（${bad.join(', ')}）`);
@@ -335,7 +513,7 @@ const yen = (v) => `${n0(v)} 円`;
 const hm = (m) => (m ? `${Math.floor(m / 60)} 時間 ${m % 60} 分` : '0 分');
 
 const S = { exampleAuto: false, year: 2026, rows: [], res: null, err: '', partner: '', idxMap: [], bad: new Set(), tm: null,
-  defaults: { vehicle_class: DEFAULT_CLASS, method: DEFAULT_METHOD }, askPartner: false, brokenRaw: null, mode: 'carrier', modeAuto: false, carrierText: '', cross: null, crossOn: false, noticeOpen: '' };
+  defaults: { vehicle_class: DEFAULT_CLASS, method: DEFAULT_METHOD }, askPartner: false, brokenRaw: null, memoRead: null, gTouched: false, mode: 'carrier', modeAuto: false, carrierText: '', cross: null, crossOn: false, crossCarrier: '', crossDocAmount: 0, noticeOpen: '' };
 const blankRow = () => Object.fromEntries(COLS.map((c) => [c.k, '']));
 const isBlank = (r) => COLS.every((c) => !String(r[c.k] || '').trim());
 
@@ -385,7 +563,7 @@ function fillDown(key, label) {
 
 function renderTable() {
   if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
-  $('#thead').innerHTML = `<tr><th>#</th>${COLS.map((c) => `<th style="min-width:${c.w}px">${esc(c.t)}</th>`).join('')}<th></th></tr>`;
+  $('#thead').innerHTML = `<tr><th>#</th>${COLS.map((c) => { const tm = TERMS.find(([k]) => c.t.includes(k)); return `<th style="min-width:${c.w}px"${tm ? ` title="${esc(tm[0] + ': ' + tm[1])}"` : ''}>${esc(c.t)}</th>`; }).join('')}<th></th></tr>`;
   $('#tbody').innerHTML = S.rows.map(rowHtml).join('');
   refreshBulk();
 }
@@ -398,10 +576,33 @@ function defaultsHtml(r) {
   const sel = (id, label, opts) => `<label>${label}<select id="${id}" aria-label="${label}"><option value="">選ぶ</option>${opts.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select></label>`;
   return `<div class="note" id="defaults-note">` +
     (nc ? `<div>車種が空欄の ${nc} 行は『${DEFAULT_CLASS}』の単価で計算しています。 ${sel('bulk-class-sel', '空欄の車種をまとめて選ぶ', ['小型', '中型', '大型', 'トレーラー'])}</div>` : '') +
-    (nm ? `<div>運転者が荷役をして荷役の方法が空欄の ${nm} 行は『${DEFAULT_METHOD}』の単価で計算しています。 ${sel('bulk-method-sel', '空欄の荷役の方法をまとめて選ぶ', ['手積み', 'フォークリフト等'])}</div>` : '') +
+    (nm ? `<div>積み降ろしの方法が空欄の ${nm} 行は、${DEFAULT_METHOD}で計算しています。 ${sel('bulk-method-sel', '空欄の荷役の方法をまとめて選ぶ', ['手積み', 'フォークリフト等'])}</div>` : '') +
     '</div>';
 }
-const askHtml = () => (S.askPartner ? `<div class="note" id="ask-partner">${esc(ASK_PARTNER_TEXT)} <button type="button" id="b-ask-ok">契約の相手はこのままで合っている</button></div>` : '');
+// メモの貼り付けで読んだ相手・車番・車種・場所を行ごとに見せ、違うときはその場で直せるようにする（SPEC §46）
+function memoReadHtml() {
+  const m = S.memoRead;
+  if (!m || !m.length) return '';
+  const CLS = ['', '小型', '中型', '大型', 'トレーラー'];
+  const li = m.map((x, k) => {
+    const row = x.i >= 0 && S.rows[x.i] ? S.rows[x.i] : null;
+    const val = (key) => (row ? (row[key] || '') : (x[key] || ''));
+    const cv = val('vehicle_class');
+    const inp = (key, label) => `<label>${label}<input type="text" data-mi="${k}" data-mk="${key}" value="${esc(val(key))}" autocomplete="off" aria-label="${esc(label)}（${k + 1} 行目）"></label>`;
+    return `<li><div class="small">${esc(x.line)}</div>${inp('partner', '相手')}${inp('vehicle_no', '車番')}` +
+      `<label>車種<select data-mi="${k}" data-mk="vehicle_class" aria-label="車種（${k + 1} 行目）">${(CLS.includes(cv) ? CLS : [...CLS, cv]).map((o) => `<option value="${esc(o)}"${o === cv ? ' selected' : ''}>${esc(o) || '空欄（中型で計算）'}</option>`).join('')}</select></label>` +
+      `${inp('place', '場所')}${x.unread.length ? `<div class="small">読めなかった言葉: ${esc(x.unread.join(' '))}</div>` : ''}${x.check.length ? `<div class="chk">確認: ${esc(x.check.join('、'))}</div>` : ''}</li>`;
+  }).join('');
+  return `<details class="fold memo-read" id="memo-read-d" open><summary>読み取った内容（${m.length} 行）。違うときはここで直せます</summary><ul>${li}</ul></details>`;
+}
+function updateNotesSum() {
+  const s = $('#notes-sum'), f = $('#notes-fold');
+  if (!s || !f) return;
+  const n = [...f.querySelectorAll('#paste-note span, #errs > div, #defaults-box > *, #ask-box > *')].filter((e) => e.textContent.trim()).length;
+  s.textContent = n ? `読めなかった所（${n} 件）` : '読めなかった所はありません';
+  if (document.body.classList.contains('g-step') && S.gTouched && n) f.open = true;
+}
+const askHtml = () => (S.askPartner ? `<div class="note" id="ask-partner">${esc(ASK_PARTNER_TEXT)} <button type="button" id="b-ask-ok">この相手のままにする</button></div>` : '');
 // 空欄の車種（荷役の方法）をまとめて埋める。対象は、いま既定で計算している行（空欄のままの行）だけ
 function bulkFillDefault(key, val) {
   if (!val) return;
@@ -426,7 +627,18 @@ function errsHtml() {
   if (S.err) return `<div class="errs">${esc(S.err)}</div>`;
   const r = S.res;
   if (!r) return '';
-  const rowNotes = r.rows.filter((x) => x.notes && x.notes.length).map((x) => x.notes.map((m) => `<div>表の ${(S.idxMap[x.row - 1] ?? x.row - 1) + 1} 行目: ${esc(m)}</div>`).join('')).join('');
+  const carrierOnly = (m) => S.mode === 'shipper' && m.includes('荷役をした人が分からない');   // 運送会社の書面向けの断り（SPEC §46）
+  // 行ごとの注記は、同じ文を 1 つにまとめる。4 行以上ある文は「N 行」と書いた 1 行にして、行の一覧は開いて見る（受付記録を貼ると 50 行の同じ文が並ぶため）
+  const groups = new Map();
+  for (const x of r.rows) {
+    for (const m of (x.notes || []).filter((m) => !carrierOnly(m))) {
+      if (!groups.has(m)) groups.set(m, []);
+      groups.get(m).push((S.idxMap[x.row - 1] ?? x.row - 1) + 1);
+    }
+  }
+  const rowNotes = [...groups].map(([m, ids]) => (ids.length >= 4
+    ? `<details class="note-group"><summary>${esc(m)}（${ids.length} 行）</summary><div class="small">表の ${ids.join('・')} 行目</div></details>`
+    : ids.map((i) => `<div>表の ${i} 行目: ${esc(m)}</div>`).join(''))).join('');
   const notesHtml = rowNotes ? `<div class="note">${rowNotes}</div>` : '';
   if (!r.errors.length) return notesHtml;
   return `<div class="errs"><b>読めなかった行 ${new Set(r.errors.map((e) => e.row)).size} 行（計算から外しています）</b>` +
@@ -468,29 +680,41 @@ const receptionSentence = (p) => `受付の時刻がある ${p.reception_count} 
 // 早着の疑いの回を除いた数字（全体と並べて出す）
 const earlySplit = (p) => { const e = noRecEarly(p); return { n: e.n, waitAll: mainWait(p), waitEx: mainWait(p) - e.wait, amtAll: mainAmt(p), amtEx: mainAmt(p) - e.amt, waitEarly: e.wait, amtEarly: e.amt }; };
 const earlySentence = (p) => { const e = earlySplit(p); return `全体 ${yen(e.amtAll)}（待機 ${hm(e.waitAll)}）。うち${earlyWord(p.partner)} ${e.n} 回（待機 ${hm(e.waitEarly)}、${yen(e.amtEarly)}）を除くと ${yen(e.amtEx)}（待機 ${hm(e.waitEx)}）です。`; };
-const arriveCell = (r) => `${esc(r.arrive)}${r.reception ? `<small>受付 ${esc(r.reception)}</small>` : ''}${r.early_arrival === 'assumed' ? `<small>${r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）' : '早着の疑い（指定の到着時刻なし）'}</small>` : ''}${r.early_arrival === 'designated' ? `<small>指定 ${esc(r.appointed)} より前に着</small>` : ''}`;
-const arriveText = (r) => r.arrive + [r.reception ? `受付 ${r.reception}` : '', r.early_arrival === 'assumed' ? (r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）' : '早着の疑い（指定の到着時刻なし）') : '', r.early_arrival === 'designated' ? `指定 ${r.appointed} より前に着` : ''].filter(Boolean).map((x) => `（${x}）`).join('');
+const arriveCell = (r) => `${esc(r.arrive)}${r.reception ? `<small>受付 ${esc(r.reception)}</small>` : ''}${r.early_arrival === 'assumed' ? `<small>${r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）' : '早く着いた可能性（時刻の指定なし）'}</small>` : ''}${r.early_arrival === 'designated' ? `<small>指定 ${esc(r.appointed)} より前に着</small>` : ''}`;
+const arriveText = (r) => r.arrive + [r.reception ? `受付 ${r.reception}` : '', r.early_arrival === 'assumed' ? (r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）' : '早く着いた可能性（時刻の指定なし）') : '', r.early_arrival === 'designated' ? `指定 ${r.appointed} より前に着` : ''].filter(Boolean).map((x) => `（${x}）`).join('');
 
 function draftHtml(p) {
   const t = TARIFF, rows = partnerRows(p.partner);
   const classes = [...new Set(rows.map((r) => r.vehicle_class))];
   const methods = [...new Set(rows.filter((r) => r.handler === '運転者' && r.method).map((r) => r.method))];
-  const rec = rows.map((r) => `<tr><td>${esc(r.date)}</td><td>${esc(r.vehicle_no)}</td><td>${esc(r.vehicle_class)}</td><td>${esc(r.place)}</td><td>${arriveCell(r)}</td><td>${esc(r.start)}</td><td>${esc(r.end)}</td><td>${esc(r.handler)}</td><td>${r.shipper_fault ? 'はい' : 'いいえ'}</td>` +
-    `<td class="num">${r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min}${r.reception_wait_min !== undefined ? `<small>受付 ${esc(r.reception)} から。到着から数えると ${r.wait_min} 分</small>` : ''}${r.handler === '荷主側' && r.wait_min > 0 && r.end ? '<small>荷主側の荷役を待機に含む</small>' : ''}${r.post_wait_min > 0 ? `<small>荷役のあとの待ち ${r.post_wait_min} 分を含む</small>` : ''}${r.wait_base_min > 0 ? `<small>指定 ${esc(r.appointed)} から</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.reception_amount !== undefined ? r.reception_amount : r.amount)}${r.reception_amount !== undefined ? `<small>到着から数えると ${n0(r.amount)}</small>` : ''}</td></tr>`).join('');
+  // 待機・参考額の欄の細かい注記は、欄に入れると列が細くなって 1 文字ずつ折れるので、表の下に番号つきで並べる
+  const fn = [];
+  const mark = (r, text) => { fn.push(`${r.date}${r.vehicle_no ? ' 車番 ' + r.vehicle_no : ''}: ${text}`); return `<sup class="fn">※${fn.length}</sup>`; };
+  const rec = rows.map((r) => {
+    const waitNotes = [r.reception_wait_min !== undefined ? `受付 ${r.reception} から数えた分。到着から数えると ${r.wait_min} 分` : '', r.handler === '荷主側' && r.wait_min > 0 && r.end ? '荷主側の荷役を待機に含む' : '',
+      r.post_wait_min > 0 ? `荷役のあとの待ち ${r.post_wait_min} 分を含む` : '', r.wait_base_min > 0 ? `指定 ${r.appointed} から数えた分` : ''].filter(Boolean);
+    const amtNote = r.reception_amount !== undefined ? `到着から数えると ${n0(r.amount)}` : '';
+    return `<tr><td>${esc(r.date)}</td><td>${esc(r.vehicle_no)}</td><td>${esc(r.vehicle_class)}</td><td>${esc(r.place)}</td><td>${arriveCell(r)}</td><td>${esc(r.start)}</td><td>${esc(r.end)}</td><td>${esc(r.handler)}</td><td>${r.shipper_fault ? 'はい' : 'いいえ'}</td>` +
+      `<td class="num">${r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min}${waitNotes.length ? mark(r, '待機 ' + waitNotes.join('。')) : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.reception_amount !== undefined ? r.reception_amount : r.amount)}${amtNote ? mark(r, '参考額 ' + amtNote) : ''}</td></tr>`;
+  }).join('');
+  const recNotes = fn.length ? `<ol class="small rec-notes" id="rec-notes">${fn.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : '';
   const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((m) => `<td class="num">${n0(t.handling[m].normal[c])} / ${n0(t.handling[m].over_2h[c])}</td>`).join('')}</tr>`).join('');
   return `<h3>荷待ち・荷役に関する協議のお願い（下書き）</h3>
     <dl class="dl"><dt>相手</dt><dd>${esc(p.partner)} 御中</dd><dt>期間</dt><dd>${esc(p.date_from)} 〜 ${esc(p.date_to)}（${p.count} 回）</dd>
       <dt>差出人</dt><dd>（運送会社の名称・担当者を書き入れてください）</dd></dl>
     <h4>記録の一覧</h4>
-    <div class="rec-w"><table class="rec"><thead><tr><th>日付</th><th>車番</th><th>車種</th><th>場所</th><th>到着</th><th>荷役開始</th><th>荷役終了</th><th>荷役をした人</th><th>荷主等の都合</th><th>待機（分）</th><th>荷役（分）</th><th>附帯業務（記録のみ）</th><th>参考額（円）</th></tr></thead><tbody>${rec}</tbody></table></div>
-    <h4>参考額と計算の根拠</h4>
-    <p>参考額の合計 <b>${yen(mainAmt(p))}</b>（税抜。${hasRec(p) ? '受付の時刻がある回は受付から数えた額です。内訳は下の記録の一覧にあります' : `待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}`}）。待機の合計 ${hm(mainWait(p))}、運転者の荷役の合計 ${hm(p.handling_minutes)}。</p>
+    <div class="rec-w"><table class="rec"><thead><tr><th class="nw">日付</th><th class="nw">車番</th><th class="nw">車種</th><th class="nw">場所</th><th class="nw">到着</th><th class="nw">荷役開始</th><th class="nw">荷役終了</th><th class="nw">荷役をした人</th><th class="nw">荷主等の都合</th><th class="nw">待機（分）</th><th class="nw">荷役（分）</th><th>附帯業務（金額なし）</th><th class="nw">請求の目安（円）</th></tr></thead><tbody>${rec}</tbody></table></div>
+    ${recNotes}
+    <h4>金額と計算のしかた</h4>
+    <p class="main-amt" id="doc-main">参考額の合計 <b class="big">${yen(mainAmt(p))}</b>（税抜。${hasRec(p) ? '受付の時刻がある回は受付から数えた額です。内訳は下の記録の一覧にあります' : `待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}`}）。待機の合計 ${hm(mainWait(p))}、運転者の荷役の合計 ${hm(p.handling_minutes)}。<br><small>相談に使う金額はこの 1 つです。</small></p>
+    ${(hasRec(p) || earlyShown(p) || hasEarly(p)) ? `<details class="doc-alt" id="doc-alt"><summary>ほかの数え方の額（参考）</summary>
     ${hasRec(p) ? `<p id="doc-reception"><b>受付から数えた数字:</b> ${esc(receptionSentence(p))}</p>` : ''}
     ${earlyShown(p) ? `<p id="doc-early"><b>${earlyWord(p.partner)}を分けた数字:</b> ${esc(earlySentence(p))}</p>` : ''}
-    ${hasEarly(p) ? `<p class="small">${esc(earlyRule(p.partner))}</p>` : ''}
+    ${hasEarly(p) ? `<p class="small">${esc(earlyRule(p.partner))}</p>` : ''}</details>` : ''}
     ${docNotes(p).map((x) => `<p class="small doc-note"><b>${esc(x)}</b></p>`).join('')}
     <p class="small">${esc(calcNote(t))}</p>
     <p class="small">${esc(BASIS_QUOTE)}</p>
+    <p class="small doc-terms" id="doc-terms"><b>言葉の意味:</b> ${TERMS.map(([k, v]) => `${esc(k)}…${esc(v)}`).join(' ')}</p>
     ${rows.some((r) => r.post_wait) ? `<p class="small">${esc(POST_WAIT_NOTE)}</p>` : ''}
     <div class="rec-w"><table class="rec"><thead><tr><th>使った車種の単価（税抜・円）</th><th>待機時間料<small>${t.unit_minutes} 分までごと</small></th><th>2 時間超</th>${methods.map((m) => `<th>${esc(m)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
     ${consultLines(p.partner).length ? `<h4>${CONSULT_TITLE}</h4>
@@ -502,10 +726,46 @@ function draftHtml(p) {
     <p>${esc(MONTH_CLOSE)}</p>` : ''}
     <h4>次の契約の書面（運送引受書）に入れる欄の案</h4>
     <ul class="list">${clauseList(t).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-    <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(mainAmt(p))} 円（税抜）です。${hasRec(p) ? `受付の時刻がある回は受付から数えています（到着から数えると ${n0(p.amount)} 円）。` : ''}${earlyShown(p) ? `${earlyWord(p.partner)}の ${noRecEarly(p).n} 回を除くと ${n0(mainAmt(p) - noRecEarly(p).amt)} 円（税抜）です。` : ''}</p>
-    <p class="small" id="doc-cross-note">この書面を紙や PDF で受け取った荷主の方は、上の記録の一覧の「日付・車番・到着・荷役開始」の列を、このページの「荷主として使う」の照合の欄に貼ると、自社の受付記録と照らし合わせられます。運送会社に「CSV をコピー」した表をもらう方法もあります。</p>
+    <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(mainAmt(p))} 円（税抜）です。${hasRec(p) ? '受付の時刻がある回は受付から数えています。' : ''}</p>
+    <p class="small" id="doc-cross-note">この書面を紙や PDF で受け取った荷主の方は、上の記録の一覧の「日付・車番・到着・荷役開始」の列を、照らし合わせのページの「荷主として使う」の照合の欄に貼ると、自社の受付記録と照らし合わせられます。運送会社に「CSV をコピー」した表をもらう方法もあります。<br><b>照らし合わせのページ:</b> <span id="doc-url">${esc(crossPageAddress())}</span></p>
     <p class="printnote">${esc(PROTECT[0])}</p>`;
 }
+
+// ---- 説明文の自動作成（SPEC §53）。ページはサーバーに送る事実を組み立てるだけで、通信は ai_explain.js が行う
+const AI_OFF_LINE = '説明文の自動作成はサーバーで開いたときだけ使えます（今は型どおりの書面です）';
+function aiFacts(p) {
+  const t = TARIFF, rows = partnerRows(p.partner);
+  return {
+    partner: p.partner, period: `${p.date_from} 〜 ${p.date_to}`, count: p.count,
+    rows: rows.map((r, i) => ({ row: i + 1, date: r.date, place: r.place, arrive: r.arrive, reception: r.reception || '', appointed: r.appointed || '', start: r.start, end: r.end,
+      handler: r.handler, shipper_fault: r.shipper_fault ? 'はい' : 'いいえ', wait_min: r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min, handling_min: r.handling_min,
+      amount: r.reception_amount !== undefined ? r.reception_amount : r.amount })),
+    totals: { amount_yen_ex_tax: mainAmt(p), wait_total: hm(mainWait(p)), handling_total: hm(p.handling_minutes), over_1h_count: p.over_1h_count, over_2h_count: p.over_2h_count,
+      from_reception: hasRec(p) },
+    basis: { tariff_applies_from: t.applies_from, unit_minutes: t.unit_minutes, free_minutes: t.free_minutes, calc_note: calcNote(t), quote: BASIS_QUOTE },
+    consult: consultLines(p.partner).slice(0, 8),
+  };
+}
+const PRIV_AI = '記録は外に送りません（Claude で説明文を作るときだけ、確認のうえ計算結果を送ります）';
+function mountAi(p) {
+  if (!window.AiExplain) return;
+  window.AiExplain.mount($('#ai-box'), () => aiFacts(p));
+  // サーバー（http）で開き、説明文の自動作成が使えるときだけ、上の説明の 2 文目を変える（ファイルで開いた版・Artifact の版は元のまま）
+  const box = $('#ai-box'), priv = $('#hdr-priv');
+  if (!box || !priv) return;
+  const sync = () => { if (box.querySelector('button')) priv.textContent = `ファイルを開くだけで使えます。${PRIV_AI}。`.replace('。。', '。'); };
+  sync();
+  new MutationObserver(sync).observe(box, { childList: true, subtree: true });
+}
+/*LOCAL-ONLY-START*/
+function loadAi() {
+  if (ARTIFACT || !/^https?:$/.test(location.protocol) || window.AiExplain) return;
+  const s = document.createElement('script');
+  s.src = 'ai_explain.js';
+  s.onload = () => { if (S.res && S.res.by_partner.length && S.mode !== 'shipper') renderResult(); };
+  document.head.appendChild(s);
+}
+/*LOCAL-ONLY-END*/
 
 function draftText(p) {
   const t = TARIFF, rows = partnerRows(p.partner);
@@ -521,7 +781,7 @@ function draftText(p) {
   });
   L.push('', '【参考額と計算の根拠】',
     `参考額の合計 ${yen(mainAmt(p))}（税抜。${hasRec(p) ? '受付の時刻がある回は受付から数えた額です。内訳は下の記録の一覧にあります' : `待機時間料 ${yen(p.wait_fee)}、積込料・取卸料 ${yen(p.handling_fee)}`}）。待機の合計 ${hm(mainWait(p))}、運転者の荷役の合計 ${hm(p.handling_minutes)}。`,
-    calcNote(t), BASIS_QUOTE);
+    calcNote(t), BASIS_QUOTE, `言葉の意味: ${TERMS.map(([k, v]) => `${k}…${v}`).join(' ')}`);
   if (hasRec(p)) L.push(`受付から数えた数字: ${receptionSentence(p)}`);
   if (earlyShown(p)) L.push(`${earlyWord(p.partner)}を分けた数字: ${earlySentence(p)}`);
   if (hasEarly(p)) L.push(earlyRule(p.partner));
@@ -536,8 +796,8 @@ function draftText(p) {
       ...monthTable(p.partner).map((m) => [m.place, monthLabel(m.month), m.count, m.avg_minutes, m.over_1h_count].join('	')), MONTH_CLOSE);
   }
   L.push('', '【次の契約の書面（運送引受書）に入れる欄の案】', ...clauseList(t).map((x) => `・${x}`), '',
-    `荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(mainAmt(p))} 円（税抜）です。${hasRec(p) ? `受付の時刻がある回は受付から数えています（到着から数えると ${n0(p.amount)} 円）。` : ''}${earlyShown(p) ? `${earlyWord(p.partner)}の ${noRecEarly(p).n} 回を除くと ${n0(mainAmt(p) - noRecEarly(p).amt)} 円（税抜）です。` : ''}`, '',
-    PROTECT[0], '', '【根拠】', ...BASIS.map((x) => `・${x}`));
+    `荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(mainAmt(p))} 円（税抜）です。${hasRec(p) ? '受付の時刻がある回は受付から数えています。' : ''}`, '',
+    `照らし合わせのページ: ${crossPageAddress()}`, PROTECT[0], '', '【根拠】', ...BASIS.map((x) => `・${x}`));
   return L.join('\n');
 }
 
@@ -545,10 +805,28 @@ function draftText(p) {
 const docBar = () => (ARTIFACT
   ? '<div class="bar"><button type="button" class="primary" id="b-copydoc">書面の文をコピー</button><button type="button" id="b-copycsv">CSV をコピー</button><span class="small" id="copymsg" role="status"></span></div>' +
     '<div id="copybox" hidden><p class="small">自動でコピーできませんでした。下の枠の文を選んで、Ctrl+C（スマートフォンは長押し）でコピーしてください。</p><textarea id="copyta" rows="8" readonly aria-label="コピーする文"></textarea></div>'
-  : '<div class="bar"><button type="button" class="primary" id="b-print">印刷して残す</button><button type="button" id="b-csv">計算結果を CSV で書き出す</button></div>');
+  : '<div class="bar"><button type="button" class="primary" id="b-print">書面を印刷する</button><button type="button" id="b-csv">この相手の記録を CSV で保存</button><span class="small" id="csv-scope"></span></div>');
 
-const processHtml = () => `<aside id="process" aria-label="協議の進め方"><b>協議の進め方</b><ul>${PROCESS.map((x) => `<li>${x.includes('https://') ? esc(x.split('https://')[0]) + `<a href="https://${esc(x.split('https://')[1])}" target="_blank" rel="noopener">https://${esc(x.split('https://')[1])}</a>` : esc(x)}</li>`).join('')}</ul></aside>`;
+const PROCESS_ROWS = ['まず: 次の契約に料金の欄を入れる', '過去の分: 請求するかは自社で決める', '困ったとき: 物流Gメンの窓口 https://truck-logistics-gmen.mlit.go.jp/s/', '早く着いた回: 指定の時刻から数える'];
+const processHtml = () => `<aside id="process" aria-label="相談の進め方"><details><summary>相談の進め方</summary><ul>${PROCESS_ROWS.map((x) => `<li>${x.includes('https://') ? esc(x.split('https://')[0]) + `<a href="https://${esc(x.split('https://')[1])}" target="_blank" rel="noopener">https://${esc(x.split('https://')[1])}</a>` : esc(x)}</li>`).join('')}</ul><details id="process-full"><summary>くわしい説明（文書）</summary><ul>${PROCESS.map((x) => `<li>${x.includes('https://') ? esc(x.split('https://')[0]) + `<a href="https://${esc(x.split('https://')[1])}" target="_blank" rel="noopener">https://${esc(x.split('https://')[1])}</a>` : esc(x)}</li>`).join('')}</ul></details></details></aside>`;
 
+// 数字のタイルと、到着の時間帯ごとの待ち時間の帯（選んだ相手の記録から。手元で数えるだけ）
+function statsHtml(p) {
+  const w = mainWait(p), h = Math.floor(w / 60), m = w % 60;
+  return `<div class="stat-grid" id="stats"><div class="stat is-empty hero"><span class="stat-l">待ち時間の合計</span><span class="stat-n">${h}<span class="stat-u">時間</span>${m}<span class="stat-u">分</span></span><span class="stat-d">${esc(p.partner)}</span></div>` +
+    `<div class="stat"><span class="stat-l">参考額（税抜）</span><span class="stat-n">${n0(mainAmt(p))}<span class="stat-u">円</span></span><span class="stat-d">${hasRec(p) ? '受付から数えた額' : '到着から数えた額'}</span></div>` +
+    `<div class="stat"><span class="stat-l">記録の件数</span><span class="stat-n">${p.count}<span class="stat-u">件</span></span><span class="stat-d">1 時間以上の待ち ${p.over_1h_count} 件</span></div></div>`;
+}
+function heatHtml(p) {
+  const rows = partnerRows(p.partner), by = {};
+  rows.forEach((r) => { const m = /^(\d{1,2}):/.exec(r.arrive || ''); if (!m) return; const hr = Number(m[1]); const v = r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min; by[hr] = (by[hr] || 0) + (Number(v) || 0); });
+  const hrs = Object.keys(by).map(Number);
+  if (!hrs.length) return '';
+  const max = Math.max(...Object.values(by), 1);
+  const cells = [], axis = [];
+  for (let hr = 0; hr <= 23; hr++) { const v = by[hr] || 0; cells.push(`<span class="${v ? '' : 'z'}" style="--v:${(0.3 + 0.7 * v / max).toFixed(2)};--h:${v ? Math.max(8, Math.round(v / max * 100)) : 0}%" title="${hr} 時台に着いた回の待ち ${v} 分"></span>`); axis.push(`<span>${hr % 3 === 0 ? hr : ''}</span>`); }
+  return `<div class="heat-card" id="heat"><h3>何時に着いた回で待っているか<span class="small">　色が濃く高いほど待ち時間の合計が長い</span></h3><div class="heat" role="img" aria-label="到着の時間帯ごとの待ち時間の合計">${cells.join('')}</div><div class="heat-ax" aria-hidden="true">${axis.join('')}</div><div class="heat-legend" aria-hidden="true"><span>到着の時刻（時）</span><span class="lg"><span>少ない</span><i class="heat-scale"></i><span>多い（最大 ${max} 分）</span></span></div></div>`;
+}
 const hotspotsHtml = (r) => {
   const total = r.rows.reduce((a, x) => a + x.wait_min, 0);
   const top = r.hotspots.filter((h) => h.wait_minutes > 0).slice(0, 5);
@@ -556,11 +834,11 @@ const hotspotsHtml = (r) => {
   const pm = r.by_place_month.map((m) => `<tr><td class="c1">${esc(m.place)}</td><td class="c1">${esc(monthLabel(m.month))}</td><td class="num" data-l="回数">${m.count}</td><td class="num" data-l="平均（分）">${m.avg_minutes}</td><td class="num" data-l="1 時間以上">${m.over_1h_count}</td></tr>`).join('');
   // SPEC §29.2: 荷主等の都合が はい の行で report_wait_min が 30 分未満の行が 0 件で、はい の行が 5 行以上のとき、強めの表示
   const trunc = truncWarn(r.rows);
-  return `<h2>どこで・いつ待っているか<span class="small">　荷待ちの合計が大きい上位 5 組。到着の時間帯は実際の到着で分けています</span></h2>
-    <p>この期間の荷主等の都合の荷待ちは計 ${hm(total)}です。</p>
+  return `<h2>待ち時間の長い場所と時間帯<span class="small">　上位 5</span></h2>
+    <p>この期間に荷主の都合で待った時間は、合計 ${hm(total)}です。</p>
     ${trunc ? `<p class="errs" id="trunc-warn"><b>${esc(TRUNC_WARN)}</b></p>` : ''}
     <p class="small" id="trunc-line">${esc(TRUNC_LINE)}</p>
-    ${top.length ? `<div class="scroll-x"><table class="par" id="hotspots"><thead><tr><th>契約の相手</th><th>場所</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>参考額（円）</th><th>注記</th></tr></thead><tbody>${tb}</tbody></table></div>` : '<p class="empty">荷待ちのある組はありません。</p>'}
+    ${top.length ? `<div class="scroll-x"><table class="par" id="hotspots"><thead><tr><th>契約の相手</th><th>場所</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>請求の目安（円）</th><th>メモ</th></tr></thead><tbody>${tb}</tbody></table></div>` : '<p class="empty">荷待ちのある組はありません。</p>'}
     <h3>場所ごと・月ごとの平均の荷待ち（分）</h3>
     <p>${esc(PLACE_MONTH_LEAD)}</p>
     <p class="small" id="pm-def">${esc(PM_DEF)}</p>
@@ -570,29 +848,37 @@ const hotspotsHtml = (r) => {
 function renderResult() {
   $('#basis').innerHTML = basisHtml();
   $('#basis').hidden = S.mode === 'shipper';
-  if (S.mode === 'shipper') { renderShipper(); return; }
+  if (S.mode === 'shipper') { renderShipper(); document.body.classList.toggle('no-rows', !(S.res && S.res.rows.length)); return; }
   const r = S.res;
   if (!r || !r.by_partner.length) {
-    $('#partners').innerHTML = '<h2>契約の相手ごと</h2><p class="empty">まだ計算できる記録がありません。左の表に記録を入れるか、「例を入れる」を押してください。</p>';
-    $('#draft-area').innerHTML = `<h2>協議の書面の下書き</h2><div class="wrap"><div id="wait-doc"><p class="empty">記録を入れると、ここに下書きが出ます。</p></div>${processHtml()}</div>`;
+    $('#partners').innerHTML = '<h2>契約の相手ごと</h2><div class="empty-state"><img class="ill ill-128" src="@@ILL:clock_wait:128@@" alt="" width="128" height="128"><p class="empty">まだ記録がありません。記録を貼るか、「例を入れる」を押してください。</p></div>';
+    $('#draft-area').innerHTML = `<h2>荷主に出す相談の書面（下書き）</h2><div class="wrap"><div id="wait-doc"><div class="empty-state"><img class="ill ill-128" src="@@ILL:document:128@@" alt="" width="128" height="128"><p class="empty">記録を入れると、ここに下書きが出ます。</p></div></div><div class="side-col">${processHtml()}</div></div>`;
+    document.body.classList.add('no-rows');
     return;
   }
   const sel = r.by_partner.some((p) => p.partner === S.partner) ? S.partner : r.by_partner[0].partner;
   S.partner = sel;
   const p = r.by_partner.find((x) => x.partner === sel);
   const tb = r.by_partner.map((x) => `<tr class="${x.partner === sel ? 'on' : ''}" data-pick="${esc(x.partner)}"><td class="c1">${esc(x.partner)}</td><td class="num" data-l="回数">${x.count}</td><td class="num" data-l="待機の合計">${hm(x.wait_minutes)}</td>` +
-    `<td class="num" data-l="運転者の荷役の合計">${hm(x.handling_minutes)}</td><td class="num" data-l="参考額"><b>${n0(mainAmt(x))}</b>${hasRec(x) ? `<small class="small">　受付から数えた額（到着から ${n0(x.amount)}）</small>` : ''}${earlyShown(x) ? `<small class="small">　${earlyWord(x.partner)} ${noRecEarly(x).n} 回を除くと ${n0(mainAmt(x) - noRecEarly(x).amt)}</small>` : ''}</td><td class="num" data-l="1 時間以上">${x.over_1h_count}</td><td class="num" data-l="2 時間以上">${x.over_2h_count}</td></tr>`).join('');
-  $('#partners').innerHTML = `<h2>契約の相手ごと<span class="small">　参考額は税抜・円。行を押すと相手を切り替えます</span></h2>
-    <div class="scroll-x"><table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th>運転者の荷役の合計</th><th>参考額</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">2 時間以上の荷待ち・荷役</th></tr></thead><tbody>${tb}</tbody></table></div>
+    `<td class="num" data-l="運転者の荷役の合計">${hm(x.handling_minutes)}</td><td class="num" data-l="参考額"><b>${n0(mainAmt(x))}</b>${hasRec(x) ? `<small class="small">　受付の時刻から数えた額（着いた時刻からだと ${n0(x.amount)} 円）</small>` : ''}${earlyShown(x) ? `<small class="small">　${earlyWord(x.partner)} ${noRecEarly(x).n} 回を除くと ${n0(mainAmt(x) - noRecEarly(x).amt)} 円</small>` : ''}</td><td class="num" data-l="1 時間以上">${x.over_1h_count}</td><td class="num" data-l="2 時間以上">${x.over_2h_count}</td></tr>`).join('');
+  $('#partners').innerHTML = `${statsHtml(p)}${heatHtml(p)}<h2>依頼元ごと<span class="small" title="運送を頼んできた会社">（?）</span><span class="small">　金額は税抜。行を押すと書面の相手が変わります</span></h2>
+    <div class="scroll-x"><table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th title="積み降ろしの作業">運転者の荷役の合計</th><th>請求の目安</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">待ちと荷役で 2 時間以上</th></tr></thead><tbody>${tb}</tbody></table></div>
     <details class="defs" id="head-defs"><summary>表の見出しの意味</summary><ul>
       <li><b>待機の合計</b>: 荷主側の荷役の時間を含む待機の分です。</li>
       <li><b>1 時間以上の荷待ち</b>: 待機（荷主側の荷役を含む）が 1 時間以上だった回数です。</li>
       <li><b>2 時間以上の荷待ち・荷役</b>: 待機と運転者の荷役の合計が 2 時間以上だった回数です。</li></ul></details>
     ${hotspotsHtml(r)}`;
-  $('#draft-area').innerHTML = `<h2>協議の書面の下書き</h2>
-    ${S.askPartner ? `<div class="errs ask" id="ask-doc"><b>確認待ち:</b> ${esc(ASK_PARTNER_TEXT)} 左の『契約の相手はこのままで合っている』を押すと、この表示は消えます。</div>` : ''}
+  $('#draft-area').innerHTML = `<h2>荷主に出す相談の書面（下書き）<img class="ill ill-64" src="@@ILL:document:128@@" alt="" width="64" height="64"></h2>
+    ${S.askPartner ? `<div class="errs ask" id="ask-doc"><b>相手の会社名を確かめてください。</b> 合っていれば「この相手のままにする」を押します。</div>` : ''}
     ${docBar()}
-    <div class="wrap"><article id="wait-doc">${draftHtml(p)}</article>${processHtml()}</div>`;
+    <div class="wrap"><article id="wait-doc">${draftHtml(p)}</article><div class="side-col">${processHtml()}${ARTIFACT ? '' : `<div id="ai-box" class="ai-box"><p class="small ai-off">${esc(AI_OFF_LINE)}</p></div>`}</div></div>`;
+  mountAi(p);
+  const cs = $('#csv-scope');
+  const cm = r.by_partner.length > 1 ? `CSV は「${sel}」の行だけです` : '';
+  if (cs) cs.textContent = cm;
+  const cb = $('#b-copycsv');
+  if (cb && cm) cb.title = cm;
+  document.body.classList.toggle('no-rows', false);
 }
 
 /* ---------------------------------------------------------------- 荷主として使う（SPEC §42）。運送会社あての書面は出さず、受付の分析・荷主がすること・運送会社の書面との照合を出す */
@@ -602,12 +888,12 @@ function setMode(mode, rerender) {
   S.mode = mode;
   if (!S.noStore) { try { localStorage.setItem(MODE_KEY, mode); } catch (e) { /* 使えなくても、このページを開いている間は切り替わる */ } }
   const b = $('#b-mode');
-  if (b) { b.textContent = mode === 'shipper' ? '運送会社として使う（書面を作る）' : '荷主として使う'; b.setAttribute('aria-pressed', mode === 'shipper' ? 'true' : 'false'); }
+  if (b) { b.textContent = mode === 'shipper' ? '運送会社の画面に戻す' : '荷主の画面にする'; b.setAttribute('aria-pressed', mode === 'shipper' ? 'true' : 'false'); }
   const n = $('#mode-note');
   if (n) {
     n.hidden = mode !== 'shipper';
     n.textContent = mode === 'shipper'
-      ? (S.modeAuto ? '貼り付けた内容は、荷主の自社の受付記録（受付・呼出・作業開始の列）として読みました。運送会社あての請求の書面は出さず、受付の分析を出しています。' : '荷主として使っています。運送会社あての請求の書面は出さず、受付の分析を出します。')
+      ? (S.modeAuto ? '受付簿として読みました。荷主の画面にしています。' : '荷主の画面にしています。')
       : '';
   }
   document.body.classList.toggle('shipper-mode', mode === 'shipper');
@@ -632,10 +918,10 @@ function shipperHtml(sum, r) {
     `<td class="num">${p.reccall_avg === null ? '—' : `${p.reccall_avg} 分`}</td>` +
     `<td class="num">${p.call_count ? `平均 ${p.call_avg} 分 / 最長 ${p.call_max} 分 / 15 分超 ${p.call_over15} 件` : '—'}</td></tr>`).join('');
   const pm = r.by_place_month.map((m) => `<tr><td class="c1">${esc(m.place)}</td><td class="c1">${esc(monthLabel(m.month))}</td><td class="num" data-l="回数">${m.count}</td><td class="num" data-l="平均（分）">${m.avg_minutes}</td><td class="num" data-l="1 時間以上">${m.over_1h_count}</td></tr>`).join('');
-  return `<h2>受付の分析（荷主として使う）<span class="small">　運送会社あての請求の書面は出しません</span></h2>
-    <p id="shipper-sum">記録 ${sum.n} 件のうち、受付が 05:00〜07:59 の件は ${sum.early_count} 件（${sum.early_share}%）です。表の「到着」の列を受付の時刻として数えています。</p>
+  return `<h2>受付の時刻と待ち時間</h2>
+    <p id="shipper-sum">${sum.n} 件のうち、朝 8 時前の受付は ${sum.early_count} 件（${sum.early_share}%）です。</p>
     <ul class="list">${noCallNote}</ul>
-    <h3>施設 × 時間帯の集中</h3>
+    <h3>施設と時間帯ごとの受付の件数</h3>
     <p class="small">受付の時刻の時間帯ごとの件数と、受付から作業開始までの平均の分です。太字は、その施設でいちばん件数の多い時間帯です。</p>
     <div class="scroll-x"><table class="par" id="shipper-hours"><thead><tr><th>施設</th>${hdr}</tr></thead><tbody>${body}</tbody></table></div>
     <h3>施設ごとの早い受付と待ち</h3>
@@ -652,14 +938,55 @@ function noticeText() {
 }
 function shipperActionsHtml(sum) {
   const acts = WaitingShared.shipperActions(sum);
-  return `<h2>荷主がすること<span class="small">　記録の数字から作った提案です。実行するかは荷主が決めます</span></h2>
+  return `<h2>荷主のほうでできること<span class="small">　記録の数字から出した案です</span></h2>
     <ol class="list" id="shipper-actions">${acts.map((a) => `<li><b>${esc(a.title)}</b>: ${esc(a.body)}</li>`).join('')}
-      <li><b>早着の扱いを運送会社に知らせる</b>: 下の雛形の（　）を書き入れて、運送会社に送ります。</li></ol>
-    <label class="small">受付開始の時刻（雛形に入れます）<input type="text" id="notice-open" value="${esc(S.noticeOpen || '')}" placeholder="例 8:00" autocomplete="off" aria-label="受付開始の時刻"></label>
+      <li><b>早く着いた車の扱いを知らせる</b>: 下の文の（　）を埋めて、運送会社に送ります。</li></ol>
+    <label class="small">受付を始める時刻（下の文に入ります）<input type="text" id="notice-open" value="${esc(S.noticeOpen || '')}" placeholder="例 8:00" autocomplete="off" aria-label="受付開始の時刻"></label>
     <textarea id="notice-ta" rows="9" readonly aria-label="早着の扱いの通知文の雛形">${esc(noticeText())}</textarea>
-    <div class="bar"><button type="button" id="b-copynotice">通知文の雛形をコピー</button><span class="small" id="notice-msg" role="status"></span></div>`;
+    <div class="bar"><button type="button" id="b-copynotice">お知らせの文をコピー</button><span class="small" id="notice-msg" role="status"></span></div>`;
 }
 
+// 参考額の並べ方。書面の額（運送会社 1 社分）と、自社の受付記録の額は、同じ運送会社の行どうしで並べる。どちらの範囲の額かを書く（SPEC §48）
+function crossAmountHtml(c) {
+  const own = c.carrier_filter
+    ? `自社の受付記録の${esc(c.carrier_filter)}の行だけ（${c.shipper_n} 件${c.carrier_auto ? '。書面の車番から決めました' : ''}。受付の時刻から数えた待機。車種は上の既定の単価）`
+    : (c.carriers.length > 1 ? `自社の受付記録の全部の運送会社（${c.carriers.length} 社、${c.shipper_n} 件。受付の時刻から数えた待機。車種は上の既定の単価）` : `自社の受付記録（${c.shipper_n} 件。受付の時刻から数えた待機。車種は上の既定の単価）`);
+  const docLabel = c.doc_amount !== null ? `運送会社の書面（1 社分、${c.doc_n} 行）に書かれた額は <b>${yen(c.doc_amount)}</b>（${c.doc_manual ? '手で入れた額' : '書面の参考額の列の合計'}）` : `運送会社の書面（1 社分、${c.doc_n} 行）の時刻から数えた額は ${yen(c.carrier_amount)}（書面に書かれた額は読めなかったので、上の欄に入れると並べて見られます）`;
+  const lead = c.doc_amount !== null ? '参考額の合計' : '参考額の合計の目安';
+  if (c.carrier_ambiguous) return `${lead}: ${docLabel}。自社の受付記録には運送会社が ${c.carriers.length} 社あり、書面の車番からどの会社の書面か決められなかったので、自社側の額は並べません。上の「自社の受付記録で照らす運送会社」で選ぶと、同じ会社どうしの額を並べます。`;
+  const rowsOf = (n, fee) => `${n} 行（待機時間料 ${yen(fee)}）`;
+  const cmpLine = c.pair_n
+    ? `<br><b>同じ行どうしの比較</b>（組になった ${c.pair_n} 組。書面 ${c.pair_n} 行と自社 ${c.pair_n} 件。待機時間料だけ）: 書面の時刻から数えた額 <b>${yen(c.pair_carrier_fee)}</b>、自社の受付の時刻から数えた額 <b>${yen(c.pair_shipper_fee)}</b>、差 ${yen(Math.abs(c.pair_carrier_fee - c.pair_shipper_fee))}（${c.pair_carrier_fee > c.pair_shipper_fee ? '書面のほうが多い' : c.pair_carrier_fee < c.pair_shipper_fee ? '書面のほうが少ない' : '差なし'}）。`
+    : '<br><b>同じ行どうしの比較</b>: 組になった行が無いので、額は並べません。';
+  const rest = c.unpaired_carrier.length || c.unpaired_shipper.length
+    ? `<br><b>組にならなかった行</b>（上の比較には入れていません）: 書面 ${rowsOf(c.unpaired_carrier.length, c.unpaired_carrier_fee)}、自社 ${rowsOf(c.unpaired_shipper.length, c.unpaired_shipper_fee)}。` : '';
+  return `${lead}: ${docLabel}。この額には、荷役の分の積込料・取卸料が入っていることがあります。自社の受付記録は受付から作業開始までの待機だけなので、この額と自社の額を直接並べて差とは読まないでください。${cmpLine}${rest}<br><span class="small">自社の側は、${own}。${c.carrier_filter || c.carriers.length <= 1 ? '' : '範囲が違う額どうしなので、差はそのまま食い違いにはなりません。'}</span>`;
+}
+// 書面の車番（下 4 桁）に当たる自社の受付記録の行が最も多い運送会社を、その書面の運送会社とする。同数や 0 件のときは決めない
+const near30 = (a, b) => { const f = (t) => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; }; const x = f(a), y = f(b); if (x === null || y === null) return false; const d = Math.abs(x - y); return Math.min(d, 1440 - d) <= 30; };
+function inferCarrier(docRows, ownRows) {
+  const keys = new Set(docRows.map((x) => WaitingShared.vehicleKey(x.vehicle_no)).filter(Boolean));
+  const hit = new Map();
+  for (const x of ownRows) {
+    if (!x.partner) continue;
+    let k = '';
+    if (keys.size) {
+      if (!x.vehicle_no) continue;
+      k = WaitingShared.vehicleKey(x.vehicle_no);
+      if (!keys.has(k)) continue;
+    } else {
+      // 書面に車番が無いときは、同じ日付・場所・到着の時刻（±30 分）の行がある運送会社を当てる
+      const d = docRows.find((c) => c.date === x.date && c.place && x.place && String(x.place).replace(/\s/g, '').includes(String(c.place).replace(/\s/g, '')) && near30(c.arrive, x.arrive));
+      if (!d) continue;
+      k = `${x.date}|${x.place}|${x.arrive}`;
+    }
+    if (!hit.has(x.partner)) hit.set(x.partner, new Set());
+    hit.get(x.partner).add(k);
+  }
+  const ranked = [...hit].map(([c, ks]) => [c, ks.size]).sort((a, b) => b[1] - a[1]);
+  return ranked.length && (ranked.length === 1 || ranked[0][1] > ranked[1][1]) ? ranked[0][0] : '';
+}
+const KEY_LABEL = { vehicle: '車番', place: '場所と到着の時刻', time: '到着の時刻' };
 const diffCell = (d, lim) => `<td class="num">${Math.abs(d) > lim ? `<b>${signed(d)}</b>` : signed(d)}</td>`;
 function crossResultHtml() {
   if (!S.cross) return '';
@@ -667,23 +994,74 @@ function crossResultHtml() {
   if (c.error) return `<div class="errs">${esc(c.error)}</div>`;
   const lim = c.limit;
   const miss = (arr, label) => (arr.length ? `<h3>${label}（${arr.length} 件）</h3><div class="scroll-x"><table class="par"><thead><tr><th>日付</th><th>車番</th><th>場所</th><th>到着</th><th>荷役開始</th></tr></thead><tbody>${arr.map((x) => `<tr><td>${esc(x.date)}</td><td>${esc(x.vehicle_no)}</td><td>${esc(x.place)}</td><td>${esc(x.arrive)}</td><td>${esc(x.start)}</td></tr>`).join('')}</tbody></table></div>` : '');
-  const noVeh = c.unmatchable_carrier.length + c.unmatchable_shipper.length;
   return `<div id="cross-result">
-    <p><b>照らし合わせた結果:</b> 日付と車番が同じ組 ${c.pairs.length} 組のうち、時刻の差が ${lim} 分以内の組 ${c.same} 組、${lim} 分を超える組 ${c.differ.length} 組。運送会社の書面にだけある行 ${c.only_carrier.length} 件、自社の受付記録にだけある行 ${c.only_shipper.length} 件。</p>
-    <p id="cross-amount">参考額の合計の目安: 運送会社の書面は ${yen(c.carrier_amount)}、自社の受付記録（受付の時刻から数えた待機。車種は上の既定の単価）は ${yen(c.shipper_amount)}です。行の範囲と車種の単価が違うときは、差がそのまま食い違いにはなりません。</p>
+    <p><b>見比べた結果:</b> 同じ回と見られる ${c.pairs.length} 回のうち、時刻が ${lim} 分以上違うのは ${c.differ.length} 回です。書面だけにある回 ${c.only_carrier.length}、受付簿だけにある回 ${c.only_shipper.length}${c.ambiguous.length ? `、どの回か決められない行 ${c.ambiguous.length} 件` : ''}。</p>
+    <p class="small" id="cross-keys">見比べに使った項目: 車番 ${c.key_counts.vehicle} 回、場所と時刻 ${c.key_counts.place + c.key_counts.time} 回。${c.key_counts.vehicle === 0 && c.pairs.length ? '車番が無いので、場所と時刻で見比べました。' : ''}</p>
+    <p id="cross-amount">${crossAmountHtml(c)}</p>
+    ${c.recalc ? `<div id="cross-recalc"><p><b>受付簿の時刻で数えた額:</b> 受付簿の時刻で数えると <b class="big">${yen(c.recalc.own)}</b> です。書面は ${yen(c.recalc.carrier)} で、差は <b>${yen(Math.abs(c.recalc.diff))}</b>（${c.recalc.diff > 0 ? '書面のほうが多い' : c.recalc.diff < 0 ? '書面のほうが少ない' : '差なし'}）です。${c.recalc.reverted ? `置き換えると時刻の順が合わなくなる ${c.recalc.reverted} 組は、書面の時刻のままです。` : ''}</p>
+      <p class="small">国の標準的運賃の表で計算した目安です。</p>
+      <textarea id="reply-ta" rows="9" readonly aria-label="運送会社への返信の文">${esc(replyText(c))}</textarea>
+      <div class="bar"><button type="button" id="b-copyreply" class="primary">返信の文をコピー</button><span class="small" id="reply-msg" role="status"></span></div></div>` : ''}
     ${c.skipped && c.skipped.length ? `<p class="small" id="cross-skipped">列の数が見出しと違うので読まなかった行が ${c.skipped.length} 行あります（例: ${esc(c.skipped[0])}）。列を空白 2 つ以上かタブで区切って貼り直してください。</p>` : ''}
     ${c.carrier_errors ? `<p class="small">運送会社の書面の ${c.carrier_errors} 行は読めなかったので、照合から外しています。</p>` : ''}
-    ${noVeh ? `<p class="small">車番が空で照合できない行が ${noVeh} 件あります（運送会社の書面 ${c.unmatchable_carrier.length} 件、自社の受付記録 ${c.unmatchable_shipper.length} 件）。</p>` : ''}
+    ${c.ambiguous.length ? `<div id="cross-ambiguous"><h3>どの回と同じか決められない行（${c.ambiguous.length} 件）</h3><p class="small">同じ日・場所に近い時刻の回が複数あります。</p><div class="scroll-x"><table class="par"><thead><tr><th>書面の行（日付・場所・到着・荷役開始）</th><th>自社の受付記録の候補</th></tr></thead><tbody>${c.ambiguous.map((g) => `<tr><td>${esc(g.carrier.date)} ${esc(g.carrier.place)} ${esc(g.carrier.arrive)} ${esc(g.carrier.start)}</td><td>${g.candidates.map((x) => `${esc(x.arrive)} ${esc(x.start)}${x.vehicle_no ? ' 車番 ' + esc(x.vehicle_no) : ''}`).join('<br>')}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
     ${c.differ.length ? `<h3>時刻が ${lim} 分を超えて違う行（${c.differ.length} 組）</h3><p class="small">差は、自社の受付記録の時刻 − 運送会社の書面の時刻です。プラスは自社の時刻のほうが遅いことを示します。</p>
-    <div class="scroll-x"><table class="par" id="cross-differ"><thead><tr><th>日付</th><th>車番</th><th>運送会社の到着</th><th>自社の受付</th><th>差（分）</th><th>運送会社の荷役開始</th><th>自社の作業開始</th><th>差（分）</th></tr></thead><tbody>${c.differ.map((p) => `<tr><td>${esc(p.date)}</td><td>${esc(p.vehicle)}</td><td>${esc(p.carrier.arrive)}</td><td>${esc(p.shipper.arrive)}</td>${diffCell(p.arrive_diff, lim)}<td>${esc(p.carrier.start)}</td><td>${esc(p.shipper.start)}</td>${diffCell(p.start_diff, lim)}</tr>`).join('')}</tbody></table></div>` : '<p class="empty">時刻が違う組はありません。</p>'}
+    <div class="scroll-x"><table class="par" id="cross-differ"><thead><tr><th>日付</th><th>車番・場所</th><th>見比べた項目</th><th>運送会社の到着</th><th>自社の受付</th><th>差（分）</th><th>運送会社の荷役開始</th><th>自社の作業開始</th><th>差（分）</th></tr></thead><tbody>${c.differ.map((p) => `<tr><td>${esc(p.date)}</td><td>${esc(p.vehicle || p.carrier.place)}</td><td>${KEY_LABEL[p.key]}</td><td>${esc(p.carrier.arrive)}</td><td>${esc(p.shipper.arrive)}</td>${diffCell(p.arrive_diff, lim)}<td>${esc(p.carrier.start)}</td><td>${esc(p.shipper.start)}</td>${diffCell(p.start_diff, lim)}</tr>`).join('')}</tbody></table></div>` : '<p class="empty">時刻が違う組はありません。</p>'}
     <div id="cross-only">${miss(c.only_carrier, '運送会社の書面にあって、自社の受付記録に無い行')}${miss(c.only_shipper, '自社の受付記録にあって、運送会社の書面に無い行')}</div></div>`;
 }
+function carrierSelectHtml() {
+  const cs = S.res ? [...new Set(S.res.rows.map((x) => x.partner).filter(Boolean))] : [];
+  if (cs.length < 2) return '';
+  return `<label class="small">見比べる運送会社 <select id="cross-carrier" aria-label="見比べる運送会社"><option value="">車番から自動で選ぶ</option>${cs.map((c) => `<option value="${esc(c)}"${c === S.crossCarrier ? ' selected' : ''}>${esc(c)}</option>`).join('')}<option value="__all"${S.crossCarrier === '__all' ? ' selected' : ''}>全部の会社（${cs.length} 社）</option></select></label>`;
+}
 function crossHtml() {
-  return `<h2>運送会社の書面と照らし合わせる</h2>
-    <p class="small">運送会社から届いた書面の CSV（このページの「計算結果を CSV で書き出す」「CSV をコピー」と同じ形）、または紙や PDF の表をコピーしたもの（1 行目が「日付　車番　到着　荷役開始　荷役終了」のような見出しで、列を空白かタブで区切ったもの）を貼ると、日付と車番（数字の下 4 桁）が同じ行どうしで、到着と荷役開始の時刻が 15 分を超えて違う行と、片方にしか無い行を並べます。</p>
+  return `<h2>運送会社から届いた書面と見比べる</h2>
+    <p class="small">届いた書面の CSV か、紙・PDF の表をコピーして貼ります。時刻が 15 分以上違う回が出ます。</p>
     <textarea id="cross-ta" rows="4" placeholder="ここに運送会社の書面の CSV か、紙・PDF の表を貼り付け" aria-label="運送会社の書面の CSV を貼り付ける欄">${esc(S.carrierText || '')}</textarea>
-    <div class="bar"><button type="button" id="b-cross" class="primary">照らし合わせる</button><label class="small">CSV のファイルから <input type="file" id="crossfile" accept=".csv,text/csv" aria-label="運送会社の書面の CSV のファイルを選ぶ"></label><span class="small" id="cross-msg" role="status"></span></div>
+    <div class="bar">${carrierSelectHtml()}<label class="small">書面に書かれた金額の合計（円・税抜） <input type="text" inputmode="numeric" id="cross-doc-amount" size="10" value="${S.crossDocAmount > 0 ? S.crossDocAmount : ''}" aria-label="書面に書かれた金額の合計"></label></div>
+    <div class="bar"><button type="button" id="b-cross" class="primary">見比べる</button><button type="button" id="b-cross-ex">例の書面を入れる</button><label class="small">CSV ファイルを選ぶ <input type="file" id="crossfile" accept=".csv,text/csv" aria-label="運送会社の書面の CSV のファイルを選ぶ"></label><span class="small" id="cross-msg" role="status"></span></div>
     <div id="cross-out">${crossResultHtml()}</div>`;
+}
+// 時刻が違う組の到着と荷役開始を自社の時刻（受付・作業開始）に置き換えて、運送会社の書面の行を数え直す（SPEC §46）。
+// 置き換えると時刻の順が合わなくなる行は、書面の時刻のままにする
+function recalcOwn(inRows, cc) {
+  const pre = (s) => { const m = /^((?:[0-9]{4}[-/])?[0-9]{1,2}[-/月][0-9]{1,2}日?)\s+\S/.exec(String(s || '').trim()); return m ? m[1] + ' ' : ''; };
+  const sum = (rc) => rc.rows.reduce((a, x) => a + (x.reception_amount !== undefined ? x.reception_amount : x.amount), 0);
+  const mod = inRows.map((r) => ({ ...r }));
+  const changed = [];
+  for (const p of cc.differ) {
+    const i = p.carrier.row - 1;
+    if (!mod[i] || changed.includes(i)) continue;
+    mod[i] = { ...mod[i], arrive: pre(inRows[i].arrive) + p.shipper.arrive, start: pre(inRows[i].start) + p.shipper.start };
+    changed.push(i);
+  }
+  let rc = calc(mod, S.year, TARIFF, S.defaults);
+  const base = calc(inRows, S.year, TARIFF, S.defaults);
+  const was = new Set(base.errors.map((e) => e.row - 1));
+  let reverted = 0;
+  for (const e of rc.errors) { const i = e.row - 1; if (changed.includes(i) && !was.has(i) && mod[i] !== inRows[i]) { mod[i] = inRows[i]; reverted += 1; } }
+  if (reverted) rc = calc(mod, S.year, TARIFF, S.defaults);
+  const own = sum(rc), carrier = sum(base);
+  return { n: changed.length - reverted, reverted, carrier, own, diff: carrier - own };
+}
+function replyText(cc) {
+  const r = cc.recalc, lim = cc.limit;
+  const L = ['（運送会社の担当者名）様', '', '荷待ち・荷役の書面をお送りいただき、ありがとうございます。当方の受付記録と照らし合わせました。', '',
+    `${cc.key_counts.place + cc.key_counts.time ? '同じ回と見られる' : '日付と車番が同じ'} ${cc.pairs.length} 回のうち、時刻が ${lim} 分以上違う回が ${cc.differ.length} 回ありました。`];
+  cc.differ.slice(0, 10).forEach((p) => L.push(`・${p.date} ${p.vehicle ? '車番 ' + p.vehicle : p.carrier.place}: 到着 書面 ${p.carrier.arrive} / 当方の受付 ${p.shipper.arrive}（差 ${signed(p.arrive_diff)} 分）、荷役開始 書面 ${p.carrier.start} / 当方の作業開始 ${p.shipper.start}（差 ${signed(p.start_diff)} 分）`));
+  if (cc.differ.length > 10) L.push(`・ほか ${cc.differ.length - 10} 組`);
+  if (r) L.push('', `当方の時刻で数え直した参考額は ${yen(r.own)}（税抜）で、書面の ${yen(r.carrier)} より ${yen(Math.abs(r.diff))} ${r.diff > 0 ? '少なくなります' : r.diff < 0 ? '多くなります' : '（同じ額）'}。標準的運賃の表に当てた参考額で、支払いをお約束するものではありません。`);
+  if (cc.only_carrier.length) L.push(`書面にあって当方の記録に無い行が ${cc.only_carrier.length} 件あります。`);
+  L.push('', '時刻が違う行について、貴社の記録（運転日報など）をご確認のうえ、ご連絡をお願いします。', '', '（荷主の名称・担当者名）');
+  return L.join('\n');
+}
+function copyReply() {
+  const ta = $('#reply-ta'), msg = $('#reply-msg');
+  if (!ta || !msg) return;
+  ta.focus(); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  msg.textContent = ok ? '返信の文をコピーしました' : '自動でコピーできませんでした。枠の文を選んで、Ctrl+C（スマートフォンは長押し）でコピーしてください';
 }
 // 運送会社の書面の CSV を読んで、自社の受付記録（いまの計算結果）と照らし合わせる
 function runCross() {
@@ -694,22 +1072,64 @@ function runCross() {
   try { ({ rows, skipped } = crossRowsOf(text)); } catch (e) { S.cross = { error: e.message }; return; }
   try {
     const rc = calc(rows, S.year, TARIFF, S.defaults);
-    if (!rc.rows.length) { S.cross = { error: `運送会社の書面の ${rows.length} 行は、どれも読めませんでした（${rc.errors[0] ? rc.errors[0].message : ''}）` }; return; }
-    if (!S.res.rows.some((x) => x.vehicle_no)) { S.cross = { error: '自社の受付記録に車番の列が無いので、日付と車番での照合ができません。車番の列を足してください' }; return; }
-    const cc = WaitingShared.crossCheck(rc.rows, S.res.rows, 15);
+    if (!rc.rows.length) {
+      const why = rc.errors[0] ? `${rc.errors[0].row} 行目: ${rc.errors[0].message}` : (skipped.length ? `列の数が見出しと違う行が ${skipped.length} 行ありました（例: ${skipped[0]}）` : '見出しの下に行がありません');
+      S.cross = { error: `運送会社の書面の ${rows.length || skipped.length} 行は、どれも読めませんでした（${why}）` }; return;
+    }
+    // 自社の受付記録に運送会社が複数あるときは、書面の運送会社（選んだ会社、無ければ書面の車番から決めた会社）の行だけと照らし合わせる（SPEC §47・§48）
+    const carriers = [...new Set(S.res.rows.map((x) => x.partner).filter(Boolean))];
+    let filt = S.crossCarrier && carriers.includes(S.crossCarrier) ? S.crossCarrier : '';
+    let auto = false, ambiguous = false;
+    if (!filt && S.crossCarrier !== '__all') {
+      if (carriers.length === 1) filt = carriers[0];
+      else if (carriers.length > 1) { filt = inferCarrier(rc.rows, S.res.rows); auto = !!filt; ambiguous = !filt; }
+    }
+    const sRows = filt ? S.res.rows.filter((x) => x.partner === filt) : S.res.rows;
+    const cc = WaitingShared.crossCheck(rc.rows, sRows, 15);
+    cc.carriers = carriers; cc.carrier_filter = filt; cc.carrier_auto = auto; cc.carrier_ambiguous = ambiguous;
+    cc.shipper_n = sRows.length; cc.doc_n = rc.rows.length;
     cc.carrier_errors = new Set(rc.errors.map((e) => e.row)).size;
     cc.skipped = skipped;
     cc.carrier_amount = rc.rows.reduce((a, x) => a + (x.reception_amount !== undefined ? x.reception_amount : x.amount), 0);
-    cc.shipper_amount = S.res.rows.reduce((a, x) => a + x.amount, 0);
+    cc.shipper_amount = sRows.reduce((a, x) => a + x.amount, 0);
+    // 額は、組になった行どうし（同じ行・待機時間料だけ）と、組にならなかった行に分けて数える
+    const fee = (x) => (x.wait_fee !== undefined ? x.wait_fee : x.amount);
+    const sumFee = (arr) => arr.reduce((a, x) => a + fee(x), 0);
+    const inCands = new Set(cc.ambiguous.flatMap((g) => g.candidates));
+    cc.pair_n = cc.pairs.length;
+    cc.pair_carrier_fee = sumFee(cc.pairs.map((p) => p.carrier)); cc.pair_shipper_fee = sumFee(cc.pairs.map((p) => p.shipper));
+    cc.unpaired_carrier = rc.rows.filter((x) => !cc.pairs.some((p) => p.carrier === x));
+    cc.unpaired_shipper = sRows.filter((x) => !cc.pairs.some((p) => p.shipper === x));
+    cc.unpaired_carrier_fee = sumFee(cc.unpaired_carrier); cc.unpaired_shipper_fee = sumFee(cc.unpaired_shipper);
+    cc.cand_n = inCands.size;
+    cc.recalc = cc.differ.length ? recalcOwn(rows, cc) : null;
+    // 届いた書面に参考額が書いてあるときは、数え直した額ではなくその額を「書面の額」にする。無ければ手で入れた額
+    const docs = rc.rows.map((x) => (rows[x.row - 1] ? rows[x.row - 1].doc_amount : null)).filter((v) => v != null);
+    cc.doc_amount = docs.length && docs.length === rc.rows.length ? docs.reduce((a, v) => a + v, 0) : null;
+    cc.doc_manual = false;
+    if (cc.doc_amount === null && S.crossDocAmount > 0) { cc.doc_amount = S.crossDocAmount; cc.doc_manual = true; }
+    if (cc.recalc && cc.doc_amount !== null) { cc.recalc.own = cc.doc_amount - (cc.recalc.carrier - cc.recalc.own); cc.recalc.carrier = cc.doc_amount; }
     S.cross = cc;
   } catch (e) { S.cross = { error: e.message }; }
 }
 
+// 例の書面。自社の受付記録の先頭の運送会社の行から、車番の列が無い書面（日付・場所・到着・荷役開始・荷役終了）を作る。2 行目だけ 25 分遅らせて、時刻が違う組が出るようにする
+function putCrossExample() {
+  const msg = $('#cross-msg');
+  if (!S.res || !S.res.rows.length) { if (msg) msg.textContent = '先に自社の受付記録を表に入れてください'; return; }
+  const first = S.res.rows.find((x) => x.partner) || S.res.rows[0];
+  const mine = S.res.rows.filter((x) => x.partner === first.partner && x.arrive && x.start).slice(0, 6);
+  const add = (t, n) => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); if (!m) return t; const v = (Number(m[1]) * 60 + Number(m[2]) + n + 1440) % 1440; return `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`; };
+  const lines = ['日付\t場所\t到着\t荷役開始\t荷役終了'].concat(mine.map((x, i) => { const sh = i === 1 ? 25 : 0; return [x.date, x.place, add(x.arrive, sh), add(x.start, sh), add(x.start, sh + 30)].join('\t'); }));
+  S.carrierText = lines.join('\n'); S.crossOn = true; S.crossCarrier = first.partner || '';
+  renderResult();
+  const m2 = $('#cross-msg'); if (m2) m2.textContent = '例の書面を入れました（車番なし）。場所と時刻で見比べます。';
+}
 function renderShipper() {
   if (S.crossOn) runCross();
   const r = S.res;
   if (!r || !r.rows.length) {
-    $('#partners').innerHTML = '<h2>受付の分析（荷主として使う）</h2><p class="empty">自社の受付記録（日付・運送会社・施設・車番・受付・呼出・作業開始の列）を、左の「Excel から貼り付ける」に貼ってください。運送会社あての請求の書面は出しません。</p>';
+    $('#partners').innerHTML = '<h2>受付の時刻と待ち時間</h2><p class="empty">受付簿を左の欄に貼ってください。</p>';
     $('#draft-area').innerHTML = '';
     return;
   }
@@ -736,6 +1156,7 @@ function doCalc() {
   renderBoxes();
   renderResult();
   refreshBulk();
+  updateNotesSum();
   if (!S.noStore && !S.exampleAuto) keepMsg(storeSave() ? (rows.length ? `保存しました（${rows.length} 行）` : '') : 'このブラウザでは保存が使えません（ページはそのまま使えます）');
 }
 
@@ -750,7 +1171,9 @@ function csvTextOf(resRows) {
   return '\uFEFF' + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 
-const csvText = () => csvTextOf(S.res.rows);
+// 書き出す CSV は、いま選んでいる相手の行だけ。ほかの相手（ほかの荷主）の記録を一緒に渡さない（SPEC §46）
+const csvRowsOfPartner = () => { const rows = S.res.rows; const mine = S.partner ? rows.filter((r) => r.partner === S.partner) : []; return mine.length ? mine : rows; };
+const csvText = () => csvTextOf(csvRowsOfPartner());
 
 // このページが書き出した CSV（引用符・改行つきの欄も可）を、入力の行に戻す。入力の 16 列だけを見て、残りの列（計算結果）は読み捨てる
 function parseCsv(text) {
@@ -776,25 +1199,35 @@ function crossRowsOf(text) {
     const lt = WaitingShared.looseTableToTsv(text);
     if (!lt) throw new Error('運送会社の書面の表を読めません。このページが書き出した CSV か、1 行目に見出し（日付・車番・到着・荷役開始・荷役終了など）のある表（紙や PDF からコピーした、空白かタブで区切った表も可）を貼ってください');
     const pf = parsePasteFull(lt.tsv);
-    return { rows: pf.rows.map((r) => ({ ...Object.fromEntries(COLUMNS.map((k) => [k, ''])), ...r, partner: r.partner || '（運送会社の書面）' })), skipped: lt.skipped };
+    // 表に参考額の列があれば、行ごとの額を読む（行の数が合うときだけ）
+    const tl = lt.tsv.split(String.fromCharCode(10)).map((ln) => ln.split(String.fromCharCode(9)));
+    const ai = tl[0].findIndex((h) => /^参考額/.test(WaitingShared.nz(h)));
+    const amts = ai >= 0 && tl.length - 1 === pf.rows.length ? tl.slice(1).map((c) => docAmountOf(c[ai])) : null;
+    return { rows: pf.rows.map((r, i) => ({ ...Object.fromEntries(COLUMNS.map((k) => [k, ''])), ...r, partner: r.partner || '（運送会社の書面）', ...(amts && amts[i] !== null ? { doc_amount: amts[i] } : {}) })), skipped: lt.skipped };
   }
 }
 
+const docAmountOf = (v) => { const t = WaitingShared.nz(v).replace(/[,円\s]/g, ''); return /^[0-9]+$/.test(t) ? Number(t) : null; };
 function csvToRows(text) {
   const table = parseCsv(text);
   if (!table.length) return [];
   const map = table[0].map((h) => (Object.prototype.hasOwnProperty.call(HEADER_ALIASES, headerKey(h)) ? HEADER_ALIASES[headerKey(h)] : null));
   if (map.filter((c) => c).length < 6) throw new Error('このページが書き出した CSV の形ではありません（見出しの行が読めません）');
+  // 書面の参考額の列（受付から数えた額があればそれ、無ければ到着から数えた額）
+  const hs = table[0].map((h) => WaitingShared.nz(h));
+  const iRec = hs.findIndex((h) => /^受付から数えた参考額/.test(h)), iAmt = hs.findIndex((h) => /^参考額/.test(h));
   return table.slice(1).map((cells) => {
     const o = Object.fromEntries(COLUMNS.map((k) => [k, '']));
     map.forEach((k, i) => { if (k && i < cells.length) o[k] = cells[i].trim(); });
+    const am = (iRec >= 0 && docAmountOf(cells[iRec]) !== null ? docAmountOf(cells[iRec]) : null) ?? (iAmt >= 0 ? docAmountOf(cells[iAmt]) : null);
+    if (am !== null) o.doc_amount = am;
     return o;
   });
 }
 
 /* ---------------------------------------------------------------- このブラウザへの保存（localStorage。使えなくてもページは動く） */
 const STORE_KEY = 'waiting_page_rows_v1';
-function endExampleAuto() { if (S.exampleAuto) { S.exampleAuto = false; const el = $('#example-note'); if (el) el.hidden = true; } }
+function endExampleAuto() { if (S.exampleAuto) { S.exampleAuto = false; const el = $('#example-note'); if (el) el.hidden = true; if (document.body.classList.contains('demo')) syncDemo(guidedState()); } }
 function storeSave() {
   try {
     if (S.brokenRaw !== null) { localStorage.setItem(STORE_KEY + '_broken', S.brokenRaw); S.brokenRaw = null; }   // 読めなかった保存は、消さずに別の鍵へ移してから上書きする
@@ -886,7 +1319,7 @@ function pasteIn() {
   const text = $('#paste').value;
   if (!text.trim()) { $('#paste-msg').textContent = '貼り付ける欄が空です'; return; }
   const pf = parsePasteFull(text), inp = pf.rows;
-  if (!inp.length) { $('#paste-msg').textContent = '読める行がありませんでした。表は変えていません'; $('#paste-note').innerHTML = pf.notes.map((x) => `<span>${esc(x)}</span>`).join('<br>'); return; }
+  if (!inp.length) { $('#paste-msg').textContent = '読める行がありませんでした。表は変えていません'; $('#paste-note').innerHTML = pf.notes.map((x) => `<span>${esc(x)}</span>`).join('<br>'); S.gTouched = true; updateNotesSum(); return; }
   const faultDef = pf.defaulted.includes('shipper_fault');
   const incoming = inp.map((r) => ({ ...blankRow(), ...r, ...(faultDef ? { fault_default: '1' } : {}) }));
   const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
@@ -896,10 +1329,14 @@ function pasteIn() {
   S.rows = m.rows.length ? m.rows : [blankRow(), blankRow(), blankRow()];
   if (pf.asks.includes(ASK_PARTNER)) S.askPartner = true;
   if (pf.shipper_log && S.mode !== 'shipper') { S.modeAuto = true; setMode('shipper', false); }
-  $('#paste-msg').textContent = `${m.added} 行を表の後ろに足しました` + (m.merged ? `（${m.merged} 行は同じ行（日付・場所・到着・車番が同じ）が表にあったので足さず、空欄だけ埋めました${m.conflicts ? `。うち ${m.conflicts} 行は値が違いましたが、表の値を残しています` : ''}）` : '') +
+  $('#paste-msg').textContent = `${m.added} 行を足しました` + (m.merged ? `。同じ回の ${m.merged} 行は足さずに、空いた欄だけ埋めました${m.conflicts ? `（うち ${m.conflicts} 行は値が違うので、表の値を残しています）` : ''}` : '') +
     (keep.length ? `。これまでの記録 ${keep.length} 行は消えていません` : '');
   $('#paste-note').innerHTML = (faultDef ? [DEFAULT_FAULT_NOTE, ...pf.notes] : pf.notes).map((x) => `<span>${esc(x)}</span>`).join('<br>');
+  const keyOf = (r) => WaitingShared.rowKey(r, S.year);
+  S.memoRead = pf.memo_read ? pf.memo_read.map((x, k) => ({ ...x, i: keyOf(incoming[k]) ? S.rows.findIndex((r) => keyOf(r) === keyOf(incoming[k])) : -1 })) : null;
+  S.gTouched = true;
   renderTable();
+  $('#memo-read').innerHTML = memoReadHtml();
   doCalc();
 }
 
@@ -956,12 +1393,47 @@ function copyNotice() {
 }
 function disarmForget() { S.armed = false; clearTimeout(S.armTm); const b = $('#b-forget'); if (b) b.textContent = '保存した記録を消す'; }
 
+// 案内の入口（SPEC §46）。#g で 3 つの選択、#g=driver / excel / shipper で必要な欄だけ。ハッシュが無い・#all のときは全部の画面（これまでと同じ）
+const GUIDE = {
+  driver: ['ドライバーの LINE を貼る', 'LINE の「荷待ち記録」で始まる文や、スマホのメモ（1 行 1 件、日付で始まる）をそのまま貼ります。'],
+  excel: ['Excel の表を貼る', 'Excel の表をコピーして貼ります。1 行目が見出しなら、列の順は問いません。'],
+  shipper: ['届いた書面を受付簿と見比べる', '受付簿を貼ります。次に運送会社から届いた書面を貼ると、時刻の違う回が分かります。'],
+};
+// 例の記録を自動で入れた最初の画面（demo）では、表・注意・結果を閉じ、貼る欄と主ボタンだけを見せる。記録を触ると開く
+function syncDemo(g) {
+  const demo = !g && !!S.exampleAuto;
+  document.body.classList.toggle('demo', demo);
+  document.querySelectorAll('details.fold').forEach((d) => { if (d.id !== 'memo-read-d') d.open = !g && !demo; });
+  const rd = $('#result-d'); if (rd) rd.open = true;   // 例の最初の画面でも結果と書面の枠（Claude で説明文を作る欄）を見せる
+  const pb = $('#b-paste'), prim = demo || (!!g && g !== 'choose');
+  pb.classList.toggle('primary', prim); pb.classList.toggle('btn-primary', prim);
+}
+function guidedState() { const m = /^#g(?:=(driver|excel|shipper))?$/.exec(location.hash); return m ? (m[1] || 'choose') : ''; }
+function applyGuided() {
+  const g = guidedState(), b = document.body, h1 = $('#h1');
+  // 入力を始める画面（#g=driver / excel / shipper）では、参考額と個人情報の注意を入力欄より先に出さず、閉じた枠に入れる
+  $('#protect').innerHTML = g !== 'choose' ? `<details><summary>金額と記録の保存について</summary>${PROTECT.map((x) => `<p>${esc(x)}</p>`).join('')}</details>` : PROTECT.map((x) => `<p>${esc(x)}</p>`).join('');
+  if (!h1.dataset.orig) h1.dataset.orig = h1.textContent;
+  b.classList.toggle('guided', !!g); b.classList.toggle('g-choose', g === 'choose'); b.classList.toggle('g-step', !!g && g !== 'choose');
+  $('#guide').hidden = g !== 'choose';
+  $('#g-bar').hidden = !g; $('#g-lead').hidden = !g || g === 'choose';
+  $('#g-again').hidden = g === 'choose'; if ($('#g-home')) $('#g-home').hidden = ARTIFACT;   // 単独の版（Artifact）ではビルドでこのリンクを外す
+  syncDemo(g);
+  if (!g) { h1.textContent = h1.dataset.orig; return; }
+  if (g === 'choose') { h1.textContent = '荷待ちの記録から書面を作る'; return; }
+  h1.textContent = GUIDE[g][0]; $('#g-lead').textContent = GUIDE[g][1];
+  $('#paste').setAttribute('aria-label', GUIDE[g][0] + '（貼り付ける欄）');
+  const want = g === 'shipper' ? 'shipper' : 'carrier';
+  if (S.mode !== want) { S.modeAuto = false; setMode(want, true); }
+  updateNotesSum();
+}
+
 function init() {
   // 地図の画面への戻り（SPEC §30.4）。Artifact の版は別のページへ移れないので、文だけにする
-  $('#backmap').textContent = '地図の画面に戻る（荷待ちの場所を地図で見られる版は、地図の画面の「自社の運行」にあります）';
+  $('#backmap').textContent = '荷待ちの場所は、地図の画面の「自社の運行」で見られます。';
 /*LOCAL-ONLY-START*/
   $('#backmap').innerHTML = '<a href="index.html">地図の画面に戻る</a>';
-  $('#driver-line').innerHTML = 'ドライバーが現場で時刻を押して LINE に貼る文を作る専用の 1 枚は <a href="driver.html">driver.html</a> です。その文（「荷待ち記録」で始まる文）は、下の「Excel から貼り付ける」にそのまま貼れます。';
+  $('#driver-line').innerHTML = 'ドライバー用のページ（<a href="driver.html">driver.html</a>）で作った文も、そのまま貼れます。';
 /*LOCAL-ONLY-END*/
   if (ARTIFACT) {
     $('#b-csvin').hidden = true; $('#csvfile').hidden = false; $('#csvpaste-box').hidden = false;
@@ -979,7 +1451,14 @@ function init() {
   });
   document.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.dataset && t.dataset.mk !== undefined && t.dataset.mi !== undefined) {
+      const x = S.memoRead && S.memoRead[Number(t.dataset.mi)];
+      if (x && x.i >= 0 && S.rows[x.i]) { endExampleAuto(); S.rows[x.i][t.dataset.mk] = t.value.trim(); renderTable(); doCalc(); }
+      return;
+    }
     if (t.id === 'year') { S.year = Number(t.value); doCalc(); }
+    else if (t.id === 'cross-carrier') { S.crossCarrier = t.value; if (S.crossOn) renderResult(); }
+    else if (t.id === 'cross-doc-amount') { const v = Number(WaitingShared.nz(t.value).replace(/[,円\s]/g, '')); S.crossDocAmount = Number.isFinite(v) && v > 0 ? Math.round(v) : 0; if (S.crossOn) renderResult(); }
     else if (t.id === 'crossfile') {
       const f = t.files && t.files[0];
       if (f) { const fr = new FileReader(); fr.onload = () => { S.carrierText = String(fr.result).replace(/^\uFEFF/, ''); S.crossOn = true; renderResult(); }; fr.onerror = () => { const m = $('#cross-msg'); if (m) m.textContent = 'ファイルを読めませんでした'; }; fr.readAsText(f, 'utf-8'); }
@@ -990,6 +1469,8 @@ function init() {
   });
   document.addEventListener('click', (e) => {
     const t = e.target;
+    const gb = t.closest && t.closest('[data-g]');
+    if (gb) { location.hash = '#g=' + gb.dataset.g; return; }
     if (S.armed && t.id !== 'b-forget') disarmForget();
     if (S.exArmed && t.id !== 'b-example') disarmExample();
     if (t.id === 'b-example') {
@@ -999,10 +1480,12 @@ function init() {
     }
     else if (t.id === 'b-undo') undoRestore();
     else if (t.id === 'b-mode') { S.modeAuto = false; setMode(S.mode === 'shipper' ? 'carrier' : 'shipper', true); }
+    else if (t.id === 'b-cross-ex') putCrossExample();
     else if (t.id === 'b-cross') { S.carrierText = $('#cross-ta').value; S.crossOn = true; renderResult(); }
     else if (t.id === 'b-copynotice') copyNotice();
+    else if (t.id === 'b-copyreply') copyReply();
     else if (t.id === 'b-ask-ok') { S.askPartner = false; renderBoxes(); renderResult(); }
-    else if (t.id === 'b-clear') { endExampleAuto(); S.askPartner = false; $('#paste-note').innerHTML = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderBoxes(); renderResult(); }
+    else if (t.id === 'b-clear') { endExampleAuto(); S.memoRead = null; $('#memo-read').innerHTML = ''; S.askPartner = false; $('#paste-note').innerHTML = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderBoxes(); renderResult(); }
     else if (t.id === 'b-add') { endExampleAuto(); S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
     else if (t.id === 'b-paste') pasteIn();
     else if (t.id === 'b-fault-yes') bulkFault('はい');
@@ -1022,7 +1505,7 @@ function init() {
     else if (t.id === 'b-print') window.print();
     else if (t.id === 'b-csv') { if (S.res && S.res.rows.length) downloadCsv(); }
 /*LOCAL-ONLY-END*/
-    else if (t.dataset && t.dataset.del !== undefined) { endExampleAuto(); S.rows.splice(Number(t.dataset.del), 1); renderTable(); doCalc(); }
+    else if (t.dataset && t.dataset.del !== undefined) { endExampleAuto(); S.memoRead = null; $('#memo-read').innerHTML = ''; S.rows.splice(Number(t.dataset.del), 1); renderTable(); doCalc(); }
     else { const tr = t.closest && t.closest('tr[data-pick]'); if (tr) { S.partner = tr.dataset.pick; renderResult(); } }
   });
   const qs = new URLSearchParams(location.search);
@@ -1047,7 +1530,18 @@ function init() {
     if (saved && saved.rows.some((r) => !isBlank(r))) { S.noStore = true; $('#example-note').textContent = '例の記録を見ています（架空の元請A物流）。保存した記録は消えていません。このタブでの変更は保存されません'; }
     S.exampleAuto = true; S.rows = exampleRows(); renderTable(); doCalc(); $('#example-note').hidden = false; keepMsg('');
   }
-  else if (!S.noStore && !(saved && saved.rows.some((r) => !isBlank(r)))) { S.exampleAuto = true; S.rows = exampleRows(); renderTable(); doCalc(); $('#example-note').hidden = false; }
+  else if (!S.noStore && !guidedState() && !(saved && saved.rows.some((r) => !isBlank(r)))) { S.exampleAuto = true; S.rows = exampleRows(); renderTable(); doCalc(); $('#example-note').hidden = false; }
+  window.addEventListener('hashchange', applyGuided);
+  // 閉じた枠の中のボタンが押されたら、先に枠を開く（開いていない枠の中では、フォーカスも選択もできないため）。印刷の間も開く
+  document.addEventListener('click', (e) => { const d = e.target.closest && e.target.closest('#result-d'); if (d && !d.open) d.open = true; }, true);
+/*LOCAL-ONLY-START*/
+  let resWas = null;
+  window.addEventListener('beforeprint', () => { const d = $('#result-d'); resWas = d.open; d.open = true; });
+  window.addEventListener('afterprint', () => { if (resWas !== null) { $('#result-d').open = resWas; resWas = null; } });
+  loadAi();
+/*LOCAL-ONLY-END*/
+  applyGuided();
+  updateNotesSum();
 }
 
 init();

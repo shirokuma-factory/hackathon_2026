@@ -356,6 +356,30 @@ CASES: list[dict] = [
      "text": "11/10 江東 着7:50 呼ばれ9:40 終わり10:30\n10/5 尼崎 ○○物流DC 着6:10 受付6:20 呼ばれ8:45 相手 ○○\nあいう\n11/12 船橋 着8:00\n13/45 x 着8:00 呼ばれ9:00\n11/13(木) 東京 着5時半 積み始め9時半 出発11:00 車番1234\n"},
     {"name": "paste_phone_memo_all_unreadable_falls_to_positional", "year": 2026, "paste": True, "defaults": DEFAULTS,
      "text": "あいう\nえお\n"},
+    # SPEC §46: 手書きメモの「車1234」「車 1234」、単独の車種（大型・4t）、日付の次の語を相手、略字（受・呼・終・積込終）、時刻が先の書き方、受付が到着より前
+    {"name": "paste_phone_memo_plate_class_partner_abbrev", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": ("11/2 東和電機 加古川工場 着7時40分 受付8:00 呼ばれ9:50 終わり10:40 車１２３４ 大型 フォークで手積み手伝った\n"
+              "11/3 東和電機 加古川工場 6:10着 6:25受付 9:00呼 9:40終 車 5678 4t\n"
+              "11/4 江東 着7:50 呼ばれ9:40 積込終10:30 車番 9999 中型\n"
+              "11/5 尼崎 ○○物流DC 着7:00 受7:30 呼8:40 相手 ○○\n"
+              "11/6 加古川 着7:00 受6:20 呼8:00\n")},
+    # r6a: 時刻が先の書き方（5:10着 6:40開始 7:35終）と、コロンの無い 3〜4 桁の時刻（着520・520着）。車番の数字は時刻にしない
+    {"name": "paste_phone_memo_time_then_label_order", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "11/6 ﾄｳﾜ春日部 5:10着 6:40開始 7:35終\n11/7 ﾄｳﾜ春日部 5:10着 6:40開始 7:35終了\n"},
+    {"name": "paste_phone_memo_compact_times", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": "11/6 江東 着520 受付540 呼ばれ755 終830\n11/7 江東 520着 540受付 755呼ばれ 830終了\n11/8 江東 車1234 大型 着1530 開始1630 終1730\n"},
+    # r6a: 表の見出し「終了」「終了時刻」「作業終了」を荷役終了として読む（「開始」も同じく荷役開始）
+    {"name": "paste_table_header_shuryo_variants", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": ("日付\t車番\t車種\t契約の相手\t場所\t到着\t開始\t終了\t荷役をした人\t荷役の方法\n10/5\t1234\t中型\tA社\t江東\t8:00\t9:00\t9:40\t運転者\t手積み\n")},
+    {"name": "paste_table_header_shuryo_jikoku", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": ("日付\t車番\t車種\t契約の相手\t場所\t到着\t荷役開始\t終了時刻\t荷役をした人\t荷役の方法\n10/6\t1234\t中型\tA社\t江東\t8:00\t9:00\t9:40\t運転者\t手積み\n")},
+    {"name": "paste_table_header_sagyo_shuryo", "year": 2026, "paste": True, "defaults": DEFAULTS,
+     "text": ("日付\t車番\t車種\t契約の相手\t場所\t到着\t荷役開始\t作業終了\t荷役をした人\t荷役の方法\n10/5\t1234\t中型\tA社\t江東\t8:00\t9:00\t9:40\t運転者\t手積み\n")},
+    # R7A-1: 夜中をまたぐ受付（23:50 着・受付 0:20）も受付から数える。受付に日付があれば日付で差を取る
+    {"name": "reception_after_midnight_main_figure", "year": 2026,
+     "rows": [row(arrive="23:50", reception="00:20", start="02:00"), row(date="2026-10-06", arrive="2026-10-06 23:50", reception="2026-10-07 00:20", start="2026-10-07 02:00"),
+              row(date="2026-10-07", arrive="2026-10-07 23:50", reception="00:20", start="2026-10-08 02:00", end="2026-10-08 02:40", handler="荷主側"),
+              row(date="2026-12-31", arrive="23:50", reception="00:20", start="02:00"), row(date="2026-10-09", arrive="23:50", reception="2026-10-11 00:20", start="2026-10-11 02:00")]},
     {"name": "times_with_han", "year": 2026,
      "rows": [row(arrive="5時半", start="10時半"), row(arrive="9時半", start="2026/10/5 10時半"), row(arrive="9時 半", start="10時半"), row(arrive="9時半30", start="10時")]},
 ]
@@ -381,6 +405,8 @@ def build() -> dict:
             exp["notes"] = notes
             exp["asks"] = det["asks"]
             exp["shipper_log"] = det["shipper_log"]
+            if "memo_read" in det:
+                exp["memo_read"] = det["memo_read"]
         c["expect"] = exp
         cases.append(c)
     return {"note": "tools/build_waiting_vectors.py が waiting.py の出力から作る。手で直さない（SPEC §23.7 G82）", "cases": cases}

@@ -132,6 +132,77 @@ const Rt = (() => {
     if (!R.memo.has(key)) R.memo.set(key, simplifyLL(joinLegs(m), tol));
     return R.memo.get(key);
   }
+  // 区間を手段ごとの区間に分けて返す。[{ mode: 'truck' | 'rail' | 'ferry', pts }]。フェリーは港までの道（truck）と航路（ferry）、鉄道は駅までの道と線路（rail）。
+  // 乗り物は自分の手段の区間だけを走らせ、ほかの区間（港や駅までの道）は道として描く。なければ null
+  function pairLegs(fromPref, toPref, mode, tol = 0.02) {
+    const d = R.pairsData && R.pairsData[`${fromPref}>${toPref}`];
+    const m = d && d.m && d.m[mode];
+    if (!m) return null;
+    const key = `pl|${fromPref}|${toPref}|${mode}|${tol}`;
+    if (!R.memo.has(key)) R.memo.set(key, m.legs.map((l) => ({ mode: CODE[l.m], pts: simplifyLL(dec(l.c), tol) })).filter((l) => l.pts.length > 1));
+    return R.memo.get(key);
+  }
+
+  /* 陸と海の判定（県の境界 S.pref を陸とみなす）。直線の弧のように実際の線が無い経路で、陸の乗り物を海の上に、船を陸の上に走らせないために使う。
+     海岸から約 1.5 km 以内は陸とみなす（港・岸壁・海岸沿いの道。境界の図が粗いぶん）。海峡をまたぐ固定の橋・トンネルは陸の乗り物が通ってよい */
+  const FIXED_LINKS = [
+    [140.10, 41.15, 141.00, 41.80],   // 津軽海峡（青函トンネル、車両フェリーで渡る経路）
+    [130.88, 33.90, 131.03, 34.00],   // 関門トンネル・関門橋
+    [133.78, 34.30, 133.90, 34.43],   // 瀬戸大橋
+    [134.97, 34.58, 135.05, 34.65],   // 明石海峡大橋
+    [134.58, 34.20, 134.66, 34.28],   // 大鳴門橋
+    [132.95, 34.05, 133.25, 34.42],   // しまなみ海道
+    [139.76, 35.33, 139.95, 35.55],   // 東京湾アクアライン
+  ];
+  const COAST_DEG = 0.014;
+  let landPolys = null;
+  function landIndex() {
+    if (landPolys || typeof S === 'undefined' || !S.pref) return landPolys;
+    landPolys = [];
+    for (const f of S.pref.features) {
+      const g = f.geometry, polys = g.type === 'MultiPolygon' ? g.coordinates : [g.coordinates];
+      for (const pg of polys) {
+        const ring = pg[0];
+        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+        for (const p of ring) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; }
+        landPolys.push({ ring, x0, y0, x1, y1 });
+      }
+    }
+    return landPolys;
+  }
+  function onLand(x, y) {
+    for (const pl of landPolys) {
+      if (x < pl.x0 || x > pl.x1 || y < pl.y0 || y > pl.y1) continue;
+      const r = pl.ring;
+      let inside = false;
+      for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+        const xi = r[i][0], yi = r[i][1], xj = r[j][0], yj = r[j][1];
+        if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      if (inside) return true;
+    }
+    return false;
+  }
+  const OFF = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]];
+  const nearLand = (x, y) => OFF.some((o) => onLand(x + o[0] * COAST_DEG, y + o[1] * COAST_DEG));
+  const inLink = (x, y) => FIXED_LINKS.some((b) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]);
+  // 点が手段に合うか。トラック・鉄道: 陸（海岸から 1.5 km 以内を含む）か固定リンクの上。船: 海岸から 1.5 km より内陸ではない。飛行機はどこでもよい
+  function pointOk(mode, x, y) {
+    if (mode === 'air' || !landIndex()) return true;
+    if (mode === 'ferry') return !(onLand(x, y) && OFF.every((o) => onLand(x + o[0] * COAST_DEG, y + o[1] * COAST_DEG)));
+    return onLand(x, y) || inLink(x, y) || nearLand(x, y);
+  }
+  // 折れ線（経度・緯度）を約 8 km ごとに調べ、すべて合えば true。弧の線は実際の道ではないので、陸の乗り物は海を越える弧では走らせない
+  function pathOk(mode, pts, stepKm = 8) {
+    if (mode === 'air' || !landIndex()) return true;
+    for (let i = 0; i < pts.length; i++) {
+      if (!pointOk(mode, pts[i][0], pts[i][1])) return false;
+      if (i === 0) continue;
+      const a = pts[i - 1], b = pts[i], n = Math.max(1, Math.ceil(hav(a, b) / stepKm));
+      for (let k = 1; k < n; k++) if (!pointOk(mode, a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n)) return false;
+    }
+    return true;
+  }
   // 空きを探す・つなぐの架空の便の道路の線
   function tripPath(id, tol = 0.004) {
     const d = R.tripsData && R.tripsData[id];
@@ -198,6 +269,7 @@ const Rt = (() => {
       let t = 0;
       for (const l of s.legs) {
         l.t0 = t;
+        l.noVeh = !!l.fallback && !pathOk(l.mode, l.path);
         l.t1 = t + Math.max(0.45, l.km * SPK[l.mode] * cur.K);
         t = l.t1 + 0.3;
         cur.flat.push({ path: l.path, mode: l.mode, set: s.mode, fallback: !!l.fallback });
@@ -210,7 +282,7 @@ const Rt = (() => {
       for (let k = 0; k < s.nv; k++) {
         const off = (k * s.loop) / s.nv;
         for (const sh of [off, off - s.loop]) {
-          for (const l of s.legs) s.items.push({ mode: l.mode, path: l.path, ts: l.cum.map((c) => l.t0 + (c / l.total) * (l.t1 - l.t0) + sh) });
+          for (const l of s.legs) if (!l.noVeh) s.items.push({ mode: l.mode, path: l.path, ts: l.cum.map((c) => l.t0 + (c / l.total) * (l.t1 - l.t0) + sh) });
         }
       }
     }
@@ -223,6 +295,7 @@ const Rt = (() => {
       if (tv > s.dur) continue;
       let leg = s.legs[s.legs.length - 1];
       for (const l of s.legs) { if (tv <= l.t1 + 0.3) { leg = l; break; } }
+      if (leg.noVeh) continue;   // 道を取れず直線で出した区間が海をまたぐときは、乗り物を走らせない（海の上を走る・陸の上を船が走るのを防ぐ）
       const st = stateOn(leg, clamp01((tv - leg.t0) / (leg.t1 - leg.t0)));
       out.push({ ...st, mode: leg.mode, set: s.mode, fade: Math.min(1, tv * 3, (s.dur - tv) * 3 + 0.2) });
     }
@@ -316,7 +389,7 @@ const Rt = (() => {
     let n = 0, failedTail = false, failedTruck = false;
     for (const m of jobs) {
       n++;
-      cur.note = `着地までの道路の経路を取得しています（${n}/${jobs.length}）`;
+      cur.note = `届け先までの道を調べています（${n}/${jobs.length}）`;
       cur.noteKind = 'busy';
       render();
       let j;
@@ -358,11 +431,11 @@ const Rt = (() => {
     if (tok !== R.tok) return;
     // すべての取得が終わったあと、1 つでも取れなかったものがあれば、その旨を最後に出す。「取得しています」は残さない
     if (failedTruck || failedTail) {
-      cur.note = (failedTruck ? '経路を取得できませんでした（直線の弧で表示しています）' : '') +
-        (failedTail ? (failedTruck ? '。' : '') + '経路を取得できなかった区間は、県庁所在地までの経路のままです' : '');
+      cur.note = (failedTruck ? '道を調べられなかったため、直線で出しています。' : '') +
+        (failedTail ? (failedTruck ? '。' : '') + '一部の道は県庁所在地までで止まっています。' : '');
       cur.noteKind = 'err';
     } else {
-      cur.note = '鉄道・船・飛行機の最後の区間は、貨物駅・港・空港から着地までの道路の経路です';
+      cur.note = '駅・港・空港から届け先まではトラックの道です。';
       cur.noteKind = 'info';
     }
     render();
@@ -404,7 +477,7 @@ const Rt = (() => {
   function suspend() { R.off = true; applyEmphasis(); resetView(); }
   function resume() { R.off = false; applyEmphasis(); }
   function resetView() {
-    if (typeof map !== 'undefined' && map && map.getPitch() > 0.5) map.easeTo({ pitch: 0, duration: 900 });
+    if (typeof map !== 'undefined' && map && Math.abs(map.getPitch() - MapFx.rest().pitch) > 0.5) map.easeTo({ ...MapFx.rest(), duration: MapFx.ms(900) });
   }
   function fit() {
     const cur = R.cur;
@@ -415,12 +488,19 @@ const Rt = (() => {
     if (x0 > x1) { fitRoute(); return; }
     const air = R.focus === 'air';
     const pad = padding();
-    pad.right += 110; // 右端の「重ねる」の切り替えの分
+    if (!document.body.classList.contains('guided')) pad.right += 110; // 右端の「重ねる」の切り替えの分（案内の表示では出ていない）
+    else {
+      // 案内の結果: 右の結果の欄と左の端の両方を避けて、発地・着地の両端が見える範囲に入れる（大阪が左端で切れる指摘）
+      const det = document.getElementById('detail'), w = innerWidth;
+      const dw = det && det.offsetWidth ? det.offsetWidth : 0;
+      if (w > 900) { pad.right = Math.max(pad.right, dw + 90); pad.left = Math.max(pad.left, 170); }
+      pad.top = Math.max(pad.top, 90);
+    }
     if (air) { pad.top += 150; pad.bottom += 20; pad.right += 120; }
     // fitBounds は傾きを変えないので、カメラの位置を求めてから傾きつきで移動する（飛行機のときは地図を立体にする）
     const cam = map.cameraForBounds([[x0, y0], [x1, y1]], { padding: pad, maxZoom: air ? 6.6 : 8.6 });
     if (!cam) return;
-    map.flyTo({ center: cam.center, zoom: air ? cam.zoom + 0.35 : cam.zoom, pitch: air ? 58 : 0, bearing: 0, duration: 2400, curve: 1.5, essential: true });
+    map.flyTo({ center: cam.center, zoom: air ? cam.zoom + 0.35 : cam.zoom, pitch: 0, bearing: 0, ...MapFx.cam(2400, { curve: 1.5 }) });
   }
 
   /* ------------------------------------------------------------ 背景の地図の強調（OpenFreeMap の層） */
@@ -605,11 +685,11 @@ const Rt = (() => {
   }
   function timeHtml(s) {
     if (s.mode === 'truck') {
-      if (s.vfp) return 'フェリーを含む経路の可能性があり、運転時間は出しません';
-      if (s.fallback) return s.truckMin ? `運転 <b class="num">${fmtMin(s.truckMin)}</b>（線は直線の弧）` : '運転時間は出せません（直線の弧）';
+      if (s.vfp) return '船を使う道かもしれないため、運転時間は出していません。';
+      if (s.fallback) return s.truckMin ? `運転 <b class="num">${fmtMin(s.truckMin)}</b>（線は直線です）` : '運転時間は出せません（直線です）';
       return `運転 <b class="num">${fmtMin(s.truckMin)}</b>`;
     }
-    return `トラックの区間 計 <b class="num">${fmtMin(s.truckMin)}</b> ／ ${LABEL[s.mode]}の区間は所要時間は時刻表で確認`;
+    return `トラックは計 <b class="num">${fmtMin(s.truckMin)}</b>。${LABEL[s.mode]}の時間は時刻表で確かめてください。`;
   }
   // 手段の状態: 'route'（経路あり）、'none'（つながる経路なし）、null（着地が未選択）。横棒の図が同じ言い方にそろえるために使う
   function modeState(m) {
@@ -633,19 +713,19 @@ const Rt = (() => {
             '<span class="rt-why">なし（つながる航路がありません）</span></div>';
         }
         return `<div class="rt-card off" style="--c:${rgb(col(m))}"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b><span class="rt-km">なし</span></span>` +
-          `<span class="rt-why">${esc((s && s.why) || '作っていません')}</span></div>`;
+          `<span class="rt-why">${esc((s && s.why) || 'この送り方の道はありません')}</span></div>`;
       }
       // 鉄道が道路の 2 倍を超えるときは、貨物駅を回る遠回りだと書く（SPEC §33 #6）
       const tk = cur.sets.truck;
       const detour = m === 'rail' && tk && tk.ok && tk.km > 0 && s.km > 2 * tk.km
-        ? '<span class="rt-why rt-detour">貨物駅を回るため、道路より長くなります</span>' : '';
+        ? '<span class="rt-why rt-detour">貨物駅を通るため、トラックより長くなります。</span>' : '';
       // 車の大きさはデータにないので、トラックは 10t ウイングのサムネイル（SPEC §19.6）
       return `<button type="button" class="rt-card${F === m ? ' on' : ''}${F && F !== m ? ' dim' : ''}" data-mode="${m}" aria-pressed="${F === m}" style="--c:${rgb(col(m))}">` +
         `<span class="rt-body"><span class="rt-top">${iconInline(m, 26)}<b>${LABEL[m]}</b><span class="rt-km num">${s.straight ? '直線 ' : ''}${km1(s.km)} km</span></span>` +
         `<span class="rt-time">${timeHtml(s)}</span><span class="rt-legs">${legsHtml(s)}</span>${detour}</span>${M3D.thumb(M3D.MODE_MODEL[m], 80, 50, 'mth-card')}</button>`;
     }).join('');
     const note = cur.note ? `<p class="rt-note ${cur.noteKind}" role="status">${esc(cur.note)}</p>` : '';
-    const head = '<div class="rt-head"><b>送り方を比べる</b><small>手段のカードを押すと、その手段の経路を強く出します</small></div>';
+    const head = '<div class="rt-head"><b>送り方を比べる</b><small>送り方を押すと、その道を地図で太く出します。</small></div>';
     const key = cards + note;
     if (el.dataset.key === key) return;
     el.dataset.key = key;
@@ -660,11 +740,17 @@ const Rt = (() => {
   function legendHtml() {
     return '<div class="rt-lg-cap">手段</div>' + ORDER.map((m) => `<div class="rt-lg-row"><span class="rt-lg-ic">${iconInline(m, 24)}${M3D.thumb(M3D.MODE_MODEL[m], 40, 25, 'mth-lg')}</span><span>${LABEL[m]}</span></div>`).join('');
   }
+  // 案内の表示の凡例: 地図の線の色と手段の名前（色だけで区別しない）。経路のある手段だけ
+  function guideLegend() {
+    const cur = R.cur;
+    if (!cur) return '';
+    return ORDER.filter((m) => cur.sets[m] && cur.sets[m].ok).map((m) => `<span class="g-k"><i class="sw-line" style="border-top-color:${rgb(col(m))}"></i>${LABEL[m]}の経路</span>`).join('');
+  }
   function mountLegend() { document.querySelectorAll('.rt-legend').forEach((el) => { el.innerHTML = legendHtml(); }); }
 
   return {
     R, ORDER, LABEL, col, icons, iconInline, loadMeta, loadPairs, loadTrips, loadRail, setDestination, setFocus, clear, fit, suspend, resume, fillScale, resetView, applyEmphasis,
-    compareLayers, timeline, tlState, render, bind, pairPath, tripPath, iconLayer, railLayer, legendHtml, mountLegend, simplifyLL, dec,
+    compareLayers, timeline, tlState, render, bind, pairPath, pairLegs, pathOk, pointOk, vehiclesOf, current: () => R.cur, tripPath, iconLayer, railLayer, legendHtml, guideLegend, mountLegend, simplifyLL, dec,
     get focus() { return R.focus; }, get cur() { return R.cur; }, hasSets: () => !!R.cur, modeState,
   };
 })();

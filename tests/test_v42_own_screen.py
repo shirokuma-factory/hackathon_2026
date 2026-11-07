@@ -137,7 +137,7 @@ def test_revenue_panel_shows_per_trip_first_and_labels_the_total_as_an_upper_bou
     page = app
     r = _far(page, tmp_path)
     box = page.js("document.querySelector('#own-rev').innerText")
-    assert "全部の帰りに荷が付いた場合の上限" in box and "1 便の売上の目安" in box, box
+    assert "車庫へ帰る便すべてに荷が付いたときの額" in box and "1 便の売上の目安" in box, box
     assert "車の種類が分からない帰り" in box and "数えていません" in box, box
     assert "小計" in box, box
     # 大きな字は 1 便の額（上限の合計は小さく出す）
@@ -174,7 +174,7 @@ def test_board_texts_are_one_per_pair_with_the_right_header(app, tmp_path):
         assert it["text"].count("【求荷】空車情報") == 1
         assert re.search(r"毎週.曜|\d+/\d+（.）", it["text"]) and "便" in it["text"]  # 同じ曜日が月に 3 回以上なら毎週、そうでなければ日付（SPEC §43）
     nagoya = next(i for i in items if "名古屋" in i["label"])
-    assert "名古屋（区は確認）" in nagoya["text"] and "中区" not in nagoya["text"] and "兵庫県加古川市" in nagoya["text"] and "4t車" in nagoya["text"] and "10t" in nagoya["text"], nagoya["text"]
+    assert "名古屋（区を確かめてください）" in nagoya["text"] and "中区" not in nagoya["text"] and "兵庫県加古川市" in nagoya["text"] and "4t車" in nagoya["text"] and "10t" in nagoya["text"], nagoya["text"]
     # 区間ごとにコピーするボタンがある
     assert page.js("document.querySelectorAll('[data-act=board-copy-one]').length") == len(items)
     page.js("document.querySelector('[data-act=board-copy-one]').click()")
@@ -271,6 +271,7 @@ WEIGHT_HAISHA = ("車番,車種,2026/10/1,2026/10/2,2026/10/3,2026/10/4\n"
 def test_over_max_card_can_change_the_max_payload_and_it_is_remembered(app, tmp_path):
     page = app
     page.js("localStorage.removeItem('backfull.own.v42.maxload'); Own.state.maxPayload = {by_plate: {}, by_class: {}}")
+    page.js("Own.state.largeT = 10")  # 決めた値のまま超える重さを数える
     _import(page, [_write(tmp_path, "haisha_w.csv", WEIGHT_HAISHA)])
     page.js("(function(){window.__mpCalls = []; const o = OwnCalc.analyze; window.__origAn = o; OwnCalc.analyze = function(f, opt){ window.__mpCalls.push(opt); return o.apply(this, arguments); };})()")
     try:
@@ -305,9 +306,10 @@ def test_right_panel_puts_notes_under_details_and_explains_jargon(app):
     page = app
     _import(page, EX_FILES, "自社のファイル: 3 件")
     page.js("Own.setTab('import')")
-    right = page.js("document.querySelector('#own-right').innerText")
+    right = page.js("document.querySelector('#own-right').textContent")  # 式・全国の値は、数字の下の閉じた「詳しく」に入れた（SPEC §45）
     for k in ("実車 km ÷ 走った km", "積んだ重さ ÷ 最大積載量", "積載率 × 大型の実車率", "全国 62.15%"):
         assert k in right, (k, right)
+    right = page.js("document.querySelector('#own-right').innerText")
     assert "13,500 kg" not in right and "「辰巳 → 江東区」" not in right  # 長い注記は閉じた「詳しく」の中（区間の表には、地図に置けない地点の名前として辰巳が出てよい）
     assert page.js("document.querySelector('#own-more').open") is False
     assert page.js("[...document.querySelectorAll('#own-right .o-tmore')].every(d => !d.open)")
@@ -316,7 +318,7 @@ def test_right_panel_puts_notes_under_details_and_explains_jargon(app):
     assert "13,500 kg" in right and "仮定" in right and "77.6%" in right and "辰巳" in right, right
     assert "区分は、200 km を超えた分を" in right
     # 用語: ファイルを落とす欄の UTF-8 / Shift_JIS に一言の説明がある
-    assert "日本語の文字の保存のしかた" in page.js("document.querySelector('#own-drop').innerText")
+    assert "文字コードはどちらでも読めます" in page.js("document.querySelector('#own-drop').innerText")
     _to_sample(page)
     # 組み込みのサンプルの OSRM にも一言の説明がある
     page.js("Own.setTab('import')")
@@ -332,7 +334,7 @@ def test_role_select_text_is_not_cut_at_1920(app):
       const cs = getComputedStyle(s), c = document.createElement('canvas').getContext('2d'); c.font = cs.fontSize + ' ' + cs.fontFamily;
       const txt = s.options[0].textContent, need = c.measureText(txt).width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
       return {txt: txt, need: need, w: s.getBoundingClientRect().width};})())"""))
-    assert m and m["txt"] == "役割を選んでください" and m["w"] >= m["need"] + 2, m
+    assert m and m["txt"] == "この列の中身を選ぶ" and m["w"] >= m["need"] + 2, m
     _to_sample(page)
 
 

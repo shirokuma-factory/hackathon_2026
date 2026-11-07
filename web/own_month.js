@@ -13,12 +13,12 @@ const OwnMonth = (() => {
   /* ------------------------------------------------------------ 用語の一言説明 */
 
   const GLOSS = {
-    '実車率': '走った距離のうち、荷を積んで走った距離の割合です。',
-    '積載率': '積んだ重さ ÷ その車の最大積載量です。この画面では大型の車だけで計算します。',
-    '積載効率': '積載率 × 実車率です。荷を積んで走った割合と、荷台がどれだけ埋まっていたかを 1 つにした数です。',
-    '空車 km': '荷を積まずに走った距離です。',
-    '1口': '帰り便の空きを荷主に売る 1 つの単位です。料金は 1 口あたりで出します。',
-    '基準積載率': '個建運賃の参考額を出すとき、荷台が何割埋まる前提で 1 台の運賃を割るか、という割合です。',
+    '実車率': '荷を積んで走った割合',
+    '積載率': '積んだ重さの割合',
+    '積載効率': '積載率×実車率',
+    '空車 km': '荷なしで走った距離',
+    '1口': '空きを売る単位',
+    '基準積載率': '運賃を割る積み具合',
   };
 
   // 用語のあとに付ける「?」。押す・Enter・フォーカスで開く。マウスを乗せても開く（CSS）
@@ -47,9 +47,9 @@ const OwnMonth = (() => {
     try { localStorage.setItem(key, JSON.stringify(v)); return true; } catch (e) { return false; }
   }
   const list = () => { const o = readJSON(KEY); return o && Array.isArray(o.entries) ? o.entries : []; };
-  // 同じ月・同じ署名は置き換え、ほかは残す。24 件まで
+  // 同じ月は最新の 1 件に置き換える（同じ月の別の版のファイルを何度も落としても、同じ月が並ばない）。ほかの月は残す。24 件まで。
   function save(entry) {
-    const es = list().filter((e) => !(e.month === entry.month && e.sig === entry.sig));
+    const es = list().filter((e) => e.month !== entry.month);
     es.push({ ...entry, savedAt: new Date().toISOString() });
     es.sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
     return writeJSON(KEY, { v: 1, entries: es.slice(-24) });
@@ -64,7 +64,7 @@ const OwnMonth = (() => {
     return {
       month: `${d.year}-${pad2(d.mon)}`, label: `${d.year} 年 ${d.mon} 月`,
       actual_rate: k.actual_rate.value, load_rate: k.load_rate.value, load_eff: k.load_efficiency.value,
-      empty_km: c ? c.emptyKm : round1(k.actual_rate.km_empty || 0), wait_min: c ? c.longMin : 0, wait_count: c ? c.longCount : 0,
+      empty_km: c ? c.emptyKm : round1(k.actual_rate.km_empty || 0), wait_min: c ? (c.waitMissing ? null : c.longMin) : 0, wait_count: c ? (c.waitMissing ? null : c.longCount) : 0,
       legs: d.counts.legs, vehicles: d.vehicles.length, company: d.company ? d.company.name : '',
     };
   }
@@ -78,7 +78,7 @@ const OwnMonth = (() => {
       return {
         month: m.month, label: m.label || `${m.year} 年 ${m.mon} 月`,
         actual_rate: k.actual_rate ? k.actual_rate.value : null, load_rate: k.load_rate ? k.load_rate.value : null, load_eff: k.load_efficiency ? k.load_efficiency.value : null,
-        empty_km: round1((k.actual_rate && k.actual_rate.km_empty) || 0), wait_min: st.reduce((a, x) => a + x.minutes, 0), wait_count: st.length,
+        empty_km: round1((k.actual_rate && k.actual_rate.km_empty) || 0), wait_min: c && c.waitMissing ? null : st.reduce((a, x) => a + x.minutes, 0), wait_count: c && c.waitMissing ? null : st.length,
         legs: m.counts ? m.counts.legs : 0, vehicles: d.vehicles.length, company: d.company ? d.company.name : '',
       };
     });
@@ -142,7 +142,7 @@ const OwnMonth = (() => {
   const isHallWard = (p) => !!(p && (p.hall_ward || (p.note && /市役所のある区/.test(p.note))));
   const placeName = (p) => {
     if (!p) return '（地点を入れてください）';
-    if (isHallWard(p)) { const l = p.label || p.short || '', pf = p.pref || ''; return `${pf && l.startsWith(pf) ? '' : pf}${l}（区は確認）`; }
+    if (isHallWard(p)) { const l = p.label || p.short || '', pf = p.pref || ''; return `${pf && l.startsWith(pf) ? '' : pf}${l}（区を確かめてください）`; }
     return `${p.pref || ''}${p.muni || p.label || ''}`;
   };
   const shortName = (p) => (p ? (p.short || p.muni || p.label || '?') : '?');
@@ -183,6 +183,14 @@ const OwnMonth = (() => {
       res.example = sorted[sorted.length >> 1];
     }
     return res;
+  }
+
+  /* 売上の目安が数えた範囲。数えたのは「車庫に向かう帰り」（dir が back）の空車だけ。ほかの空車（遠くの発地からの空車、車庫から出る向きの空車、向きが決まらない空車）は数えない。
+     空車の費用は全部の空車で計算するので、範囲が違う。画面に「帰り ○ 便だけ。ほかの空車 ○ 便（○ km）は数えていません」と書くための数 */
+  function revenueScope(d) {
+    const all = d.legs.filter((l) => l.kind === 'empty'), back = all.filter((l) => l.dir === 'back'), other = all.filter((l) => l.dir !== 'back');
+    const km = (ls) => round1(ls.reduce((a, l) => a + (l.km || 0), 0));
+    return { all: all.length, back: back.length, other: other.length, otherKm: km(other), allKm: km(all), backKm: km(back) };
   }
 
   /* 自社の成約単価（円/km か 円/便）で出した帰り荷の売上の目安。rate: { kind: 'km' | 'trip', value }。標準的運賃とは別に出す。
@@ -260,7 +268,7 @@ const OwnMonth = (() => {
     const w = weekly.length ? `毎週${weekly.map((x) => WDN[x] + '曜').join('・')}` : '';
     if (w && shown) return `${w}（ほか ${shown}）`;
     if (w) return w;
-    if (shown) return `${shown}（同じ曜日が月に 3 回以上ではないので、毎週とは書きません）`;
+    if (shown) return shown;
     return '（曜日を入れてください）';
   }
 
@@ -268,24 +276,64 @@ const OwnMonth = (() => {
   function pad(n) { return String(n).padStart(2, '0'); }
   const isoOf = (dt) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
   function tomorrowIso(now) { const t = new Date((now || new Date()).getTime()); t.setDate(t.getDate() + 1); return isoOf(t); }
+  /* 配車表で車が動いた曜日（0 = 月 … 6 = 日）。日付ごとに区間が 1 つでもあれば動いた日とし、曜日ごとに動いた日の数を数えて、いちばん多い曜日の半分以上ある曜日を稼働日とする。
+     全車が「休」の日曜のように、動いた日が無い曜日は入らない。区間が無いときは null（曜日を決められない） */
+  function workingWeekdays(d) {
+    const days = new Set();
+    for (const l of d.legs || []) { const dt = (l.dep || l.date || '').slice(0, 10); if (/^\d{4}-\d{2}-\d{2}$/.test(dt)) days.add(dt); }
+    if (!days.size) return null;
+    const cnt = {};
+    for (const dt of days) { const w = wdOf(dt); if (w != null) cnt[w] = (cnt[w] || 0) + 1; }
+    const mx = Math.max(...Object.values(cnt));
+    return new Set(Object.keys(cnt).map(Number).filter((w) => cnt[w] * 2 >= mx));
+  }
+  /* 明日の空きの日付の初期値: 今日の次の日から数えて、配車表で車が動いている曜日の最初の日。休みの曜日（日曜など）は飛ばす。戻り値は { iso, skipped（飛ばした日の iso）, open（稼働日の曜日の一覧）, basis（配車表から決めたか） } */
+  function nextWorkday(d, now) {
+    const open = workingWeekdays(d), t = new Date((now || new Date()).getTime()), skipped = [];
+    t.setDate(t.getDate() + 1);
+    if (!open) return { iso: isoOf(t), skipped, open: null, basis: false };
+    for (let i = 0; i < 14; i++) {
+      const w = (t.getDay() + 6) % 7;
+      if (open.has(w)) return { iso: isoOf(t), skipped, open: [...open].sort((a, b) => a - b), basis: true };
+      skipped.push(isoOf(t));
+      t.setDate(t.getDate() + 1);
+    }
+    const first = new Date((now || new Date()).getTime()); first.setDate(first.getDate() + 1);
+    return { iso: isoOf(first), skipped: [], open: [...open].sort((a, b) => a - b), basis: false };
+  }
   function boardDefaults(d, now) {
     const p = returnPairs(d)[0];
-    const base = { date: tomorrowIso(now), frm: '', to: '', cls: '', kg: '', time: '' };
+    const base = { date: nextWorkday(d, now).iso, frm: '', to: '', cls: '', kg: '', time: '', timeTo: '', bed: '', size: '' };
     if (!p) return base;
     const top = (o) => Object.keys(o).sort((x, y) => o[y] - o[x] || (x < y ? -1 : 1))[0];
     const plate = top(p.plates), v = d.vehicles.find((x) => x.plate === plate);
     let kg = v && v.max_load_kg;
     if (!kg) { const m = /^(\d+(?:\.\d+)?)\s*t$/i.exec(String((v && v.cls) || '')); if (m) kg = +m[1] * 1000; }
-    return { date: base.date, frm: placeName(d.places[p.frm]), to: placeName(d.places[p.to]), cls: (v && tariffClass(v.cls)) || '', kg: kg ? String(kg / 1000) : '', time: top(p.dep) || '' };
+    return { date: base.date, frm: placeName(d.places[p.frm]), to: placeName(d.places[p.to]), cls: (v && tariffClass(v.cls)) || '', kg: kg ? String(kg / 1000) : '', time: top(p.dep) || '', timeTo: '', bed: '', size: '' };
+  }
+  /* 読めた割合。区間の数（読めた区間 + 読めなかった行）のうち、実車か空車かが分かった区間の割合。読めない・不明が 2 割を超えるとき low を真にし、
+     実車率を「不明を空車とした値（lo）〜不明を外した値（hi）」の幅で出せるようにする。lo が求まらないとき（距離が無い）は null */
+  function readQuality(d) {
+    const c = d.counts || {}, legs = c.legs || 0, unread = c.unreadable_rows != null ? c.unreadable_rows : (d.unreadable || []).length, unk = c.unknown || 0;
+    const total = legs + unread, known = Math.max(0, legs - unk), share = total ? known / total : 1;
+    const k = d.kpis || {}, pick = (o) => (o == null ? null : typeof o === 'object' ? (o.value != null ? o.value : null) : o);
+    let lo = pick(k.loaded_rate_if_unknown_empty);
+    if (lo == null) lo = pick(k.actual_rate_if_unknown_empty);
+    const hi = k.actual_rate ? k.actual_rate.value : null;
+    return { total, known, unread, unk, share, low: total > 0 && 1 - share > 0.2, lo, hi };
   }
   const CLASS_CHOICES = ['2t', '4t', '10t'];
+  // 掲示に書く荷台の形（求荷求車の掲示は、車格のほかに荷台の形と寸法、積める時間の幅で探される）
+  const BED_CHOICES = ['ウイング', '平ボディ', '箱（バン）', '冷凍・冷蔵', 'ユニック・クレーン付き', 'その他'];
   // f: { date: 'YYYY-MM-DD', frm, to, cls, kg（t）, time }。足りない欄は「（○○を入れてください）」と書く
   function boardOne(f) {
     const ok = /^\d{4}-\d{2}-\d{2}$/.test(f.date || '');
-    const day = ok ? `${dateWd(f.date)}${f.time ? ` ${f.time} ごろ出発` : ''}` : '（日付を入れてください）';
+    const when = f.time ? (f.timeTo ? ` ${f.time}〜${f.timeTo} の間に積めます（出発）` : ` ${f.time} ごろ出発`) : '';
+    const day = ok ? `${dateWd(f.date)}${when}` : '（日付を入れてください）';
     const kgv = Number(String(f.kg || '').normalize('NFKC').replace(/[^\d.]/g, ''));
+    const bed = String(f.bed || '').trim(), size = String(f.size || '').trim();
     return [BOARD_HEAD, `発地: ${f.frm || '（発地を入れてください）'}`, `着地: ${f.to || '（着地を入れてください）'}`, `日時: ${day}`,
-      `車格: ${f.cls || '（車格を入れてください）'}${f.cls ? '車' : ''}`, `空き: ${kgv > 0 ? `最大 ${tonsText(kgv * 1000)} t まで` : '（空きの重さを入れてください）'}（積む荷の大きさや形は、ご相談で決めます）`, ...BOARD_TAIL].join('\n');
+      `車格: ${f.cls || '（車格を入れてください）'}${f.cls ? '車' : ''}`, ...(bed || size ? [`荷台: ${bed || '（形を入れてください）'}${size ? `（内寸 ${size}）` : ''}`] : []), `空き: ${kgv > 0 ? `最大 ${tonsText(kgv * 1000)} t まで` : '（空きの重さを入れてください）'}（積む荷の大きさや形は、ご相談で決めます）`, ...BOARD_TAIL].join('\n');
   }
 
   // 空車の帰りの区間（発地 → 着地）ごとに 1 つずつ、求荷求車に貼る文を作る。[{ key, frm, to, label, n, text }]
@@ -312,7 +360,7 @@ const OwnMonth = (() => {
       const gs = Object.values(g).sort((x, y) => y.n - x.n), multi = gs.length > 1;
       const clsLine = gs.length ? gs.map((e) => `${e.tc ? `${e.tc}車${e.raw && e.raw !== e.tc ? `（${e.raw}）` : ''}` : (e.raw && e.raw !== '不明' ? e.raw : '（車格を入れてください）')}${multi ? ` ${e.n} 便` : ''}`).join(' / ') : '（車格を入れてください）';
       const kgLine = gs.some((e) => e.kg)
-        ? gs.map((e) => `${multi ? `${e.tc || e.raw}車 ` : ''}${e.kg ? `最大 ${tonsText(e.kg)} t まで${e.assumed ? '（仮定）' : e.nominal ? '（車の種類の呼び名から。車検証の値で書き直してください）' : ''}` : '（空きの重さを入れてください）'}`).join(' / ')
+        ? gs.map((e) => `${multi ? `${e.tc || e.raw}車 ` : ''}${e.kg ? `最大 ${tonsText(e.kg)} t まで${e.assumed ? '（仮定）' : e.nominal ? '（車種から推定。車検証の値に直してください）' : ''}` : '（空きの重さを入れてください）'}`).join(' / ')
         : '（空きの重さを入れてください）';
       const text = [BOARD_HEAD, `発地: ${place(a)}`, `着地: ${place(b)}`, `曜日・時刻: ${day}${dep ? ` ${dep} ごろ出発` : ''}${basis}`,
         `車格: ${clsLine}`, `空き: ${kgLine}（積む荷の大きさや形は、ご相談で決めます）`, ...BOARD_TAIL].join('\n');
@@ -344,6 +392,6 @@ const OwnMonth = (() => {
     return rows;
   }
 
-  return { GLOSS, tipHtml, sig, headSig, list, save, clearAll, rolesGet, rolesSet, summary, summaries, compareRows, FARE, fare, tariffClass, revenue, returnPairs, boardText, boardTexts, draftRows, waitClass, ownRevenue, boardDefaults, boardOne, CLASS_CHOICES, tomorrowIso, isHallWard, placeName, hash };
+  return { GLOSS, tipHtml, sig, headSig, list, save, clearAll, rolesGet, rolesSet, summary, summaries, compareRows, FARE, fare, tariffClass, revenue, revenueScope, returnPairs, boardText, workingWeekdays, nextWorkday, boardTexts, draftRows, waitClass, ownRevenue, boardDefaults, boardOne, CLASS_CHOICES, BED_CHOICES, readQuality, tomorrowIso, isHallWard, placeName, hash };
 })();
 if (typeof window !== 'undefined') window.OwnMonth = OwnMonth;

@@ -95,8 +95,8 @@ def test_artifact_version_follows_the_artifact_rules():
 
 def test_page_text_has_usage_and_limits():
     html = text_of(PAGE)
-    for need in ("サンプルで試す", "通信なし", "地図は", "実在の会社の配車表・デジタコでは確かめていません", "標準的運賃", "相場ではありません", "【求荷】", "荷待ちの下書きをコピー", "数字と気づきを文でコピー",
-                 "最大積載量を変える", "不明の区間を空車として数えると"):
+    for need in ("サンプルで試す", "通信なし", "地図は", "実在の会社の配車表・デジタコでは確かめていません", "標準的運賃", "相場ではありません", "【求荷】", "荷待ちの下書きをコピー", "数字と分かったことを文でコピー",
+                 "最大積載量を変える", "分からない区間を空車とみると"):
         assert need in html, need
 
 
@@ -128,7 +128,9 @@ REF_JS = """
   const MUNIS = %s.map(([code, name, pref, lon, lat]) => ({ code, name, pref, lon, lat }));
   const sets = %s;
   return sets.map((files) => {
-    const d = OwnCalc.analyze(files, { munis: MUNIS, userAliases: {}, largeMaxLoadKg: 10000, decisions: {} });
+    const sampleSet = files.length === 3 && files[0].name === 'haisha_2026-10.csv' && files.every((f, i) => i === 0 || /^digitaco_(1234|5678)\.csv$/.test(f.name));
+    const est = (a, b) => ((a.code === '46203' && b.code === '13108') || (a.code === '13108' && b.code === '46203') ? { km: 1381.7, src: 'OSRM 推定' } : null);
+    const d = OwnCalc.analyze(files, { munis: MUNIS, userAliases: {}, decisions: {}, ...(sampleSet ? { estKmFn: est } : {}) });
     if (d.needs_year) return { pending: 'year' };
     if (d.failed) return { pending: (d.column_roles_needed || []).length ? 'roles' : 'failed' };
     const k = d.kpis;
@@ -202,13 +204,13 @@ def test_sample_screen_flow_and_outputs():
                    board: [...document.querySelectorAll('#sec-actions details[data-keep^=board] textarea')].map((e) => e.value), draft: (q('#draft-ta') || {}).value || '',
                    chart: !!q('#chart svg'), rev: t('#sec-actions'), files: t('#sec-import'), cards: document.querySelectorAll('.cf').length }; })()""")
         assert len(got["tiles"]) == 3 and "式:" in got["tiles"][0] and "実車率" in got["tiles"][0]
-        assert "不明の区間を空車として数えると" in got["kpi"] and "区間" in got["kpi"]
+        assert "分からない区間を空車とみると" in got["kpi"] and "区間" in got["kpi"]
         assert got["empties"] and got["empties"] == sorted(got["empties"], reverse=True) and got["empties"][0] > 0
         assert got["ins"] and all("規則" not in r for r in got["ins"])
         assert got["chart"]
         assert got["board"] and all(b.startswith("【求荷】空車情報") for b in got["board"])
         assert "発地:" in got["board"][0] and "着地:" in got["board"][0] and "車格:" in got["board"][0]
-        assert "相場ではありません" in got["rev"] and "告示" in got["rev"] and "上限" in got["rev"]
+        assert "相場ではありません" in got["rev"] and "告示" in got["rev"]  # 文言の直し 2026-11-07
         assert got["cards"] >= 1 and "最大積載量" in text_of(PAGE)
         assert got["draft"].startswith("荷待ち記録 ") and got["draft"].count("荷待ち記録") >= 1
         assert re.search(r"荷待ち記録 \d+/\d+ .* 着 \d+:\d\d 出発 \d+:\d\d 車番 \d{4}", got["draft"].splitlines()[0]), got["draft"].splitlines()[0]
@@ -217,7 +219,7 @@ def test_sample_screen_flow_and_outputs():
         before = page.js("document.querySelector('#sec-confirm h2').textContent")
         page.js("document.querySelector('.cf [data-act=ok]').click()")
         page.wait(lambda: page.js("document.querySelector('#sec-confirm h2').textContent") != before, 20, "確定")
-        assert "確定 1" in page.js("document.querySelector('#sec-confirm h2').textContent")
+        assert "そのまま 1" in page.js("document.querySelector('#sec-confirm h2').textContent")
 
         # 明日の空きから作る
         page.js("""(function () { const s = window.OwnLite.state; const f = document.querySelector('[data-tm=date]'); f.value = '2026-11-07'; f.dispatchEvent(new Event('change', {bubbles: true}));

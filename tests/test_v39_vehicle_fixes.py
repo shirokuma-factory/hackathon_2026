@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "web" / "compare_lite.html"
 
 
-def cargo(count, l, w, h, kg, dest="28210", **kw):
+def cargo(count, l, w, h, kg, dest="46203", **kw):
     return spaceb.parse_shipment({"shipment": {"items": [{"count": count, "length_cm": l, "width_cm": w, "height_cm": h, "weight_kg": kg}]},
                                   "dest_code": dest, **kw})
 
@@ -92,7 +92,7 @@ def test_f3_compare_lite_home_matches_api_match_on_t7_space():
     with edge_page(1200, 800, webgl=False) as page:
         page.goto(PAGE.as_uri() + "?example=1")
         page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")
-        got = page.js("(" + json.dumps(rows) + ").map((r) => evaluate({rows: [r], from: '東京都', to: '大阪府', km: 492, recv: 'business', flex: 4})"
+        got = page.js("(" + json.dumps(rows) + ").map((r) => evaluate({rows: [r], from: '東京都', to: '鹿児島県', km: 1346, recv: 'business', flex: 4})"
                       ".options.find((o) => o.id === 'home').status)")
     assert len(got) == len(CARGOS)
     for c, status in zip(CARGOS, got):

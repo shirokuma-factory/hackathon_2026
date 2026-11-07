@@ -21,7 +21,7 @@ def read(name: str) -> str:
 def test_g142_1_rail_ship_entry_text_claims_only_what_the_screen_shows():
     mk = read("market.js")
     assert "日数と目安額の差で見られます" not in mk
-    assert "鉄道・船の経路、貨物駅・港の位置、問い合わせ先を見られます。日数と額は問い合わせが必要です。" in mk
+    assert "日数と費用は問い合わせてください。" in mk   # 文言の直し 2026-11-07
 
 
 def test_g142_2_corridor_detail_has_no_heavy_vehicle_chart_but_the_layer_stays():
@@ -51,19 +51,19 @@ def test_g142_2_corridor_screen_has_no_chart():
         open_("#v=market&p=27-12")
         assert page.js("!!document.querySelector('#m-pair .mp-title')")
         assert not page.js("!!document.querySelector('#m-pair svg#ch, #m-pair .mp-j')")
-        assert "日数と額は問い合わせが必要です" in page.js("document.querySelector('#m-pair .mp-clo').textContent")
+        assert "日数と費用は問い合わせてください" in page.js("document.querySelector('#m-pair .mp-clo').textContent")
         assert not page.js("window.__errs.length")
 
 
 def test_g142_3_fallback_truck_card_has_the_same_drive_time_as_the_top():
-    with _browser(1920, 1080) as (page, open_):
+    with _browser(1920, 1080, "public_nocache") as (page, open_):
         open_("#v=compare&o=13104&l=km&d=27205")
-        page.wait(lambda: "経路を取得できませんでした" in page.js("document.querySelector('#rt-modes').textContent"), 90, "経路の取得の終わり")
+        page.wait(lambda: "直線で出しています" in page.js("document.querySelector('#rt-modes').textContent"), 90, "経路の取得の終わり")
         top = page.js("document.body.innerText")
         card = page.js("document.querySelector('.rt-card[data-mode=truck] .rt-time').textContent")
         assert "運転時間は出せません" not in card
         if "運転" in card:
-            assert "線は直線の弧" in card
+            assert "線は直線です" in card
         assert not page.js("window.__errs.length")
 
 

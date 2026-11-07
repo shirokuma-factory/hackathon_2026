@@ -439,7 +439,7 @@ body.view-own #own-right .f-chk { display: flex; align-items: center; gap: 8px; 
 .o-rev2 > span { font-size: 11.5px; }
 .o-sub { display: block; color: var(--faint); font-size: 10.5px; font-weight: 400; }
 @media (max-width: 600px) {
-  .o-revt td.num { white-space: normal; font-size: 11px; }
+  .o-revt td.num { white-space: normal; font-size: 11px; overflow-wrap: anywhere; } /* 長距離の帰り荷は金額が 6 桁になり、400px の幅に収まらなくなる */
   .o-revt th, .o-revt td { padding-left: 2px; padding-right: 2px; }
 }
 .o-hired { margin: 4px 0; } .o-more2 summary { cursor: pointer; font-size: 11px; color: var(--accent); }
@@ -472,3 +472,261 @@ body.view-own #own-right .f-chk { display: flex; align-items: center; gap: 8px; 
   .o-un { table-layout: fixed; width: 100%; }
   .o-un td { overflow-wrap: anywhere; }
 }
+
+/* ---- 手順に沿う画面（guided。#v=own&g=empty / g=propose）。右の欄に手順を出し、左の欄は「詳しく」の中へ移る（own.js の mountLeft） ---- */
+#own-sheet.own-guided #own-right { width: min(560px, calc(100vw - 32px)); }
+#own-right[data-step="1"] .o-adv, #own-right[data-step="3"] .o-adv { display: none; }
+#own-right.o-need .o-adv { display: block; }
+.o-adv { margin: 10px 14px 16px; border: 1px solid var(--line); border-radius: 12px; padding: 4px 12px 8px; font-size: 15px; line-height: 1.7; }
+.o-adv > summary { cursor: pointer; padding: 8px 0; font-weight: 700; font-size: 15px; }
+.o-adv .o-tiles { display: grid; grid-template-columns: 1fr; gap: 8px; }
+#own-adv-slot #own-view { position: static; left: auto; top: auto; width: auto; bottom: auto; padding: 0; margin: 0 0 8px; background: none; border: 0; box-shadow: none; backdrop-filter: none; display: block; z-index: auto; }
+#own-adv-slot #own-view .home-back, #own-adv-slot #own-view .o-co { display: none; }
+#own-adv-slot #own-view .p-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#own-adv-slot #own-body { overflow: visible; flex: none; font-size: 14px; line-height: 1.7; }
+#own-adv-slot #own-notes { position: static; width: auto; padding: 8px 0 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; display: block; }
+#own-adv-slot #own-notes p { font-size: 13px; line-height: 1.7; }
+@media (max-width: 600px) {
+  /* 狭い画面: 手順の欄を画面いっぱいにし、地図は隠す（手順の中身が空の地図の下に押し下げられないように） */
+  #own-sheet.own-guided.sheet-wrap { top: 34vh; bottom: 8px; max-height: none; }
+  #own-sheet.own-guided #own-right { width: auto; }
+  .o-adv { margin: 8px 8px 12px; }
+}
+
+/* ---- 全部を見る（full）の読みやすさ: 数字は数字と 1 行、補足は閉じた「詳しく」 ---- */
+body.view-own:not(.own-guided) #own-src:not(.on) { display: none; }
+body.view-own:not(.own-guided) #own-notes .f-n1 { display: none; }
+.o-ndet { margin: 4px 0 0; } .o-ndet > summary { cursor: pointer; font-size: 12.5px; color: var(--muted); }
+.o-toguide { margin-left: 10px; font-size: 12.5px; }
+.o-tmore .o-talt, .o-tmore .o-tf, .o-tmore .o-tn { margin: 4px 0; }
+.o-unr > summary { cursor: pointer; }
+
+/* ---- 帰り便の提案（web/negotiate.js。SPEC §44） ---- */
+.neg-slot { padding: 0 14px 6px; }
+.neg { font-size: 13px; line-height: 1.6; }
+.neg-head { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 8px 10px; margin: 0 0 8px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--glass-solid, #0d1420); }
+.neg-head span { display: flex; flex-direction: column; min-width: 0; }
+.neg-head small { color: var(--muted); font-size: 10.5px; }
+.neg-head b { font-weight: 600; font-size: 12.5px; overflow-wrap: anywhere; }
+.neg-head .btn-sm { margin-left: auto; flex: none; height: 28px; padding: 0 10px; font-size: 12px; }
+.neg-head.neg-file { border-color: #6aa5ff; }
+.neg-box { padding: 10px 12px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.04); }
+.neg-box h3 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+.neg-sub, .neg-note { margin: 6px 0; color: var(--muted); font-size: 12px; }
+.neg-base { margin: 6px 0; }
+.neg-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 2px; }
+.neg-btns button { min-height: 36px; padding: 0 14px; font-size: 13px; }
+.neg-btns button:disabled { opacity: .45; cursor: not-allowed; }
+.neg-pick { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 4px 0 6px; }
+.neg-pick label { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; color: var(--muted); max-width: 100%; }
+.neg-pick select { max-width: 100%; }
+.neg-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(60px, 1fr) auto; align-items: center; gap: 8px; margin: 6px 0; }
+.neg-lab { font-size: 12px; }
+.neg-val { font-size: 13px; white-space: nowrap; }
+.neg-bar { display: block; height: 10px; border-radius: 5px; background: rgba(255,255,255,.1); overflow: hidden; }
+.neg-bar i { display: block; height: 100%; background: #6aa5ff; }
+.neg-warn { margin: 8px 0; padding: 7px 10px; border-radius: 8px; background: rgba(255,190,80,.12); border: 1px solid rgba(255,190,80,.45); }
+.neg-err { margin: 8px 0; padding: 7px 10px; border-radius: 8px; background: rgba(255,100,100,.12); border: 1px solid rgba(255,100,100,.5); }
+.neg-ok { margin: 8px 0; padding: 7px 10px; border-radius: 8px; background: rgba(90,200,140,.12); border: 1px solid rgba(90,200,140,.45); }
+.neg-y { color: #ffc266; }
+.neg-ev, .neg-int, .neg-econ { margin: 8px 0; font-size: 12.5px; }
+.neg-ev summary, .neg-int summary, .neg-econ summary { cursor: pointer; padding: 4px 0; font-weight: 600; }
+.neg-tw { overflow-x: auto; margin: 6px 0; }
+.neg-tbl { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+.neg-tbl caption { text-align: left; color: var(--muted); padding: 4px 0; }
+.neg-tbl th, .neg-tbl td { border-bottom: 1px solid var(--line); padding: 3px 6px; text-align: left; vertical-align: top; }
+.neg-tbl th, .neg-tbl td { word-break: keep-all; overflow-wrap: normal; } /* 列が細くなっても「区／間」のように 1 字ずつ折れない。幅が足りないときは表ごと横に動かす */
+.neg-tbl th { white-space: nowrap; }
+.neg-tbl { min-width: 36em; }
+.neg-tbl td small { display: block; color: var(--muted); font-size: 10px; }
+.neg-tbl .num { text-align: right; white-space: nowrap; }
+.neg-tbl tr.neg-hit { background: rgba(106,165,255,.14); }
+.neg-mono { font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; word-break: normal; white-space: nowrap; }
+.neg fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; padding: 6px 10px 8px; min-width: 0; }
+.neg legend { font-size: 12px; font-weight: 600; padding: 0 4px; }
+.neg-rad { display: inline-flex; align-items: flex-start; gap: 5px; margin: 2px 12px 2px 0; font-size: 12.5px; }
+.neg-type { display: flex; margin: 4px 0; }
+.neg-type span { display: flex; flex-direction: column; }
+.neg-type small { color: var(--muted); font-size: 11.5px; }
+.neg-ev1 { margin: 2px 0 6px; font-size: 12px; }
+.neg-ev1 small { display: block; color: var(--muted); font-size: 10.5px; }
+.neg-rads small, .neg-picks small { display: block; color: var(--muted); font-size: 10.5px; }
+.neg-nl, .neg-tl { display: flex; flex-direction: column; gap: 3px; margin: 6px 0; font-size: 11.5px; color: var(--muted); }
+.neg-nl input { width: 100%; box-sizing: border-box; }
+.neg-tl textarea { width: 100%; box-sizing: border-box; font-size: 13px; line-height: 1.6; min-height: 260px; }
+.neg-eg { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; margin: 6px 0; }
+.neg-eg label { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); }
+.neg-eg label input { width: 120px; }
+.neg-ul { margin: 4px 0 4px 1.2em; padding: 0; font-size: 12px; }
+.neg-status { margin: 10px 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-strong); }
+.neg-status.ok { border-color: rgba(90,200,140,.6); }
+.neg-status.warn { border-color: rgba(255,190,80,.6); }
+.neg-status.ng { border-color: rgba(255,100,100,.7); background: rgba(255,100,100,.08); }
+.neg-hold { margin-top: 6px; }
+.neg-stale { margin: 8px 0; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255,190,80,.6); background: rgba(255,190,80,.12); font-weight: 600; }
+.neg-ask { margin: 6px 0; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,100,100,.6); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.neg-ask p { flex: 1 1 100%; margin: 0; }
+@media (max-width: 600px) {
+  .neg-slot { padding: 0 8px 6px; }
+  .neg-row { grid-template-columns: 1fr auto; }
+  .neg-row .neg-bar { grid-column: 1 / -1; grid-row: 2; }
+  .neg-eg label input { width: 96px; }
+}
+
+/* ---- 手順に沿う画面の文字（見出し 18px・本文 15px・補足 13.5px。本文の行間は 1.7、1 行は 40 字ほどまで） ---- */
+.neg-guided { font-size: 15px; line-height: 1.7; }
+.neg-guided small, .neg-guided .neg-note, .neg-guided .neg-sub, .neg-guided .neg-ul, .neg-guided .neg-tbl { font-size: 13.5px; line-height: 1.7; }
+.neg-guided .neg-mono { font-family: inherit; font-size: 13px; }
+.neg-guided .neg-box h3 { font-size: 18px; margin: 0 0 4px; }
+.neg-guided .neg-sub { margin: 0 0 8px; }
+.neg-stephead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0 0 10px; }
+.neg-steps { display: flex; flex-wrap: wrap; gap: 2px 6px; list-style: none; margin: 0; padding: 0; font-size: 13.5px; color: var(--muted); }
+.neg-steps li { white-space: nowrap; }
+.neg-steps li + li::before { content: "→"; margin-right: 6px; }
+.neg-steps li b { font-weight: 700; }
+.neg-steps li.on { color: var(--text); font-weight: 700; }
+.neg-steps li.done { color: var(--muted); }
+.neg-full { font-size: 13.5px; }
+.neg-guided .neg-head { position: static; margin: 0 0 8px; padding: 6px 10px; }
+.neg-guided .neg-head small { font-size: 13px; }
+.neg-guided .neg-head b { font-size: 14.5px; }
+.neg-guided .neg-btns button { min-height: 44px; font-size: 15px; }
+.neg-guided .neg-btns .btn-link { min-height: 0; font-size: 14px; }
+.neg-guided .neg-row { grid-template-columns: 6.4em minmax(60px, 1fr) 9.5em; }
+.neg-guided .neg-lab { font-size: 15px; white-space: nowrap; } /* 「ほかの曜日」が「ほかの曜／日」に割れない幅 */
+.neg-guided .neg-val { font-size: 15px; text-align: right; font-variant-numeric: tabular-nums; }
+.neg-guided .neg-bar { height: 12px; }
+.neg-guided .neg-bar i { background: rgba(160,170,190,.7); }
+.neg-guided .neg-sel .neg-bar i { background: var(--accent, #6aa5ff); }
+.neg-guided .neg-rad { font-size: 15px; }
+.neg-guided .neg-type small { font-size: 15px; }
+.neg-guided .neg-tl textarea { font-size: 15px; line-height: 1.7; min-height: 220px; }
+.neg-guided .neg-ev summary, .neg-guided .neg-int summary, .neg-guided .neg-econ summary { font-size: 15px; }
+.neg-guided .neg-ev1 { font-size: 14px; }
+.neg-guided .neg-ev1 small, .neg-guided .neg-rads small, .neg-guided .neg-picks small { font-size: 13px; }
+@media (max-width: 600px) {
+  .neg-guided .neg-row { grid-template-columns: 6.4em minmax(40px, 1fr) auto; }
+  .neg-guided .neg-row .neg-bar { grid-column: auto; grid-row: auto; }
+  .neg-guided .neg-btns button { min-height: 48px; }
+  .neg-guided .neg-btns { flex-direction: column; align-items: stretch; }
+  .neg-guided .neg-btns .btn-link { align-self: flex-start; min-height: 32px; }
+}
+/* 全部を見る画面でも、数字は右そろえで見やすく */
+.neg:not(.neg-guided) .neg-sel .neg-bar i { background: var(--accent, #6aa5ff); }
+.neg-val { font-variant-numeric: tabular-nums; }
+.neg-guided .neg-pick label { font-size: 14px; }
+.neg-guided legend { font-size: 14.5px; }
+.neg-guided .neg-tl, .neg-guided .neg-nl, .neg-guided .neg-eg label { font-size: 15px; }
+.neg-guided .neg-status, .neg-guided .neg-stale, .neg-guided .neg-warn, .neg-guided .neg-ok, .neg-guided .neg-err, .neg-guided .neg-ask { font-size: 15px; }
+
+/* ---- 落ち着いた見た目（余白は 8 / 16 / 24 / 40 の刻み。枠線ではなく余白で分ける。動きは 0.2〜0.3 秒のゆるやかな切り替えだけ） ---- */
+.neg-guided { line-height: 1.8; }
+.neg-guided .neg-box { border: 0; background: none; padding: 16px 24px 24px; border-radius: 0; }
+.neg-guided .neg-box h3 { font-size: 20px; margin: 0 0 16px; }
+.neg-guided .neg-sub { margin: 0 0 24px; }
+.neg-guided .neg-btns { margin: 24px 0 0; gap: 16px; }
+.neg-guided .neg-btns button { padding: 0 24px; border-radius: 12px; }
+.neg-guided .neg-head { border: 0; background: none; padding: 0 24px; margin: 0 0 8px; gap: 8px 24px; }
+.neg-stephead { padding: 16px 24px 8px; margin: 0; }
+.neg-guided .neg-pick { margin: 0 0 24px; gap: 16px 24px; }
+.neg-guided .neg-row { margin: 16px 0; gap: 16px; }
+.neg-guided .neg-bar { height: 16px; border-radius: 8px; background: rgba(255,255,255,.08); }
+.neg-guided .neg-bar i { border-radius: 8px; transition: width .3s ease-out; }
+.neg-guided .neg-val { font-size: 17px; }
+.neg-guided .neg-lab { font-size: 16px; }
+.neg-guided .neg-note { margin: 16px 0; }
+.neg-lg { margin: 16px 0 8px; font-size: 13.5px; color: var(--muted); display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.neg-lg i { display: inline-block; width: 32px; height: 0; border-top: 3px solid var(--accent, #6aa5ff); vertical-align: middle; margin-left: 8px; }
+.neg-lg i:first-child { margin-left: 0; }
+.neg-lg .lg-d { border-top-style: dashed; border-top-color: #ff9a4d; }
+.neg-guided .neg-types, .neg-guided .neg-cond, .neg-guided .neg-status { border: 0; padding: 0; margin: 24px 0; }
+.neg-guided .neg-cond { background: rgba(255,255,255,.04); border-radius: 16px; padding: 16px; }
+.neg-guided .neg-status { background: rgba(255,190,80,.08); border-radius: 12px; padding: 16px; }
+.neg-guided .neg-status.ng { background: rgba(255,100,100,.08); }
+.neg-guided .neg-stale, .neg-guided .neg-warn, .neg-guided .neg-ok, .neg-guided .neg-err { border: 0; border-radius: 12px; padding: 16px; margin: 16px 0; }
+.neg-guided .neg-ev, .neg-guided .neg-int, .neg-guided .neg-econ { margin: 16px 0; }
+.neg-guided .neg-type { margin: 16px 0; }
+.neg-guided .neg-rad { margin: 4px 24px 4px 0; }
+.o-adv { margin: 16px 24px 24px; border: 0; background: rgba(255,255,255,.04); border-radius: 16px; padding: 8px 24px 16px; }
+.o-adv > summary { padding: 16px 0; }
+#own-sheet.own-guided #own-right { top: 24px; bottom: 24px; right: 24px; border: 0; border-radius: 24px; background: rgba(12,18,30,.74); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 8px 40px rgba(0,0,0,.35); overflow-y: auto; }
+.neg-trow { cursor: pointer; }
+.neg-trow:hover, .neg-trow:focus-visible { background: rgba(255,255,255,.06); outline: none; }
+.neg-trow.neg-open { background: rgba(106,165,255,.14); }
+.neg-tripr td { padding: 8px 0 16px; border-bottom: 0; white-space: normal; word-break: normal; overflow-wrap: anywhere; }
+.neg-trip { max-width: 440px; }
+@media (max-width: 600px) {
+  .neg-guided .neg-box { padding: 16px 16px 24px; }
+  .neg-stephead { padding: 16px 16px 8px; }
+  .neg-guided .neg-head { padding: 0 16px; }
+  .neg-guided .neg-btns button { padding: 0 16px; }
+  #own-sheet.own-guided #own-right { border-radius: 24px; box-shadow: none; }
+  .o-adv { margin: 16px 8px 24px; padding: 8px 16px 16px; }
+}
+/* 手順の切り替えと「詳しく」の開閉は、ゆるやかに */
+@keyframes neg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.neg-enter .neg-box, .neg-enter .neg-head { animation: neg-in .26s ease-out both; }
+.neg-guided details::details-content { opacity: 0; transition: opacity .25s ease-out, content-visibility .25s allow-discrete; }
+.neg-guided details[open]::details-content { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .neg-enter .neg-box, .neg-enter .neg-head { animation: none; }
+  .neg-guided details::details-content { transition: none; opacity: 1; }
+  .neg-guided .neg-bar i { transition: none; }
+}
+.neg-guided #neg-denom, .neg-guided .neg-lg { font-size: 15px; }
+.neg-guided .neg-sub, .neg-guided .neg-ev1 { font-size: 15px; }
+
+/* SPEC §47: 数字を薄くして「参考」と書く（計算できた区間が 30% 未満、または読めた割合が低いとき） */
+.o-tile.o-faint .o-tv { opacity: .55; }
+.o-faintnote { color: var(--muted); }
+.o-readq { margin: 6px 0 8px; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(240,182,78,.45); background: rgba(240,182,78,.10); font-size: 12.5px; line-height: 1.6; }
+
+/* SPEC §47: 空車が多い曜日は文字でも示す。ほかの曜日の棒は四角にしてスイッチに見えないようにする。運行の図は表の外の全幅。狭い欄では根拠の表を 1 便 1 枚のカードにする */
+.o-hotmark { display: inline-block; margin-left: 6px; padding: 0 5px; border: 1px solid rgba(244,150,70,.8); border-radius: 3px; font-size: 10.5px; font-weight: 700; color: #ffd9b0; }
+.neg-guided .neg-bar { border-radius: 2px; height: 10px; border: 1px solid var(--line-strong); background: transparent; }
+.neg-guided .neg-bar i { border-radius: 0; }
+.neg-status.plain { background: transparent !important; border: 0 !important; padding: 0 !important; margin: 10px 0 !important; font-size: 14px; }
+.neg-guided .neg-status.plain { background: transparent; border: 0; padding: 0; margin: 12px 0; }
+.neg-pickrow { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 14px; }
+.neg-tripbox { width: 100%; margin: 8px 0 12px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; box-sizing: border-box; overflow-x: hidden; }
+.neg-tripbox[hidden] { display: none; }
+.neg-triphead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.neg-tripbox .neg-trip { max-width: 100%; }
+.neg-cardable { container-type: inline-size; }
+@container (max-width: 640px) {
+  .neg-cardable .neg-tbl { min-width: 0; display: block; }
+  .neg-cardable .neg-tbl thead { display: none; }
+  .neg-cardable .neg-tbl caption { display: block; }
+  .neg-cardable .neg-tbl tbody { display: block; }
+  .neg-cardable .neg-tbl tr.neg-trow { display: block; margin: 6px 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .neg-cardable .neg-tbl tr.neg-trow td { display: flex; justify-content: space-between; gap: 10px; border: 0; padding: 2px 0; text-align: right; white-space: normal; word-break: normal; overflow-wrap: anywhere; }
+  .neg-cardable .neg-tbl tr.neg-trow td::before { content: attr(data-l); color: var(--muted); text-align: left; flex: none; }
+  .neg-cardable .neg-tbl td small { display: inline; margin-left: 6px; }
+}
+
+/* 自社の運行: 右の欄（幅 540px）が地図の出典の帯を覆わないよう、出典は欄の左に寄せる（広い画面だけ。狭い画面は下のパネルの規則に従う） */
+@media (min-width: 601px) { body.view-own .maplibregl-ctrl-attrib { margin-right: 604px !important; max-width: calc(100vw - 620px) !important; } }
+
+/* 狭い画面の案内（荷主に相談する手順）: 主ボタンを画面の下端に留め、最初の画面の範囲に入れる。段の表示は 1 行に収める */
+@media (max-width: 600px) {
+  .neg-guided .neg-btns { position: sticky; bottom: 0; z-index: 3; gap: 4px; margin: 16px -12px 0; padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--glass-solid, #0c121e); border-top: 1px solid var(--line); }
+  .neg-guided { padding-bottom: var(--neg-btns-h, 0px); }
+  .neg-guided .neg-btns button { min-height: 44px; }
+  .neg-guided .neg-btns .btn-sm, .neg-guided .neg-btns .btn-link { min-height: 28px; font-size: 13px; padding-top: 0; padding-bottom: 0; }
+  .neg-stephead { padding-left: 12px; padding-right: 12px; }
+  .neg-steps { flex-wrap: nowrap; gap: 0 3px; font-size: 12.5px; letter-spacing: -0.02em; }
+  .neg-steps li + li::before { margin-right: 3px; }
+}
+
+/* 地図を描けないとき（web/own.js の noMapStart）: 地図の場所を日本地図の静止画にして、手順の欄はそのまま使う */
+#own-nomap { display: none; }
+body.own-nomap #map { display: none; }
+body.own-nomap #own-nomap { display: block; position: fixed; inset: 0; z-index: 0; background: #0d141f; pointer-events: none; }
+body.own-nomap #own-nomap img { width: 100%; height: 100%; object-fit: cover; opacity: .5; }
+body.own-nomap #own-nomap .nomap-note { position: absolute; left: 16px; bottom: 16px; max-width: 420px; margin: 0; padding: 8px 12px; border-radius: 10px; font-size: 12.5px; line-height: 1.6; background: var(--glass-solid, #0c121e); border: 1px solid var(--line, rgba(255,255,255,.14)); color: var(--text, #e8eef8); pointer-events: auto; }
+body.own-nomap #own-nomap .nomap-note a { margin-left: 8px; color: var(--accent, #5cc8ff); }
+body.own-nomap #own-sheet, body.own-nomap #own-right, body.own-nomap #own-view { position: relative; z-index: 2; }
+@media (max-width: 600px) { body.own-nomap #own-nomap .nomap-note { left: 8px; right: 8px; bottom: auto; top: 8px; max-width: none; } }
+.own-tag.pick { pointer-events: auto; cursor: pointer; }
+.own-tag.pick:hover { border-color: #fff; }
+.own-tag.pick:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

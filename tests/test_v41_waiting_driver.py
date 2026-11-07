@@ -156,7 +156,8 @@ def test_driver_page_is_one_offline_file_with_the_required_controls():
         assert bad not in html, bad
     assert not re.search(r"<script[^>]+src\s*=", html, re.I) and not re.search(r"<link(?![^>]*href\s*=\s*.data:)[^>]+href\s*=", html, re.I)
     assert not re.search(r"@import|url\(\s*['\"]?https?:", html, re.I)
-    for label in ("着いた", "受付した", "呼ばれた（荷役開始）", "荷役が終わった", "出発した", "LINE に貼る文をコピー", "場所", "相手（荷主）", "車番"):
+    for label in ("着いた", "受付した", "荷役を始めた", "荷役が終わった",   # 文言の直し 2026-11-07
+                   "出発した", "LINE に貼る文をコピー", "場所", "相手（荷主）", "車番"):
         assert label in html, label
     # localStorage は必ず try/catch の中で使う
     assert html.count("localStorage") == 3 and html.count("try {") >= 3
@@ -182,7 +183,10 @@ def test_driver_page_in_phone_width_makes_a_line_the_waiting_page_reads_directly
           const set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input', {bubbles: true})); };
           set('place', '江東区 ○○倉庫'); set('partner', '○○'); set('vno', '1234'); set('vclass', '中型'); set('handler', '運転者');
           for (const k of ['arrive', 'reception', 'start', 'end', 'depart']) document.querySelector('[data-stamp=' + k + ']').click();
-          const t = document.querySelector('[data-time=arrive]'); t.value = '07:50'; t.dispatchEvent(new Event('input', {bubbles: true}));
+          // 押した時刻は実行時の時計なので、深夜に走らせると到着より前になる。時刻はすべて決めた値にする
+          for (const [k, v] of [['arrive', '07:50'], ['reception', '08:15'], ['start', '08:30'], ['end', '09:00'], ['depart', '09:10']]) {
+            const t = document.querySelector('[data-time=' + k + ']'); t.value = v; t.dispatchEvent(new Event('input', {bubbles: true}));
+          }
           document.getElementById('b-save').click();
         })()""")
         info = page.js("""(function(){
@@ -224,7 +228,7 @@ def test_document_for_the_receiving_shipper_shows_fault_column_early_split_and_n
                              basis: document.querySelector('#basis').textContent})""")
         assert "保存した記録が読めませんでした（消していません）" in first["broken"]
         assert first["ph"] and all(p.startswith("0:例 ") for p in first["ph"]), first["ph"]       # 例の時刻は 1 行目だけ、「例」つき
-        assert "受付の記録" in first["shipper"] and "施設ごと・月ごと" in first["shipper"] and "時間帯" in first["shipper"]
+        assert "受付簿" in first["shipper"] and "施設" in first["shipper"] and "時間帯" in first["shipper"]   # 文言の直し 2026-11-07
         assert "（正式名: 製造委託等に係る中小受託事業者に対する代金の支払の遅延等の防止に関する法律）" in first["basis"]
         assert first["basis"].index("正式名") < first["basis"].index("取適法では、長時間")
         page.js("document.querySelector('#paste').value = " + json.dumps(memo, ensure_ascii=False))
@@ -238,14 +242,14 @@ def test_document_for_the_receiving_shipper_shows_fault_column_early_split_and_n
         t = doc["text"]
         assert "荷主等の都合の欄が貼り付けの記録に無かったため" in t and "該当 3 行" in t
         # 受付の時刻がある回は受付から数えた額が主な額（SPEC §43）。受付があるので「早着の疑いを除くと」は出さない
-        assert "受付から数えた数字" in t and "受付の時刻がある 3 回" in t and "早着の疑い（指定の到着時刻なし）" in t
+        assert "受付から数えた数字" in t and "受付の時刻がある 3 回" in t and "早く着いた可能性（時刻の指定なし）" in t  # 文言の直し 2026-11-07
         assert "早着の疑いを分けた数字" not in t and "を除くと 0 円" not in t
         assert "指定の到着時刻が無く、到着が 05:00 から 07:59 までの回" in t
         assert "車種が記入されていない 3 行は『中型』の単価で計算しています" in t
         assert "運転者が荷役をして荷役の方法が記入されていない 1 行は『手積み』の単価" in t
-        assert "受付から数えた額" in doc["sum"] and "を除くと" not in doc["sum"]
-        assert "車種が空欄の 3 行は『中型』" in doc["defaults"] and "荷役の方法が空欄の 1 行" in doc["defaults"]
-        assert "契約の相手として読みました" in doc["ask"] and doc["askDoc"]
+        assert "受付の時刻から数えた額" in doc["sum"]  # 文言の直し 2026-11-07 and "を除くと" not in doc["sum"]
+        assert "車種が空欄の 3 行は『中型』" in doc["defaults"] and "積み降ろしの方法が空欄の 1 行" in doc["defaults"]  # 文言の直し 2026-11-07
+        assert "運送を頼んできた会社として読みました" in doc["ask"] and doc["askDoc"]
         assert doc["process"].index("正式名") < doc["process"].index("取適法では、相手")
         # 車種をまとめて選ぶと、空欄の行がすべて埋まって断りが消える
         page.js("var s = document.querySelector('#bulk-class-sel'); s.value = '大型'; s.dispatchEvent(new Event('change', {bubbles: true}))")

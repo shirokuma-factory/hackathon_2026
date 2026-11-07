@@ -63,12 +63,12 @@ def test_g130_summary_numbers_match_the_source_arithmetic():
 
 # ---------------------------------------------------------------- G131 見せてからつなぐ
 
-def test_g131_default_cargo_gets_zero_trips_with_two_or_more_reasons_on_hyogo_tokyo():
-    rev = reverse_trips("兵庫県", "東京都")
-    assert {t["id"] for t in rev} >= {"T1", "T2", "T7"}
+def test_g131_default_cargo_gets_zero_trips_with_two_or_more_reasons_on_kagoshima_tokyo():
+    rev = reverse_trips("鹿児島県", "東京都")
+    assert {t["id"] for t in rev} >= {"T7"}
     sc = next(s for s in list_scenarios() if s["id"] == "S1")
     body = {"shipment": {"items": [{"count": it.count, "length_cm": it.length_cm, "width_cm": it.width_cm, "height_cm": it.height_cm,
-                                    "weight_kg": it.weight_kg} for it in sc["shipment"].items]}, "dest_code": "28110", "origin_code": "13104"}
+                                    "weight_kg": it.weight_kg} for it in sc["shipment"].items]}, "dest_code": "28110", "origin_code": "13104", "category": "危険物"}  # この向きの便は T7 だけなので、着地と品目の 2 つで外す
     sh = spaceb.parse_shipment(body)
     res = {t["id"]: spaceb.match(sh, t) for t in rev}
     assert not any(ok for ok, _ in res.values()), res
@@ -80,8 +80,8 @@ def test_g131_default_cargo_gets_zero_trips_with_two_or_more_reasons_on_hyogo_to
 
 
 def test_g131_some_scenario_fits_a_trip_in_the_return_direction():
-    """東京都→兵庫県の便に、1 便以上合う架空の場面がある（画面の「この向きの便に合う例の荷で試す」の相手）。"""
-    rev = reverse_trips("兵庫県", "東京都")
+    """東京都→鹿児島県の便に、1 便以上合う架空の場面がある（画面の「この向きの便に合う例の荷で試す」の相手）。"""
+    rev = reverse_trips("鹿児島県", "東京都")
     fits = []
     for sc in list_scenarios():
         raw = sc.get("backhaul") or {}
@@ -97,9 +97,9 @@ def test_g131_some_scenario_fits_a_trip_in_the_return_direction():
 
 def test_g131_ui_parts_exist():
     mk, fd, html = read("market.js"), read("find.js"), read("index.html")
-    assert "この向きの空き便を探す" in mk and "この向きの帰り便を登録する" in mk
+    assert "この向きの帰り便を探す" in mk and "この向きの帰り便を載せる" in mk   # 文言の直し 2026-11-07
     assert 'data-act="carrier"' in mk and "Find.openCarrier(pairNames())" in mk
-    for text in ("この荷に合う便はありません", "この向きの便に合う例の荷で試す", "送り方を比べて見積依頼文を作る", "合わない理由の多い順"):
+    for text in ("この荷物に載せられる便はありません", "載る荷物の例で試す", "ほかの送り方で見積を頼む", "載らない理由"):   # 文言の直し 2026-11-07
         assert text in fd, text
     assert "slice(0, 2)" in fd  # 理由は多い順の上位 2 つ
     assert "try-ex" in fd and "to-compare-now" in fd
@@ -109,9 +109,9 @@ def test_g131_ui_parts_exist():
 
 
 def test_g131_return_direction_is_the_reverse_of_the_market_pair():
-    """市場の兵庫県→東京都を選ぶと、運送会社の役の向きは東京都→兵庫県。この向きの便が登録されている（T1・T2・T7）。"""
-    ts = reverse_trips("兵庫県", "東京都")
-    assert [t["id"] for t in ts] == ["T1", "T2", "T7"]
+    """市場の鹿児島県→東京都を選ぶと、運送会社の役の向きは東京都→鹿児島県。この向きの便が登録されている（T7）。"""
+    ts = reverse_trips("鹿児島県", "東京都")
+    assert [t["id"] for t in ts] == ["T7"]
 
 
 # ---------------------------------------------------------------- G133 CLO の入口
@@ -158,7 +158,7 @@ def test_g136_official_prefecture_names_in_corridor_labels():
         for name in m.groups():
             assert re.search(r"(都|道|府|県)$", name), (label, name)
     labels = [t["route_label"] for t in d["trips"]]
-    assert "東京都→兵庫県（兵庫県→東京都の荷の帰り）" in labels
+    assert "東京都→鹿児島県（鹿児島県→東京都の荷の帰り）" in labels
 
 
 # ---------------------------------------------------------------- G135 狭い画面（静的な確かめ。撮影は別）

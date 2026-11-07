@@ -58,10 +58,20 @@ const Muni = (() => {
     U.maxEmp = U.cols.length ? U.cols[0].v : 1;
   }
 
+  // 推定の式は、入力の表にする（式の全文は docs/guide/画面の文言の補足.md。文言の直し 2026-11-07）
+  const FORMULA_ROWS = [['出荷', '県の出荷量 × 働く人の割合'], ['入荷', '県の入荷量 × 人口の割合'], ['差', '出荷 − 入荷'], ['数字がない所', '灰色にして配らない'], ['元の数字', '物流センサス 2021']];
+  function renderFormula() {
+    const el = q('#mu-formula-text');
+    if (!el) return;
+    const t = document.createElement('table'); t.id = 'mu-formula-text'; t.className = 'mu-tbl';
+    t.innerHTML = '<tbody>' + FORMULA_ROWS.map((r) => `<tr><th scope="row">${r[0]}</th><td>${r[1]}</td></tr>`).join('') + '</tbody>';
+    el.replaceWith(t);
+  }
+
   function init() {
     const d = U.d;
     q('#mu-notice-text').textContent = DISCLAIMER;
-    q('#mu-formula-text').textContent = d.formula;
+    renderFormula();
     q('#m-scope').addEventListener('click', (e) => { const b = e.target.closest('button[data-scope]'); if (b) setScope(b.dataset.scope); });
     q('#mlg-conc').addEventListener('click', onConcClick);
     q('#mlg-conc').addEventListener('change', (e) => { if (e.target.id === 'cc-3d') setCol3d(e.target.checked); });
@@ -74,7 +84,7 @@ const Muni = (() => {
     const narrow = innerWidth <= 1100, short = innerHeight < 800;
     if (narrow) foldRight(true);
     if (narrow || short) fold('m-calc', true);
-    q('#m-credits-d').open = innerWidth >= 1700 && innerHeight >= 900;
+    q('#m-credits-d').open = false;   // 出典は閉じておく（開けば読める。文言の直し 2026-11-07）
     document.body.classList.toggle('cr-open', q('#m-credits-d').open);
     renderAll();
   }
@@ -120,7 +130,7 @@ const Muni = (() => {
   }
   function tilt(on) {
     if (typeof map === 'undefined' || !map) return;
-    map.easeTo({ pitch: on && U.active ? 55 : 0, duration: 1300, essential: true });
+    map.easeTo({ pitch: 0, duration: MapFx.ms(1300), essential: true });
   }
   async function setFac(on) {
     U.fac = on;
@@ -148,7 +158,7 @@ const Muni = (() => {
 
   function setActive(on) {
     U.active = on;
-    if (!on) { if (typeof map !== 'undefined' && map && map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 600, essential: true }); }
+    if (!on) { if (typeof map !== 'undefined' && map && Math.abs(map.getPitch() - MapFx.rest().pitch) > 0.5) map.easeTo({ pitch: MapFx.rest().pitch, duration: MapFx.ms(600), essential: true }); }
     else if (U.col3d) tilt(true);
   }
 
@@ -190,7 +200,7 @@ const Muni = (() => {
         id: 'mu-conc', data: S.muni, pickable: true, stroked: true, filled: true, beforeId: firstLabelId,
         getFillColor: (f) => concFill(f.properties.i), getLineColor: [8, 12, 22, 130], lineWidthMinPixels: 0.35, getLineWidth: 0.4, lineWidthUnits: 'pixels',
         autoHighlight: true, highlightColor: [255, 255, 255, 56],
-        updateTriggers: { getFillColor: [U.metric] }, transitions: { getFillColor: { duration: 500, easing: ease } },
+        updateTriggers: { getFillColor: [U.metric] }, transitions: { getFillColor: { duration: MapFx.ms(300), easing: ease } },
       }));
     } else if (isMuni()) {
       out.push(new L.GeoJsonLayer({
@@ -356,22 +366,22 @@ const Muni = (() => {
       const i = id === 'mu-col' ? o.i : o.properties.i;
       if (i < 0) return null;
       if (id === 'mu-bal') {
-        if (d.bal[i] === null) return { t: nameOf(i), s: `灰色: ${d.reason[i] || '数字がありません'}` };
-        return { t: nameOf(i), s: `推定 B ${balText(i)} t（出荷 ${n0(d.out[i])} − 入荷 ${n0(d.in[i])}）。推定です` };
+        if (d.bal[i] === null) return { t: nameOf(i), s: `灰色: ${d.reason[i] || '数字が公表されていません'}` };
+        return { t: nameOf(i), s: `出荷と入荷の差 ${balText(i)} t（推定）` };
       }
       return { t: nameOf(i), s: concLine(i) };
     }
     if (id === 'fac-p31') return { t: o.name, s: `${GLYPH[o.kind][0]}・${o.address || '住所なし'}・2013 年（国土数値情報 P31）`, m: HOVER_MODEL[o.kind] };
-    if (id === 'fac-air') return { t: o.name, s: `空港（${o.status}）・国土数値情報 C28（2021）`, m: 'air_cargo_terminal' };
+    if (id === 'fac-air') return { t: o.name, s: `空港（${o.status}）・国土数値情報 C28`, m: 'air_cargo_terminal' };
     if (id === 'fac-osm') return { t: '倉庫・物流施設（OSM）', s: U.osm.tags[U.osm.types[o[2]]] || '', m: 'warehouse' };
-    if (id === 'fac-osm-agg') return { t: nameOf(o.i), s: `OSM の倉庫・物流施設 ${n0(o.n)} 件（拡大 11 以上で 1 件ずつ出します）` };
+    if (id === 'fac-osm-agg') return { t: nameOf(o.i), s: `倉庫・物流施設 ${n0(o.n)} 件（大きくすると 1 件ずつ出ます）` };
     return null;
   }
   function concLine(i) {
     const d = U.d;
     if (d.cst[i] !== 0) {
       const part = (c, nm) => (c[2] === 0 ? `${nm} ${n0(c[1])} 人` : `${nm} ${stateText(c[2])}`);
-      return `灰色: 従業者数を出せません（${part(d.c44[i], '運送業')}、${part(d.c47[i], '倉庫業')}）`;
+      return `灰色: 働く人の数が公表されていません（${part(d.c44[i], '運送業')}、${part(d.c47[i], '倉庫業')}）`;
     }
     return `従業者 ${n0(d.cemp[i])} 人（運送業 ${n0(d.c44[i][1])}、倉庫業 ${n0(d.c47[i][1])}）／ 面積あたり ${d.cdens[i].toLocaleString('ja-JP', { maximumFractionDigits: 1 })} 人/km²`;
   }
@@ -412,18 +422,16 @@ const Muni = (() => {
     box.innerHTML =
       `<div class="mp-top"><div class="mp-title"><span>${esc(S.idx.names[i])}</span><small class="mu-pref">${esc(pref)}</small></div>` +
       `<button class="mp-x" data-act="close" aria-label="市区町村の選択を外す">&#10005;</button></div>` +
-      `<p class="mu-est">推定です。県の値を従業者数と人口で分けた目安で、実際の流動ではありません。</p>` +
-      (gray ? `<p class="mu-gray-r"><i class="sw sw-gray"></i>灰色（0 ではありません）: ${esc(d.reason[i] || '数字がありません')}</p>` : '') +
-      `<div class="mp-stats mu-stats3"><div><span>出荷 Out</span><b class="num">${num(d.out[i])}</b><small>t</small></div>` +
-      `<div><span>入荷 In</span><b class="num">${num(d.in[i])}</b><small>t</small></div>` +
-      `<div><span>推定の差 B</span><b class="num">${d.bal[i] === null ? '—' : balText(i)}</b><small>t</small></div></div>` +
-      `<div class="mp-stats mu-stats4"><div><span>出荷の重み</span><b class="num">${w(d.out[i], pf[0])}</b></div>` +
-      `<div><span>入荷の重み</span><b class="num">${w(d.in[i], pf[1])}</b></div>` +
-      `<div><span>製造・運送・倉庫の従業者</span><b class="num">${num(d.emp[i])}</b><small>人</small></div>` +
+      `<p class="mu-est">県の数字から分けた推定です。</p>` +
+      (gray ? `<p class="mu-gray-r"><i class="sw sw-gray"></i>数字が公表されていません: ${esc(d.reason[i] || '')}</p>` : '') +
+      `<div class="mp-stats mu-stats3"><div><span>出荷</span><b class="num">${num(d.out[i])}</b><small>t</small></div>` +
+      `<div><span>入荷</span><b class="num">${num(d.in[i])}</b><small>t</small></div>` +
+      `<div><span>差（推定）</span><b class="num">${d.bal[i] === null ? '—' : balText(i)}</b><small>t</small></div></div>` +
+      `<div class="mp-stats mu-stats4">` +
+      `<div><span>製造・運送・倉庫で働く人</span><b class="num">${num(d.emp[i])}</b><small>人</small></div>` +
       `<div><span>人口（2020 年）</span><b class="num">${num(d.pop[i])}</b><small>人</small></div></div>` +
-      `<p class="mu-un">${esc(pref)}の未配分: 出荷 ${n0(pf[2])} t、入荷 ${n0(pf[3])} t（${esc(pref)}の出荷 ${n0(pf[0])} t・入荷 ${n0(pf[1])} t のうち、重みを出せない市区町村の分。配らずに残しています。灰色 ${pf[5]} 件）</p>` +
-      `<table class="mu-tbl"><thead><tr><th>物流の集積（令和6年）</th><th>事業所数</th><th>従業者数</th></tr></thead><tbody>${conc(c44, '道路貨物運送業（44）')}${conc(c47, '倉庫業（47）')}</tbody></table>` +
-      `<p class="mu-tn">面積 ${d.area[i] === null ? '—' : d.area[i].toLocaleString('ja-JP')} km²（簡略化した行政区域の面積）。量は物流センサス 2021 の 3 日間のトンで、年間ではありません。</p>`;
+      `<table class="mu-tbl"><thead><tr><th>運送業と倉庫業（令和6年）</th><th>事業所</th><th>働く人</th></tr></thead><tbody>${conc(c44, '運送業')}${conc(c47, '倉庫業')}</tbody></table>` +
+      `<p class="mu-tn">面積 ${d.area[i] === null ? '—' : d.area[i].toLocaleString('ja-JP')} km²</p>`;
     box.hidden = false;
   }
 
@@ -465,14 +473,14 @@ const Muni = (() => {
       return `<span style="left:${(k / n) * 100}%;transform:${tf}">${lab}</span>`;
     }).join('');
     box.innerHTML =
-      `<div class="mlg-t">物流の集積<small>運送業（44）＋ 倉庫業（47）の従業者</small></div>` +
+      `<div class="mlg-t">運送と倉庫で働く人<small>運送業と倉庫業の合計</small></div>` +
       `<div class="m-seg m-seg-s" id="cc-metric" role="group" aria-label="集積の測り方"><button data-metric="dens" aria-pressed="${U.metric === 'dens'}">面積あたり（人/km²）</button>` +
       `<button data-metric="emp" aria-pressed="${U.metric === 'emp'}">実数（従業者数）</button></div>` +
-      `<label class="mlg-chk"><input type="checkbox" id="cc-3d"${U.col3d ? ' checked' : ''}><span>3D の柱で見る（高さ = 従業者数）</span></label>` +
+      `<label class="mlg-chk"><input type="checkbox" id="cc-3d"${U.col3d ? ' checked' : ''}><span>人数を柱の高さで見る</span></label>` +
       `<div class="mlg-bar mlg-bar-c">${cells}</div><div class="mlg-ticks mlg-ticks-c">${ticks}</div>` +
-      `<div class="mlg-cap mlg-cap-c"><span>${U.col3d ? '柱の色と高さ: 従業者数（人）' : metric === 'dens' ? '色: 1 km² あたりの従業者数（人）。7 階級の分位数' : '色: 従業者数（人）。7 階級の分位数'}</span></div>` +
-      `<div class="mlg-gray"><i class="sw sw-gray"></i><span>灰色 = 秘匿・数字なし（触れると理由が出ます。0 とは扱いません）</span></div>` +
-      (isMuni() && !U.col3d ? `<p class="mlg-faint">市区町村（推定）の塗りは、集積を塗っている間は隠れます。柱で見ると重ねて見られます。</p>` : '');
+      `<div class="mlg-cap mlg-cap-c"><span>${U.col3d ? '柱の色と高さ: 働く人の数（人）' : metric === 'dens' ? '色: 1 km² あたりの働く人の数' : '色: 働く人の数（人）'}</span></div>` +
+      `<div class="mlg-gray"><i class="sw sw-gray"></i><span>灰色は数字が公表されていない所です。</span></div>` +
+      (isMuni() && !U.col3d ? `<p class="mlg-faint">働く人の数を色で出している間は、出荷と入荷の色は消えます。</p>` : '');
   }
   function onConcClick(e) {
     const b = e.target.closest('button[data-metric]');
@@ -499,8 +507,8 @@ const Muni = (() => {
       `<div class="fac-chips">${P31_ORDER.map((k) => chip(k, GLYPH[k][0], noP31 || U.p31 === undefined ? null : (n31[k] || 0), noP31)).join('')}` +
       `${chip('air', '空港', U.c28 ? U.c28.items.length : null, false)}` +
       `<button class="fac-chip fac-osm" data-fac="osm" aria-pressed="${!!U.types.osm}"><i class="fac-dot"></i><span>倉庫・物流施設（OSM）</span><em class="num">${n0(osmN)}</em></button></div>` +
-      (noP31 ? `<p class="fac-msg">物流拠点（国土数値情報 P31）は再配布できないため、この版では表示しません</p>` : '') +
-      `<details class="mlg-more"><summary>表示の条件</summary><p>倉庫・物流施設は、拡大 11 以上で 1 件ずつ、それより広いと市区町村ごとの件数を丸で出します。トラックターミナル・コンテナターミナル・鉄道貨物駅・航空貨物ターミナル・卸売市場・保税地域は 2013 年のデータで、いまとは違う場合があります。</p></details>`;
+      (noP31 ? `<p class="fac-msg">物流拠点の地図は公開の決まりで載せられません。</p>` : '') +
+      `<details class="mlg-more"><summary>施設の地図について</summary><p>大きくすると 1 件ずつ出ます。<br>駅・市場などは 2013 年の数字です。</p></details>`;
   }
   function onFacClick(e) {
     const b = e.target.closest('button[data-fac]');

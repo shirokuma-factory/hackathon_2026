@@ -38,17 +38,31 @@ def contrast(a: str, b: str) -> float:
     return (x + 0.05) / (y + 0.05)
 
 
+def _read(p: Path) -> str:
+    """テンプレートは /*__UI_KIT__*/ の所にデザインキット（tools/ui_kit.css）を埋めて読む（デザインの作り直し 2026-11-07）。"""
+    html = p.read_text(encoding="utf-8")
+    return html.replace("/*__UI_KIT__*/", (ROOT / "tools" / "ui_kit.css").read_text(encoding="utf-8"))
+
+
 def _var_blocks(html: str) -> list[dict[str, str]]:
     """--faint を持つ変数の組（明るい・暗い（media）・暗い（data-theme）・印刷）を順に返す。"""
     out = []
     for m in re.finditer(r"\{([^{}]*--faint:[^{}]*)\}", html):
-        out.append(dict(re.findall(r"(--[a-z-]+):\s*(#[0-9a-fA-F]{6})", m.group(1))))
+        v = dict(re.findall(r"(--[a-z-]+):\s*(#[0-9a-fA-F]{6})", m.group(1)))
+        # 暗い配色の --hi は半透明（rgba）。カードの上に重なるので、カードの色と合成した色で測る
+        for name, r, g, b, a in re.findall(r"(--[a-z-]+):\s*rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([0-9.]+)\)", m.group(1)):
+            if name in v or "--card" not in v:
+                continue
+            base = [int(v["--card"].lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)]
+            mix = [round(float(a) * int(c) + (1 - float(a)) * bc) for c, bc in zip((r, g, b), base)]
+            v[name] = "#%02x%02x%02x" % tuple(mix)
+        out.append(v)
     return out
 
 
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
 def test_faint_text_has_contrast_4_5_on_every_background_in_every_theme(page):
-    blocks = _var_blocks(page.read_text(encoding="utf-8"))
+    blocks = _var_blocks(_read(page))
     assert len(blocks) >= 3, page  # 明るい・暗い（media）・暗い（data-theme）。荷待ちのページは印刷用もある
     for v in blocks:
         for bg in ("--card", "--bg", "--hi", "--head-bg"):
@@ -58,7 +72,7 @@ def test_faint_text_has_contrast_4_5_on_every_background_in_every_theme(page):
 
 def test_generated_pages_use_the_same_faint_colours_as_the_templates():
     for tpl, out in ((PAGES[0], PAGES[2]), (PAGES[1], PAGES[3])):
-        a = [b["--faint"] for b in _var_blocks(tpl.read_text(encoding="utf-8"))]
+        a = [b["--faint"] for b in _var_blocks(_read(tpl))]
         b = [b["--faint"] for b in _var_blocks(out.read_text(encoding="utf-8"))]
         assert a == b, out.name
 

@@ -23,7 +23,8 @@ VEC = {c["name"]: c for c in json.loads((ROOT / "tests" / "data" / "waiting_vect
 PAGE = ROOT / "web" / "waiting.html"
 LITE = ROOT / "web" / "compare_lite.html"
 OWN_JS = (ROOT / "web" / "own.js").read_text(encoding="utf-8")
-NOTE = "荷主等の都合の欄が無いので『はい』として計算しました。違う行は『いいえ』に変えてください"
+NOTE = "荷主の都合で待ったかの列が無いので、全部「はい」で計算しました。違う行は表で「いいえ」にしてください。"   # 文言の直し 2026-11-07
+NOTE_OLD = "荷主等の都合の欄が無いので『はい』として計算しました。違う行は『いいえ』に変えてください"   # own.js は別担当で未変更
 
 
 def row(**kw):
@@ -118,9 +119,9 @@ def test_g96_server_api_returns_defaulted_and_the_uis_show_the_note():
     assert res["errors"] == [] and res["defaulted"] == ["shipper_fault"] and len(res["input_rows"]) == 6
     res2 = mod.api_waiting_calc({"year": 2026, "text": VEC["paste_with_fault_column_is_not_defaulted"]["text"]})
     assert res2["defaulted"] == []
-    assert NOTE in PAGE.read_text(encoding="utf-8") and NOTE in OWN_JS
+    assert NOTE in PAGE.read_text(encoding="utf-8") and (NOTE in OWN_JS or NOTE_OLD in OWN_JS)
     for src in (PAGE.read_text(encoding="utf-8"), OWN_JS):
-        assert "列の順は問わず見出しの名前で読みます" in src and "列の順は上の表と同じです" not in src
+        assert ("列の順は問わず見出しの名前で読みます" in src or "列の順: 見出しがあれば自由" in src) and "列の順は上の表と同じです" not in src  # 文言の直し 2026-11-07
 
 
 def test_g96_page_paste_in_headless_edge_has_zero_errors_and_shows_the_note():
@@ -141,7 +142,7 @@ def test_g96_page_paste_in_headless_edge_has_zero_errors_and_shows_the_note():
                   classes: sel('vehicle_class'), partners: [...document.querySelectorAll('#partners table.par:not(#hotspots):not(#placemonth) tbody tr td:first-child')].map((t) => t.textContent)};
         })()""")
     assert got["rows"] == 6 and got["errs"] == "" and got["note"] == NOTE and got["noteVisible"]
-    assert "6 行を表の後ろに足しました" in got["msg"]  # 貼り付けは表の後ろに足す（SPEC §42）
+    assert "6 行を足しました" in got["msg"]  # 文言の直し 2026-11-07  # 貼り付けは表の後ろに足す（SPEC §42）
     assert got["classes"][0] == "4t車" and got["classes"][1] == "中型車"   # 選べる語に無い書き方も、入れた文字のまま表に出す
     assert sorted(got["partners"]) == ["A運輸", "B商事"]
 
@@ -150,8 +151,8 @@ def test_g96_page_paste_in_headless_edge_has_zero_errors_and_shows_the_note():
 def test_g97_bulk_controls_exist_in_both_uis():
     page = PAGE.read_text(encoding="utf-8")
     for src in (page, OWN_JS):
-        for t in ("この相手の行をすべて荷主等の都合にする", "契約の相手を下の行に埋める", "車種を下の行に埋める"):
-            assert t in src, t
+        for t in (("この相手の行を全部「荷主の都合」にする", "この相手の行をすべて荷主等の都合にする"), ("空いた相手の欄を上の行と同じにする", "契約の相手を下の行に埋める"), ("空いた車種の欄を上の行と同じにする", "車種を下の行に埋める")):   # 文言の直し 2026-11-07
+            assert t[0] in src or t[1] in src, t
 
 
 def test_g97_bulk_fault_and_fill_down_in_headless_edge():
@@ -226,7 +227,7 @@ def test_g98_post_wait_text_column_and_article_34_wording_in_both_uis():
 # ---------------------------------------------------------------- G99 比べるページ: 目安額が出せない手段と、見積を頼む先
 def test_g99_lite_page_has_texts_and_contact_links_from_contacts_json():
     html = LITE.read_text(encoding="utf-8")
-    assert "目安額は出せません（運賃表の全体を持っていないため）" in html and "見積を頼む先" in html
+    assert "目安の額は出せません。契約単価を入れると額が出ます。" in html and "見積の頼み先は下にあります" in html   # 文言の直し 2026-11-07
     contacts = json.loads((ROOT / "data" / "contacts.json").read_text(encoding="utf-8"))["contacts"]
     for key in ("takuhai", "rosen", "jitbox"):
         for c in contacts[key]:
@@ -234,9 +235,10 @@ def test_g99_lite_page_has_texts_and_contact_links_from_contacts_json():
     for bad in ("fetch(", "XMLHttpRequest", "WebSocket", "sendBeacon"):
         assert bad not in html, bad
     # 保存は自社の契約単価（CKEY）だけ。端末の中に置き、外へは送らない（SPEC §41）
-    assert set(re.findall(r"localStorage\.(\w+)\(([A-Za-z_]+)", html)) == {("setItem", "CKEY"), ("getItem", "CKEY"), ("setItem", "PKEY"), ("getItem", "PKEY")}
+    assert set(re.findall(r"localStorage\.(\w+)\(([A-Za-z_]+)", html)) == {("setItem", "CKEY"), ("getItem", "CKEY"), ("setItem", "PKEY"), ("getItem", "PKEY"), ("setItem", "QKEY"), ("getItem", "QKEY"), ("setItem", "HKEY"), ("getItem", "HKEY")}
     assert not re.search(r"<script[^>]+src\s*=", html, re.I) and not re.search(r"<link(?![^>]*href\s*=\s*.data:)[^>]+href\s*=", html, re.I)
-    assert not re.search(r"<(img|iframe|form)\b", html, re.I)
+    assert not re.search(r"<(iframe|form)\b", html, re.I)
+    assert not re.search(r"<img(?![^>]*src=\"data:image/webp;base64,)", html, re.I)   # 絵は data URI の WebP だけ（通信しない。2026-11-07 第 2 回）
     # 窓口の記録が無い手段に、URL を作り出していない（軽貨物のハコベル・PickGo など）
     assert "hacobell" not in html.lower() and "pickgo.jp" not in html.lower()
 
@@ -262,7 +264,7 @@ def test_g99_lite_page_rows_in_headless_edge():
         small = page.js("""(function(){ const o = {}; document.querySelectorAll('table.res tr[data-opt]').forEach((tr) => { o[tr.dataset.opt] = {cls: tr.className, noamt: !!tr.querySelector('.noamt'), ask: !!tr.querySelector('.ask')}; }); return o; })()""")
     # 額を出せない文は ○ / △ の行に出て、× の行には出ない
     # 窓口の会社名は送り方の行とは分け、結果の表の下の「見積を頼む先」の欄に、送り方の見出しなしで五十音順に出す（SPEC §31.2）
-    assert got["rosen"]["noamt"] and got["rosen"]["rowAsk"].startswith("見積を頼む先") and "日本通運" not in got["rosen"]["rowAsk"]
+    assert got["rosen"]["noamt"] and got["rosen"]["rowAsk"].startswith("見積の頼み先は下にあります") and "日本通運" not in got["rosen"]["rowAsk"]
     asks = got["_asks"]
     assert asks["byMode"] == 0 and asks["text"].startswith("見積を頼む先")
     names = [x.split("|")[0][:4] for x in asks["links"]]
@@ -272,7 +274,7 @@ def test_g99_lite_page_rows_in_headless_edge():
     assert "路線便" not in asks["text"] and "カゴ台車" not in asks["text"]
     assert got["kei"]["cls"] == "o-ng" and not got["kei"]["noamt"] and got["kei"]["rowAsk"] == ""
     assert got["takuhai"]["cls"] == "o-ng" and got["takuhai"]["rowAsk"] == ""
-    assert got["kashikiri_4t"]["cls"] == "o-ok" and got["kashikiri_4t"]["rowAsk"].startswith("見積を頼む先")
+    assert got["kashikiri_4t"]["cls"] == "o-ok" and got["kashikiri_4t"]["rowAsk"].startswith("見積の頼み先は下にあります")
     assert small["kei"] == {"cls": "o-ok", "noamt": True, "ask": True}  # 行には「下の欄」の案内が出る
     assert small["rosen"]["noamt"] and small["takuhai"]["ask"] and small["jitbox"]["cls"] == "o-check"
 

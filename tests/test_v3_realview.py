@@ -114,9 +114,9 @@ def test_spec17_view_modes_and_legs_follow_the_source(built):
     assert fk["m"]["rail"]["hubs"] and fk["m"]["air"]["hubs"]
 
 
-def test_spec17_view_trips_t1_to_t6_are_on_roads(bwd, built):
+def test_spec17_view_trips_t1_to_t7_are_on_roads(bwd, built):
     t = _read(built / "routes_trips.json")
-    assert sorted(t) == ["T1", "T2", "T3", "T4", "T5", "T6"]
+    assert sorted(t) == ["T1", "T2", "T3", "T4", "T5", "T6", "T7"]  # 2026-11-07 見本の鹿児島化（便は T1〜T7 の 7 本）
     for tid, v in t.items():
         legs = v["truck"]["legs"]
         assert len(legs) == 1 and len(bwd.dec_line(legs[0]["c"])) > 20, tid

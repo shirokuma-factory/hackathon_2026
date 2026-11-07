@@ -80,7 +80,20 @@ def missing_items(shipment: Shipment, totals: Totals | None = None) -> tuple[lis
     return required, optional
 
 
-def build_request(shipment: Shipment, scenario: dict | None = None, place: dict | None = None) -> RequestDraft:
+# 見積依頼文に書く送り方（画面の選択の値）。鉄道・船・飛行機は公表の運賃表を持たないので、額の目安は書かない
+MODE_REQUEST_TEXT = {
+    "宅配": "宅配",
+    "路線便": "路線便",
+    "カゴ台車": "カゴ台車の貸切（1 本単位）",
+    "貸切": "貸切",
+    "鉄道": "鉄道（コンテナ）。公表の運賃表を持っていないため、額の目安は出していません。日数と額を教えてください",
+    "船": "船（フェリー）。公表の運賃表を持っていないため、額の目安は出していません。日数と額を教えてください",
+    "飛行機": "飛行機（航空便）。公表の運賃表を持っていないため、額の目安は出していません。日数と額を教えてください",
+}
+
+
+def build_request(shipment: Shipment, scenario: dict | None = None, place: dict | None = None,
+                  mode: str | None = None) -> RequestDraft:
     """place は地図で選んだ発地・着地（label は「新宿区 → 大阪市中央区」、km は道路距離、note は距離の注記）。
     あれば「発着」の行に区間の想定の値ではなく、この市区町村と道路距離を書く（SPEC §31.5 #16）。"""
     totals = summarize(shipment)
@@ -89,6 +102,8 @@ def build_request(shipment: Shipment, scenario: dict | None = None, place: dict 
 
     lines: list[str] = []
     lines.append(f"【見積依頼（{status}）】")
+    if mode in MODE_REQUEST_TEXT:   # 案内の表示は本文の最初の数行だけ見せるので、送り方は先頭に置く
+        lines.append(f"検討している送り方: {MODE_REQUEST_TEXT[mode]}")
     lines.append("")
     lines.append("■ 荷物")
     for i, it in enumerate(shipment.items, start=1):

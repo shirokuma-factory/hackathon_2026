@@ -180,12 +180,25 @@ def edge_page(width: int = 1920, height: int = 1080, *, page_cls=None, hooks: tu
                 cs.release_profile(profile)
 
 
-_SERVE_WEB_CODE = (
+# 試験用サーバーの共通設定（別プロセスで実行する文字列）。ブラウザーが先に接続を閉じたときの
+# ConnectionResetError / BrokenPipeError だけは黙って捨てる（標準では長いトレースバックが出る）。ほかの例外は標準どおり表示する。
+_QUIET_RESET = (
+    "import socketserver, sys as _s\n"
+    "_orig = socketserver.BaseServer.handle_error\n"
+    "def _quiet(self, request, client_address):\n"
+    "    if isinstance(_s.exc_info()[1], ConnectionError): return\n"
+    "    _orig(self, request, client_address)\n"
+    "socketserver.BaseServer.handle_error = _quiet\n"
+)
+_SERVE_WEB_CODE = _QUIET_RESET + (
     "import sys; sys.path.insert(0, 'tools'); import serve_web; "
     f"serve_web.ThreadingHTTPServer.request_queue_size = {SERVER_QUEUE_SIZE}; "
     "port = sys.argv[1]; sys.argv = ['serve_web.py', '--port', port] + sys.argv[2:]; sys.exit(serve_web.main())"
 )
-_STATIC_CODE = (
+# cache の無い公開版。経路の cache（data/routes/cache/、手元で使うほど増える）に依らず「経路が取れない」場面を作る
+_SERVE_WEB_NOCACHE_CODE = _SERVE_WEB_CODE.replace(
+    "port = sys.argv[1];", "import tempfile, pathlib; serve_web.ROUTE_BASE = pathlib.Path(tempfile.mkdtemp()); port = sys.argv[1];")
+_STATIC_CODE = _QUIET_RESET + (
     "import sys, http.server, functools; "
     f"http.server.ThreadingHTTPServer.request_queue_size = {SERVER_QUEUE_SIZE}; "
     "h = functools.partial(http.server.SimpleHTTPRequestHandler, directory=sys.argv[2]); "
@@ -219,6 +232,7 @@ def server_port(kind: str) -> int:
         return _SERVERS[kind][1]
     code, probe, argv = {
         "public": (_SERVE_WEB_CODE, "/index.html", ("--public",)),
+        "public_nocache": (_SERVE_WEB_NOCACHE_CODE, "/index.html", ("--public",)),
         "local": (_SERVE_WEB_CODE, "/index.html", ()),
         "examples": (_STATIC_CODE, "/examples/kit/index.html", (str(ROOT),)),
     }[kind]

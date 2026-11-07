@@ -38,7 +38,7 @@ _HEADER_ALIASES = {
     "荷役の方法": "method", "荷主等の都合の待機か": "shipper_fault", "荷主等の都合": "shipper_fault",
     "指定の到着時刻": "appointed", "附帯業務の内容": "side_work", "附帯業務の分": "side_min",
     "運行日": "date", "年月日": "date", "月日": "date", "車両番号": "vehicle_no", "車格": "vehicle_class",
-    "荷主": "partner", "元請": "partner", "契約先": "partner", "到着時刻": "arrive", "着時刻": "arrive",
+    "相手": "partner", "相手先": "partner", "荷主": "partner", "元請": "partner", "契約先": "partner", "到着時刻": "arrive", "着時刻": "arrive",
     "積込開始": "start", "積込開始時刻": "start", "荷役開始時刻": "start", "積込終了": "end", "積込終了時刻": "end", "荷役終了時刻": "end",
     "出発時刻": "depart", "発時刻": "depart", "指定時刻": "appointed", "指定到着": "appointed",
     "作業日": "date", "配送日": "date", "納品日": "date", "トン数": "vehicle_class", "車型": "vehicle_class",
@@ -66,6 +66,8 @@ _HEADER_ALIASES = {
     # ドライバーの手書きメモ・荷主の受付記録の言葉（SPEC §42）。driver.html のボタンは「呼ばれた（荷役開始）」
     "呼ばれ": "start", "呼ばれた": "start", "呼出": "start", "呼出し": "start", "呼び出し": "start", "呼出時刻": "start", "呼出時間": "start", "呼び出し時刻": "start",
     "作業開始": "start", "作業開始時刻": "start", "作業終了": "end", "作業終了時刻": "end",
+    "作業開始時間": "start", "作業終了時間": "end", "終了": "end", "終了時刻": "end", "終了時間": "end", "終了日時": "end", "荷役終わり": "end",
+    "開始時刻": "start", "開始時間": "start", "開始日時": "start", "開始": "start",
     "行き先": "place", "行先": "place", "積地": "place", "積み地": "place", "積込地": "place",
     # 荷主の受付記録の言葉（SPEC §43）。入場は呼ばれて構内に入った時刻（呼出と同じ扱い）、退場は出発
     "受付日": "date", "入場日": "date", "到着日": "date", "日にち": "date", "来場日": "date",
@@ -136,7 +138,7 @@ def _normalize_class(raw: str) -> str | None:
 
 def parse_time(text: str) -> int | None:
     """時刻を分にする。9:00 / 9:00:00 / 09時00分 / 9時 / 0900 / 900（全角も可、日付つきも可）。読めなければ None。"""
-    t = _nz(text)
+    t = re.sub(r"\s*(?:頃|ごろ|ころ)$", "", _nz(text))   # 「8:00頃」は 8:00 として読む（行の注記は _calc_row）
     m = re.fullmatch(_DT_PREFIX + r"([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?", t)
     if m:
         h, mi, sec = int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
@@ -204,6 +206,7 @@ def _date_part(text: str) -> str:
 
 
 _YEARLESS = re.compile(r"[0-9]{1,2}(?:/|月)[0-9]{1,2}日?(?: ?\([月火水木金土日祝]+\))?")
+APPROX_TIME_NOTE = "「頃」「ごろ」と書かれた時刻は、その時刻として数えています（実際の時刻と違うときは直してください）"
 LONG_WAIT_NOTE = "待ちが 1 日（24 時間）を超えています。日付と時刻を確かめてください"
 
 
@@ -257,15 +260,46 @@ def _nz_lines(text: str) -> list[str]:
 MEMO_NO_PARTNER = "（相手未記入）"
 MEMO_UNREADABLE = ("読める形ではありませんでした（{shown}）。次のどれかの形で貼ってください: Excel の表（1 行目が見出し、列はタブ区切り）、"
                    "ドライバーの 1 枚（driver.html）の文（荷待ち記録 11/10 …）、1 行 1 件のメモ（11/10 江東 着7:50 呼ばれ9:40 終わり10:30）")
-_MEMO_KEYS = {"到着": "arrive", "着": "arrive", "受付": "reception", "呼ばれた": "call", "呼ばれ": "call", "呼び出し": "call", "呼出し": "call", "呼出": "call",
+_MEMO_KEYS = {"到着": "arrive", "着": "arrive", "受付": "reception", "受": "reception", "呼ばれた": "call", "呼ばれ": "call", "呼び出し": "call", "呼出し": "call", "呼出": "call", "呼": "call",
               "荷役開始": "start", "積込開始": "start", "積み始め": "start", "積始め": "start", "開始": "start",
-              "荷役終了": "end", "積込終了": "end", "積み終わり": "end", "積み終り": "end", "積終わり": "end", "終わり": "end", "終了": "end",
+              "荷役終了": "end", "積込終了": "end", "積み終わり": "end", "積み終り": "end", "積終わり": "end", "終わり": "end", "終了": "end", "積込終": "end", "積終": "end", "終": "end",
               "出発": "depart", "発": "depart", "指定": "appointed"}
-_MEMO_TIME = r"(?:[0-9]{1,2}:[0-9]{2}|[0-9]{1,2}時(?:[0-9]{1,2}分?|半)?)"
-_MEMO_RE = re.compile("(" + "|".join(sorted(_MEMO_KEYS, key=len, reverse=True)) + ")[ :]?(" + _MEMO_TIME + ")")
+# 「520」「1530」のように 3〜4 桁の数字だけの書き方は、言葉の隣にあるときだけ 時:分 として読む（5:20、15:30）。車番などの数字を時刻にしない
+_MEMO_TIME = r"(?:[0-9]{1,2}:[0-9]{2}|[0-9]{1,2}時(?:[0-9]{1,2}分?|半)?|(?<![0-9])[0-2]?[0-9][0-5][0-9](?![0-9:]))"
+_MEMO_KEYS_RE = "|".join(sorted(_MEMO_KEYS, key=len, reverse=True))
+# 「着7:50」（言葉が先）と「6:10着」（時刻が先。間に空白を入れない）の両方を読む。左から重ならないように拾う
+_MEMO_RE = re.compile("(?:(" + _MEMO_KEYS_RE + ")[ :]?(" + _MEMO_TIME + ")|(" + _MEMO_TIME + ")(" + _MEMO_KEYS_RE + "))")
 _MEMO_TEXT_RE = re.compile(r"(車番|相手|荷主|車種) ?([^ ]+)")
+_MEMO_PLATE_RE = re.compile(r"車 ?([0-9][0-9\-]*)")          # 「車1234」「車 1234」
+_MEMO_CLASS_RE = re.compile(r"^(?:(?:大型|中型|小型)車?|トレーラー?車?|(?:10|2|4)(?:t|ton|トン)\S*)$", re.I)   # 「大型」「4t」だけでも車種
 _MEMO_DATE_RE = re.compile(r"((?:[0-9]{4}[/.\-])?[0-9]{1,2}[/\-月][0-9]{1,2}日?(?:\([月火水木金土日祝]+\))?)(?= |$)")
 _MEMO_TEXT_COLS = {"車番": "vehicle_no", "相手": "partner", "荷主": "partner", "車種": "vehicle_class"}
+
+
+def _memo_time_norm(tm: str) -> str:
+    m = re.fullmatch(r"([0-9]{1,2})([0-9]{2})", tm) if ":" not in tm and "時" not in tm else None
+    return f"{int(m.group(1))}:{m.group(2)}" if m else tm
+
+
+def _memo_found(rest: str) -> dict[str, str]:
+    found: dict[str, str] = {}
+    for k in _MEMO_RE.finditer(rest):
+        key, tm = (k.group(1), k.group(2)) if k.group(1) else (k.group(4), k.group(3))
+        tm = _memo_time_norm(tm)
+        col = _MEMO_KEYS[key]
+        if col not in found:
+            found[col] = tm
+    return found
+
+
+def _memo_minutes(t: str) -> int | None:
+    m = re.fullmatch(r"([0-9]{1,2}):([0-9]{2})", t)
+    if m:
+        return int(m.group(1)) * 60 + int(m.group(2))
+    m = re.fullmatch(r"([0-9]{1,2})時(?:([0-9]{1,2})分?|(半))?", t)
+    if m:
+        return int(m.group(1)) * 60 + (30 if m.group(3) else int(m.group(2) or 0))
+    return None
 
 
 def _memo_clip(line: str) -> str:
@@ -273,12 +307,16 @@ def _memo_clip(line: str) -> str:
 
 
 def parse_memo_text(text: str) -> dict[str, Any] | None:
-    """日付で始まり、「着7:50」「呼ばれ9:40」のような言葉つきの時刻がある行を、1 行 1 件として読む。
-    そういう行が 1 つも無いときは None（メモではない）。読めない行は rows に入れず bad に（行, 理由）で返す。"""
+    """日付で始まり、「着7:50」「呼ばれ9:40」「6:10着」のような言葉つきの時刻がある行を、1 行 1 件として読む。
+    そういう行が 1 つも無いときは None（メモではない）。読めない行は rows に入れず bad に（行, 理由）で返す。
+    読んだ内容は read に行ごとに返す（相手・車番・車種・場所・読まなかった語・確かめてほしい点。SPEC §46）。
+    相手は「相手 ○○」「荷主 ○○」と書いてあればそれ、無ければ日付と時刻の言葉の間の最初の語（語が 2 つ以上あるとき）。
+    車番は「車番 1234」「車1234」「車 1234」、車種は「車種 大型」のほか「大型」「中型」「4t」などの単独の語。"""
     lines = _nz_lines(text)
     if not any((m := _MEMO_DATE_RE.match(ln)) and _MEMO_RE.search(ln[m.end():]) for ln in lines):
         return None
     rows: list[dict[str, str]] = []
+    read: list[dict[str, Any]] = []
     bad: list[tuple[str, str]] = []
     for ln in lines:
         m = _MEMO_DATE_RE.match(ln)
@@ -290,16 +328,27 @@ def parse_memo_text(text: str) -> dict[str, Any] | None:
             bad.append((ln, f"日付「{date_s}」を読めません"))
             continue
         rest = ln[m.end():]
-        found: dict[str, str] = {}
-        for k in _MEMO_RE.finditer(rest):
-            col = _MEMO_KEYS[k.group(1)]
-            if col not in found:
-                found[col] = k.group(2)
+        found = _memo_found(rest)
         rest2 = _MEMO_RE.sub(" ", rest)
         r: dict[str, str] = {"date": date_s}
         for k in _MEMO_TEXT_RE.finditer(rest2):
             r.setdefault(_MEMO_TEXT_COLS[k.group(1)], k.group(2))
-        place = re.sub(r"\s+", " ", _MEMO_TEXT_RE.sub(" ", rest2)).strip()
+        rem = _MEMO_TEXT_RE.sub(" ", rest2)
+        for k in _MEMO_PLATE_RE.finditer(rem):
+            r.setdefault("vehicle_no", k.group(1))
+        rem = _MEMO_PLATE_RE.sub(" ", rem)
+        toks: list[str] = []
+        for t in rem.split():
+            if _MEMO_CLASS_RE.match(t) and "vehicle_class" not in r:
+                r["vehicle_class"] = t
+            else:
+                toks.append(t)
+        unread: list[str] = []
+        if "partner" not in r and len(toks) >= 2:
+            r["partner"] = toks[0]
+            unread = toks[2:]            # 相手・場所のあとの語は、場所に混ぜずに「読まなかった語」として見せる
+            toks = toks[1:2]
+        place = " ".join(toks)
         if place:
             r["place"] = place
         if "arrive" not in found:
@@ -322,8 +371,17 @@ def parse_memo_text(text: str) -> dict[str, Any] | None:
                 r[col] = found[col]
         if r.get("end"):
             r["handler"] = UNKNOWN_HANDLER
+        check: list[str] = []
+        a_min = _memo_minutes(found["arrive"])
+        rc_min = _memo_minutes(found["reception"]) if "reception" in found else None
+        if a_min is not None and rc_min is not None and rc_min < a_min:
+            check.append(f"受付 {found['reception']} が到着 {found['arrive']} より前です")
+        if re.search(r"[0-9]{1,2}:[0-9]{2}|[0-9]{1,2}時", place):
+            check.append("場所に時刻のような文字が残っています")
         rows.append(r)
-    return {"rows": rows, "bad": bad}
+        read.append({"line": _memo_clip(ln), "partner": r.get("partner", ""), "vehicle_no": r.get("vehicle_no", ""), "vehicle_class": r.get("vehicle_class", ""),
+                     "place": r.get("place", ""), "unread": unread, "check": check})
+    return {"rows": rows, "bad": bad, "read": read}
 
 
 def parse_paste_detail(text: str) -> dict[str, Any]:
@@ -356,7 +414,7 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
             notes = []
             defaulted = []
             if rows:
-                notes.append(f"スマホのメモの書き方で読みました（{len(rows)} 件）。『着』『受付』『呼ばれ』『積み始め』『終わり』『出発』の言葉の次の時刻を読んでいます")
+                notes.append(f"スマホのメモの書き方で読みました（{len(rows)} 件）。『着』『受付（受）』『呼ばれ（呼）』『積み始め』『終わり（終・積込終）』『出発』の言葉の前後の時刻を読んでいます（『6:10着』のように時刻が先でも読みます）。行ごとに読んだ相手・車番・車種・場所を下に出すので、違うときは表で直してください")
                 if any(not r.get("partner") for r in rows):
                     for r in rows:
                         if not r.get("partner"):
@@ -370,7 +428,10 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
             if memo["bad"]:
                 items = "、".join(f"「{_memo_clip(ln)}」は{why}" for ln, why in memo["bad"])
                 notes.append(f"読めなかった行は表に入れていません（{len(memo['bad'])} 行）: {items}。1 行に『日付 場所 着7:50 呼ばれ9:40 終わり10:30』の形で書くか、ドライバーの 1 枚（driver.html）の文を使ってください")
-            return {"rows": rows, "defaulted": defaulted, "notes": notes, "asks": asks, "shipper_log": False}
+            for rd in memo["read"]:
+                if rd["check"]:
+                    notes.append(f"確かめてください:「{rd['line']}」は" + "、".join(rd["check"]))
+            return {"rows": rows, "defaulted": defaulted, "notes": notes, "asks": asks, "shipper_log": False, "memo_read": memo["read"]}
         shown = "、".join(f"「{_memo_clip(ln)}」" for ln in _nz_lines(text)[:3])
         return {"rows": [], "defaulted": [], "notes": [MEMO_UNREADABLE.format(shown=shown)], "asks": asks, "shipper_log": False}
     notes: list[str] = []
@@ -700,6 +761,8 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     handling_fee = hn_units * hn_rate + ho_units * ho_rate
 
     row_notes = [UNKNOWN_HANDLER_NOTE] if handler == UNKNOWN_HANDLER and end is not None else []
+    if any(re.search(r"(?:頃|ごろ|ころ)$", _nz(raw.get(k))) for k in ("arrive", "start", "end", "depart", "appointed", "reception", "call")):
+        row_notes.append(APPROX_TIME_NOTE)
     if reception_raw and reception is None:
         row_notes.append(f"受付「{reception_raw}」を読めなかったので、受付の時刻は書面に出していません")
     # 早着（SPEC §41）。指定の到着時刻があって到着が指定より前: 指定の時刻から数えている。指定が無く 5:00〜7:59 の到着: 早着の疑い（別に数える）
@@ -759,10 +822,33 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     if early:
         out["early_arrival"] = early
     # 受付の時刻があるとき: 受付から数えた待機も出す（SPEC §43）。到着が受付より前でも、荷主の受付から数える額が書面の主な額
-    if reception is not None and _norm(raw.get("arrive_src")) != "reception" and 0 <= reception - arrive <= REVERSE_MAX_MIN:
+    if reception is not None and _norm(raw.get("arrive_src")) != "reception":
+        # 受付が到着より小さい時刻（23:50 着・受付 0:20）は夜中をまたいだ受付として +24 時間で数える。受付に日付があれば日付で差を取る
+        rc_part = _date_part(reception_raw)
+        rc_day = None
+        if rc_part:
+            rd = parse_date(rc_part, yr)
+            if rd is not None and _YEARLESS.fullmatch(_nz(rc_part)) and rd.toordinal() < a_day - 180:
+                rd = parse_date(rc_part, yr + 1)
+            rc_day = rd.toordinal() if rd is not None else None
+        if rc_day is not None:
+            rc_rel = rc_day * 1440 + reception - a_abs
+            rc_date = date.fromordinal(rc_day)
+        else:
+            rc_rel = reception - arrive
+            if rc_rel < 0:
+                rc_rel += 1440
+            rc_date = date.fromordinal(a_day + (1 if arrive + rc_rel >= 1440 else 0))
+        if 0 <= rc_rel <= REVERSE_MAX_MIN:
+            reception_ok = True
+        else:
+            reception_ok = False
+    else:
+        reception_ok = False
+    if reception_ok:
         part = _date_part(g["arrive"]) if g["arrive"] else ""
         v = dict(raw)
-        v["arrive"] = (part + " " if part else "") + fmt_time(reception)
+        v["arrive"] = (rc_date.isoformat() + " " if part or rc_day is not None else "") + fmt_time(reception)
         v["reception"] = ""
         v.pop("arrive_src", None)
         o2, _e2 = _calc_row(n, v, year, tariff, defaults)

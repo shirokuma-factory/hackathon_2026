@@ -146,16 +146,16 @@ def test_spec16_credits_are_always_in_the_page():
     assert "を加工して作成" in market_json["source"] and "e-Stat" in market_json["source"]
     # 上り・下りは道路の定義で、区間の行き帰りと一致しない旨が画面に出る
     # 区間の詳細の折れ線は外した（SPEC §32 #2）。注意の文は地図の層の凡例に残る
-    assert "区間の行き帰りとは一致しません" in html
+    assert "荷の行き帰りとは別です" in html   # 文言の直し 2026-11-07
     # 鉄道コンテナの注記
-    assert "3 日間の標本が小さく" in html
+    assert "調べた件数が少ない" in html
 
 
 def test_spec16_view_switcher_in_page():
     html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
-    labels = re.findall(r'<button data-view="(\w+)"[^>]*>([^<]+)</button>', html)
+    labels = re.findall(r'<button data-view="(\w+)"[^>]*>([^<]+)(?:<small[^>]*>[^<]*</small>)?</button>', html)
     assert labels == [("market", "全国の物流傾向"), ("find", "空きを探す・つなぐ"), ("compare", "送り方を比べる"), ("own", "自社の運行")]  # 4 つ目は SPEC §22
-    assert '<body class="view-market">' in html  # 最初に開く見方は市場を見る
+    assert '<body class="view-home">' in html  # 最初に開くのは役割を選ぶ画面（SPEC §44）。地図の見方は、選ばれてから開く
     assert "次の段階で作ります" not in html  # 空きを探す・つなぐは作り込み済み（tests/test_v3_spaceb_ui.py）
     assert 'id="find-right"' in html
 

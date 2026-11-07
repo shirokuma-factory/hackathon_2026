@@ -3,7 +3,7 @@
    運賃・順位・内訳・版の規則はすべて /api/*（Python の src/shipcompare）が返す。ここでは入力と表示の取り回しだけを行う。 */
 
 const W = {
-  hooks: {}, scenarios: [], C: null, draft: null, scenarioSel: '', cargoOpen: false,
+  hooks: {}, scenarios: [], C: null, draft: null, scenarioSel: '', cargoOpen: false, detailOpen: false, touched: false, defaultApplied: false, simple: { kind: 'box', size: null },
   open: false, everOpened: false, step: 1, qform: null, request: null, requestKey: '', cmp: null,
   issuesText: '', saved: null, token: 0, place: null, // place: 着地のパネルで選んだ発地・着地の名前と道路距離（依頼文の区間に使う。SPEC §31.5 #16）
 };
@@ -16,7 +16,7 @@ const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
 const COSTS = [['pickup', '集荷'], ['trunk', '幹線'], ['delivery', '配達'], ['handling', '荷役'], ['fuel', '燃料'], ['highway', '高速'], ['other', 'その他']];
 const COST_COLOR = { pickup: '#5cc8ff', trunk: '#3b82d6', delivery: '#55d6a6', handling: '#f0b64e', fuel: '#a78bfa', highway: '#8fa3b8', other: '#d9c7a0' };
 const PARTY = [['法人', '法人'], ['個人事業主', '個人事業主'], ['個人', '個人']];
-const STATE_LABEL = { complete: '完全', incomplete: '不完全', history: '条件変更前' };
+const STATE_LABEL = { complete: '内訳がそろった', incomplete: '不明の項目あり', history: '条件を変える前' };
 const STATE_CHIP = { complete: 'ok', incomplete: 'check', history: 'no' };
 
 // 公開版のサーバーが来訪者ごとの架空の状態（/api/b/*）を分けるための ID。タブごとに 1 つ、sessionStorage に持つ。
@@ -67,7 +67,14 @@ const newQForm = () => {
 // 合計だけの回答（内訳が分からない）の見分け方: 「その他」に合計、ほかの項目はすべて「含む」。画面が作る形で、保存した回答でもこの形で見分ける（SPEC §42）
 const isTotalOnly = (q) => !!(q && q.lines && q.lines.other && q.lines.other.kind === 'amount' && COSTS.every(([k]) => k === 'other' || (q.lines[k] && q.lines[k].kind === 'included')));
 const totalOnlyMark = (q) => (isTotalOnly(q) ? '<span class="demo">（内訳不明）</span>' : '');
-const versionSig = () => JSON.stringify([confirmedShipment(), curVer() && curVer().scenario, W.place]);
+// 見積依頼文に書く送り方: 結果の表で選んだ行（app.js の S.pickLabel）。なければ表の丸ボタンの選択
+const pickedMode = () => {
+  const a = window.__app && window.__app.S ? window.__app.S.pickLabel : null;
+  if (a) return a;
+  const r = document.querySelector('#cards input[name="cc-pick"]:checked');
+  return r ? r.value : null;
+};
+const versionSig = () => JSON.stringify([confirmedShipment(), curVer() && curVer().scenario, W.place, pickedMode()]);
 
 function scenarioOfVersion() {
   const v = curVer();
@@ -87,14 +94,21 @@ function cargoSummary(sh) {
   }
   return { n, kg: Math.round(kg * 100) / 100 };
 }
+// 荷物の欄の見出し（ピル）は、いまの入力（確定前を含む）の 4 項目を映す
+function pillLabel(d) {
+  if (d.items.length !== 1) return d.cargo_name || `${d.items.length}種類の荷`;
+  const sm = inferSimple(d) || W.simple;
+  if (sm.kind === 'pallet') return 'パレット';
+  return typeof sm.size === 'number' ? `段ボール${sm.size}` : '段ボール';
+}
 function renderCargoHead() {
   const v = curVer();
   if (!v) return;
-  const { n, kg } = cargoSummary(v.shipment);
-  const label = v.shipment.cargo_name || (v.scenario ? v.scenario.name : '手入力');
+  const { n, kg } = cargoSummary(W.draft || v.shipment);
+  const label = pillLabel(W.draft || v.shipment);
   $w('#cargo').innerHTML = `<span class="cg-name">${wesc(label)}</span><span class="num">${n}個・${kg}kg</span>`;
   $w('#cargo').title = v.scenario ? `${v.scenario.name}（${v.scenario.label || '想定の荷主'}）${v.scenario.modified ? 'を元に変えた条件' : ''}` : '手入力の条件';
-  $w('#cargo-ver').textContent = `版${v.number}`;
+  $w('#cargo-ver').textContent = '';
 }
 
 function optionsHtml(list, cur, blank) {
@@ -106,16 +120,89 @@ const segHtml = (f, list, cur) => `<div class="seg" role="group" data-seg="${f}"
   list.map((x) => `<button type="button" data-v="${x}" aria-pressed="${cur === x}">${x}</button>`).join('') + '</div>';
 const triOpts = (cur, yes, no) => optionsHtml([['true', yes], ['false', no]], cur === true ? 'true' : cur === false ? 'false' : '', '未入力');
 
+/* ---- 荷物の 4 項目（荷の形・1 個の大きさ・重さ・個数）。荷物の行（items）の 1 行目に書き込む。詳しい条件の行と同じ値を指す */
+const BOX_SIZES = [60, 80, 100, 120, 140, 160];   // 宅配サイズ（3 辺の合計 cm）
+const boxDims = (size) => [Math.round(size * 0.5), Math.round(size * 0.3), Math.round(size * 0.2)];   // 3 辺の合計が size になる代表の箱（縦・横・高さ）
+const PALLET_STD = [110, 110, 120];   // 1100×1100mm のパレット。荷の高さ 120cm（パレット込み）は仮定
+const DEFAULTS = { sender_type: '法人', receiver_type: '法人', pickup: '集荷', delivery: '配達', destinations: 1 };
+const DEFAULTS_LINE = '初めの設定: 法人から法人へ・集荷して配達・届け先 1 か所。出荷日と希望着日は見積依頼文の画面で入れます。';
+const DEFAULT_CARGO_LINE = ' 荷物の初めの値は段ボール 100 サイズ・10kg・10 個です（仮の値。書き換えてください）。';
+function simpleDefault() {
+  const d = blankShipment();
+  d.items = [{ count: 10, length_cm: 50, width_cm: 30, height_cm: 20, weight_kg: 10 }];
+  d.route = 'kanto_kansai';   // 届け先を選ぶと、区間は届け先に合わせて入れ替わる
+  applyDefaults(d);
+  return d;
+}
+function applyDefaults(d) { for (const [k, v] of Object.entries(DEFAULTS)) if (d[k] === null || d[k] === undefined) d[k] = v; }
+// いまの荷物の行から、荷の形と大きさを読み取る（例を読み込んだ・詳しい条件で直したとき）。1 行でないときは null
+function inferSimple(d) {
+  if (!d || d.items.length !== 1) return null;
+  const it = d.items[0], L = Number(it.length_cm), Wd = Number(it.width_cm), H = Number(it.height_cm);
+  if (!(L > 0 && Wd > 0)) return { kind: W.simple.kind, size: null };
+  if (Math.max(L, Wd) >= 100 && Math.min(L, Wd) >= 80) return { kind: 'pallet', size: L === 110 && Wd === 110 ? 'std' : 'other' };
+  const sum = L + Wd + (H > 0 ? H : 0);
+  return { kind: 'box', size: H > 0 ? (BOX_SIZES.find((x) => sum <= x + 0.01) || 'over') : null };
+}
+function simpleHtml() {
+  const d = W.draft;
+  if (d.items.length !== 1) {   // 例の荷が複数種類のとき: 4 項目で入れ直すか、詳しい条件で行ごとに直す
+    const cs = cargoSummary(d), sc0 = W.scenarios.find((x) => x.id === W.scenarioSel);
+    return `<p class="sc-multi">${d.items.length} 種類の荷物（${cs.n}個・${cs.kg}kg）が入っています${sc0 ? `。例 ${wesc(sc0.id)}（架空の荷主）です` : ''}。</p>
+      <div><button type="button" class="btn-sm" id="sc-reset">荷物を 1 種類で入れ直す</button></div>
+      <p class="sc-assume">行ごとに直すときは「詳しい条件」を開いてください。</p>`;
+  }
+  const it = d.items[0], sm = W.simple, over = sm.kind === 'box' ? sm.size === 'over' : sm.size === 'other';
+  const btn = (attr, v, label, on) => `<button type="button" ${attr}="${v}" aria-pressed="${on}">${label}</button>`;
+  const sizes = sm.kind === 'box'
+    ? BOX_SIZES.map((x) => btn('data-sc-size', x, x, sm.size === x)).join('') + btn('data-sc-size', 'over', 'それ以上', sm.size === 'over')
+    : btn('data-sc-size', 'std', '1100×1100 標準', sm.size === 'std') + btn('data-sc-size', 'other', 'その他', sm.size === 'other');
+  const num = (k, t, step) => `<label><span class="lbl">${t}</span><input class="ctl sm num" type="number" inputmode="decimal" min="0" step="${step}" data-sc="${k}" value="${fv(it[k])}"></label>`;
+  let assume = '';
+  if (sm.kind === 'box' && typeof sm.size === 'number') assume = `${sm.size} サイズは、約 ${boxDims(sm.size).join('×')}cm の箱として計算します（3 辺の合計が ${sm.size}cm）。`;
+  else if (sm.kind === 'pallet' && sm.size === 'std') assume = `1100×1100mm のパレットに、高さ ${PALLET_STD[2]}cm（パレット込み）まで積んだものとして計算します。高さは仮定です。`;
+  else if (over) assume = '大きさ（縦・横・高さ cm）を入れてください。';
+  const sc = W.scenarios.find((x) => x.id === W.scenarioSel);
+  const start = sc ? `<p class="sc-assume">例 ${wesc(sc.id)}（架空の荷主）の値が入っています。書き換えてください。</p>` : '';
+  return `<div><span class="lbl">荷の形</span><div class="seg" role="group" aria-label="荷の形">${btn('data-sc-kind', 'box', '段ボール', sm.kind === 'box')}${btn('data-sc-kind', 'pallet', 'パレット', sm.kind === 'pallet')}</div></div>
+    <div><span class="lbl">1 個の大きさ${sm.kind === 'box' ? '（宅配サイズ。3 辺の合計 cm）' : ''}</span><div class="seg" role="group" aria-label="1 個の大きさ">${sizes}</div>
+      <div class="sc-dims"${over ? '' : ' hidden'}>${num('length_cm', '縦 cm', 'any')}${num('width_cm', '横 cm', 'any')}${num('height_cm', '高さ cm', 'any')}</div>
+      ${assume ? `<p class="sc-assume">${wesc(assume)}</p>` : ''}</div>
+    <div class="sc-two">${num('weight_kg', '重さ（1 個）kg', 'any')}${num('count', '個数', '1')}</div>${start}`;
+}
+// 4 項目 → 荷物の 1 行目。詳しい条件の行の入力欄にも同じ値を入れる
+function setSimpleDims(dims) {
+  const it = W.draft.items[0];
+  [it.length_cm, it.width_cm, it.height_cm] = dims;
+}
+function syncDetailRow() {
+  const row = $w('#cargo-editor .it-row[data-i="0"]');
+  if (!row || W.draft.items.length < 1) return;
+  row.querySelectorAll('[data-k]').forEach((e) => { e.value = fv(W.draft.items[0][e.dataset.k]); });
+}
+function refreshSimple(focusSel) {
+  const el = $w('#sc-simple');
+  if (!el) return;
+  el.innerHTML = simpleHtml();
+  if (focusSel) { const f = el.querySelector(focusSel); if (f) f.focus(); }
+}
+
 function renderCargoEditor() {
   const d = W.draft, ed = $w('#cargo-editor');
+  const inf = inferSimple(d);
+  if (inf) W.simple = { kind: inf.kind, size: inf.size === undefined ? null : inf.size };
   const rows = d.items.map((it, i) => `<div class="it-row" data-i="${i}">` +
     ['count', 'length_cm', 'width_cm', 'height_cm', 'weight_kg'].map((k) =>
       `<input class="ctl xs num" type="number" inputmode="decimal" min="0" step="any" data-item="${i}" data-k="${k}" value="${fv(it[k])}" aria-label="${i + 1}行目 ${{ count: '個数', length_cm: '縦', width_cm: '横', height_cm: '高さ', weight_kg: '1個の重さ' }[k]}">`).join('') +
     `<button type="button" class="it-del" data-del="${i}" aria-label="${i + 1}行目を消す"${d.items.length < 2 ? ' disabled' : ''}>&#10005;</button></div>`).join('');
   const sc = W.scenarios.find((s) => s.id === W.scenarioSel);
   ed.innerHTML = `
+    <div class="sc-simple" id="sc-simple">${simpleHtml()}</div>
+    <details class="ed-detail" id="ed-detail"${W.detailOpen ? ' open' : ''}><summary>詳しい条件</summary>
+    <p class="ed-defaults">${wesc(DEFAULTS_LINE)}${W.defaultApplied ? wesc(DEFAULT_CARGO_LINE) : ''}</p>
+    <p class="ed-origin-note">集荷できるのは関東の 7 か所です。ほかの地域は<a href="compare_lite.html">地図なしの比べるページ</a>へ。</p>
     <div class="ed-sec">
-      <label class="lbl" for="sc-select">場面を読み込む（想定の荷主）</label>
+      <label class="lbl" for="sc-select">例の荷物を読み込む（架空）</label>
       <select id="sc-select" class="ctl sm">${optionsHtml([['', '新しく入力']].concat(W.scenarios.map((s) => [s.id, `${s.id} ${s.name}`])), W.scenarioSel)}</select>
       ${sc ? `<p class="ed-note">${wesc(sc.assumption_note || '')}</p>` : ''}
     </div>
@@ -138,11 +225,12 @@ function renderCargoEditor() {
     <details class="ed-more"><summary>荷役設備・品目（任意）</summary>
       <div class="ed-grid">
         <label><span class="lbl">フォークリフト</span><select class="ctl sm" data-f="forklift" data-tri>${triOpts(d.forklift, 'あり', 'なし')}</select></label>
-        <label><span class="lbl">ゲート車</span><select class="ctl sm" data-f="tail_lift" data-tri>${triOpts(d.tail_lift, '必要', '不要')}</select></label>
+        <label><span class="lbl" title="荷台に昇降機つき">ゲート車</span><select class="ctl sm" data-f="tail_lift" data-tri>${triOpts(d.tail_lift, '必要', '不要')}</select></label>
         <label><span class="lbl">手積み</span><select class="ctl sm" data-f="manual_load" data-tri>${triOpts(d.manual_load, '可', '不可')}</select></label>
         <label><span class="lbl">品目</span><input class="ctl sm" type="text" data-f="cargo_name" value="${wesc(fv(d.cargo_name))}"></label>
         <label class="wide"><span class="lbl">壊れ物の扱い</span><input class="ctl sm" type="text" data-f="fragile_note" value="${wesc(fv(d.fragile_note))}"></label>
       </div>
+    </details>
     </details>
     <div class="ed-foot"><span class="ed-state" id="ed-state" role="status"></span><button type="button" class="btn-link" id="ed-3d">積み方を 3D で見る</button><button type="button" class="btn-primary sm" id="ed-confirm">この条件で確定</button></div>`;
   updateEdState();
@@ -156,7 +244,7 @@ function updateEdState(err) {
   if (err) { el.textContent = err; return; }
   if (!v) { el.textContent = '条件はまだ確定していません'; return; }
   const dirty = JSON.stringify(W.draft) !== JSON.stringify(v.shipment);
-  el.textContent = dirty ? `入力が確定した版（版${v.number}）と違います` : `条件の版 ${v.number}（確定済み）`;
+  el.textContent = dirty ? 'まだ確定していない変更があります' : '確定済み';
   el.classList.toggle('dirty', dirty);
 }
 
@@ -165,7 +253,15 @@ function bindCargo() {
   const num = (v) => (v === '' ? null : Number(v));
   ed.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.dataset.item !== undefined) W.draft.items[Number(t.dataset.item)][t.dataset.k] = num(t.value);
+    if (e.isTrusted) W.touched = true;
+    setTimeout(renderCargoHead, 0);   // 入力のあとの値でピルを更新する
+    if (t.dataset.sc !== undefined) {   // 4 項目の入力（重さ・個数・寸法）
+      W.draft.items[0][t.dataset.sc] = num(t.value);
+      syncDetailRow();
+      updateEdState();
+      return;
+    }
+    if (t.dataset.item !== undefined) { W.draft.items[Number(t.dataset.item)][t.dataset.k] = num(t.value); refreshSimple(); }
     else if (t.dataset.f) {
       const f = t.dataset.f;
       if (t.type === 'number') W.draft[f] = num(t.value);
@@ -181,8 +277,8 @@ function bindCargo() {
     if (t.id === 'sc-select') {
       W.scenarioSel = t.value;
       const sc = W.scenarios.find((s) => s.id === t.value);
-      if (sc) { W.draft = wclone(sc.shipment); if (!W.draft.items.length) W.draft.items = blankShipment().items; }
-      else if (t.value === '') W.draft = blankShipment(); // 「新しく入力」: 荷物の行・品目・日付を空にする（前の場面の値を残さない。SPEC §42）
+      if (sc) { W.draft = wclone(sc.shipment); if (!W.draft.items.length) W.draft.items = blankShipment().items; applyDefaults(W.draft); }   // 例で未入力の発送者・受取人などは初めの設定にする
+      else if (t.value === '') { W.draft = blankShipment(); applyDefaults(W.draft); } // 「新しく入力」: 荷物の行・品目・日付を空にする（前の場面の値を残さない。SPEC §42）
       renderCargoEditor();
     } else if (t.dataset.f && t.tagName === 'SELECT') {
       W.draft[t.dataset.f] = t.dataset.tri !== undefined ? (t.value === '' ? null : t.value === 'true') : (t.value || null);
@@ -192,6 +288,35 @@ function bindCargo() {
   ed.addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
+    if (e.isTrusted) W.touched = true;
+    setTimeout(renderCargoHead, 0);
+    if (b.dataset.scKind !== undefined || b.dataset.scSize !== undefined) {   // 荷の形・1 個の大きさ
+      if (W.draft.items.length !== 1) return;
+      const it = W.draft.items[0];
+      if (b.dataset.scKind !== undefined) {
+        if (W.simple.kind !== b.dataset.scKind) {
+          W.simple = { kind: b.dataset.scKind, size: null };
+          it.length_cm = it.width_cm = it.height_cm = null;
+        }
+        refreshSimple(`[data-sc-kind="${b.dataset.scKind}"]`);
+      } else {
+        const v = b.dataset.scSize, n = Number(v);
+        W.simple.size = Number.isFinite(n) ? n : v;
+        if (typeof W.simple.size === 'number') setSimpleDims(boxDims(W.simple.size));
+        else if (v === 'std') setSimpleDims(PALLET_STD);
+        refreshSimple(`[data-sc-size="${v}"]`);
+      }
+      syncDetailRow();
+      updateEdState();
+      return;
+    }
+    if (b.id === 'sc-reset') {   // 例の荷を消して、4 項目の入力に切り替える
+      W.draft.items = blankShipment().items;
+      W.simple = { kind: 'box', size: null };
+      renderCargoEditor();
+      const f = ed.querySelector('[data-sc-size]'); if (f) f.focus();
+      return;
+    }
     if (b.dataset.v !== undefined && b.parentElement.dataset.seg) {
       const f = b.parentElement.dataset.seg, on = b.getAttribute('aria-pressed') === 'true';
       W.draft[f] = on ? null : b.dataset.v;
@@ -207,6 +332,7 @@ function bindCargo() {
     } else if (b.id === 'ed-confirm') confirmCargo();
     else if (b.id === 'ed-3d' && window.LoadView) LoadView.open(W.draft); // 確定前の入力も見られる（SPEC §20.5）
   });
+  ed.addEventListener('toggle', (e) => { if (e.target.id === 'ed-detail') W.detailOpen = e.target.open; }, true);
   $w('#cargo-toggle').addEventListener('click', () => setCargoOpen(!W.cargoOpen));
 }
 
@@ -226,6 +352,9 @@ function afterCase(changed) {
   if (W.open) loadStep();
 }
 
+// 版のお知らせは、送り方を比べるの画面のときだけ出す（自社の運行などの別の画面では、関係のないカードや地図の層の話になる）
+const toastCompare = (m) => { if (document.body.classList.contains('view-compare')) toast(m); };
+
 async function confirmCargo() {
   const btn = $w('#ed-confirm');
   btn.disabled = true;
@@ -234,8 +363,8 @@ async function confirmCargo() {
     const r = await wapi('/api/confirm', { case: caseForApi(), shipment: W.draft, scenario_id: W.scenarioSel || null });
     W.C = r.case;
     afterCase(r.changed);
-    if (r.changed) toast(`条件の版 ${curVer().number} にしました。右のカードと地図の層を計算し直しています${hadQuotes ? '。古い見積回答は履歴に移りました' : ''}`);
-    else toast('内容が前の版と同じなので、版は増やしませんでした');
+    if (r.changed) toastCompare(`荷物の条件を変えました。運賃を計算し直しています${hadQuotes ? '。前の見積回答は別に分けました' : ''}。`);
+    else toastCompare('条件は変わっていません');
   } catch (e) {
     updateEdState(e.message);
     toast(e.message);
@@ -253,7 +382,7 @@ async function startFromDestination(est) {
     W.place = g && g.km && !g.no_route && !g.ferry && label ? { label, km: g.km, note: g.origin_note || null } : null;
     for (const k of ['route', 'distance_km', 'origin_in_kanto']) W.draft[k] = est.shipment[k];
     afterCase(changed);
-    if (changed) toast(`着地の区間を当てはめて、条件の版 ${curVer().number} にしました`);
+    if (changed) toastCompare('届け先に合わせて区間を変えました');
     openWork(1);
   } catch (e) { toast(e.message); }
 }
@@ -265,7 +394,7 @@ function renderResume() {
   const v = curVer();
   const show = W.everOpened && !W.open && v;
   b.hidden = !show;
-  if (show) b.textContent = `見積の作業を続ける（版${v.number}・回答${W.C.quotes.length}件）`;
+  if (show) b.textContent = `見積の続きに戻る（回答 ${W.C.quotes.length} 件）`;
 }
 function openWork(step) {
   W.open = true; W.everOpened = true;
@@ -286,10 +415,11 @@ function closeWork() {
 
 function setStep(n) {
   W.step = n;
+  $w('#work').classList.toggle('w-s1', n === 1);   // 案内の表示では、1 の依頼文だけ、作業の段の切り替えと下の帯を隠す（style.css）
   document.querySelectorAll('#w-steps button').forEach((b) => b.setAttribute('aria-selected', String(Number(b.dataset.step) === n)));
   $w('#w-prev').disabled = n === 1;
   $w('#w-next').hidden = n === 4;
-  $w('#w-next').textContent = ['', '見積回答へ', '比較へ', '判断と保存へ'][n] || '';
+  $w('#w-next').textContent = ['', '次: 回答を入れる', '次: 比べる', '次: 選んで保存'][n] || '';
   $w('#w-body').scrollTop = 0;
   loadStep();
 }
@@ -301,12 +431,12 @@ async function loadStep() {
   const sh = v.shipment;
   const p = [];
   p.push(`${wesc(W.hooks.routeLabel ? W.hooks.routeLabel() : '')}`);
-  $w('#w-route').innerHTML = `<span>${p[0]}</span><span class="dot">・</span><span>条件の版 ${v.number}</span>`;
+  $w('#w-route').innerHTML = `<span>${p[0]}</span>`;
   try {
     if (W.step === 1) {
       const key = versionSig();
       if (!W.request || W.requestKey !== key) {
-        W.request = await wapi('/api/request', { shipment: sh, scenario: v.scenario, ...(W.place ? { place: W.place } : {}) });
+        W.request = await wapi('/api/request', { shipment: sh, scenario: v.scenario, ...(W.place ? { place: W.place } : {}), ...(pickedMode() ? { mode: pickedMode() } : {}) });
         W.requestKey = key;
       }
     } else {
@@ -321,21 +451,48 @@ async function loadStep() {
   const f = [null, bindRequest, bindQuotes, bindCompare, bindJudgment][W.step];
   if (f) f();
   const n = W.C.quotes.length, cur = W.C.quotes.filter((q) => q.version === v.number).length;
-  $w('#w-state').textContent = `見積回答 ${n}件（いまの版 ${cur}件）`;
+  $w('#w-state').textContent = `見積回答 ${n} 件（今の条件 ${cur} 件）`;
 }
 
 /* ---- 1 依頼文 */
+// 案内の表示では、本文の最初の数行だけを開いて見せ、「全文を読む」で全文にする（最初に目に入る文字を増やしすぎない）
+const reqHead = (t) => String(t).split(String.fromCharCode(10)).slice(0, 5).join(String.fromCharCode(10)) + String.fromCharCode(10) + '…';
 function renderRequest() {
   const r = W.request;
   const miss = r.missing_required.length ? `<p class="miss"><b>荷主側で未入力の必須項目:</b> ${r.missing_required.map(wesc).join('、')}</p>` : '';
-  const opt = r.missing_optional.length ? `<details class="miss-opt"><summary>任意の未入力 ${r.missing_optional.length}件</summary><p>${r.missing_optional.map(wesc).join('、')}</p></details>` : '';
+  const opt = r.missing_optional.length ? `<details class="miss-opt"><summary>入れなくてもよい項目 ${r.missing_optional.length} 件</summary><p>${r.missing_optional.map(wesc).join('、')}</p></details>` : '';
   // 見積を頼む先。手段の列も名前も持たない（試算額を出した手段と会社を結び付けない。SPEC §31.2）
   const rows = r.contacts.map((c) => `<tr><td>${c.has_window
     ? `<a href="${wesc(c.url)}" target="_blank" rel="noopener">${wesc(c.name)}</a>` : `<span class="no-win">${wesc(c.name)}</span> <b class="need">窓口の確認が必要</b>`}</td><td>${wesc(c.condition)}</td><td class="nw num">${wesc(c.checked_on)}</td></tr>`).join('');
   // 案内の文の「比べるページ」は compare_lite.html へのリンクにする（SPEC §33 #9）
   const pointer = r.contacts_note ? `<p class="hint">${wesc(r.contacts_note).replace('比べるページ', '<a href="compare_lite.html" target="_blank" rel="noopener">比べるページ</a>')}。</p>` : '';
+  const table = rows ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>窓口</th><th>条件</th><th>確認日</th></tr></thead><tbody>${rows}</tbody></table></div>` : '';
+  // 案内の表示: 荷主側の未入力の必須項目（出荷日・希望着日）は、ここで入れて確定できる（依頼文の上）。確定すると条件の版が 1 つ上がり、依頼文が作り直される
+  const needDate = r.missing_required.filter((m) => m === '出荷日' || m === '希望着日');
+  const need = needDate.length
+    ? `<div class="w-need" role="group" aria-label="未入力の必須項目"><b>先に入れてください</b>
+      ${needDate.map((m) => `<label><span class="lbl">${m}</span><input class="ctl sm" type="date" data-need="${m === '出荷日' ? 'ship_date' : 'desired_date'}" value="${fv(W.draft[m === '出荷日' ? 'ship_date' : 'desired_date'])}"></label>`).join('')}
+      <span class="hint">2 つ入れると、依頼文に入ります。</span></div>` : '';
+  // 案内の表示: 依頼文と「依頼文をコピー」だけを前に出し、窓口の表・保存・ほかの作業は「詳しく」に入れる
+  if (document.body.classList.contains('guided')) {
+    return `<section class="sec">
+    <div class="sec-h"><h3>見積依頼文</h3><span class="chip ${r.status === '依頼準備完了' ? 'ok' : 'check'}">${wesc(r.status === '依頼準備完了' ? '依頼文ができました' : r.status)}</span></div>
+    ${need}
+    <pre class="req-text w-peek" id="req-text">${wesc(reqHead(r.text))}</pre>
+    <button type="button" class="btn-link w-peek-btn" id="req-more" aria-expanded="false" aria-controls="req-text">全文を読む</button>
+    <div class="w-primary"><button type="button" class="btn-primary" id="req-copy">依頼文をコピー</button></div>
+    <p class="hint">送信はしません。運送会社の窓口に貼り付けて使います。</p>
+    <details class="w-more"><summary>頼む先と保存</summary>
+      ${opt}
+      <div class="btn-row"><button type="button" class="btn-sm" id="req-dl">テキストで保存</button></div>
+      <div class="sec-h"><h3>見積を頼む先</h3>${rows ? '<span class="hint">会社の五十音順（確認日つき）</span>' : ''}</div>
+      ${table}${pointer}
+      <div class="w-steps-btns" role="group" aria-label="ほかの作業"><button type="button" class="btn-sm" data-goto="2">見積回答を入れる</button><button type="button" class="btn-sm" data-goto="3">比較する</button><button type="button" class="btn-sm" data-goto="4">選んで保存する</button></div>
+    </details>
+  </section>`;
+  }
   return `<section class="sec">
-    <div class="sec-h"><h3>見積依頼文</h3><span class="chip ${r.status === '依頼準備完了' ? 'ok' : 'check'}">${wesc(r.status)}</span></div>
+    <div class="sec-h"><h3>見積依頼文</h3><span class="chip ${r.status === '依頼準備完了' ? 'ok' : 'check'}">${wesc(r.status === '依頼準備完了' ? '依頼文ができました' : r.status)}</span></div>
     ${miss}${opt}
     <pre class="req-text" id="req-text" tabindex="0">${wesc(r.text)}</pre>
     <div class="btn-row"><button type="button" class="btn-sm" id="req-copy">コピー</button><button type="button" class="btn-sm" id="req-dl">テキストで保存</button>
@@ -343,10 +500,20 @@ function renderRequest() {
   </section>
   <section class="sec">
     <div class="sec-h"><h3>見積を頼む先</h3>${rows ? '<span class="hint">会社の五十音順（確認日つき）</span>' : ''}</div>
-    ${rows ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>窓口</th><th>条件</th><th>確認日</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}${pointer}
+    ${table}${pointer}
   </section>`;
 }
 function bindRequest() {
+  const more = document.getElementById('req-more');
+  if (more) more.addEventListener('click', () => { const t = $w('#req-text'), on = !t.classList.contains('open'); t.classList.toggle('open', on); if (on) t.tabIndex = 0; else t.removeAttribute('tabindex'); t.textContent = on ? W.request.text : reqHead(W.request.text); more.setAttribute('aria-expanded', String(on)); more.textContent = on ? '閉じる' : '全文を読む'; });
+  // 出荷日と希望着日の両方が入ったら、その日付で確定して（条件の版が 1 つ上がる）依頼文を作り直す
+  const ins = [...document.querySelectorAll('#w-body [data-need]')];
+  ins.forEach((i) => i.addEventListener('change', () => {
+    if (ins.some((x) => !x.value)) return;
+    for (const x of ins) W.draft[x.dataset.need] = x.value;
+    confirmCargo();
+  }));
+  document.querySelectorAll('#w-body [data-goto]').forEach((b) => b.addEventListener('click', () => setStep(Number(b.dataset.goto))));
   $w('#req-copy').addEventListener('click', async () => {
     const text = W.request.text;
     try { await navigator.clipboard.writeText(text); } catch (e) {
@@ -384,7 +551,7 @@ function quoteListHtml() {
   return evs.map((e) => {
     const q = e.quote;
     return `<article class="q-card ${e.state}"><div class="q-top"><b>${wesc(q.carrier)}${q.is_demo ? '<span class="demo">（架空）</span>' : ''}${totalOnlyMark(q)}</b>
-      <small>${wesc(q.product)}${q.product ? ' ・ ' : ''}${wesc(q.tax)} ・ 版${q.version} ・ 有効期限 ${wesc(q.valid_until || '未入力')}</small>
+      <small>${wesc(q.product)}${q.product ? ' ・ ' : ''}${wesc(q.tax)} ・ 有効期限 ${wesc(q.valid_until || '未入力')}</small>
       <span class="chip ${STATE_CHIP[e.state]}">${STATE_LABEL[e.state]}</span><button type="button" class="q-del" data-id="${wesc(q.id)}" aria-label="${wesc(q.carrier)}の回答を消す">消す</button></div>
       <div class="q-sum num">${wesc(e.summary)}</div></article>`;
   }).join('');
@@ -392,10 +559,10 @@ function quoteListHtml() {
 function renderQuotes() {
   const q = W.qform, v = curVer();
   const demo = canAddDemo() ? `<div class="demo-box"><button type="button" class="btn-sm" id="q-demo">架空の回答例を入れる</button>
-      <span class="hint">場面 ${wesc(v.scenario.id)} の例（架空A社・架空B社）を、いまの版に結び付けて追加します。</span></div>`
-    : (v.scenario && v.scenario.modified ? '<p class="hint">場面の条件を変えているため、架空の回答例は入れられません。</p>' : '');
+      <span class="hint">架空A社・架空B社の回答例を追加します。</span></div>`
+    : (v.scenario && v.scenario.modified ? '<p class="hint">例の荷物を変えたため、回答例は入れられません。</p>' : '');
   return `<section class="sec">
-    <div class="sec-h"><h3>見積回答を入れる</h3><span class="hint">条件の版 ${v.number} に結び付きます</span></div>
+    <div class="sec-h"><h3>見積回答を入れる</h3><span class="hint">今の荷物の条件の回答として入ります</span></div>
     ${demo}
     <form id="q-form" autocomplete="off" novalidate>
       <div class="qf-grid">
@@ -405,8 +572,8 @@ function renderQuotes() {
         <label><span class="lbl">有効期限</span><input class="ctl sm" type="date" name="valid_until" value="${wesc(q.valid_until)}"></label>
       </div>
       <div class="qf-tax"><span class="lbl">税区分</span><div class="seg" role="group" data-tax>${['税抜', '税込'].map((t) => `<button type="button" data-tax="${t}" aria-pressed="${q.tax === t}">${t}</button>`).join('')}</div></div>
-      <label class="qf-total"><span class="lbl">合計（円）— 内訳が分からないときは、合計だけ入れます</span><input class="ctl sm num" type="number" min="1" step="100" inputmode="numeric" name="total" value="${wesc(q.total)}" placeholder="例: 120000"></label>
-      <div class="lbl cl-head">費用の内訳（任意。金額、含む、不明から選びます。合計だけ入れたときは、内訳を触らないでください）</div>
+      <label class="qf-total"><span class="lbl">合計（円）。内訳が分からなければ合計だけ</span><input class="ctl sm num" type="number" min="1" step="100" inputmode="numeric" name="total" value="${wesc(q.total)}" placeholder="例: 120000"></label>
+      <div class="lbl cl-head">費用の内訳（任意）<span title="合計だけなら空のまま">（?）</span></div>
       <div class="cl-grid">${costRowsHtml()}</div>
       <div class="qf-foot"><label class="chk"><input type="checkbox" name="is_demo"${q.is_demo ? ' checked' : ''}> 架空の回答（デモ用）</label>
         <span class="qf-err" id="qf-err" role="alert">${wesc(q.error)}</span>
@@ -476,7 +643,7 @@ function bindQuotes() {
       const r = await wapi('/api/add_demo_quotes', { case: caseForApi() });
       W.C = r.case;
       renderResume();
-      toast(r.added ? `架空の回答例を ${r.added} 件入れました` : 'この版には架空の回答例がすでに入っています');
+      toast(r.added ? `架空の回答例を ${r.added} 件入れました` : '回答例はもう入っています');
       await loadStep();
     } catch (er) { toast(er.message); }
   });
@@ -516,10 +683,10 @@ function renderCompare() {
       <div class="cmp-rank num">${e.rank ? `<b>${e.rank}</b>位` : '<span>順位なし</span>'}</div>
       <div class="cmp-main">
         <div class="cmp-top"><span class="nm"><b>${wesc(q.carrier)}${q.is_demo ? '<span class="demo">（架空）</span>' : ''}${totalOnlyMark(q)}</b><small>${wesc(q.product)}</small></span>
-          <span class="tot num">${done ? `<b>${wyen(e.total_ex_tax)}</b>円` : `部分合計 <b>${wyen(e.partial_ex_tax)}</b>円`}<small>税抜</small></span></div>
+          <span class="tot num">${done ? `<b>${wyen(e.total_ex_tax)}</b>円` : `分かっている分の合計 <b>${wyen(e.partial_ex_tax)}</b>円`}<small>税抜</small></span></div>
         ${stackHtml(e, scale)}
         <div class="cmp-sub num">${done
-          ? (c.ranking_shown ? (e.diff_from_lowest === 0 ? '最安' : `最安との差額 <b>+${wyen(e.diff_from_lowest)}円</b>`) : '比べる相手がいません')
+          ? (c.ranking_shown ? (e.diff_from_lowest === 0 ? '最安' : `最安との差額 <b>+${wyen(e.diff_from_lowest)}円</b>`) : '比べる回答が 1 件だけです')
           : `不明: ${e.unknown_keys.map((k) => COSTS.find((x) => x[0] === k)[1]).join('・') || 'なし'}${e.reasons.length ? `（${wesc(e.reasons.join('、'))}）` : ''}`}
           ${isTotalOnly(q) ? '<span class="incl">内訳不明（合計だけの回答。順位には入ります）</span>' : incl.length ? `<span class="incl">含む: ${incl.join('・')}</span>` : ''}</div>
       </div></div>`;
@@ -530,13 +697,13 @@ function renderCompare() {
     if (k in e.line_amounts_ex_tax) return `<td class="num">${wyen(e.line_amounts_ex_tax[k])}</td>`;
     return '<td class="muted">含む</td>';
   }).join('')}<td class="num tt">${e.state === 'complete' ? wyen(e.total_ex_tax) : '—'}</td></tr>`).join('');
-  const histHtml = hist.length ? `<details class="hist"><summary>条件変更前の回答 ${hist.length}件（比較に入れません）</summary>${hist.map((e) =>
+  const histHtml = hist.length ? `<details class="hist"><summary>条件を変える前の回答 ${hist.length} 件（比べません）</summary>${hist.map((e) =>
     `<div class="hist-row"><b>${wesc(e.quote.carrier)}${e.quote.is_demo ? '（架空）' : ''}</b><span>${wesc(e.reasons.join('、'))}</span></div>`).join('')}</details>` : '';
   return `<section class="sec">
-    <div class="sec-h"><h3>比較</h3><span class="hint">${wesc(c.message)}（基準日 ${wesc(c.today)}）</span></div>
+    <div class="sec-h"><h3>比較</h3><span class="hint">${wesc(c.message)}（${wesc(c.today)} 時点）</span></div>
     ${swatches()}
     <div class="cmp-list">${rows}</div>
-    <p class="hint">金額は税抜。税込の回答は各行を 1.1 で割って端数を配ってあり、行の合計は回答の合計と一致します。不完全な回答（不明の項目がある）は順位に入れません。不明の項目は 0円ではなく空欄で示します。</p>
+    <p class="hint">金額は税抜です。不明の項目がある回答は順位に入れません。</p>
   </section>
   <section class="sec"><div class="sec-h"><h3>内訳の表</h3><span class="hint">税抜の円</span></div>
     <div class="tbl-wrap"><table class="tbl bd"><thead><tr><th>会社</th>${head}<th>合計</th></tr></thead><tbody>${body}</tbody></table></div>
@@ -554,19 +721,19 @@ function renderJudgment() {
   if (ch && (!chosenEv || chosenEv.state !== 'complete')) {
     warn = !chosenEv ? '選んだ回答が見積回答の一覧にありません。'
       : chosenEv.state === 'history' ? '選んだ回答は条件変更前のものです。いまの条件で見積を取り直してください。'
-        : '選んだ回答は、いまは完全な回答ではありません。「見積回答」で内容を確かめてください。';
+        : '選んだ回答に不明の項目があります。回答の内容を確かめてください。';
   }
   const opts = [`<label class="opt"><input type="radio" name="choice" value=""${ch ? '' : ' checked'}><span class="o-t">選ばない</span></label>`].concat(done.map((e) =>
     `<label class="opt"><input type="radio" name="choice" value="${wesc(e.quote.id)}"${ch === e.quote.id ? ' checked' : ''}>
       <span class="o-t">${wesc(e.quote.carrier)}${e.quote.is_demo ? '（架空）' : ''}${isTotalOnly(e.quote) ? '（内訳不明）' : ''} <small>${wesc(e.quote.product)}</small></span>
       <span class="o-v num">${wyen(e.total_ex_tax)}円${e.rank && c.ranking_shown ? ` ・ ${e.rank}位${e.diff_from_lowest ? `（+${wyen(e.diff_from_lowest)}円）` : ''}` : ''}</span></label>`));
   if (ch && chosenEv && chosenEv.state !== 'complete') {
-    opts.push(`<label class="opt"><input type="radio" name="choice" value="${wesc(ch)}" checked><span class="o-t">${wesc(chosenEv.quote.carrier)} <small>選択済み（いまは完全な回答ではありません）</small></span></label>`);
+    opts.push(`<label class="opt"><input type="radio" name="choice" value="${wesc(ch)}" checked><span class="o-t">${wesc(chosenEv.quote.carrier)} <small>選択済み（不明の項目あり）</small></span></label>`);
   }
-  const sv = W.saved ? `<p class="saved num" role="status">保存しました: <b>${wesc(W.saved.name)}</b>（${W.saved.kb} KB・版${W.saved.versions}・回答${W.saved.quotes}件${W.saved.chosen ? `・選んだ回答 ${wesc(W.saved.chosen)}` : ''}・${wesc(W.saved.at)}）</p>` : '';
+  const sv = W.saved ? `<p class="saved num" role="status">保存しました: <b>${wesc(W.saved.name)}</b>（回答 ${W.saved.quotes} 件${W.saved.chosen ? `・選んだ回答 ${wesc(W.saved.chosen)}` : ''}・${wesc(W.saved.at)}）</p>` : '';
   return `<div class="notice" role="note">${wesc(c.notice)}</div>
   <section class="sec">
-    <div class="sec-h"><h3>選ぶ回答</h3><span class="hint">完全な回答だけ選べます</span></div>
+    <div class="sec-h"><h3>選ぶ回答</h3><span class="hint">内訳がそろった回答だけ選べます</span></div>
     ${warn ? `<p class="miss">${wesc(warn)}</p>` : ''}
     <div class="opts">${opts.join('')}</div>
     <label class="blk"><span class="lbl">選んだ理由</span><textarea class="ctl ta" id="j-reason" rows="3" placeholder="例: 集荷から配達まで含み、総額が最も低いため">${wesc(W.C.reason)}</textarea></label>
@@ -574,8 +741,8 @@ function renderJudgment() {
   </section>
   <section class="sec">
     <div class="sec-h"><h3>保存と読み込み</h3><span class="hint">保存はブラウザのダウンロードです。サーバーには残しません</span></div>
-    <div class="btn-row"><button type="button" class="btn-primary sm" id="j-save">この出荷を JSON で保存</button>
-      <label class="btn-sm file" tabindex="0">保存した JSON を読み込む<input type="file" id="j-load" accept=".json,application/json"></label></div>
+    <div class="btn-row"><button type="button" class="btn-primary sm" id="j-save">この見積をファイルに保存</button>
+      <label class="btn-sm file" tabindex="0">保存したファイルを開く<input type="file" id="j-load" accept=".json,application/json"></label></div>
     ${sv}<p class="qf-err" id="j-err" role="alert"></p>
   </section>`;
 }
@@ -598,7 +765,7 @@ async function saveCase() {
     const ch = res.quotes.find((q) => q.id === res.chosen_quote_id);
     W.saved = { name, kb: (new Blob([text]).size / 1024).toFixed(1), versions: res.versions.length, quotes: res.quotes.length,
       chosen: ch ? `${ch.carrier}${ch.is_demo ? '（架空）' : ''}` : '', at: (res.saved_at || '').replace('T', ' ').slice(0, 16) };
-    toast('JSON を保存しました（ダウンロード）');
+    toast('ファイルに保存しました');
     $w('#w-body').innerHTML = renderJudgment();
     bindJudgment();
   } catch (e) { $w('#j-err').textContent = e.message; }
@@ -619,7 +786,7 @@ async function loadCase(e) {
     W.saved = null;
     if (W.cargoOpen) renderCargoEditor();
     afterCase(true);
-    toast(`読み込みました（版${v ? v.number : 0}・回答${res.quotes.length}件）`);
+    toast(`読み込みました（回答 ${res.quotes.length} 件）`);
   } catch (x) { err(x.message); toast(x.message); }
   finally { e.target.value = ''; }
 }
@@ -637,6 +804,24 @@ function bindWork() {
   });
 }
 
+// 案内の「送り方を比べる」は、例の荷ではなく 1 種類の簡単な荷（段ボール 100 サイズ・10kg・10 個）から始める。
+// 利用者が触る前で、いまの確定が例のままのときだけ、一度だけ入れ替えて自動で確定する（版の違いの警告を出さない）
+async function applySimpleDefault() {
+  const b = document.body.classList, v = curVer();
+  if (W.defaultApplied || W.touched || !v || !b.contains('guided') || !b.contains('view-compare')) return;
+  if (v.scenario && v.scenario.modified) return;
+  if (JSON.stringify(W.draft) !== JSON.stringify(v.shipment)) return;   // 確定していない入力がある
+  W.defaultApplied = true;
+  try {
+    W.draft = simpleDefault();
+    W.scenarioSel = '';
+    const r = await wapi('/api/confirm', { case: caseForApi(), shipment: W.draft, scenario_id: null });
+    W.C = r.case;
+    renderCargoEditor();
+    afterCase(r.changed);
+  } catch (e) { W.defaultApplied = false; }
+}
+
 async function winit(hooks) {
   W.hooks = hooks;
   W.scenarios = (await wapi('/api/scenarios')).scenarios;
@@ -644,6 +829,7 @@ async function winit(hooks) {
   W.qform = newQForm();
   const s1 = W.scenarios.find((s) => s.id === 'S1') || W.scenarios[0];
   W.draft = s1 ? wclone(s1.shipment) : blankShipment();
+  applyDefaults(W.draft);   // 詳しい条件を開かない人でも、発送者・受取人・集荷・配達・届け先の数が入った状態で確定する
   W.scenarioSel = s1 ? s1.id : '';
   const r = await wapi('/api/confirm', { case: caseForApi(), shipment: W.draft, scenario_id: W.scenarioSel || null });
   W.C = r.case;
@@ -653,6 +839,8 @@ async function winit(hooks) {
   renderCargoEditor();
   $w('#cargo-editor').hidden = true;
   renderResume();
+  new MutationObserver(applySimpleDefault).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  applySimpleDefault();
 }
 
 window.Work = {

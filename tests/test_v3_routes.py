@@ -200,10 +200,10 @@ def test_spec17_air_legs_have_arc_points_and_routes_are_complete():
     for route in air:
         arcs = [l for l in route["legs"] if l["mode"] == "air"]
         assert len(arcs) == 1 and len(arcs[0]["coordinates"]) >= 64 and arcs[0]["km"] >= 300
-    # 全 7 出発地 × 47 県庁所在地 + 上位 60 区間 + 架空の便 6 本
+    # 全 7 出発地 × 47 県庁所在地 + 上位 60 区間 + 架空の便 7 本
     assert sum(len(_read(f"from_{c}.json")["dests"]) for c in ("13104", "14104", "11107", "12101", "08201", "09201", "10201")) == 7 * 47
     assert len(_read("pairs.json")["pairs"]) == 60
-    assert len(_read("trips.json")["trips"]) == 6
+    assert len(_read("trips.json")["trips"]) == 7  # 2026-11-07 見本の鹿児島化
 
 
 def test_spec17_committed_files_have_attribution_and_fit_the_size_limit():

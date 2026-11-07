@@ -7,18 +7,18 @@
 <title>自社の運行を分析する</title>
 <!-- このファイルは tools/build_own_page.py が tools/own_page_template.html から作ります。直すときはテンプレートを直してください。 -->
 <style>
-:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --hi: #eaf1fc; --ok: #1b6e3c; --bar: #1b5fbf; --hot: #fdecea; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a92; --hi: #1f2b40; --ok: #7ed39b; --bar: #7ab0ff; --hot: #3a2321; } }
-:root[data-theme="dark"] { --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #a9b1c0; --line: #363e4c; --accent: #7ab0ff; --accent-hover: #9cc3ff; --on-accent: #0b1220; --warn: #ff9a92; --hi: #1f2b40; --ok: #7ed39b; --bar: #7ab0ff; --hot: #3a2321; }
+:root { color-scheme: dark; --bg: #070b12; --card: #0d141f; --text: #e8eef8; --muted: #a2b0c6; --line: #2a374b; --accent: #5cc8ff; --accent-hover: #8ad8ff; --on-accent: #04131c; --warn: #f0b64e; --hi: #162131; --ok: #55d6a6; --bar: #5cc8ff; --hot: #2e2615; --err: #ff6b6b; --radius: 14px; --radius-sm: 10px; }
+/* 地図の画面（web/style.css）と同じ暗い配色を既定にする。明るい配色は、アドレスに data-theme="light" を付けたときだけ */
+:root[data-theme="light"] { color-scheme: light; --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --line: #d9dde5; --accent: #1b5fbf; --accent-hover: #164f9f; --on-accent: #ffffff; --warn: #b3261e; --hi: #eaf1fc; --ok: #1b6e3c; --bar: #1b5fbf; --hot: #fdecea; --err: #b3261e; }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); background: var(--bg); color: var(--text); font: 14px/1.6 "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; overflow-wrap: anywhere; }
+body { margin: 0; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); background: var(--bg); color: var(--text); font: 14px/1.6 "Noto Sans JP", system-ui, "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; -webkit-font-smoothing: antialiased; overflow-wrap: anywhere; }
 [hidden] { display: none !important; }
 .wrap { max-width: 1100px; margin: 0 auto; }
 header.top { padding: 16px 0 6px; }
 header.top h1 { margin: 0 0 4px; font-size: 22px; }
 header.top p { margin: 0; color: var(--muted); font-size: 13px; }
-section.card, details.card, div.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+section.card, details.card, div.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 12px 0; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
 h2 { margin: 0 0 8px; font-size: 16px; }
 h3 { margin: 12px 0 6px; font-size: 14px; }
 p { margin: 6px 0; }
@@ -28,14 +28,14 @@ small, .small { font-size: 12px; color: var(--muted); }
 .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 summary { cursor: pointer; font-weight: 700; }
 details > summary { padding: 2px 0; }
-button { font: inherit; cursor: pointer; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 6px 12px; min-height: 36px; }
+button { font: inherit; cursor: pointer; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 6px 14px; min-height: 36px; }
 button:hover { border-color: var(--accent); }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
-button.primary:hover { background: var(--accent-hover); }
+button.primary { background: linear-gradient(180deg, #7dd6ff, #4db9f2); border-color: transparent; color: var(--on-accent); font-weight: 700; box-shadow: 0 4px 14px rgba(76, 185, 242, .25); }
+button.primary:hover { filter: brightness(1.06); }
 button.link { border: 0; background: none; color: var(--accent); text-decoration: underline; padding: 4px 2px; min-height: 0; }
 button.sm { padding: 3px 9px; min-height: 30px; font-size: 13px; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-input, select, textarea { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; max-width: 100%; }
+input, select, textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; max-width: 100%; }
 input[type=number] { width: 7em; }
 input[type=text] { min-width: 0; }
 textarea { width: 100%; font-size: 13px; line-height: 1.5; }
@@ -49,17 +49,20 @@ td:first-child { }
 #pair-table td, #pair-table th { white-space: nowrap; }
 tr.hot td { background: var(--hot); }
 tr.grp td { background: var(--hi); font-weight: 700; }
-.drop { border: 2px dashed var(--line); border-radius: 10px; padding: 18px 12px; text-align: center; background: var(--card); }
+.drop { border: 2px dashed var(--line); border-radius: var(--radius); padding: 18px 12px; text-align: center; background: var(--card); }
 .drop.over { border-color: var(--accent); background: var(--hi); }
 .drop p { margin: 4px 0; }
 .msg { margin: 8px 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--hi); font-size: 13px; }
 .msg.err { border-left-color: var(--warn); }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.tile { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--card); }
+.tile { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--card); }
 .tile .lab { font-weight: 700; font-size: 13px; }
 .tile .big { font-size: 34px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .tile .big small { font-size: 18px; color: inherit; }
 .tile .cnt, .tile .nat, .tile .fml { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.tile.faint .big { opacity: .55; }
+.tile .few { display: inline-block; margin-right: 4px; padding: 0 6px; border-radius: 6px; background: rgba(240,182,78,.18); color: var(--warn, #b45309); font-size: 11px; font-weight: 700; }
+.readq { margin: 6px 0 8px; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(240,182,78,.45); background: rgba(240,182,78,.10); font-size: 13px; line-height: 1.6; }
 .tile .fml { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 6px; }
 .alt { margin: 8px 0; padding: 8px 12px; border: 1px solid var(--warn); border-radius: 8px; font-size: 13px; }
 .ins { border-top: 1px solid var(--line); padding: 8px 0; }
@@ -97,6 +100,20 @@ tr.grp td { background: var(--hi); font-weight: 700; }
   #toast { display: none; }
   @page { size: A4; margin: 12mm; }
 }
+/* 手順に沿う画面（guided）: 上の説明とファイルの欄を隠し、手順の欄を前に出す。取り込みの案内（msg・pending）は残す */
+body.guided header.top p, body.guided #howto, body.guided #sec-files h2, body.guided #sec-files .drop, body.guided #sec-files .bar { display: none; }
+body.guided #sec-files { border: 0; background: none; padding: 0; margin: 6px 0; }
+body.guided[data-step="1"] #result, body.guided[data-step="3"] #result { display: none; }
+body.guided header.top h1 { font-size: 20px; }
+body.guided .wrap { max-width: 720px; }
+/* 広い画面（1400px 以上）: 内容を中央の幅のある欄にして、文字も少し大きくする（左上の小さな欄だけにならないように） */
+@media (min-width: 1400px) { body { font-size: 15px; } .wrap { max-width: 1180px; } body.guided .wrap { max-width: 920px; padding-top: 24px; } }
+body.guided .neg-slot, body.guided #neg-slot { margin: 8px 0; }
+body.guided #adv { font-size: 15px; border: 0; box-shadow: 0 1px 12px rgba(0,0,0,.06); padding: 16px 24px; }
+body.guided .neg.neg-guided .neg-box { background: var(--card); box-shadow: 0 1px 12px rgba(0,0,0,.06); }
+body.guided .neg.neg-guided .neg-head { background: none; }
+/*__TRIP_VIEW_CSS__*/
+/*__NEGOTIATE_CSS__*/
 </style>
 </head>
 <body>
@@ -109,13 +126,13 @@ tr.grp td { background: var(--hi); font-weight: 700; }
 <details class="card" id="howto">
   <summary>使い方と、できないこと</summary>
   <ol>
-    <li>下の欄に、配車表とデジタコの CSV を落とします（クリックして選ぶこともできます）。文字コードは UTF-8 と Shift_JIS の両方を読めます。Excel のファイルは「CSV UTF-8」で保存し直してください。</li>
-    <li>ファイルが無いときは「サンプルで試す」を押すと、架空の会社の例（配車表 1 つ・デジタコ 2 つ）で画面を見られます。</li>
-    <li>3 つの数字、区間 × 曜日の表、気づきが出ます。「確認が必要な項目」で読み方を直すと、計算し直します。</li>
-    <li>「求荷求車に貼る文」「荷待ちの下書き」「帰り荷の売上の目安」は、そのまま貼れる形で出します。印刷は 1 ページです。</li>
+    <li>CSV をここに置く（配車表とデジタコ）。Excel は「CSV UTF-8」で保存し直します。</li>
+    <li>無いときはサンプルで試す。</li>
+    <li>確かめる項目を直すと、数字を計算し直します。</li>
+    <li>外に送るか: 送りません。</li>
   </ol>
-  <p class="hint">月ごとの結果は、数字の要約・地名の対応・確認の決定・列の役割だけをこのブラウザに保存します（CSV の中身は保存しません）。前の月があれば並べて見られます。</p>
-  <p class="hint">地図は、サーバーを起動して使う完全版の画面にだけあります。このページは地図を持たず、表とグラフで見ます。</p>
+  <p class="hint">月の数字と直した内容だけをこのブラウザに保存します（CSV は保存しません）。</p>
+  <p class="hint">地図は地図つきの画面で見られます。</p>
   <p class="hint">数字は取り込んだ記録から計算した目安です。法令で残す元の記録は別に保管してください。実在の会社の配車表・デジタコでは確かめていません。紙の日報・チャート紙・写真は読みません。</p>
 </details>
 
@@ -131,6 +148,7 @@ tr.grp td { background: var(--hi); font-weight: 700; }
   <div id="pending-area"></div>
 </section>
 
+<div id="neg-slot"></div>
 <div id="result"></div>
 <div id="printsheet" class="printsheet" aria-hidden="true"></div>
 </div>
@@ -141,6 +159,10 @@ tr.grp td { background: var(--hi); font-weight: 700; }
 </script>
 <script>
 /*__OWN_MONTH__*/
+</script>
+<script>
+/*__NEGOTIATE__*/
+/*__TRIP_VIEW__*/
 </script>
 <script>
 'use strict';
@@ -172,11 +194,19 @@ function loadMaxP() {
 }
 function saveMaxP() { try { localStorage.setItem(MP_KEY, JSON.stringify(S.maxP)); } catch (e) { /* 使えないとき */ } }
 
+const RATE_KEY = 'backfull.own.lite.rate';
+function loadRate() {
+  try { const o = JSON.parse(localStorage.getItem(RATE_KEY) || 'null'); return o && (o.kind === 'km' || o.kind === 'trip') ? { kind: o.kind, value: String(o.value == null ? '' : o.value) } : { kind: 'km', value: '' }; } catch (e) { return { kind: 'km', value: '' }; }
+}
+function saveRate() { try { localStorage.setItem(RATE_KEY, JSON.stringify(S.rate)); } catch (e) { /* 使えないとき */ } }
 const S = {
-  files: [], data: null, mode: '', yearPick: null, monthPick: null, dec: {}, fixTxt: {}, roles: {}, aliases: {}, maxP: loadMaxP(), haishaUse: null, largeT: 10,
+  rate: loadRate(), files: [], data: null, mode: '', yearPick: null, monthPick: null, dec: {}, fixTxt: {}, roles: {}, aliases: {}, maxP: loadMaxP(), haishaUse: null, largeT: null,
   cost: { perKm: '', perHour: '' }, pending: null, msg: '', msgErr: false, saveMsg: '', restore: null, cmpId: '', open: new Set(), noSave: false, tm: null, tmOut: '',
+  guided: !/(^|[#&])g=all(&|$)/.test(location.hash),   // 既定は手順に沿う画面。#g=all か「全部を見る」で全部を出す
 };
-window.OwnLite = { state: S };   // 試験が状態を読むための入口（書き換えには使わない）
+window.OwnLite = { state: S };
+S.advOpen = false;
+document.addEventListener('toggle', (e) => { if (e.target && e.target.id === 'adv') S.advOpen = e.target.open; }, true);   // 試験が状態を読むための入口（書き換えには使わない）
 
 const ck = (c) => c.key || c.id;
 const roleNeeds = (d) => (Array.isArray(d.column_roles_needed) ? d.column_roles_needed : []);
@@ -197,8 +227,9 @@ function maxOpts() {
   if (Object.keys(m.by_class).length) o.max_payload_by_class = { ...m.by_class };
   return o;
 }
+// 距離は内容だけで決める（own_calc.js の DEFAULT_KM。同じ地点の組は、ファイル名や順序に依らず地図の画面と同じ値）
 function runAnalyze(files) {
-  return OwnCalc.analyze(files, { munis: MUNIS, userAliases: S.aliases, largeMaxLoadKg: S.largeT * 1000, year: S.yearPick || undefined, month: S.monthPick || undefined,
+  return OwnCalc.analyze(files, { munis: MUNIS, merge_places: S.mergePlaces !== false, userAliases: S.aliases, largeMaxLoadKg: S.largeT ? S.largeT * 1000 : undefined, year: S.yearPick || undefined, month: S.monthPick || undefined,
     decisions: decisionsOf(), column_roles: rolesForCalc(), ...maxOpts(), ...(S.haishaUse ? { haisha_use: S.haishaUse } : {}) });
 }
 // 見出しの形が同じファイルで前に選んだ列の役割
@@ -227,15 +258,16 @@ function go(files, fresh, mode) {
   }
   if (d.failed) {
     const need = roleNeeds(d);
-    if (need.length) { S.pending = { type: 'roles', files, mode, need, failed: d.failed }; setMsg(`${d.failed}。列の役割を選ぶと読めるかもしれません。選ぶまで前の表示のままです`, true); }
-    else { Object.assign(S, snap); S.pending = null; setMsg(`${d.failed}。${S.data ? '前の表示のままです' : ''}${S.bad && S.bad.length ? '（読めなかった: ' + S.bad.join('。') + '）' : ''}`, true); }
+    if (need.length) { S.pending = { type: 'roles', files, mode, need, failed: d.failed }; setMsg(`${d.failed}。下で列の中身を選ぶと読めます。`, true); }
+    else { Object.assign(S, snap); S.pending = null; setMsg(`${d.failed}。${S.data ? '前のデータのまま表示しています。' : ''}${S.bad && S.bad.length ? '読めなかった: ' + S.bad.join('。') : ''}`, true); }
     render(); return;
   }
   S.pending = null; S.files = files; S.mode = mode || S.mode; S.data = d;
+  Negotiate.picked(S.mode);
   if (fresh && S.mode === 'import') { S.noSave = false; offerRestore(files); } else if (fresh) S.restore = null;
   monthSave();
   const unread = (S.bad || []).concat((d.files_unread || []).map((u) => `${u.file}: ${u.reason}`));
-  setMsg(`${S.mode === 'sample' ? '架空のサンプルを' : `${d.files_read} 件を`}読みました（このページの中だけで計算しています）${unread.length ? `。読めなかった ${unread.length} 件: ${unread.join('。')}` : ''}`, false);
+  setMsg(`${S.mode === 'sample' ? '架空の会社のサンプルを' : `${d.files_read} 件を`}読みました。${unread.length ? `。読めなかった ${unread.length} 件: ${unread.join('。')}` : ''}`, false);
   render();
 }
 
@@ -254,6 +286,7 @@ async function readFiles(list) {
 
 function loadSample() {
   S.bad = []; S.aliases = {};
+  Negotiate.state.entry = 'sample';
   go(SAMPLE_FILES.map((f) => ({ name: f.name, text: f.text, encoding: 'UTF-8' })), true, 'sample');
 }
 
@@ -264,7 +297,10 @@ function resetAll() {
 
 /* ------------------------------------------------------------ 保存（localStorage。要約・地名の対応・確認の決定・列の役割だけ） */
 
-const curSummary = () => OwnMonth.summary(S.data, OwnCalc.costs(S.data, '', ''));
+// 2 か月以上を一緒に落としたときは月ごとの要約（months_detail）。最後の月を「いまの月」とし、比べるときは同じ月どうしにする
+const curSummaries = () => OwnMonth.summaries(S.data, OwnCalc.costs(S.data, '', ''));
+const curSummary = () => { const a = curSummaries(); return a[a.length - 1]; };
+const monthWord = (d) => d.month_label || `${d.year} 年 ${d.mon} 月`;
 
 function offerRestore(files) {
   const sg = OwnMonth.sig(files);
@@ -276,14 +312,15 @@ function offerRestore(files) {
 function monthSave() {
   if (S.mode !== 'import' || S.noSave || !S.data) return;
   const ro = S.restore, pick = (cur, old) => (Object.keys(cur || {}).length ? cur : (old || cur || {}));
-  const sm = curSummary();
-  const ok = OwnMonth.save({ month: sm.month, sig: OwnMonth.sig(S.files), summary: sm, aliases: pick(S.aliases, ro && ro.aliases), dec: pick(S.dec, ro && ro.dec), fixTxt: pick(S.fixTxt, ro && ro.fixTxt), yearPick: S.yearPick, roles: S.roles });
-  S.saveMsg = ok ? `${S.data.year} 年 ${S.data.mon} 月の結果をこのブラウザに保存しました（数字の要約・地名の対応・確認の決定・列の役割だけ。CSV の中身は保存していません）` : 'このブラウザに保存できませんでした（保存が使えない設定のようです）。数字はこのページを開いている間だけ残ります';
+  const sms = curSummaries();
+  let ok = true;
+  for (const sm of sms) ok = OwnMonth.save({ month: sm.month, sig: OwnMonth.sig(S.files), summary: sm, aliases: pick(S.aliases, ro && ro.aliases), dec: pick(S.dec, ro && ro.dec), fixTxt: pick(S.fixTxt, ro && ro.fixTxt), yearPick: S.yearPick, roles: S.roles }) && ok;
+  S.saveMsg = ok ? `${sms.map((x) => x.label).join('・')}の数字をこのブラウザに保存しました（CSV は保存していません）` : 'このブラウザに保存できませんでした（保存が使えない設定のようです）。数字はこのページを開いている間だけ残ります';
 }
 function monthOthers() {
   if (S.mode !== 'import' || !S.data) return [];
-  const cur = curSummary(), sg = OwnMonth.sig(S.files);
-  return OwnMonth.list().filter((e) => !(e.month === cur.month && e.sig === sg));
+  const mine = new Set(curSummaries().map((x) => x.month));
+  return OwnMonth.list().filter((e) => !mine.has(e.month)); // 同じ月は 1 つにまとめる（配車表とデジタコを別々に落としても、同じ月どうしを「前の月」として並べない）
 }
 
 /* ------------------------------------------------------------ 計算の補助 */
@@ -301,6 +338,7 @@ function unknownAlt(d) {
   return { mode: 'count', rate: l / (l + e + unkLegs), base: l / (l + e), unkKm: 0, unkLegs };
 }
 const placeName = (p) => (p ? `${p.pref || ''}${p.muni || p.label || ''}` : '');
+const ROLE_JA = { back: '帰り（車庫へ）', out: '行き（車庫から）' };
 const shortOf = (d, id) => (d.places[id] ? (d.places[id].short || d.places[id].muni || d.places[id].label) : '?');
 function periodNote(d) {
   const p = d.period;
@@ -340,8 +378,8 @@ function rolesRows(need, roles) {
   const ROLE_OPTS = [['date', '日付'], ['plate', '車番'], ['from', '荷を積む場所（発地）'], ['to', '荷を降ろす場所（着地）'], ['weight', '重さ'], ['skip', '使わない']];
   return need.map((x) => {
     const cur = ((roles[roleGroup(x.source)] || {})[x.column]) || '';
-    const opts = [['', '役割を選んでください']].concat(x.options && x.options.length ? x.options.map((o) => [o.role, o.label_ja]) : ROLE_OPTS);
-    const why = x.reason_ja || (x.blocking ? 'この列の役割を決めないと、ファイルを読めません' : '列の名前から役割を決められませんでした。使うか、使わないかを選べます');
+    const opts = [['', 'この列の中身を選ぶ']].concat(x.options && x.options.length ? x.options.map((o) => [o.role, o.label_ja]) : ROLE_OPTS);
+    const why = x.reason_ja || (x.blocking ? 'この列の中身を選ばないと、ファイルを読めません' : '列の名前から中身が分かりませんでした。選んでください。');
     const files = (x.files && x.files.length ? x.files : [x.file]).filter((f) => f);
     return `<div class="rl"><span><b>${esc(x.column)}</b><small>${esc(x.source || '')}・${esc(files.join('、'))}</small>${x.samples && x.samples.length ? `<small>中身の例: ${esc(x.samples.slice(0, 3).join('、'))}</small>` : ''}<small>${esc(why)}</small>${x.suggested_label_ja ? `<small>候補: ${esc(x.suggested_label_ja)}</small>` : ''}</span>
       <select data-role-source="${esc(x.source || '')}" data-role-col="${esc(x.column)}" data-role-files="${esc(files.join('|'))}" aria-label="${esc(x.column)} の役割">${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`;
@@ -354,12 +392,12 @@ function pendingHtml() {
   if (p.type === 'year') {
     const opts = '<option value="">年を選ぶ</option>' + p.candidates.map((y) => `<option value="${y}">${y} 年</option>`).join('');
     return `<div class="msg err" role="alert"><b>配車表の年を選んでください。選ぶまで計算しません</b>
-      <div class="bar"><label>配車表の年 <select id="year-pick" aria-label="配車表の年を選ぶ">${opts}</select></label><button type="button" class="link" data-act="cancel-pending">取りやめる</button></div>
-      <small>見出しの曜日に合う年が複数あります（${p.candidates.map((y) => y + ' 年').join('・')}）。年を黙って決めないため、選んでもらいます（今日の日付では決めていません）。</small></div>`;
+      <div class="bar"><label>配車表の年 <select id="year-pick" aria-label="配車表の年を選ぶ">${opts}</select></label><button type="button" class="link" data-act="cancel-pending">このファイルを読むのをやめる</button></div>
+      <small>曜日が合う年が ${p.candidates.map((y) => y + ' 年').join('・')} にあります。選んでください。</small></div>`;
   }
-  return `<div class="msg err" role="alert"><b>列の役割を選んでください（${p.need.length} 本）。選ぶまで計算しません</b>
-    <p class="hint">${esc(p.failed)}。列の名前だけでは役割を決められなかったためです。下の列の役割を選ぶと、読み直します。選んだ役割は、見出しの形が同じファイルを次に落としたときも使います（このブラウザの中だけに覚えます）。</p>
-    ${rolesRows(p.need, S.roles)}<button type="button" class="link" data-act="cancel-pending">取りやめる</button></div>`;
+  return `<div class="msg err" role="alert"><b>中身が分からない列が ${p.need.length} 本あります。選ぶと計算します。</b>
+    <p class="hint">${esc(p.failed)}。列の名前から中身が分かりませんでした。選んだ内容は次回も使います。</p>
+    ${rolesRows(p.need, S.roles)}<button type="button" class="link" data-act="cancel-pending">このファイルを読むのをやめる</button></div>`;
 }
 
 function yearHtml(d) {
@@ -368,19 +406,19 @@ function yearHtml(d) {
   if ((d.year_assumed || (yc && yc.year_assumed)) && !(yc && yc.ambiguous)) {
     const lo = (OwnCalc.YEAR_RANGE || [d.year - 2, d.year + 1]), ys = [];
     for (let y = Math.max(lo[0], d.year - 3); y <= Math.min(lo[1], d.year + 2); y++) ys.push(y);
-    return `<div class="msg"><label>${d.year} 年としました（変えられます） <select id="year-sel" aria-label="配車表の年">${ys.map((y) => `<option value="${y}" ${y === d.year ? 'selected' : ''}>${y} 年</option>`).join('')}</select></label>
-      <br><small>見出しに年も曜日も無いので、年を決められませんでした。違うときは選び直してください。</small></div>`;
+    return `<div class="msg"><label>${d.year} 年として計算しています <select id="year-sel" aria-label="配車表の年">${ys.map((y) => `<option value="${y}" ${y === d.year ? 'selected' : ''}>${y} 年</option>`).join('')}</select></label>
+      <br><small>表に年が書いていないので、仮に決めました。違うときは選んでください。</small></div>`;
   }
   if (!yc || !yc.ambiguous) return '';
   const why = yc.source === 'weekday' ? '見出しの曜日に合う年が複数あります' : yc.source === 'mismatch' ? '見出しの曜日がどの年にも合いません' : '見出しに曜日がありません';
   return `<div class="msg"><label>配車表の年 <select id="year-sel" aria-label="配車表の年">${yc.candidates.map((y) => `<option value="${y}" ${y === d.year ? 'selected' : ''}>${y} 年</option>`).join('')}</select></label>
-    <br><small>${why}。いまは ${d.year} 年として計算しています。違うときは選び直してください（今日の日付では決めていません）。</small></div>`;
+    <br><small>${why}。${d.year} 年として計算しています。違うときは選んでください。</small></div>`;
 }
 function monthPickHtml(d) {
   if (S.mode !== 'import' || !d.needs_month) return '';
   const cs = (d.month_choice && d.month_choice.candidates) || [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   return `<div class="msg err" role="alert"><label>配車表の月 <select id="month-sel" aria-label="配車表の月"><option value="">月を選ぶ</option>${cs.map((m) => `<option value="${m}" ${S.monthPick === m ? 'selected' : ''}>${m} 月</option>`).join('')}</select></label>
-    <br><small>見出しが日の数字だけで、月が分かりません。いまは ${d.mon} 月として計算しています。違うときは選んでください。</small></div>`;
+    <br><small>表に月が書いていないので、${d.mon} 月として計算しています。違うときは選んでください。</small></div>`;
 }
 function noticesHtml(d) {
   const n = (d.notices || []).filter((x) => x && x.text_ja);
@@ -393,8 +431,8 @@ function haishaChoiceHtml(d) {
   const files = hc.files || [], used = new Set(hc.used || []);
   const rows = files.map((f) => `<li><label><input type="checkbox" data-hf="${esc(f.file)}" ${used.has(f.file) || f.used ? 'checked' : ''}> <b>${esc(f.file)}</b></label>
     <small>${f.used || used.has(f.file) ? '使っています' : '使っていません'}${f.reason ? `（${esc(f.reason)}）` : ''}・${f.cells ?? ''} マス${f.from ? `・${esc(f.from)}〜${esc(f.to || '')}` : ''}</small></li>`).join('');
-  const ov = hc.overlaps.map((o) => `<li>${(o.files || []).map(esc).join(' と ')}：${o.cells} マスが重なっています${o.identical ? '（中身は同じ）' : '（中身が違います）'}</li>`).join('');
-  return `<div class="msg"><b>配車表が重なっています。使うファイルを選べます</b><ul>${rows}</ul><ul>${ov}</ul><small>チェックを変えると、選んだファイルだけで計算し直します。</small></div>`;
+  const ov = hc.overlaps.map((o) => `<li>${(o.files || []).map(esc).join(' と ')}：${o.cells} 日分が重なっています${o.identical ? '（中身は同じです）' : '（中身が違います）'}</li>`).join('');
+  return `<div class="msg"><b>同じ日の配車表が複数あります。使うファイルに印を付けてください。</b><ul>${rows}</ul><ul>${ov}</ul><small>チェックを変えると、選んだファイルだけで計算し直します。</small></div>`;
 }
 
 function importHtml(d) {
@@ -404,16 +442,17 @@ function importHtml(d) {
   const unread = unr.slice(0, lim).map((u) => `<tr><td><small>${esc(u.file)}</small><br>${esc(u.where)}</td><td>${esc(u.original)}</td><td class="warn">${esc(u.reason)}${u.howto_ja ? `<br><small>${esc(u.howto_ja)}</small>` : ''}${u.judged_cells && u.judged_cells.length ? `<br><small>見出しとして見た ${u.judged_line} 行目: ${esc(u.judged_cells.join(' | '))}</small>` : ''}</td></tr>`).join('');
   const fu = (d.files_unread || []).map((u) => `<li><b>${esc(u.file)}</b>：${esc(u.reason)}${u.howto_ja ? `<br><small>${esc(u.howto_ja)}</small>` : ''}${u.judged_cells && u.judged_cells.length ? `<br><small>見出しとして見た ${u.judged_line} 行目: ${esc(u.judged_cells.join(' | '))}</small>` : ''}</li>`).join('');
   const un = (d.unplaced || []).map((x) => `<div class="up" data-name="${esc(x.name)}"><span><b>${esc(x.name)}</b> <small>${x.count} 回出てきます・${esc(x.reason || '')}</small></span>
-    <input type="text" placeholder="市区町村名（例: 江東区）" aria-label="${esc(x.name)} の市区町村名" size="16"><button type="button" class="sm" data-act="alias">置く</button></div>`).join('');
+    <input type="text" placeholder="市区町村名（例: 江東区）" aria-label="${esc(x.name)} の市区町村名" size="16"><button type="button" class="sm" data-act="alias">この市区町村にする</button></div>`).join('');
   const need = roleNeeds(d);
-  return `<section class="card" id="sec-import"><h2>取り込みの結果</h2>
+  return `<section class="card" id="sec-import"><h2>読んだファイル</h2>
     ${S.mode === 'sample' ? '<p class="msg">架空の会社のサンプル（配車表 1・デジタコ 2）を読んだ結果です。実在の会社ではありません。</p>' : ''}
     ${noticesHtml(d)}
-    <div class="scroll-x"><table aria-label="読んだファイル"><thead><tr><th>ファイル</th><th class="num">読めたマス</th><th class="num">確認待ち</th><th class="num">読めない</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="scroll-x"><table aria-label="読んだファイル"><thead><tr><th>ファイル</th><th class="num">読めた欄</th><th class="num">確認待ち</th><th class="num">読めなかった欄</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${fu ? `<h3>読めなかったファイル</h3><ul>${fu}</ul>` : ''}
-    ${unr.length ? `<details ${unr.length <= 5 ? 'open' : ''}><summary>読めなかった行・セル ${unr.length} 件（計算に入れていません）</summary><div class="scroll-x"><table aria-label="読めなかった行"><thead><tr><th>場所</th><th>元の文字</th><th>理由と直し方</th></tr></thead><tbody>${unread}</tbody></table></div>${unr.length > lim ? `<p class="hint">ほか ${unr.length - lim} 件は省いています。</p>` : ''}</details>` : '<p class="hint">読めなかった行・セルはありません。</p>'}
-    ${need.length ? `<h3>役割を選んでほしい列 ${need.length} 本</h3><p class="hint">列の名前だけでは役割を決められなかった列です。選ぶと計算し直します。選んだ役割は、見出しの形が同じファイルを次に落としたときも使います（このブラウザの中だけに覚えます）。</p>${rolesRows(need, S.roles)}` : ''}
-    ${(d.unplaced || []).length ? `<details><summary>地図に置けない地点 ${d.unplaced.length} か所（市区町村名を入れると別名として覚えて、計算し直します）</summary><p class="hint">地名の先頭が市区町村の名前に当たらなかった地点です。実車か空車かの判定には使っています。</p>${un}</details>` : ''}
+    ${unr.length ? `<details ${unr.length <= 5 ? 'open' : ''}><summary>読めなかった欄 ${unr.length} 件</summary><div class="scroll-x"><table aria-label="読めなかった行"><thead><tr><th>場所</th><th>元の文字</th><th>直し方</th></tr></thead><tbody>${unread}</tbody></table></div>${unr.length > lim ? `<p class="hint">ほか ${unr.length - lim} 件は省いています。</p>` : ''}</details>` : '<p class="hint">読めなかった行・セルはありません。</p>'}
+    ${need.length ? `<h3>中身が分からない列 ${need.length} 本</h3><p class="hint">選ぶと計算し直します。選んだ内容は次回も使います。</p>${rolesRows(need, S.roles)}` : ''}
+    ${(d.merged_places || []).length || S.mergePlaces === false ? `<p class="hint" id="merged-places">${(d.merged_places || []).length ? `同じ地名の場所を 1 か所にまとめました: ${d.merged_places.map((x) => `${esc(x.short)}（${x.names.map(esc).join('・')}）`).join('、')}。` : '別々に数えています。'} <button type="button" class="sm" data-act="merge-toggle">${S.mergePlaces === false ? '同じ地名の場所をまとめる' : '別々に数える'}</button></p>` : ''}
+    ${(d.unplaced || []).length ? `<details><summary>地図で場所が分からない地名 ${d.unplaced.length} か所</summary>${un}</details>` : ''}
   </section>`;
 }
 
@@ -423,23 +462,40 @@ function kpiHtml(d) {
   const k = d.kpis, n = d.national, ar = k.actual_rate, lr = k.load_rate, le = k.load_efficiency, lar = k.large_actual_rate;
   const big = (v) => (v == null ? '—' : `${(v * 100).toFixed(1)}<small>%</small>`);
   const alt = unknownAlt(d);
-  const tile = (key, lab, v, cnt, nat, fml) => `<div class="tile" data-kpi="${key}" data-value="${v == null ? '' : v}"><div class="lab">${lab}</div><div class="big">${big(v)}</div><div class="cnt">${cnt}</div>${nat ? `<div class="nat">${nat}</div>` : ''}<div class="fml">式: ${esc(fml)}</div></div>`;
+  const rq = OwnMonth.readQuality(d), pcs = (v) => (v * 100).toFixed(1);
+  const fewTxt = (share, what) => (share != null && share > 0 && share < 0.3 ? `${what}が全体の ${pc(share)}（30% 未満）の区間だけから出した値です` : '');
+  const arFaint = rq.low ? `読めた割合が ${pc(rq.share)} です。幅の下は不明を空車とした値、上は不明を外した値です` : fewTxt(ar.share, '判定できた区間');
+  const lrFaint = fewTxt(lr.share, '計算できた区間');
+  const leFaint = lrFaint || (lar.of_large ? fewTxt(lar.legs / lar.of_large, '実車率を計算できた大型の区間') : '');
+  const tile = (key, lab, v, cnt, nat, fml, faint, bigHtml) => `<div class="tile${faint ? ' faint' : ''}" data-kpi="${key}" data-value="${v == null ? '' : v}"><div class="lab">${lab}</div><div class="big">${bigHtml || big(v)}</div>${faint ? `<div class="cnt"><span class="few">参考</span>${esc(faint)}</div>` : ''}<div class="cnt">${cnt}</div>${nat ? `<div class="nat">${nat}</div>` : ''}<div class="fml">式: ${esc(fml)}</div></div>`;
+  const readq = rq.low ? `<p class="readq" id="readq" role="status"><b>読めたのは ${pc(rq.share)}</b>（${rq.known} / ${rq.total} 件）だけです。下の実車率は参考です。</p>` : '';
   const overNote = lr.over_max ? `最大積載量を超える重さの記録 ${lr.over_max} 件は入れていません` : '';
   const assumed = S.mode !== '' && d.vehicles.some((v) => v.max_load_assumed);
-  return `<section class="card" id="sec-kpi"><h2>${d.year} 年 ${d.mon} 月の 3 つの数字 <small>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}</small></h2>
-    <div class="tiles">
-      ${tile('actual_rate', '実車率', ar.value, `判定できた区間 ${pc(ar.share)}（${ar.legs} / ${ar.of} 区間）`, `全国 ${n.actual_rate_pct}%（営業用普通車）`, ar.formula)}
-      ${tile('load_rate', '大型の積載率', lr.value, `計算できた区間 ${pc(lr.share)}（${lr.legs} 区間。大型 ${lr.of_large} 区間のうち）`, overNote, lr.formula)}
-      ${tile('load_efficiency', '大型の積載効率', le.value, `大型の積載率 × 大型の実車率 ${pc(lar.value)}`, `全国 ${n.load_efficiency_pct}%（トンキロの比。式が違います）`, le.formula)}
+  const mr = d.max_load_raised, largeShown = S.largeT || (mr ? mr.to_kg / 1000 : 10);
+  const raisedNote = mr ? `<p class="hint" id="max-raised">配車表に ${(mr.to_kg / 1000).toFixed(1)}t の荷があったので、${esc(mr.cls)}の最大積載量を ${(mr.to_kg / 1000).toFixed(1)}t にしました。下の欄で変えられます。</p>` : '';
+  return `<section class="card" id="sec-kpi"><h2>${monthWord(d)}の実車率と積載率 <small>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}</small></h2>
+    ${readq}<div class="tiles">
+      ${tile('actual_rate', '実車率', ar.value, `空車か実車か分かった区間 ${pc(ar.share)}（${ar.legs} / ${ar.of}）`, `全国 ${n.actual_rate_pct}%（営業用普通車）`, ar.formula, arFaint, rq.low && rq.lo != null && ar.value != null ? `${pcs(rq.lo)}〜${pcs(ar.value)}<small>%</small>` : '')}
+      ${tile('load_rate', '大型の積載率', lr.value, `計算できた区間 ${pc(lr.share)}（${lr.legs} 区間。大型 ${lr.of_large} 区間のうち）`, overNote, lr.formula, lrFaint)}
+      ${tile('load_efficiency', '大型の積載効率', le.value, `大型の積載率（${lr.legs} 区間）× 大型の実車率 ${pc(lar.value)}（${lar.legs} 区間）`, `全国 ${n.load_efficiency_pct}%（数え方が違うので比べられません）`, le.formula, leFaint)}
     </div>
     <p class="hint">${esc(n.caution)}</p>
     <p>実車か空車かが不明の区間は ${d.counts.unknown} 区間（${pc(d.counts.unknown_ratio)}）あり、実車率に入れていません。読めなかった行・セルは ${d.counts.unreadable} 件で、これも入れていません。</p>
-    ${alt ? `<div class="alt" id="alt-unknown">不明の区間を空車として数えると、${alt.mode === 'km' ? `実車率（km）は <b>${pc(alt.rate)}</b> になります（不明 ${alt.unkLegs} 区間の距離 ${n1(alt.unkKm)} km を空車に入れた場合）` : `実車の区間の割合は、不明を外した ${pc(alt.base)} から <b>${pc(alt.rate)}</b> に下がります（不明 ${alt.unkLegs} 区間には距離が無いので、km ではなく区間の数で数えています）`}。上の ${pc(ar.value)} は不明を外した値なので、高めに出ています。</div>` : ''}
-    ${assumed ? `<p class="hint"><label>大型の最大積載量は登録が無いので <input id="large-t" type="number" min="1" max="40" step="0.5" value="${S.largeT}" aria-label="大型の最大積載量（トン）"> t と仮定しています。</label> 車ごとの値は、確認のカードの「この車の最大積載量を変える」で入れられます。</p>` : ''}
+    ${ladenHtml(d)}
+    ${alt ? `<div class="alt" id="alt-unknown">分からない区間を空車とみると、${alt.mode === 'km' ? `実車率は <b>${pc(alt.rate)}</b> です` : `実車の区間の割合は、不明を外した ${pc(alt.base)} から <b>${pc(alt.rate)}</b> に下がります（不明 ${alt.unkLegs} 区間には距離が無いので、km ではなく区間の数で数えています）`}。上の ${pc(ar.value)} は不明を外した値なので、高めに出ています。</div>` : ''}
+    ${assumed ? `<p class="hint"><label>大型の最大積載量が分からないので <input id="large-t" type="number" min="1" max="40" step="0.5" value="${largeShown}" aria-label="大型の最大積載量（トン）"> t として計算しています。</label></p>${raisedNote}` : ''}
     <details><summary>用語の説明</summary><ul>${Object.entries(OwnMonth.GLOSS).map(([t, v]) => `<li><b>${esc(t)}</b>　${esc(v)}</li>`).join('')}</ul><p class="hint">全国の値の出典: ${esc(n.source)}</p></details>
   </section>`;
 }
 
+// 空車の印にならなかったが、セルに書かれていた語。その区間は、積地と降ろし地があるので実車として数えている。空車を意味する語なら、実車率が高く出ているので、利用者が気づけるように一覧にする
+function ladenHtml(d) {
+  const ws = d.laden_words || [];
+  if (!ws.length) return '';
+  return `<details id="laden"><summary>実車と数えた便に書いてあった言葉 ${ws.length} 種類</summary>
+    <p class="hint">積地と降ろし地があるので実車として数えた区間のうち、重さ・時刻・空車の印のどれでもない語が付いていたものです。空車の意味の語があれば、空車の印（空・回送・戻り空・荷なしなど）に書き換えて落とし直してください。</p>
+    <ul>${ws.map((w) => `<li><b>${esc(w.word)}</b> ${w.count} 区間 <small>例: ${esc(w.example)}</small></li>`).join('')}</ul></details>`;
+}
 function costHtml(d) {
   const c = OwnCalc.costs(d, S.cost.perKm, S.cost.perHour);
   const out = [];
@@ -447,16 +503,34 @@ function costHtml(d) {
   if (c.errors.perHour) out.push(`<span class="warn">${esc(c.errors.perHour)}</span>`);
   if (c.empty) out.push(`空車の費用の目安 <b>${yen(c.empty.yen)}</b>（${esc(c.empty.formula)}）`);
   if (c.wait) out.push(`停車の費用の目安 <b>${yen(c.wait.yen)}</b>（${esc(c.wait.formula)}）`);
+  if (c.warns && c.warns.perKm) out.push(`<span class="warn">${esc(c.warns.perKm)}</span>`);
+  if (c.warns && c.warns.perHour) out.push(`<span class="warn">${esc(c.warns.perHour)}</span>`);
+  // 停車の記録はデジタコにだけある。配車表だけのときは、0 回・0 円と書かずに理由を書く
+  if (c.waitMissing) {
+    if (c.perHour != null) out.push('30 分以上の停車の費用は、停車の記録が無いので出していません（停車の記録はデジタコにだけあります。デジタコの CSV を入れると出ます）');
+    return `空車で走った距離 <b>${n1(c.emptyKm)} km</b>。30 分以上の停車は、デジタコを入れていないので数えていません。${out.length ? '<br>' + out.join('<br>') : ''}`;
+  }
   return `空車で走った距離 <b>${n1(c.emptyKm)} km</b>、30 分以上の停車 <b>${c.longCount} 回・${n1(c.longMin / 60)} 時間</b>。${out.length ? '<br>' + out.join('<br>') : ''}`;
+}
+
+// 車庫をどの地点にしたかと、その理由（1 行）。d.base_basis は web/own_calc.js の analyze が付ける
+function baseWhy(d, nm) {
+  const b = d.base_basis;
+  if (!b) return '';
+  if (b.kind === 'given') return '指定された地点';
+  const src = b.kind === 'digitaco_from' ? 'デジタコの走行で出発地に最も多く出た地点' : '配車表で積地に最も多く書かれた地点';
+  const sec = b.second ? `、次は ${nm(b.second.place)} の ${b.second.count} 件` : '';
+  return `${src}。${b.total} 件のうち ${b.count} 件${sec}`;
 }
 
 function tableHtml(d) {
   const rows = sortedPairTable(d);
   if (!rows.length) return '<p class="hint">区間と曜日の表にできる便がありません。</p>';
-  const body = (r) => `<tr class="${hasHot(r) ? 'hot' : ''}"><td>${esc(r.label)}</td><td>${r.role === 'back' ? '帰り' : '行き'}</td><td>${WD[r.wd]}曜発</td><td class="num">${r.trips}</td><td class="num"><b>${r.empty}</b></td><td class="num">${r.unknown}</td><td class="num">${r.empty_km ? n1(r.empty_km) : '—'}</td><td>${hasHot(r) ? 'いつも空' : ''}</td></tr>`;
-  const head = '<thead><tr><th>区間</th><th>向き</th><th>出た曜日</th><th class="num">便数</th><th class="num">空車</th><th class="num">不明</th><th class="num">空車の km</th><th></th></tr></thead>';
+  const body = (r) => `<tr class="${hasHot(r) ? 'hot' : ''}"><td>${esc(r.label)}</td><td>${ROLE_JA[r.role] || ''}</td><td>${WD[r.wd]}曜発</td><td class="num">${r.trips}</td><td class="num"><b>${r.empty}</b></td><td class="num">${r.unknown}</td><td class="num">${r.empty_km ? n1(r.empty_km) : '—'}</td><td>${hasHot(r) ? 'いつも空' : ''}</td></tr>`;
+  const head = '<thead><tr><th>区間</th><th>向き</th><th title="車庫を出た日の曜日">車庫を出た曜日</th><th class="num">便数</th><th class="num">空車</th><th class="num">不明</th><th class="num">空車の km</th><th></th></tr></thead>';
   const top = rows.slice(0, 14), rest = rows.slice(14);
-  return `<div class="scroll-x" id="pair-table-box"><table id="pair-table" aria-label="区間と曜日の表（空車の便数の多い順）">${head}<tbody>${top.map(body).join('')}</tbody></table></div>
+  const baseNote = d.base ? `<p class="hint" id="base-note">車庫は ${esc(shortOf(d, d.base))} と見ています（${esc(baseWhy(d, (id) => shortOf(d, id)))}）。違うときは行きと帰りが逆になります。</p>` : '';
+  return `${baseNote}<div class="scroll-x" id="pair-table-box"><table id="pair-table" aria-label="区間と曜日の表（空車の便数の多い順）">${head}<tbody>${top.map(body).join('')}</tbody></table></div>
     ${rest.length ? `<details><summary>ほか ${rest.length} 行</summary><div class="scroll-x"><table aria-label="区間と曜日の表の続き">${head}<tbody>${rest.map(body).join('')}</tbody></table></div></details>` : ''}`;
 }
 
@@ -472,10 +546,10 @@ function chartHtml(d) {
       const h = Math.round((v / mx) * (base - top)), x = x0 + i * (bw + gap);
       return `<rect class="bar-r" x="${x}" y="${base - h}" width="${bw}" height="${h}"><title>${WD[i]}曜 ${n1(v)} km</title></rect>${v > 0 ? `<text x="${x + bw / 2}" y="${base - h - 4}" text-anchor="middle">${Math.round(v)}</text>` : ''}<text x="${x + bw / 2}" y="${base + 16}" text-anchor="middle">${WD[i]}</text>`;
     }).join('');
-    return `<div><h3>${esc(p.label)}（${p.role === 'back' ? '帰り' : '行き'}）空車 ${n1(p.empty_km)} km</h3>
+    return `<div><h3>${esc(p.label)}（${ROLE_JA[p.role] || '区間'}）空車 ${n1(p.empty_km)} km</h3>
       <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(p.label)} 曜日ごとの空車の km。${vals.map((v, i) => `${WD[i]} ${Math.round(v)}`).join('、')}"><line class="axis" x1="${x0 - 4}" y1="${base}" x2="${W - 4}" y2="${base}"/>${bars}</svg></div>`;
   };
-  return `<div class="charts" id="chart">${ps.map(one).join('')}</div><p class="hint">棒の上の数字は、その曜日に出た便の空車の km です。向きの違う区間は別に並べています。地図で見るには、サーバーを起動して使う完全版の画面（地図の「自社の運行」）を使ってください。このページには地図はありません。</p>`;
+  return `<div class="charts" id="chart">${ps.map(one).join('')}</div><p class="hint">棒の上の数字は、その曜日に出た便の空車の km です。</p>`;
 }
 
 function insightsHtml(d) {
@@ -486,7 +560,7 @@ function insightsHtml(d) {
     const nx = i.next && i.next.action === 'draft_backhaul' ? `<button type="button" class="sm primary" data-act="to-board" data-key="${esc(i.next.payload && i.next.payload.frm ? i.next.payload.frm + '|' + i.next.payload.to : '')}">${esc(i.next.label)}</button>` : '';
     return `<div class="ins" data-id="${esc(i.id)}"><span class="rule">${esc(i.rule_label_ja || '気づき ' + i.rule)}</span>
       <p>${esc(i.text)}</p><div class="chips">${(i.numbers || []).map((n) => `<span class="chip"><small>${esc(n.k)}</small><b class="num">${esc(n.v)}</b></span>`).join('')}</div>
-      <div class="bar">${nx}<button type="button" class="sm" data-act="ev" data-id="${esc(i.id)}">${open ? '根拠を閉じる' : '根拠の行を見る'}</button></div>${ev}</div>`;
+      <div class="bar">${nx}<button type="button" class="sm" data-act="ev" data-id="${esc(i.id)}">${open ? '元の記録を閉じる' : '元の記録を見る'}</button></div>${ev}</div>`;
   }).join('');
 }
 
@@ -499,9 +573,9 @@ function fixHint(c) {
   return '直した値を入れる';
 }
 function fixProblem(c, v) {
-  if (c.kind === 'column' && c.source === 'デジタコ' && !OwnCalc.resolveRole(v)) return '役割の名前が分かりません（例: 走行距離、開始の日時、実車・空車の区分）';
+  if (c.kind === 'column' && c.source === 'デジタコ' && !OwnCalc.resolveRole(v)) return '列の中身の名前が分かりません（例: 走行距離）';
   if (c.kind === 'link' && /:distance$/.test(c.key || '') && OwnCalc.parseKm(v) == null) return '距離を数で入れてください（例: 551.8）';
-  if (c.kind === 'weight') { const w = OwnCalc.parseWeight(v); if (!w || w.kg == null || !(w.kg > 0)) return '重さを 4.6t や 4600kg のように入れてください（記号は付けません）'; }
+  if (c.kind === 'weight') { const w = OwnCalc.parseWeight(v); if (!w || w.kg == null || !(w.kg > 0)) return '重さを 4.6t や 4600kg のように入れてください'; }
   if (c.kind === 'link' && /:time$/.test(c.key || '') && !OwnCalc.parseTime(v)) return '時刻を 5:30 のように入れてください';
   return '';
 }
@@ -527,19 +601,19 @@ function confirmHtml(d) {
   const pend = d.confirm.length - cnt.ok - cnt.fix - cnt.skip;
   const cards = d.confirm.map((c) => {
     const key = ck(c), st = S.dec[key] || '';
-    const label = { ok: '確定しました', fix: '修正しました', skip: '読まないことにしました' }[st] || '';
+    const label = { ok: 'このまま使います', fix: '直しました', skip: '計算に入れません' }[st] || '';
     const title = c.kind === 'return' ? `車庫へ戻る区間 ${c.count != null ? c.count : ''} 件に空・実車の印がありません` : c.title;
     const btns = st ? `<span class="small">${label}${st === 'fix' && S.fixTxt[key] ? '：' + esc(S.fixTxt[key]) : ''}</span><button type="button" class="link" data-act="undo">取り消す</button>`
-      : (c.kind === 'return' ? '<button type="button" class="sm" data-act="ru-empty">全部 空</button><button type="button" class="sm" data-act="ru-loaded">全部 実車</button><button type="button" class="sm" data-act="ru-keep">不明のまま</button>'
-        : '<button type="button" class="sm" data-act="ok">確定</button><button type="button" class="sm" data-act="fix">修正</button><button type="button" class="sm" data-act="skip">読まない</button>');
+      : (c.kind === 'return' ? '<button type="button" class="sm" data-act="ru-empty">全部 空車にする</button><button type="button" class="sm" data-act="ru-loaded">全部 実車にする</button><button type="button" class="sm" data-act="ru-keep">分からないままにする</button>'
+        : '<button type="button" class="sm" data-act="ok">このまま使う</button><button type="button" class="sm" data-act="fix">直す</button><button type="button" class="sm" data-act="skip">計算に入れない</button>');
     return `<div class="cf ${st ? 'done' : ''}" data-key="${esc(key)}"><b>${esc(title)}</b> <small>${esc(c.source || '')}</small>
-      <div class="kv"><span>元の値</span><span>${esc(c.original)}</span></div><div class="kv"><span>提案</span><span>${esc(c.proposal)}</span></div>
-      ${c.reason_ja ? `<div class="kv"><span>理由</span><span>${esc(c.reason_ja)}</span></div>` : (c.formula ? `<div class="kv"><span>根拠</span><span>${esc(c.formula)}</span></div>` : '')}
+      <div class="kv"><span>元の値</span><span>${esc(c.original)}</span></div><div class="kv"><span>こう読みました</span><span>${esc(c.proposal)}</span></div>
+      ${c.reason_ja ? `<div class="kv"><span>理由</span><span>${esc(c.reason_ja)}</span></div>` : (c.formula ? `<div class="kv"><span>計算のしかた</span><span>${esc(c.formula)}</span></div>` : '')}
       <div class="bar">${btns}</div>${st ? '' : maxPayloadHtml(c, key)}
-      <div class="bar" ${S.open.has('fix' + key) && !st ? '' : 'hidden'}><input type="text" placeholder="${esc(fixHint(c))}" aria-label="直した値" size="22"><button type="button" class="sm" data-act="fixok">反映</button></div></div>`;
+      <div class="bar" ${S.open.has('fix' + key) && !st ? '' : 'hidden'}><input type="text" placeholder="${esc(fixHint(c))}" aria-label="直した値" size="22"><button type="button" class="sm" data-act="fixok">この値にする</button></div></div>`;
   }).join('');
-  return `<section class="card" id="sec-confirm"><h2>確認が必要な項目 <small>確認待ち ${pend} 件・確定 ${cnt.ok}・修正 ${cnt.fix}・読まない ${cnt.skip}</small></h2>
-    ${d.confirm.length ? `<p class="hint">押した結果は計算に渡し、数字を計算し直します。${S.mode === 'import' ? '確認の決定は月ごとの保存に入ります。' : 'サンプルの決定は保存しません。'}</p>${cards}` : '<p>確認が必要な項目はありません。</p>'}</section>`;
+  return `<section class="card" id="sec-confirm"><h2>確認が必要な項目 <small>残り ${pend} 件・そのまま ${cnt.ok}・直した ${cnt.fix}・入れない ${cnt.skip}</small></h2>
+    ${d.confirm.length ? `<p class="hint">押すと数字を計算し直します。${S.mode === 'import' ? '直した内容は次回も使います。' : 'サンプルの内容は保存しません。'}</p>${cards}` : '<p>確認が必要な項目はありません。</p>'}</section>`;
 }
 
 /* ------------------------------------------------------------ 画面（そのまま使える形にするところ） */
@@ -557,54 +631,80 @@ function boardHtml(d) {
   const rows = items.map((it, k) => dt('board' + it.key, `${esc(it.label)} <small>（この月の空車 ${it.n} 便）</small>`,
     `<div data-copyable><textarea readonly rows="12" aria-label="${esc(it.label)} の求荷求車に貼る文">${esc(it.text)}</textarea>
       <div class="bar"><button type="button" class="primary sm" data-act="copy-ta" data-what="${esc(it.label)}の掲示の文">コピー</button></div></div>`, k === 0)).join('');
-  return `<p class="hint">この月の傾向から作った文です。会社名・電話番号・運賃は入っていません。貼る前に書き入れてください。空車の情報を出して荷を探す掲示なので、見出しは【求荷】です。</p>${rows}
+  return `<p class="hint">会社名・電話番号・運賃は入っていません。貼る前に書き入れてください。</p>${rows}
     <div class="bar"><button type="button" class="sm" data-act="copy-board-all">全部をコピー</button></div>`;
 }
 
 // 明日の空きから作る小さな入力
 function tmDefaults(d) {
   const rp = OwnMonth.returnPairs(d)[0];
-  const t = new Date(Date.now() + 86400000);
   const v = d.vehicles.find((x) => OwnMonth.tariffClass(x.cls)) || d.vehicles[0];
-  return { date: `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`, time: '19:00', frm: rp ? placeName(d.places[rp.frm]) : '', to: rp ? placeName(d.places[rp.to]) : '',
-    cls: (v && OwnMonth.tariffClass(v.cls)) || '10t', kg: '' };
+  // 日付は、配車表で車が動いている曜日の、今日の次の日から数えた最初の日（休みの曜日の日曜などは飛ばす）
+  return { date: OwnMonth.nextWorkday(d).iso, time: '19:00', frm: rp ? placeName(d.places[rp.frm]) : '', to: rp ? placeName(d.places[rp.to]) : '',
+    cls: (v && OwnMonth.tariffClass(v.cls)) || '10t', kg: '', timeTo: '', bed: '', size: '' };
 }
 function tmText(f) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(f.date || '');
   const day = m ? `${+m[2]}/${+m[3]}（${WD[(new Date(+m[1], +m[2] - 1, +m[3]).getDay() + 6) % 7]}）` : '（日付を入れてください）';
   const kg = Number(f.kg);
   return ['【求荷】空車情報', `発地: ${f.frm || '（発地を入れてください）'}`, `着地: ${f.to || '（着地を入れてください）'}`,
-    `曜日・時刻: ${day}${f.time ? ` ${f.time} ごろ出発` : ''}`, `車格: ${f.cls}車`,
+    `曜日・時刻: ${day}${f.time ? (f.timeTo ? ` ${f.time}〜${f.timeTo} の間に積めます（出発）` : ` ${f.time} ごろ出発`) : ''}`, `車格: ${f.cls}車`,
+    ...(String(f.bed || '').trim() || String(f.size || '').trim() ? [`荷台: ${String(f.bed || '').trim() || '（形を入れてください）'}${String(f.size || '').trim() ? `（内寸 ${String(f.size).trim()}）` : ''}`] : []),
     `空き: ${kg > 0 ? `最大 ${kg} t まで` : '（空きの重さを入れてください）'}（積む荷の大きさや形は、ご相談で決めます）`, '運賃: ご相談ください', '連絡先: （会社名・電話番号・担当者を書き入れてください）'].join('\n');
 }
 function tomorrowHtml(d) {
   if (!S.tm) S.tm = tmDefaults(d);
+  const nw = OwnMonth.nextWorkday(d);
+  const dayHint = nw.basis ? `<p class="hint" id="tm-dayhint">日付は次に車が動く日にしました。違うときは直してください。</p>` : '';
   const f = S.tm, opts = ['2t', '4t', '10t'].map((c) => `<option ${c === f.cls ? 'selected' : ''}>${c}</option>`).join('');
   const places = [...new Set(Object.values(d.places).map(placeName).filter(Boolean))];
-  return `<datalist id="place-list">${places.map((p) => `<option value="${esc(p)}">`).join('')}</datalist>
-    <div class="f"><label>出る日<input type="date" data-tm="date" value="${esc(f.date)}"></label><label>出発の時刻<input type="time" data-tm="time" value="${esc(f.time)}"></label>
+  return `${dayHint}<datalist id="place-list">${places.map((p) => `<option value="${esc(p)}">`).join('')}</datalist>
+    <div class="f"><label>出る日<input type="date" data-tm="date" value="${esc(f.date)}"></label><label>積める時間（始まり）<input type="time" data-tm="time" value="${esc(f.time)}"></label><label>積める時間（終わり）<input type="time" data-tm="timeTo" value="${esc(f.timeTo || '')}" aria-label="積める時間の終わり（空でもよい）"></label>
       <label>発地<input type="text" list="place-list" data-tm="frm" value="${esc(f.frm)}" placeholder="例 東京都江東区"></label><label>着地<input type="text" list="place-list" data-tm="to" value="${esc(f.to)}" placeholder="例 兵庫県加古川市"></label>
-      <label>車格<select data-tm="cls">${opts}</select></label><label>空きの重さ（t）<input type="number" min="0" step="0.5" inputmode="decimal" data-tm="kg" value="${esc(f.kg)}" placeholder="例 5"></label></div>
+      <label>車格<select data-tm="cls">${opts}</select></label><label>荷台の形<select data-tm="bed"><option value="">選ばない</option>${OwnMonth.BED_CHOICES.map((c) => `<option ${c === f.bed ? 'selected' : ''}>${c}</option>`).join('')}</select></label><label>荷台の内寸（長さ×幅×高さ）<input type="text" data-tm="size" value="${esc(f.size || '')}" placeholder="例 9.6m×2.4m×2.4m"></label><label>空きの重さ（t）<input type="number" min="0" step="0.5" inputmode="decimal" data-tm="kg" value="${esc(f.kg)}" placeholder="例 5"></label></div>
     <div class="bar"><button type="button" class="primary sm" data-act="tm-make">文を作る</button></div>
     ${S.tmOut ? `<div data-copyable><textarea id="tm-out" readonly rows="9" aria-label="明日の空きの掲示の文">${esc(S.tmOut)}</textarea><div class="bar"><button type="button" class="primary sm" data-act="copy-ta" data-what="明日の空きの掲示の文">コピー</button></div></div>` : ''}`;
 }
 
+// 売上の目安が数えた範囲。数えたのは車庫に向かう帰りの空車だけで、空車の費用（全部の空車で計算）とは範囲が違う
+function scopeHtml(d) {
+  const sc = OwnMonth.revenueScope(d);
+  if (!sc.all) return '';
+  return `<p class="hint" id="rev-scope">数えたのは車庫へ帰る空車 ${sc.back} 便だけです。${sc.other ? `ほかの空車 ${sc.other} 便は数えていません。` : ''}</p>`;
+}
+// 自社の成約単価（円/km か 円/便）で出した額。入力があるときだけ出す。入れた単価で計算した値で、取れる保証ではない
+function ownRevHtml(d) {
+  const r = OwnMonth.ownRevenue(d, S.rate);
+  if (!r) return S.rate.value.trim() ? '<p class="warn" role="alert">成約単価は 0 より大きい数で入れてください（例 120、30000）</p>' : '';
+  const sh = (id) => esc(shortOf(d, id));
+  const rows = r.pairs.map((p) => `<tr><td>${sh(p.frm)} → ${sh(p.to)}</td><td class="num">${p.n}</td><td class="num">${yen(p.subtotal)}</td></tr>`).join('');
+  return `<p id="rev-own">自社の運賃の単価（${Number(r.value).toLocaleString('ja-JP')} ${r.unit}）で計算した額: <b>${yen(r.total)}</b>（車庫へ帰る ${r.counted} 便すべてに荷が付いた場合）</p>
+    <p class="hint">${r.kind === 'km' ? '便ごとの km × ' : '1 便 × '}${Number(r.value).toLocaleString('ja-JP')} ${r.unit} の合計${r.noKm ? `（距離が分からない ${r.noKm} 便は数えていません）` : ''}。入れた単価で計算した値で、取れる保証ではありません。</p>
+    <div class="scroll-x"><table aria-label="自社の成約単価での区間ごとの額"><thead><tr><th>区間</th><th class="num">便数</th><th class="num">小計</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function rateInputHtml(d) {
+  return `<div class="f"><label>自社の成約単価（任意）<input id="own-rate" type="text" inputmode="decimal" autocomplete="off" value="${esc(S.rate.value)}" placeholder="例 120" aria-label="自社の成約単価">
+    <select id="own-rate-kind" aria-label="成約単価の単位"><option value="km" ${S.rate.kind === 'km' ? 'selected' : ''}>円/km</option><option value="trip" ${S.rate.kind === 'trip' ? 'selected' : ''}>円/便</option></select></label></div>
+    <p class="hint">入れると、国の標準的運賃の額と並べて出します。</p><div id="rev-own-out">${ownRevHtml(d)}</div>`;
+}
 function revenueHtml(d) {
   const r = OwnMonth.revenue(d);
   if (!r) return '<p class="hint">空車の帰りの便がないので、売上の目安は出ません。</p>';
-  if (!r.counted) return `<p class="hint">空車の帰りの便 ${r.trips} 便のうち、運賃の表に当てられる便がありません（距離が分からない ${r.noKm}・車の種類が分からない ${r.noClass}・200 km 未満で表が無い ${r.noFare}）。</p>`;
+  const rateIn = rateInputHtml(d);
+  if (!r.counted) return `<p class="hint">空車の帰り ${r.trips} 便は、どれも運賃の表で計算できませんでした。</p>`;
   const sh = (id) => esc(shortOf(d, id));
   const rows = r.pairs.map((p) => `<tr><td>${sh(p.frm)} → ${sh(p.to)}</td><td class="num">${p.n}</td><td class="num">${p.min === p.max ? yen(p.min) : `${yen(p.min)}〜${yen(p.max)}`}</td><td class="num">${yen(p.subtotal)}</td></tr>`).join('');
   const skipped = r.noKm + r.noClass + r.noFare;
   const trips = r.perTrip.map((t) => `<tr><td>${esc(t.date)}</td><td>${esc(t.plate)}</td><td>${sh(t.frm)} → ${sh(t.to)}</td><td>${esc(t.cls)}</td><td class="num">${n1(t.km)}</td><td class="num">${yen(t.amount)}</td><td>${esc(t.fare.formula)}</td></tr>`).join('');
   const ex = r.example;
-  return `<p>空車の帰り ${r.trips} 便のうち ${r.counted} 便に標準的運賃を当てました。1 便あたり <b>${r.min === r.max ? yen(r.min) : `${yen(r.min)}〜${yen(r.max)}`}</b>（目安）。</p>
+  return `${rateIn}<p>空車の帰り ${r.trips} 便のうち ${r.counted} 便を、国の標準的運賃で計算しました。1 便あたり <b>${r.min === r.max ? yen(r.min) : `${yen(r.min)}〜${yen(r.max)}`}</b>（目安）。</p>
     <p class="hint">例: ${esc(ex.date)} ${esc(ex.plate)}（${esc(ex.cls)}車・${sh(ex.frm)} → ${sh(ex.to)}・${n1(ex.km)} km）　${esc(ex.fare.formula)} = ${yen(ex.amount)}（${esc(ex.fare.region)}の表${ex.fare.assumedRegion ? '。発地の県が関東・近畿以外か不明なので関東の表' : ''}）</p>
     <div class="scroll-x"><table aria-label="区間ごとの売上の目安"><thead><tr><th>区間</th><th class="num">便数</th><th class="num">1 便</th><th class="num">小計</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p>全部の帰りに荷が付いた場合の上限（${r.counted} 便ぶん）: <b>${yen(r.total)}</b>。便ごとの目安の合計で、帰り荷が全便に付くことは前提にできません。</p>
+    <p>車庫へ帰る ${r.counted} 便すべてに荷が付いたときの額: <b>${yen(r.total)}</b>。全便に付くことはまずありません。</p>
+    ${scopeHtml(d)}
     ${skipped ? `<p class="hint">数えていない便 ${skipped} 便（距離が分からない ${r.noKm}・車の種類が分からない ${r.noClass}・200 km 未満で表が無い ${r.noFare}）。</p>` : ''}
-    ${dt('rev-more', '便ごとの内訳と式', `<div class="scroll-x"><table><thead><tr><th>日</th><th>車番</th><th>区間</th><th>車格</th><th class="num">km</th><th class="num">目安</th><th>式</th></tr></thead><tbody>${trips}</tbody></table></div>`, false)}
-    <p class="hint">これは国土交通省の標準的運賃（2024 年 3 月 22 日告示）の距離制の表に当てた計算で、相場ではありません。実際の運賃は荷主との相談で決まります。運賃の地域は発地の県で決め、関東・近畿以外の県は関東の表を使います。車の種類は 8 t 以上を 10t、3 t 以下を 2t、その間を 4t としています。「空車の費用」は帰り荷を取っても減らない費用なので、この売上の目安と引き算はしないでください。</p>`;
+    ${dt('rev-more', '便ごとの額を見る', `<div class="scroll-x"><table><thead><tr><th>日</th><th>車番</th><th>区間</th><th>車格</th><th class="num">km</th><th class="num">目安</th><th>式</th></tr></thead><tbody>${trips}</tbody></table></div>`, false)}
+    <p class="hint">国の標準的運賃（2024 年 3 月 22 日告示）で計算した額で、相場ではありません。実際の運賃は荷主との相談で決まります。</p>`;
 }
 
 // 荷待ちの下書き: web/waiting.html の「Excel から貼り付ける」にそのまま貼れる、ドライバーの記録の形（1 件 1 行）
@@ -629,17 +729,17 @@ function waitingHtml(d) {
   return `<p>30 分以上の停車 ${ls.length} 件を、荷待ちの記録の形にしました。${lk}の「Excel から貼り付ける」に貼ると、表の後ろに足されます。</p>
     <div data-copyable><textarea id="draft-ta" readonly rows="${Math.min(10, ls.length + 1)}" aria-label="荷待ちの下書き">${esc(ls.join('\n'))}</textarea>
     <div class="bar"><button type="button" class="primary sm" data-act="copy-ta" data-what="荷待ちの下書き">荷待ちの下書きをコピー</button></div></div>
-    <p class="hint">停車の記録にない欄（荷役開始・契約の相手・荷主等の都合の待機か）は空のままです。貼ったあと、書面のページで入れてください。着いた時刻と出発の時刻は停車の始まりと終わりで、荷役の開始ではありません。</p>`;
+    <p class="hint">相手・荷役開始・荷主の都合は空欄です。書面のページで入れてください。</p>`;
 }
 
 function outputsHtml(d) {
-  return `<section class="card" id="sec-actions"><h2>そのまま使う</h2>
+  return `<section class="card" id="sec-actions"><h2>貼る文と印刷</h2>
     <h3>求荷求車に貼る文</h3>${boardHtml(d)}
-    <h3>明日の空きから作る</h3>${tomorrowHtml(d)}
+    <h3>明日の空車の掲示文を作る</h3>${tomorrowHtml(d)}
     <h3>帰り荷 1 便の売上の目安</h3>${revenueHtml(d)}
     <h3>荷待ちの下書き</h3>${waitingHtml(d)}
-    <h3>数字と気づきを渡す</h3>
-    <div class="bar"><button type="button" class="primary sm" data-act="copy-summary">数字と気づきを文でコピー</button><button type="button" class="sm" data-act="copy-csv">区間の判定を CSV でコピー</button>${ARTIFACT ? '' : '<button type="button" class="sm" data-act="print">1 ページで印刷</button>'}</div>
+    <h3>数字を文や CSV でコピーする</h3>
+    <div class="bar"><button type="button" class="primary sm" data-act="copy-summary">数字と分かったことを文でコピー</button><button type="button" class="sm" data-act="copy-csv">便ごとの空車・実車を CSV でコピー</button>${ARTIFACT ? '' : '<button type="button" class="sm" data-act="print">1 ページで印刷</button>'}</div>
   </section>`;
 }
 
@@ -652,21 +752,22 @@ function monthHtml(d) {
   if (S.mode === 'import') {
     if (S.saveMsg) h += `<p class="hint">${esc(S.saveMsg)}</p>`;
     const ro = S.restore;
-    if (ro) h += `<div class="msg"><b>前に保存した、同じファイルの確認の決定と地名の対応があります</b> <button type="button" class="sm" data-act="month-restore">戻す</button><br><small>確認の決定 ${Object.keys(ro.dec || {}).length} 件・地名の対応 ${Object.keys(ro.aliases || {}).length} 件（${esc(ro.summary ? ro.summary.label : '')}）</small></div>`;
+    if (ro) h += `<div class="msg"><b>前回このファイルで直した内容があります</b> <button type="button" class="sm" data-act="month-restore">前回の直しを使う</button><br><small>確認の決定 ${Object.keys(ro.dec || {}).length} 件・地名の対応 ${Object.keys(ro.aliases || {}).length} 件（${esc(ro.summary ? ro.summary.label : '')}）</small></div>`;
     const others = monthOthers();
     if (others.length) {
       const cur = curSummary(), prevs = others.filter((e) => e.month < cur.month), def = prevs.length ? prevs[prevs.length - 1] : others[others.length - 1];
       const pickId = S.cmpId && others.some((e) => e.month + ':' + e.sig === S.cmpId) ? S.cmpId : def.month + ':' + def.sig;
       const prev = others.find((e) => e.month + ':' + e.sig === pickId);
-      const rows = OwnMonth.compareRows(prev.summary, cur).map((r) => `<tr><th>${esc(r.name)}</th><td class="num">${esc(r.a)}</td><td class="num">${esc(r.b)}</td><td class="num">${esc(r.diff)}</td></tr>`).join('');
+      const curM = curSummaries().find((x) => x.month === prev.month) || cur; // 同じ月どうし（2 か月を一緒に落としたときも、その月の分と並べる）
+      const rows = OwnMonth.compareRows(prev.summary, curM).map((r) => `<tr><th>${esc(r.name)}</th><td class="num">${esc(r.a)}</td><td class="num">${esc(r.b)}</td><td class="num">${esc(r.diff)}</td></tr>`).join('');
       h += `<div class="bar"><label>並べる月 <select id="cmp-sel" aria-label="並べる月">${others.map((e) => `<option value="${esc(e.month + ':' + e.sig)}" ${e.month + ':' + e.sig === pickId ? 'selected' : ''}>${esc(e.summary.label)}（${esc((e.savedAt || '').slice(0, 10))} に保存）</option>`).join('')}</select></label></div>
-        <div class="scroll-x"><table id="cmp-table" aria-label="前の月との比べ"><thead><tr><th></th><th>${esc(prev.summary.label)}</th><th>${esc(cur.label)}</th><th class="num">差</th></tr></thead><tbody>${rows}</tbody></table></div>
-        <p class="hint">差は引き算だけです。良くなったか悪くなったかは、月の仕事の量や行き先で変わるので、決めていません。</p>`;
+        <div class="scroll-x"><table id="cmp-table" aria-label="前の月との比べ"><thead><tr><th></th><th>${esc(prev.summary.label)}</th><th>${esc(curM.label)}</th><th class="num">差</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <p class="hint">差は今月から前の月を引いた値です。</p>`;
     } else h += '<p class="hint">前の月の保存はまだありません。来月のファイルを入れると、ここに並べて出ます。</p>';
   } else if (all.length) h += `<p class="hint">このブラウザに保存した月が ${all.length} 件あります（${esc(all.map((e) => e.summary.label).join('、'))}）。同じ形のファイルを入れると、前の月と並べられます。</p>`;
   if (all.length) h += `<div class="bar"><button type="button" class="link" data-act="month-clear">保存したデータをすべて消す（${all.length} 件）</button></div>`;
-  h += '<p class="hint">保存するのは、数字の要約・地名の対応・確認の決定・列の役割だけです。CSV の中身は保存しません。このブラウザの中だけにあり、上のボタンで消せます。</p>';
-  return `<section class="card" id="sec-month"><h2>月ごとの保存と前の月との比べ</h2>${h}</section>`;
+  h += '<p class="hint">保存するのは月の数字と直した内容だけです。CSV は保存しません。</p>';
+  return `<section class="card" id="sec-month"><h2>前の月と比べる</h2>${h}</section>`;
 }
 
 /* ------------------------------------------------------------ 印刷の 1 枚 */
@@ -674,14 +775,14 @@ function monthHtml(d) {
 function printHtml(d) {
   const k = d.kpis, c = OwnCalc.costs(d, S.cost.perKm, S.cost.perHour), sm = OwnMonth.summary(d, c), rev = OwnMonth.revenue(d), alt = unknownAlt(d);
   const tr = (a, b, t) => `<tr><th>${a}</th><td>${b}</td><td>${t || ''}</td></tr>`;
-  const rows = sortedPairTable(d).slice(0, 8).map((r) => `<tr><td>${esc(r.label)}（${r.role === 'back' ? '帰り' : '行き'}）</td><td>${WD[r.wd]}曜発</td><td>${r.trips}</td><td>${r.empty}</td><td>${r.unknown}</td><td>${r.empty_km ? n1(r.empty_km) : '—'}</td></tr>`).join('');
-  return `<h2>自社の運行 ${d.year} 年 ${d.mon} 月${S.mode === 'sample' ? '（架空のサンプル）' : ''}</h2>
+  const rows = sortedPairTable(d).slice(0, 8).map((r) => `<tr><td>${esc(r.label)}（${ROLE_JA[r.role] || '区間'}）</td><td>${WD[r.wd]}曜発</td><td>${r.trips}</td><td>${r.empty}</td><td>${r.unknown}</td><td>${r.empty_km ? n1(r.empty_km) : '—'}</td></tr>`).join('');
+  return `<h2>自社の運行 ${monthWord(d)}${S.mode === 'sample' ? '（架空のサンプル）' : ''}</h2>
     <p>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}。この数字は取り込んだ記録から計算した目安です。法令で残す元の記録は別に保管してください。</p>
     <table>${tr('実車率', pc(k.actual_rate.value), `判定できた区間 ${k.actual_rate.legs} / ${k.actual_rate.of}。実車か空車か不明の ${d.counts.unknown} 区間と、読めなかった行・セル ${d.counts.unreadable} 件は入れていません`)}
       ${alt ? tr(alt.mode === 'km' ? '（不明を空車として数えた実車率）' : '（不明を空車として数えた実車の区間の割合）', pc(alt.rate), alt.mode === 'km' ? `不明 ${alt.unkLegs} 区間の距離 ${n1(alt.unkKm)} km を空車に入れた場合` : `不明を外すと ${pc(alt.base)}。不明 ${alt.unkLegs} 区間には距離が無いので区間の数で数えた`) : ''}
-      ${tr('大型の積載率', pc(k.load_rate.value), '大型の最大積載量は登録が無いとき 10 t と仮定')}${tr('大型の積載効率', pc(k.load_efficiency.value), '大型の積載率 × 大型の実車率')}
+      ${tr('大型の積載率', pc(k.load_rate.value), `大型の最大積載量は登録が無いとき ${d.max_load_raised ? (d.max_load_raised.to_kg / 1000).toFixed(1).replace(/\.0$/, '') : 10} t と仮定`)}${tr('大型の積載効率', pc(k.load_efficiency.value), '大型の積載率 × 大型の実車率')}
       ${tr('空車 km', `${n1(sm.empty_km)} km`, c.empty ? `空車の費用の目安 ${yen(c.empty.yen)}（${esc(c.empty.formula)}）` : '単価を入れていないので費用は出していません')}
-      ${tr('荷待ち（30 分以上の停車）', `${c.longCount} 回・${n1(sm.wait_min / 60)} 時間`, c.wait ? `停車の費用の目安 ${yen(c.wait.yen)}（${esc(c.wait.formula)}）` : '')}
+      ${tr('荷待ち（30 分以上の停車）', c.waitMissing ? '記録なし' : `${c.longCount} 回・${n1(sm.wait_min / 60)} 時間`, c.waitMissing ? 'デジタコを入れていないので、停車は数えていません' : c.wait ? `停車の費用の目安 ${yen(c.wait.yen)}（${esc(c.wait.formula)}）` : '')}
       ${rev && rev.total ? tr('帰り荷の売上の目安（上限）', yen(rev.total), `空車の帰り ${rev.counted} 便の合計。標準的運賃の表に当てた目安で、相場ではありません`) : ''}</table>
     <h3>空車の便数が多い区間と曜日</h3><table><thead><tr><th>区間</th><th>曜日</th><th>便数</th><th>空車</th><th>不明</th><th>空車の km</th></tr></thead><tbody>${rows}</tbody></table>
     <h3>気づき</h3><ol>${d.insights.map((i) => `<li>${esc(i.text)}</li>`).join('') || '<li>この月の気づきはありません。</li>'}</ol>
@@ -692,19 +793,27 @@ function printHtml(d) {
 
 function render() {
   const y = window.scrollY;
+  document.body.classList.toggle('guided', S.guided);
+  Negotiate.mount($('#neg-slot'), { data: S.data, mode: S.mode === 'import' ? 'import' : 'sample', error: S.msgErr ? S.msg : '', useSample: loadSample, pickFile: () => { setMsg('', false); $('#file-in').click(); },
+    guided: S.guided, toFull: () => { S.guided = false; render(); }, onStep: (n) => { document.body.dataset.step = String(n); } });
   $('#msg-area').innerHTML = S.msg ? `<p class="msg ${S.msgErr ? 'err' : ''}" role="status" id="msg">${esc(S.msg)}</p>` : '';
   $('#pending-area').innerHTML = pendingHtml();
   $('#b-reset').hidden = !S.data;
   const el = $('#result'), d = S.data;
   if (!d) { el.innerHTML = '<p class="hint">まだ何も読んでいません。CSV を入れるか、「サンプルで試す」を押してください。</p>'; $('#printsheet').innerHTML = ''; return; }
-  el.innerHTML = `${yearHtml(d)}${monthPickHtml(d)}${haishaChoiceHtml(d)}${kpiHtml(d)}
-    <section class="card" id="sec-pairs"><h2>区間 × 曜日の表 <small>空車の便数が多い順。赤い行は、帰りがいつも空の曜日</small></h2>${tableHtml(d)}<h3>曜日ごとの空車の km</h3>${chartHtml(d)}</section>
+  // 帰りが空く曜日のグラフを、いちばん先に出す（表より先）
+  const rest = `<section class="card" id="sec-chart"><h2>曜日ごとの空車の km <small>帰りが空く曜日を、棒の長さで見る</small></h2>${chartHtml(d)}</section>${kpiHtml(d)}
+    <section class="card" id="sec-pairs"><h2>区間と曜日ごとの空車 <small>赤い行は、帰りがいつも空の曜日です</small></h2>${tableHtml(d)}</section>
     <section class="card" id="sec-ins"><h2>気づき</h2>${insightsHtml(d)}</section>
-    <section class="card" id="sec-cost"><h2>費用への換算 <small>単価は自分で入れます。入れるまで費用は出しません</small></h2>
-      <div class="f"><label>km あたり変動費（円/km）<input id="perkm" type="text" inputmode="decimal" autocomplete="off" value="${esc(S.cost.perKm)}" placeholder="例 30" aria-label="km あたり変動費（円/km）"></label>
+    <section class="card" id="sec-cost"><h2>空車と停車の費用 <small>単価を入れると出ます</small></h2>
+      <div class="f"><label>1 km あたりの費用（円/km）<input id="perkm" type="text" inputmode="decimal" autocomplete="off" value="${esc(S.cost.perKm)}" placeholder="例 30" aria-label="1 km あたりの費用（円/km）"></label>
       <label>時間あたりの費用（円/時）<input id="perhour" type="text" inputmode="decimal" autocomplete="off" value="${esc(S.cost.perHour)}" placeholder="例 3000" aria-label="時間あたりの費用（円/時）"></label></div>
-      <p id="cost-out">${costHtml(d)}</p><p class="hint">単価は入力した値です。削減額の約束ではありません。空車の km が見えても、帰り荷があるかは別の話です。</p></section>
+      <p id="cost-out">${costHtml(d)}</p><p class="hint">入れた単価で計算した目安です。</p></section>
     ${outputsHtml(d)}${confirmHtml(d)}${importHtml(d)}${monthHtml(d)}`;
+  // 手順に沿う画面では、年・月・重なる配車表を選ぶ欄だけを前に出し、数字・表・費用・取り込みの結果は閉じた「詳しく」に入れる
+  el.innerHTML = S.guided
+    ? `${yearHtml(d)}${monthPickHtml(d)}${haishaChoiceHtml(d)}<details class="card" id="adv" ${S.advOpen ? 'open' : ''}><summary>曜日ごとの空車と今月の数字を見る</summary>${rest}</details>`
+    : `${yearHtml(d)}${monthPickHtml(d)}${haishaChoiceHtml(d)}${rest}`;
   $('#printsheet').innerHTML = ARTIFACT ? '' : printHtml(d);
   window.scrollTo(0, y);
 }
@@ -725,7 +834,7 @@ document.addEventListener('click', (e) => {
   const act = b.dataset.act, card = b.closest('.cf'), d = S.data;
   if (act === 'sample') { loadSample(); return; }
   if (act === 'reset') { resetAll(); return; }
-  if (act === 'cancel-pending') { S.pending = null; setMsg('取りやめました。前の表示のままです', false); render(); return; }
+  if (act === 'cancel-pending') { S.pending = null; setMsg('読むのをやめました。前のデータを表示しています。', false); render(); return; }
   if (act === 'alias') {
     const row = b.closest('.up'), v = row.querySelector('input').value.trim();
     if (!v) { toast('市区町村名を入れてください（例: 江東区）'); return; }
@@ -765,6 +874,7 @@ document.addEventListener('click', (e) => {
   }
   if (act === 'copy-ta') { const ta = b.closest('[data-copyable]').querySelector('textarea'); copyText(ta.value, b.dataset.what || '文'); return; }
   if (act === 'copy-board-all') { copyText(OwnMonth.boardTexts(d).map((x) => x.text).join('\n\n----------\n\n'), '掲示の文（全部）'); return; }
+  if (act === 'merge-toggle') { S.mergePlaces = S.mergePlaces === false; recompute(); return; }
   if (act === 'tm-make') { S.tmOut = tmText(S.tm); render(); const t = $('#tm-out'); if (t) t.scrollIntoView({ block: 'center' }); return; }
   if (act === 'copy-summary') { copyText(OwnCalc.summaryText(d, OwnCalc.costs(d, S.cost.perKm, S.cost.perHour)), '数字と気づきの文'); return; }
   if (act === 'copy-csv') { copyText(OwnCalc.legsCsv(d), '区間の判定の CSV '); return; }
@@ -778,6 +888,7 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'own-rate-kind') { S.rate = { kind: e.target.value === 'trip' ? 'trip' : 'km', value: $('#own-rate').value }; saveRate(); const o = $('#rev-own-out'); if (o && S.data) o.innerHTML = ownRevHtml(S.data); return; }
   const t = e.target;
   if (t.id === 'file-in') { const fl = [...t.files]; t.value = ''; readFiles(fl); return; }
   if (t.id === 'year-pick' && t.value) { S.yearPick = Number(t.value); recompute(); return; }
@@ -812,6 +923,13 @@ document.addEventListener('change', (e) => {
 
 document.addEventListener('input', (e) => {
   const t = e.target;
+  if (t.id === 'own-rate' || t.id === 'own-rate-kind') {
+    S.rate = { kind: $('#own-rate-kind').value === 'trip' ? 'trip' : 'km', value: $('#own-rate').value };
+    saveRate();
+    const o = $('#rev-own-out');
+    if (o && S.data) o.innerHTML = ownRevHtml(S.data);
+    return;
+  }
   if (t.id === 'perkm' || t.id === 'perhour') {
     S.cost = { perKm: $('#perkm').value, perHour: $('#perhour').value };
     $('#cost-out').innerHTML = costHtml(S.data);

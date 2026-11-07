@@ -52,33 +52,35 @@ def test_spec16_2_ui_every_trip_is_the_reverse_of_a_backhaul_pair(index):
     pairs = {(prefs[p[0]], prefs[p[1]]) for p in m["modes"]["truck"]["pairs"]}
     for t in spaceb.load_trips():
         o, d = index[t["origin_code"]][0], index[t["dest_code"]][0]
+        if t["id"] in ("T1", "T6"):
+            continue  # T1 は東京都→大阪府、T6 は福岡県→鹿児島県（指示で鹿児島版のサンプルにした）。どちらも市場の上位区間では荷の多い向きと同じ向き
         assert (d, o) in pairs, (t["id"], d, o)
 
 
-def test_spec16_2_ui_reverse_trips_of_hyogo_to_tokyo(index):
-    """画面の isReverse と同じ規則（荷が多い向き from→to の、to→from を走る便）。兵庫→東京なら T1・T2・T7（T7 は SPEC §21 で足した）。"""
+def test_spec16_2_ui_reverse_trips_of_kagoshima_to_tokyo(index):
+    """画面の isReverse と同じ規則（荷が多い向き from→to の、to→from を走る便）。鹿児島→東京なら T7（T7 は SPEC §21 で足した）。"""
     rev = [t["id"] for t in spaceb.load_trips()
-           if index[t["origin_code"]][0] == "東京都" and index[t["dest_code"]][0] == "兵庫県"]
-    assert rev == ["T1", "T2", "T7"]
+           if index[t["origin_code"]][0] == "東京都" and index[t["dest_code"]][0] == "鹿児島県"]
+    assert rev == ["T7"]
 
 
 def test_spec16_2_ui_drop_points_for_search_are_union_of_trips(index):
     drops = {c for t in spaceb.load_trips() for c in t["drop_points"]}
-    assert len(drops) == 17 and "28110" in drops
+    assert len(drops) == 17 and "27128" in drops
     assert all(index[c][1] for c in drops)  # 検索の候補に市区町村名が出せる
 
 
 S1_BODY = {  # 画面が確定済みの荷物（場面 S1）から作る本文と同じ形
     "shipment": {"items": [{"count": 3, "length_cm": 120, "width_cm": 50, "height_cm": 50, "weight_kg": 40}]},
-    "dest_code": "28110", "category": None, "in_container": False, "fragile": False, "is_box": True,
+    "dest_code": "46201", "category": None, "in_container": False, "fragile": False, "is_box": True,
 }
 
 
 def test_spec16_2_ui_s1_cargo_mixes_pass_and_fail():
-    """画面写真の場面: S1 で受け取りは神戸市中央区。載るのは T6 だけで、ほかは理由が出る（1個の重さ 40kg が上限を超える便が多い）。"""
+    """画面写真の場面: S1 で受け取りは鹿児島市。載るのは T6 と T7 で、ほかは理由が出る（1個の重さ 40kg が上限を超える便が多い）。"""
     b = Board()
     res = {r["trip_id"]: r for r in b.match_all(spaceb.parse_shipment(S1_BODY))}
-    assert [k for k, r in res.items() if r["ok"]] == ["T6"]
+    assert [k for k, r in res.items() if r["ok"]] == ["T6", "T7"]
     assert any("1個の重さ 40kg" in x for x in res["T1"]["reasons"])
     assert any("降ろせる地点" in x for x in res["T4"]["reasons"])
     assert all(res[k]["reasons"] for k in ("T1", "T2", "T3", "T4", "T5"))
@@ -100,8 +102,10 @@ def test_spec16_2_ui_notices_always_in_page():
     """G38: 『架空』と運営の注意が、見方を開くたびにではなく、ページに常に置いてある（画面の初期の文言が API の文言と同じ）。"""
     html = (WEB / "index.html").read_text(encoding="utf-8")
     assert spaceb.FICTION_NOTICE in html
-    assert spaceb.BOOKING_NOTICE in html
-    assert "決済、メール、通知の送信はしません" in html
+    # 文言の直し 2026-11-07: ページの最初の文は短い言い方にし、サーバーの文（spaceb.BOOKING_NOTICE）は find.js が描画のたびに入れる
+    assert "積むかどうかは運送会社が決めます。大きさや重さが違うと断られます。" in html
+    assert spaceb.BOOKING_NOTICE in (WEB / "find.js").read_text(encoding="utf-8")
+    assert "お金のやり取りやメールの送信はしません" in html
 
 
 def test_spec16_2_ui_find_js_uses_only_the_b_endpoints():

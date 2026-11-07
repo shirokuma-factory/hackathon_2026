@@ -25,6 +25,19 @@
         "tools/serve_web.py"
       ],
       "port": 8600
+    },
+    {
+      "name": "web-view",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "python",
+        "tools/serve_web.py",
+        "--port",
+        "8655"
+      ],
+      "port": 8655,
+      "autoPort": false
     }
   ]
 }

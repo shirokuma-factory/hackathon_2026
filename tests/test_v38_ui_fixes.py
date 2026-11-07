@@ -41,7 +41,7 @@ def _key(page, key, code, vk, shift=False, text=None):
 CHART_JS = """(function(cards){const d=document.createElement('div');d.innerHTML=CompareChart.html(cards);
   const rows=[...d.querySelectorAll('.cc-row')].map(r=>({n:r.querySelector('.cc-name').textContent,cheap:r.classList.contains('cheap'),
     chk:r.classList.contains('chk'),best:[...r.querySelectorAll('.cc-mark:not(.chk)')].map(e=>e.textContent),
-    mark:[...r.querySelectorAll('.cc-mark.chk')].map(e=>e.textContent),why:(r.querySelector('.cc-why')||{}).textContent||''}));
+    mark:[...r.querySelectorAll('.cc-ok.chk')].map(e=>e.textContent),why:(r.querySelector('.cc-why')||{}).textContent||''}));
   return JSON.stringify({rows, ratio:(d.querySelector('.cc-ratio')||{}).textContent||'', only:(d.querySelector('.cc-only')||{}).textContent||'',
     title:d.querySelector('.cc-title').firstChild.textContent});})"""
 
@@ -62,13 +62,14 @@ def test_f02_f11_cheapest_and_ratio_only_among_fitting_options():
         assert by["貸切"]["best"] == [] and not by["貸切"]["cheap"] and by["貸切"]["mark"] == ["要確認"] and "判定していません" in by["貸切"]["why"]
         assert "約 2.3 倍" in out["ratio"]  # 45,000 / 20,000。要確認の 10,000 円は入れない
         names = [r["n"].replace("2t車", "") for r in out["rows"]]
-        assert names[:3] == ["路線便", "宅配", "カゴ台車"] and names[3] == "貸切"
+        assert names[:3] == ["路線便", "宅配", "カゴ台車の貸切（1 本単位）"] and names[3] == "貸切"  # 行の名前を変えた
         out = run(only_check)
-        assert "確認待ちを含む参考の最安" in out["title"] and "確認待ちを含む参考" in out["ratio"] and "約 3 倍" in out["ratio"]
-        assert [r["best"] for r in out["rows"]] == [["参考の最安"], []] and all(r["chk"] and r["mark"] == ["要確認"] for r in out["rows"])
+        assert "確認が要る便を含む" in out["title"] and "確認が要る便を含む" in out["ratio"] and "約 3 倍" in out["ratio"]   # 文言の直し 2026-11-07
+        # 飛行機の行が末尾に加わった（額なし）ので、額のある先頭 2 行を見る
+        assert [r["best"] for r in out["rows"][:2]] == [["最安（確認が要る）"], []] and all(r["chk"] and r["mark"] == ["要確認"] for r in out["rows"][:2])
         out = run(one_fit)
         assert out["ratio"] == "" and "条件がそろって額が出るのは貸切だけです" in out["only"]
-        assert [r["best"] for r in out["rows"]] == [[], []] and out["rows"][1]["mark"] == ["要確認"]
+        assert [r["best"] for r in out["rows"][:2]] == [[], []] and out["rows"][1]["mark"] == ["要確認"]
         _clean(page)
 
 
@@ -76,7 +77,8 @@ def test_f02_f11_cheapest_and_ratio_only_among_fitting_options():
 def test_f10_market_view_is_renamed_everywhere_on_screen():
     html = read("index.html")
     assert ">全国の物流傾向</button>" in html and "市場を見る" not in html
-    assert "公開統計の集計で、いま出ている案件ではありません" in html
+    # 画面の注意書き（「公開統計で、いま募集中の荷物ではありません」）は廃止し、出典は閉じた「凡例・出典」の 1 行にまとめた
+    assert "公開統計の集計で、いま出ている案件ではありません" not in html
     for n in ("app.js", "market.js", "muni.js", "routes.js", "sheet.js", "loadview.js", "work.js"):
         body = re.sub(r"/\*.*?\*/", "", read(n), flags=re.S)  # コメントは除く（画面に出る文言だけ見る）
         body = re.sub(r"(?m)^\s*//.*$|\s//.*$", "", body)
@@ -122,7 +124,7 @@ def test_f07_faint_text_has_4_5_contrast_on_panel_backgrounds():
 def test_n5_municipality_tooltip_balance_uses_rounded_numbers():
     js = read("muni.js")
     assert "const balText = (i) =>" in js and "Math.round(U.d.out[i]) - Math.round(U.d.in[i])" in js
-    assert "b === 0 ? '0'" in js and "推定 B ${balText(i)} t（" in js and "推定 B ${signed(" not in js
+    assert "b === 0 ? '0'" in js and "出荷と入荷の差 ${balText(i)} t（推定）" in js and "推定 B ${signed(" not in js  # 文言の直し 2026-11-07
 
 
 # ---------------------------------------------------------------- 画面（Edge）
@@ -131,11 +133,12 @@ def test_f06_supplement_is_a_button_that_opens_the_text_inline():
         _watch(page)
         open_("#v=compare&o=13104&l=km&d=27205")
         page.wait(lambda: page.js("document.querySelectorAll('#cards .card').length>=4"), 60, "カード")
+        page.js("document.querySelector('#cards .cards-more').open = true")   # 手段ごとの内訳は、開いたときに読む（SPEC §44）
         r = json.loads(page.js("""(function(){const b=[...document.querySelectorAll('#cards .tip')];
           return JSON.stringify({n:b.length, tag:b.map(x=>x.tagName), exp:b.map(x=>x.getAttribute('aria-expanded')), titles:b.filter(x=>x.hasAttribute('title')).length,
           basis:[...document.querySelectorAll('#cards .note.basis')].map(x=>x.textContent)});})()"""))
         assert r["n"] >= 1 and set(r["tag"]) == {"BUTTON"} and set(r["exp"]) == {"false"} and r["titles"] == 0
-        assert any("計算した国の目安です" in x for x in r["basis"]), r  # 計算の前提は、閉じた状態でもカードの本文に 1 行出る
+        assert any("計算した国の目安です" in x or "国の標準的運賃で計算しました" in x for x in r["basis"]), r  # 計算の前提は、閉じた状態でもカードの本文に 1 行出る
         page.js("document.querySelector('#cards .card .tip').focus()")
         _key(page, "Enter", "Enter", 13, text="\r")
         o = json.loads(page.js("""(function(){const b=document.querySelector('#cards .card .tip'),t=document.getElementById(b.getAttribute('aria-controls'));

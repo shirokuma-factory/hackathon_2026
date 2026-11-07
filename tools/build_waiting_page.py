@@ -39,7 +39,7 @@ def public_tariff() -> dict:
 
 
 def _filled() -> str:
-    html = TEMPLATE.read_text(encoding="utf-8")
+    html = artifact_build.inline_kit(TEMPLATE.read_text(encoding="utf-8"))
     tariff = public_tariff()
     vectors = json.loads(VECTORS.read_text(encoding="utf-8"))
     shared = SHARED.read_text(encoding="utf-8").strip("\n").replace("</", "<\\/")
@@ -54,8 +54,15 @@ def build() -> str:
     return artifact_build.local_flag(_filled())
 
 
+GUIDE_HOME_LINK = '<a href="index.html" id="g-home">最初の画面に戻る</a>'
+
+
 def build_artifact() -> str:
-    return artifact_build.to_artifact(_filled(), TITLE)
+    # 単独で公開するページは index.html を持たないので、最初の画面へのリンクを外す
+    html = _filled()
+    if html.count(GUIDE_HOME_LINK) != 1:
+        raise SystemExit("テンプレートに最初の画面へのリンクが 1 つありません")
+    return artifact_build.to_artifact(html.replace(GUIDE_HOME_LINK, ""), TITLE)
 
 
 def main() -> int:
