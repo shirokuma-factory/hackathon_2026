@@ -56,6 +56,8 @@ def test_top5_route_opens_find_with_a_fitting_trip(idx):
             r = json.loads(page.js(js) or "{}")
             return bool(r) and bool(set(r["ok"]) & ids) and r["sel"] in ids and (r["sel"] in r["ok"])
         page.wait(good, 90, f"区間の帰り便に載る {name}")
+        if idx in (1, 2):   # 載る判定が出てから、案内の一文が出るまでに数十ミリ秒かかる（find.js: tryExample の後に autoNote を入れる）。一文が出るのを待ってから読む
+            page.wait(lambda: page.js("!!document.querySelector('#f-list .f-autonote')"), 30, f"案内の一文 {name}")
         r = json.loads(page.js(js))
         assert page.js("document.querySelectorAll('#f-list .chip.ok').length") >= 1
         sub = page.js("document.getElementById('f-rsub').textContent")

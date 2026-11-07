@@ -34,7 +34,8 @@
     st.textContent = '.ai-box{margin:10px 0}.ai-box .ai-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}' +
       '.ai-box .ai-confirm,.ai-box .ai-result{margin-top:8px;padding:10px 12px;border:1px solid var(--line,#ccc);border-radius:10px;background:var(--card,transparent)}' +
       '.ai-box .ai-confirm ul{margin:4px 0 8px;padding-left:20px}.ai-box ol.ai-steps{margin:8px 0;padding-left:22px}' +
-      '.ai-box .ai-json{margin:6px 0}.ai-box .ai-json pre{max-height:220px;overflow:auto;margin:4px 0;padding:8px;font-size:12px;line-height:1.5;border:1px solid var(--line,#ccc);border-radius:8px;white-space:pre-wrap;word-break:break-all}' +
+      '.ai-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}' +
+      '.ai-box .ai-json{margin:6px 0}.ai-box .ai-json>summary{white-space:normal;overflow-wrap:anywhere;word-break:normal;display:list-item}.ai-box .ai-json pre{max-height:220px;overflow:auto;margin:4px 0;padding:8px;font-size:12px;line-height:1.5;border:1px solid var(--line,#ccc);border-radius:8px;white-space:pre-wrap;word-break:break-all}' +
       '.ai-box .ai-text{white-space:pre-wrap;margin:6px 0}.ai-box .ai-badge{display:inline-block;padding:1px 10px;border-radius:999px;font-weight:700;font-size:12px;border:1px solid currentColor}' +
       '.ai-box .ai-badge.ok{color:var(--accent,#1b5fbf)}.ai-box .ai-badge.ng{color:var(--warn,#b3261e)}.ai-box .ai-cost{color:var(--muted,#5b6475);font-size:12px}' +
       '.ai-cg{margin:8px 0;padding:8px 10px;border:1px solid var(--line,#ccc);border-radius:10px}.ai-cg>summary{cursor:pointer;font-weight:700}' +
@@ -97,6 +98,13 @@
     c.stages.forEach((g) => { sum += ((g.in_base + (g.scale === 'rows' ? rows : all)) * g.price_in + g.out * g.price_out) / 1e6; });
     return { usd: sum, yen: sum * c.usd_jpy };
   }
+  // 列の整理（own_columns）の費用の目安。送る内容は表だけなので、入力は見出しと形の大きさ
+  function ownEstimate(payload, st) {
+    const c = st && st.own_cost, tpc = st && st.cost && st.cost.tokens_per_char;
+    if (!c || !tpc) return null;
+    const cost = ((c.in_base + JSON.stringify(payload).length * tpc) * c.price_in + c.out_typical * c.price_out) / 1e6;
+    return { usd: cost, usdText: usd(cost), yen: st.cost.usd_jpy, yenText: yenText(cost * st.cost.usd_jpy) };
+  }
   const yenText = (y) => `約 ${y < 1 ? y.toFixed(2) : y.toFixed(1)} 円`;
 
   // ---------------------------------------------------------------- 状態と、使えない理由
@@ -142,10 +150,10 @@
         <li>期間、合計の数字、計算の根拠の文（告示の表の単価と出典）</li>
         ${cons.length ? `<li>協議の項目 ${cons.length} 件</li>` : ''}${hist ? `<li>これまでの協議の履歴 ${hist} 件</li>` : ''}
         ${costLine}${leftLine}</ul>
-      <details class="ai-json" open><summary>送る JSON そのもの</summary><pre class="ai-json-text">${esc(JSON.stringify(sendFacts, null, 2))}</pre></details>
+      <details class="ai-json" open><summary class="ai-json-sum">送る JSON そのもの</summary><pre class="ai-json-text">${esc(JSON.stringify(sendFacts, null, 2))}</pre></details>
       <p class="small">送らないもの: 車番、運転者名、貼り付けた元の文、ファイル、ほかの相手の行。送った内容は保存しません。</p>
       ${out ? '<p class="errs">今日の上限に達しました。明日また使えます（今は型どおりの書面です）。</p>' : ''}
-      <div class="bar">${out ? '' : '<button type="button" class="primary" data-ai="send">送る</button>'}<button type="button" data-ai="cancel">やめる</button></div>`;
+      <div class="ai-bar">${out ? '' : '<button type="button" class="primary" data-ai="send">送る</button>'}<button type="button" data-ai="cancel">やめる</button></div>`;
   }
 
   function stepsHtml(events) {
@@ -172,7 +180,7 @@
     const badge = res.ok ? '<span class="ai-badge ok">一致</span>' : '<span class="ai-badge ng">要確認</span>';
     parts.push(`<div>${badge}${res.cached ? ' <span class="small">（同じ内容の結果を再利用しました）</span>' : ''}</div>`);
     if (res.ok && res.draft) {
-      parts.push(`<p class="ai-text" id="ai-text">${esc(res.draft)}</p><div class="bar"><button type="button" class="primary" data-ai="copy">説明文をコピー</button><span class="small" id="ai-copymsg" role="status"></span></div>`);
+      parts.push(`<p class="ai-text" id="ai-text">${esc(res.draft)}</p><div class="ai-bar"><button type="button" class="primary" data-ai="copy">説明文をコピー</button><span class="small" id="ai-copymsg" role="status"></span></div>`);
     } else if (res.message) {
       parts.push(`<p class="errs">${esc(res.message)}</p>`);
     }
@@ -182,7 +190,7 @@
     const chk = (res.steps || []).find((s) => s.step === 'check');
     const checkFailed = !!chk && chk.status === 'failed';
     parts.push(`<p><b>記録の点検</b></p>${checkFailed ? '<p class="small">点検できませんでした。</p>' : (res.issues || []).length ? `<ul>${res.issues.map((i) => `<li>${(i.n || 1) > 1 ? `${esc(fieldJa(i.field))}: ${esc(i.message)}（${esc(i.n)} 件）` : `${esc(i.row)} 行目 ${esc(fieldJa(i.field))}: ${esc(i.message)}`}</li>`).join('')}</ul>` : '<p class="small">指摘はありませんでした。</p>'}`);
-    if ((res.steps || []).some((s) => s.status === 'failed')) parts.push('<div class="bar"><button type="button" data-ai="retry">もう一度試す</button><span class="small">失敗した回も、もう一度押すと新しく送ります。</span></div>');
+    if ((res.steps || []).some((s) => s.status === 'failed')) parts.push('<div class="ai-bar"><button type="button" data-ai="retry">もう一度試す</button><span class="small">失敗した回も、もう一度押すと新しく送ります。</span></div>');
     if (tot) parts.push(`<p class="ai-cost">合計 入力 ${tot.input_tokens} / 出力 ${tot.output_tokens} トークン、${usd(tot.cost_usd)}（目安）。金額は概算です。</p>`);
     return parts.join('');
   }
@@ -325,7 +333,7 @@
         <pre class="ai-cg-sent" id="ai-cg-sent">${esc(cg.pending)}</pre>
         <ul><li>送るのはこの文だけです（ほかの欄、会社名、見積の内容、地図の選択は送りません）。送った内容は保存しません</li>${cost}${lft}</ul>
         ${out ? '<p class="errs">今日の上限に達しました。明日また使えます。荷物の表は手で入れてください。</p>' : ''}
-        <div class="bar">${out ? '' : '<button type="button" class="btn-primary sm" id="ai-cg-send" data-cg="send">送る</button>'}<button type="button" class="btn-link" id="ai-cg-cancel" data-cg="cancel">やめる</button></div></div>`);
+        <div class="ai-bar">${out ? '' : '<button type="button" class="btn-primary sm" id="ai-cg-send" data-cg="send">送る</button>'}<button type="button" class="btn-link" id="ai-cg-cancel" data-cg="cancel">やめる</button></div></div>`);
     } else if (cg.phase === 'busy') {
       parts.push('<p class="small" role="status" id="ai-cg-busy">Haiku 5.5 が表にしています…</p>');
     } else if (cg.phase === 'result' && cg.res) {
@@ -337,7 +345,7 @@
         ${r.origin || r.destination ? `<p class="small" id="ai-cg-places">発地: ${esc(r.origin || '（書かれていません）')} / 着地: ${esc(r.destination || '（書かれていません）')}（参考です。地図の選択は変わりません）</p>` : ''}
         ${(r.unknowns || []).length ? `<p class="ai-cg-h">分からなかったこと</p><ul class="ai-cg-list" id="ai-cg-unknowns">${r.unknowns.map((u) => `<li>${esc(u)}</li>`).join('')}</ul>` : ''}
         ${(r.dropped || []).length ? `<details class="ai-cg-drop"><summary>入れなかった行・消した所（${r.dropped.length} 件）</summary><ul class="ai-cg-list" id="ai-cg-dropped">${r.dropped.map((u) => `<li>${esc(u)}</li>`).join('')}</ul></details>` : ''}
-        <div class="bar"><button type="button" class="btn-link" data-cg="close">閉じる</button></div></div>`);
+        <div class="ai-bar"><button type="button" class="btn-link" data-cg="close">閉じる</button></div></div>`);
     }
     parts.push('</details>');
     return parts.join('');
@@ -402,6 +410,6 @@
     });
   }
 
-  root.AiExplain = { mount, OFF_LINE, status: getStatus, ownColumns, offerPolish, cargoRows, mountCargo, pseudonymize, restore, estimate, reasonText,
+  root.AiExplain = { mount, ownEstimate, freshStatus: fetchStatus, OFF_LINE, status: getStatus, ownColumns, offerPolish, cargoRows, mountCargo, pseudonymize, restore, estimate, reasonText,
     _stepsHtml: stepsHtml, _resultHtml: resultHtml };
 })(window);

@@ -713,6 +713,10 @@ body.view-own:not(.own-guided) #own-notes .f-n1 { display: none; }
   .neg-guided { padding-bottom: var(--neg-btns-h, 0px); }
   .neg-guided .neg-btns button { min-height: 44px; }
   .neg-guided .neg-btns .btn-sm, .neg-guided .neg-btns .btn-link { min-height: 28px; font-size: 13px; padding-top: 0; padding-bottom: 0; }
+  /* 帯の高さを減らして文面の欄を広く見せる: 主ボタンは 1 行、副のボタンは横に並べる */
+  .neg-guided .neg-btns { flex-direction: row; flex-wrap: wrap; }
+  .neg-guided .neg-btns .btn-primary { flex: 1 0 100%; }
+  .neg-guided .neg-btns .btn-sm { flex: 1 1 0; min-width: 0; padding-left: 8px; padding-right: 8px; }
   .neg-stephead { padding-left: 12px; padding-right: 12px; }
   .neg-steps { flex-wrap: nowrap; gap: 0 3px; font-size: 12.5px; letter-spacing: -0.02em; }
   .neg-steps li + li::before { margin-right: 3px; }

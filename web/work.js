@@ -72,9 +72,20 @@ const pickedMode = () => {
   const a = window.__app && window.__app.S ? window.__app.S.pickLabel : null;
   const r = document.querySelector('#cards input[name="cc-pick"]:checked');
   const v = a || (r ? r.value : null);
-  return v ? String(v).split(' ')[0] : null;   // 「貸切 4t車」は送り方の名前「貸切」だけを使う
+  return v ? String(v).split(' ')[0] : null;   // 「貸切 4t車」は送り方の名前「貸切」だけをサーバーに渡す（車格は依頼文に後から足す: withClass）
 };
-const versionSig = () => JSON.stringify([confirmedShipment(), curVer() && curVer().scenario, W.place, pickedMode()]);
+// 選んだ行が「貸切 2t車」のとき、依頼文の「検討している送り方: 貸切」を「貸切（2t 車）」にする
+const pickedFull = () => {
+  const a = window.__app && window.__app.S ? window.__app.S.pickLabel : null;
+  const r = document.querySelector('#cards input[name="cc-pick"]:checked');
+  return a || (r ? r.value : null);
+};
+function withClass(text, label) {
+  const m = /^(\S+)\s+(\d+t)車$/.exec(String(label || ''));
+  const NL = String.fromCharCode(10);
+  return m ? String(text).replace('検討している送り方: ' + m[1] + NL, '検討している送り方: ' + m[1] + '（' + m[2] + ' 車）' + NL) : text;
+}
+const versionSig = () => JSON.stringify([confirmedShipment(), curVer() && curVer().scenario, W.place, pickedFull()]);
 
 function scenarioOfVersion() {
   const v = curVer();
@@ -249,7 +260,12 @@ function insertAiCargoRow(r) {
   const it = { count: r.n ?? null, length_cm: r.l_cm ?? null, width_cm: r.w_cm ?? null, height_cm: r.h_cm ?? null, weight_kg: r.kg ?? null };
   const items = W.draft.items;
   const blank = (x) => ['count', 'length_cm', 'width_cm', 'height_cm', 'weight_kg'].every((k) => x[k] === null || x[k] === undefined || x[k] === '');
-  if (items.length === 1 && blank(items[0])) items[0] = it; else items.push(it);
+  // 荷物の表が、手を付けていない例の荷のままなら、例を消して AI の最初の行に置き換える（例の行を残さない）
+  const sc = W.scenarios.find((x) => x.id === W.scenarioSel);
+  const isExample = !!sc && JSON.stringify(items) === JSON.stringify(sc.shipment.items);
+  if (items.length === 1 && blank(items[0])) items[0] = it;
+  else if (isExample) { W.draft.items = [it]; W.scenarioSel = ''; }   // 「例 S1（架空の荷主）の値が入っています」の注記も消える
+  else items.push(it);
   W.touched = true;
   W.detailOpen = true;   // 入った行を、詳しい条件の表で見られるようにする
   renderCargoEditor();
@@ -375,8 +391,21 @@ function afterCase(changed) {
 // 版のお知らせは、送り方を比べるの画面のときだけ出す（自社の運行などの別の画面では、関係のないカードや地図の層の話になる）
 const toastCompare = (m) => { if (document.body.classList.contains('view-compare')) toast(m); };
 
+// 確定の前に、荷物の大きさ（縦・横・高さ）が入っているか確かめる。空のまま確定すると、全手段が「未確認」になり、理由が分かりにくい
+function missingDims(d) {
+  for (let n = 0; n < d.items.length; n++) {
+    const it = d.items[n];
+    if (![it.length_cm, it.width_cm, it.height_cm].every((x) => typeof x === 'number' && x > 0)) {
+      if (d.items.length === 1) return W.simple && W.simple.kind === 'pallet' ? 'パレットの大きさを選んでください（「1100×1100 標準」か「その他」で縦・横・高さを入れます）。' : '1 個の大きさを選んでください（宅配サイズか、縦・横・高さ）。';
+      return `荷物 ${n + 1} 行目の大きさ（縦・横・高さ）を入れてください。`;
+    }
+  }
+  return '';
+}
 async function confirmCargo() {
   const btn = $w('#ed-confirm');
+  const miss = missingDims(W.draft);
+  if (miss) { updateEdState(miss); toast(miss); return; }
   btn.disabled = true;
   try {
     const hadQuotes = W.C.quotes.length > 0;
@@ -459,6 +488,7 @@ async function loadStep() {
       const key = versionSig();
       if (!W.request || W.requestKey !== key) {
         W.request = await wapi('/api/request', { shipment: sh, scenario: v.scenario, ...(W.place ? { place: W.place } : {}), ...(pickedMode() ? { mode: pickedMode() } : {}) });
+        W.request.text = withClass(W.request.text, pickedFull());
         W.requestKey = key;
       }
     } else {
@@ -495,11 +525,16 @@ function renderRequest() {
     ? `<div class="w-need" role="group" aria-label="未入力の必須項目"><b>先に入れてください</b>
       ${needDate.map((m) => `<label><span class="lbl">${m}</span><input class="ctl sm" type="date" data-need="${m === '出荷日' ? 'ship_date' : 'desired_date'}" value="${fv(W.draft[m === '出荷日' ? 'ship_date' : 'desired_date'])}"></label>`).join('')}
       <span class="hint">2 つ入れると、依頼文に入ります。</span></div>` : '';
+  // 出荷日・希望着日が入っていて必須の指摘がないとき、または誘導なしの画面では、任意の入力欄を依頼文の上に出す。1 つ入れるたびに確定して、依頼文に入れる
+  const dates = needDate.length ? '' : `<div class="w-need w-dates" role="group" aria-label="出荷日と希望着日（任意）"><b>出荷日・希望着日（任意）</b>
+      <label><span class="lbl">出荷日</span><input class="ctl sm" type="date" data-opt-date="ship_date" value="${fv(W.draft.ship_date)}"></label>
+      <label><span class="lbl">希望着日</span><input class="ctl sm" type="date" data-opt-date="desired_date" value="${fv(W.draft.desired_date)}"></label>
+      <span class="hint">入れると、依頼文に入ります。</span></div>`;
   // 案内の表示: 依頼文と「依頼文をコピー」だけを前に出し、窓口の表・保存・ほかの作業は「詳しく」に入れる
   if (document.body.classList.contains('guided')) {
     return `<section class="sec">
     <div class="sec-h"><h3>見積依頼文</h3><span class="chip ${r.status === '依頼準備完了' ? 'ok' : 'check'}">${wesc(r.status === '依頼準備完了' ? '依頼文ができました' : r.status)}</span></div>
-    ${need}
+    ${need}${dates}
     <pre class="req-text w-peek" id="req-text">${wesc(reqHead(r.text))}</pre>
     <button type="button" class="btn-link w-peek-btn" id="req-more" aria-expanded="false" aria-controls="req-text">全文を読む</button>
     <div class="w-primary"><button type="button" class="btn-primary" id="req-copy">依頼文をコピー</button></div>
@@ -515,7 +550,7 @@ function renderRequest() {
   }
   return `<section class="sec">
     <div class="sec-h"><h3>見積依頼文</h3><span class="chip ${r.status === '依頼準備完了' ? 'ok' : 'check'}">${wesc(r.status === '依頼準備完了' ? '依頼文ができました' : r.status)}</span></div>
-    ${miss}${opt}
+    ${miss}${need || dates}${opt}
     <pre class="req-text" id="req-text" tabindex="0">${wesc(r.text)}</pre>
     <div class="btn-row"><button type="button" class="btn-sm" id="req-copy">コピー</button><button type="button" class="btn-sm" id="req-dl">テキストで保存</button>
       <span class="hint">送信はしません。運送会社の窓口に貼り付けて使います。</span></div>
@@ -533,6 +568,10 @@ function bindRequest() {
   ins.forEach((i) => i.addEventListener('change', () => {
     if (ins.some((x) => !x.value)) return;
     for (const x of ins) W.draft[x.dataset.need] = x.value;
+    confirmCargo();
+  }));
+  document.querySelectorAll('#w-body [data-opt-date]').forEach((i) => i.addEventListener('change', () => {
+    W.draft[i.dataset.optDate] = i.value || null;
     confirmCargo();
   }));
   document.querySelectorAll('#w-body [data-goto]').forEach((b) => b.addEventListener('click', () => setStep(Number(b.dataset.goto))));

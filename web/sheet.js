@@ -19,7 +19,11 @@ const Sheet = (() => {
     compare: [['panel', '条件'], ['detail', '着地', 'has-detail'], ['layers', '表示'], ['legend', '凡例'], ['timebar', '時間', 'has-route']],
   };
   const PANELS = ['m-right', 'm-left', 'm-summary', 'm-credits', 'panel', 'layers', 'legend', 'detail', 'work', 'timebar'];
-  const st = { pick: {}, prev: new Set(), key: '' };
+  const st = { pick: {}, prev: new Set(), key: '', map: null };
+  // 地図の動ける範囲（app.js の maxBounds と同じ値）。狭い画面は下のパネルの分だけ日本を上に寄せるので、南の端を広げる。
+  // 広げないと、中心が範囲の端で止まり、余白（pad）を足しても九州が下のパネルの裏に残る
+  const MAX_WIDE = [[110, 15], [165, 55]], MAX_NARROW = [[110, 0], [165, 55]];
+  const syncMax = () => { if (st.map) st.map.setMaxBounds(narrow() ? MAX_NARROW : MAX_WIDE); };
 
   const narrow = () => mq.matches;
   const sheetPx = () => Math.round(innerHeight * st0.ratio);
@@ -127,6 +131,8 @@ const Sheet = (() => {
 
   function init(map) {
     patchMap(map);
+    st.map = map;
+    syncMax();
     q('#sheet-tabs').addEventListener('click', (e) => {
       const bt = e.target.closest('button[data-sh]');
       if (!bt) return;
@@ -135,7 +141,7 @@ const Sheet = (() => {
       apply();
     });
     new MutationObserver(onBody).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    mq.addEventListener('change', () => { st.key = ''; apply(); });
+    mq.addEventListener('change', () => { st.key = ''; syncMax(); apply(); });
     st.prev = new Set();
     onBody();
   }

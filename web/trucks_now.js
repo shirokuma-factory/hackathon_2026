@@ -402,11 +402,14 @@
     const rm = C.refMax(p.series), si = v == null || rm == null ? null : v / rm;
     h += `<table><tr><td>この地点の 24 時間の最大との比</td><td>${si == null ? '—' : Math.round(si * 100) + '%（24時間の最大 ' + f(rm) + '）'}</td></tr><tr><td>${refLabel}</td><td>${refTxt}</td></tr>`;
     {
-      const u = p.up, d = p.down, tot = u != null && d != null ? u + d : null;
-      h += `<tr><td>${esc(lastHour)} の上り / 下り</td><td>${f(u)} / ${f(d)}</td></tr>`;
-      if (tot) h += `<tr><td>地図の流れの帯</td><td>上りの帯 ${Math.round((u / tot) * 100)}% / 下りの帯 ${Math.round((d / tot) * 100)}%（この比で台数を分けています）</td></tr>`;
+      // 上り・下り・小型車は、最新の 1 時間の分だけをファイルに持っている。選んだ時間が最新でないときは、別の時間の値を並べず「ありません」と書く
+      const isLatest = idx === NH - 1, selHour = C.fmtHour(S.data.hours[idx]);
+      const u = isLatest ? p.up : null, d = isLatest ? p.down : null, tot = u != null && d != null ? u + d : null;
+      const none = `<span title="上り・下り・小型車は最新の ${esc(lastHour)} の分だけを持っています">データなし（${esc(lastHour)}のみ）</span>`;
+      h += `<tr><td>${esc(selHour)} の上り / 下り</td><td>${isLatest ? `${f(u)} / ${f(d)}` : none}</td></tr>`;
+      if (tot) h += `<tr><td>地図の流れの帯</td><td title="この比で台数を分けて、道路の左右 2 本の帯にしています">上り ${Math.round((u / tot) * 100)}% / 下り ${Math.round((d / tot) * 100)}%</td></tr>`;
       if (tot) h += `<tr><td colspan="2"><div class="split" aria-hidden="true"><i style="width:${(u / tot) * 100}%;background:#5cc8ff"></i><i style="width:${(d / tot) * 100}%;background:#7d8aff"></i></div></td></tr>`;
-      h += `<tr><td>${esc(lastHour)} の小型車</td><td>${f(p.small)} 台/時</td></tr>`;
+      h += `<tr><td>${esc(selHour)} の小型車</td><td>${isLatest ? f(p.small) + ' 台/時' : none}</td></tr>`;
       h += `<tr><td>欠測の時間</td><td>${mh} / ${NH} 時間${mh ? '（赤い短線）' : ''}</td></tr>`;
     }
     h += '</table>';
@@ -415,7 +418,7 @@
         <div>折れ線の各時間 = <code>上り・大型交通量</code> + <code>下り・大型交通量</code>（どちらかが空なら欠測）</div>
         <div>小型車 = <code>上り・小型交通量</code> + <code>下り・小型交通量</code></div>
         <div>先週 = 同じ 2 項目の 7 日前の同じ時間帯。地点 = <code>常時観測点コード</code> ${esc(p.id)}（${p.type === 'CCTV' ? 'CCTV トラカン' : '常設'}）</div>
-        <div>JSON では <code>series[${idx}]</code> / <code>week_ago</code> / <code>up</code> / <code>down</code> / <code>small</code></div></div>`;
+        <div>ファイルには、24 時間の大型車の台数（いま ${idx + 1} 番目）、先週の同じ時刻、上り、下り、小型車の台数を持っています</div></div>`;
     }
     return h;
   }
@@ -437,15 +440,28 @@
     return null;
   }
 
+  // ホバーの吹き出しは短くする（見出し・台数・折れ線・最大との比だけ）。詳しい値はクリックで出るカードに持たせる
+  function tipHtml(p) {
+    const T = S.T, v = C.valueAt(p.series, T), max = Math.max(10, ...p.series.filter((x) => x != null), p.week_ago || 0);
+    const rm = C.refMax(p.series), si = v == null || rm == null ? null : v / rm;
+    const head = `<div class="ch"><b>地点 ${esc(p.id)}</b><span class="tag">${esc(p.type)}</span><span style="color:var(--muted)">${esc(p.pref || '県は不明')}</span></div>`;
+    const big = v == null ? '<div class="big miss">欠測<small>この時間は値がありません</small></div>' : `<div class="big">${f(v)}<small>台/時 大型車</small></div>`;
+    return head + big + cardSpark(p, T, max) + `<div style="color:var(--muted);font-size:11px;margin-top:4px">24 時間の最大との比 ${si == null ? '—' : Math.round(si * 100) + '%'}。クリックで詳しく見られます</div>`;
+  }
+  function hideTip() { const tip = $('#tip'); S.tipTarget = null; if (tip) tip.style.display = 'none'; }
   function placeTip(info, target) {
     const tip = $('#tip');
-    if (!target || window.innerWidth <= 800) { tip.style.display = 'none'; return; }
-    tip.innerHTML = cardHtml(target, false);
+    // クリックで開いたカードの地点では、吹き出しを重ねない
+    if (!target || window.innerWidth <= 800 || target._k === S.selKey) { hideTip(); return; }
+    S.tipTarget = target; S.tipInfo = { x: info.x, y: info.y };
+    tip.innerHTML = tipHtml(target);
     tip.style.display = 'block';
     const box = $('.mapwrap').getBoundingClientRect();
-    const x = Math.min(info.x + 16, box.width - tip.offsetWidth - 8), y = Math.min(info.y + 16, box.height - tip.offsetHeight - 8);
+    const x = Math.min(info.x + 16, box.width - tip.offsetWidth - 8), y = Math.min(info.y + 16, box.height - tip.offsetHeight - 120);   // 下の時間の帯（約 110px）に重ならない
     tip.style.left = Math.max(6, x) + 'px'; tip.style.top = Math.max(6, y) + 'px';
   }
+  // 時間が動いたとき: 吹き出しの値を作り直す（古い時間の値を残さない）
+  function refreshTip() { if (S.tipTarget && S.tipInfo) placeTip(S.tipInfo, S.tipTarget); }
 
   /* ---------------- 県の順位 ---------------- */
   const ROW_H = 28;
@@ -607,7 +623,7 @@
     S.overlay.setProps({ layers: buildLayers(now) });
     updateTimeUI();
     const idx = Math.round(S.T);
-    if (idx !== S.lastIdx) { S.lastIdx = idx; updatePipeline(); if (S.focus === 'missing' && S.pulse) S.pulse.pts = S.pts.filter((p) => C.valueAt(p.series, S.T) == null); }
+    if (idx !== S.lastIdx) { S.lastIdx = idx; refreshTip(); updatePipeline(); if (S.focus === 'missing' && S.pulse) S.pulse.pts = S.pts.filter((p) => C.valueAt(p.series, S.T) == null); }
     updateRank();
     if (S.selKey != null && (S.playing || S.pinT !== S.T)) { S.pinT = S.T; showPin(); }
   }
@@ -697,7 +713,7 @@
     S.map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
     S.overlay = new deck.MapboxOverlay({
       interleaved: false, layers: [],
-      pickingRadius: 6,
+      pickingRadius: window.innerWidth <= 800 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ? 18 : 6,   // 指で押すときは、点の周りを広く拾う
       onHover: (info) => {
         const t = pickTarget(info), k = t ? t._k : null;
         if (k !== S.hoverKey) { S.hoverKey = k; S.dirty = true; const q = t && t.pref; for (const [n, el] of S.rankEls) el.classList.toggle('hl', !!q && n === q); }
@@ -705,7 +721,7 @@
       },
       onClick: (info) => {
         const t = pickTarget(info);
-        if (t) { S.selKey = t._k; S.pinT = null; showPin(); openSheet(true); }
+        if (t) { S.selKey = t._k; S.pinT = null; hideTip(); showPin(); openSheet(true); }
         else { S.selKey = null; showPin(); if (S.stage) pickStage(S.stage); }
         S.dirty = true;
       },
@@ -714,6 +730,7 @@
     S.map.addControl(S.overlay);
     S.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     const zoomed = () => { S.dirty = true; };
+    S.map.on('movestart', hideTip);
     S.map.on('zoom', zoomed); S.map.on('load', zoomed);
     S.map.on('resize', () => { S.dirty = true; });
   }
@@ -731,14 +748,14 @@
     $('#rank-sort').addEventListener('click', () => { sortRank(S.T); updateRank(); });
     $('#latest').addEventListener('click', () => { setPlaying(false); setT(NH - 1); });
     const sl = $('#slider');
-    sl.addEventListener('input', () => { setPlaying(false); setT(parseFloat(sl.value), true); });
+    sl.addEventListener('input', () => { setPlaying(false); hideTip(); setT(parseFloat(sl.value), true); });
     sl.addEventListener('keydown', (e) => {
       const st = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key];
       if (st) { e.preventDefault(); setPlaying(false); setT(Math.round(S.T) + st); }
     });
     const sp = $('#spark');
     const seek = (ev) => { const r = sp.getBoundingClientRect(), { pad } = sparkGeom(); setPlaying(false); setT(((ev.clientX - r.left - pad) / (r.width - 2 * pad)) * (NH - 1), true); };
-    sp.addEventListener('pointerdown', (ev) => { sp.setPointerCapture(ev.pointerId); sp.dataset.drag = '1'; seek(ev); });
+    sp.addEventListener('pointerdown', (ev) => { hideTip(); sp.setPointerCapture(ev.pointerId); sp.dataset.drag = '1'; seek(ev); });
     sp.addEventListener('pointermove', (ev) => { if (sp.dataset.drag) seek(ev); });
     sp.addEventListener('pointerup', () => { delete sp.dataset.drag; });
     const lo = [0, ...C.STATE_BINS.map((b) => b.max)];
@@ -781,6 +798,6 @@
   }
 
   window.__trucks = S; // 確認と試験用
-  S.api = { check, applyData, setT, setPlaying, pickStage, selectPref, cardHtml, compute, updatePipeline };
+  S.api = { check, applyData, setT, setPlaying, pickStage, selectPref, cardHtml, tipHtml, placeTip, hideTip, compute, updatePipeline };
   main();
 })();

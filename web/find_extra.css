@@ -37,3 +37,13 @@
 .f-autonote { margin: 0 0 8px; padding: 6px 10px; border-left: 3px solid var(--accent); background: rgba(255, 255, 255, .06); font-size: 12px; line-height: 1.6; }
 .f-post { margin-top: 6px; }
 .f-posttext { width: 100%; box-sizing: border-box; font-size: 12px; line-height: 1.5; resize: vertical; }
+
+/* 書面の下書きの荷主の情報の欄（空きを探す） */
+.fc-shipper { display: grid; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.fc-shh { font-weight: 600; }
+.fc-shf { display: grid; grid-template-columns: 9em 1fr; gap: 8px; align-items: center; }
+.fc-shf span { color: var(--muted); }
+.fc-shnote { margin: 0; color: var(--muted); font-size: 12px; }
+.fc-sherr { margin: 0; color: var(--bad, #b3261e); font-size: 12px; min-height: 0; }
+.fc-sherr:empty { display: none; }
+@media (max-width: 480px) { .fc-shf { grid-template-columns: 1fr; gap: 2px; } }

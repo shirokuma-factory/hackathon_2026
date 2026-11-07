@@ -123,7 +123,9 @@ def status(public: bool) -> dict[str, Any]:
     extra = {"public": bool(public), "remaining": max(0, daily_limit() - used), "verify_opus": verify,
              "cost": {"tokens_per_char": TOKENS_PER_CHAR, "usd_jpy": USD_JPY, "stages": cost_stages(verify), "assumed": True},
              "cargo_cost": {"in_base": CARGO_IN_BASE, "out_typical": CARGO_OUT_TYPICAL, "out_max": CARGO_MAX_TOKENS,
-                            "price_in": PRICE[MODEL_HAIKU][0], "price_out": PRICE[MODEL_HAIKU][1]}}
+                            "price_in": PRICE[MODEL_HAIKU][0], "price_out": PRICE[MODEL_HAIKU][1]},
+             "own_cost": {"in_base": OWN_IN_BASE, "out_typical": OWN_OUT_TYPICAL, "out_max": OWN_MAX_TOKENS,
+                          "price_in": PRICE[MODEL_HAIKU][0], "price_out": PRICE[MODEL_HAIKU][1]}}
     if not _truthy("AI_EXPLAIN_ENABLED"):
         return {"available": False, "reason": "disabled", "limits": limits, **extra}
     if public and not _truthy("AI_EXPLAIN_PUBLIC"):
@@ -789,6 +791,8 @@ def job_state(jid: str) -> dict[str, Any]:
 OWN_MODEL = MODEL_HAIKU
 OWN_MAX_TOKENS = 2000
 OWN_EFFORT = "low"
+OWN_IN_BASE = 450       # 列の整理: 指示文と出力の形の入力トークン（仮定）
+OWN_OUT_TYPICAL = 400   # 同・出力の見込み（仮定）
 OWN_MAX_COLUMNS = 40
 OWN_HEADER_MAX = 30
 OWN_REASON_MAX = 60
@@ -939,7 +943,8 @@ SYS_POLISH = ("あなたは運送会社の配車担当です。帰り便の空�
               "守ること: (1) 事実（曜日、場所の言い方「…周辺」、車両や荷物の言葉）は元の文のとおりに残す。"
               "(2) 【 】で囲んだ部分（宛先・社名・担当者名など）は、文字を変えず、すべてそのまま残す。"
               "(3) 数字は元の文にあるものだけを、元の書き方（「1 回」など）のまま使う。新しい数字・金額・約束・条件を足さない。"
-              "(4) 荷主への質問は、初めての連絡でいちばん大事な 3〜4 件に絞る。残りの質問は消し、代わりに「詳しい条件は、ご関心があればあらためて伺います。」の 1 行を入れる。"
+              "(4) 荷主への質問は消さない。とくに、積み込みの設備（荷役の設備・方法）、日程・時間帯（広げられる範囲を含む）、受け取りの条件（混載の可否を含む）に関する質問は、すべて残す。"
+              "似た質問は 1 つの文にまとめてよいが、聞く内容は減らさない。"
               "(5) 元の文より長くしない。出力は書き直した案内文の本文だけ（前置き・説明・見出しの記号を付けない）。")
 _PH_RE = re.compile(r"【[^】]*】")
 _WD_RE = re.compile(r"([月火水木金土日])曜|[（(]([月火水木金土日])[）)]")
@@ -1022,6 +1027,36 @@ def polish_problems(src: str, out: str) -> list[str]:
     return probs
 
 
+POLISH_KEEP_RATIO = 0.6
+_BULLET_RE = re.compile(r"^\s*(?:[-*・●○■□◆◇▼▽▶▷・]|\d+[.)）]|[①-⑳])\s*")
+
+
+def _norm_line(line: str) -> str:
+    """箇条書きの記号・空白・句読点を除いて、同じ項目かどうかを比べる形にする。"""
+    t = unicodedata.normalize("NFKC", _BULLET_RE.sub("", line))
+    return re.sub(r"[\s、。，．,.！!？?:：;；・「」『』（）()]", "", t)
+
+
+def _bullet_lines(text: str) -> list[str]:
+    return [ln.strip() for ln in text.splitlines() if _BULLET_RE.match(ln) and _norm_line(ln)]
+
+
+def polish_removed(src: str, out: str) -> list[str]:
+    """元の文の箇条書きのうち、AI の案に残っていない行（記号を除いて比べる）。元の文に箇条書きが無ければ空。"""
+    out_n = [_norm_line(x) for x in out.splitlines()]
+    out_all = "".join(out_n)
+    gone: list[str] = []
+    for ln in _bullet_lines(src):
+        n = _norm_line(ln)
+        if n in out_all:
+            continue
+        grams = {n[i:i + 2] for i in range(len(n) - 1)}
+        if grams and sum(g in out_all for g in grams) / len(grams) >= POLISH_KEEP_RATIO:   # 言い回しを変えても、2 文字の並びの 6 割が残っていれば残っているとみなす
+            continue
+        gone.append(_BULLET_RE.sub("", ln).strip())
+    return gone
+
+
 def _call_polish(client: Any, text: str) -> tuple[Any, dict[str, Any]]:
     kw: dict[str, Any] = dict(model=POLISH_MODEL, max_tokens=POLISH_MAX_TOKENS, system=SYS_POLISH,
                               messages=[{"role": "user", "content": text}], output_config={"effort": POLISH_EFFORT})
@@ -1057,7 +1092,8 @@ def offer_polish(body: Any, client_id: str, public: bool) -> dict[str, Any]:
         raise AiError("AI の答えが途中で切れました。今の文のままお使いください", "truncated", 502)
     out = _text_of(resp).strip()
     problems = polish_problems(text, out)
-    res = {"ok": True, "ready": not problems, "text": out, "problems": problems, "step": rec, "cached": False}
+    res = {"ok": True, "ready": not problems, "text": out, "problems": problems, "removed": polish_removed(text, out),
+           "step": rec, "cached": False}
     if not problems:
         CACHE.put(key, res)
     return res
@@ -1097,11 +1133,14 @@ SYS_CARGO = ("あなたは運送の見積依頼の入力係です。荷主が文
              "(3) 「120 サイズ」「80 サイズ」のような宅配のサイズは 3 辺の合計の上限で、縦・横・高さは分からない。l_cm・w_cm・h_cm は null にし、"
              "note に「120サイズ（3辺合計120cm以内）」の形で書き、unknowns にも縦・横・高さが分からないことを書く。"
              "(4) kind は 段ボール・パレット・その他 のどれか。(5) 発地・着地は文に書かれている地名の文字をそのまま使い、書かれていなければ空の文字列。"
-             "(6) unknowns は、見積に必要で文に書かれていなかったこと（例: 寸法、重さ、個数、日付）を 1 件 40 字以内の短い日本語で並べる。note は 40 字以内。")
+             "(6) unknowns は、見積に必要で文に書かれていなかったことだけを（例: 寸法、重さ、個数、日付）1 件 40 字以内の短い日本語で並べる。"
+             "文に書かれていて分かっていること・確定していることは unknowns に入れない。分からないことが無ければ空の配列にする。note は 40 字以内。")
 
 _NUM = r"\d+(?:\.\d+)?"
 _CARGO_CHAIN_RE = re.compile(rf"{_NUM}\s*(?:mm|cm|m(?![a-z]))?(?:\s*[x*×]\s*{_NUM}\s*(?:mm|cm|m(?![a-z]))?){{1,2}}")
 _CARGO_NUM_RE = re.compile(rf"({_NUM})\s*(mm|cm|kg|g(?![a-z])|m(?![a-z])|t(?![a-z])|トン|サイズ)?")
+_KNOWN_RE = re.compile(r"確定|決まっ|判明|分かっ(?:て|た)|わかっ(?:て|た)|明記|記載あり|書かれて(?:い)?る")   # 「分かっていること」を「分からなかったこと」に入れない
+_UNSURE_RE = re.compile(r"未|ない|ません|不明|不確|分から|わから|不足|なし|無し|ず$")
 _CARGO_SIZE_RE = re.compile(r"(\d+)\s*サイズ")
 
 
@@ -1225,7 +1264,7 @@ def cargo_validate(text: str, data: Any) -> tuple[list[dict[str, Any]], str, str
     raw_unk = data.get("unknowns") if isinstance(data, dict) else None
     for u in raw_unk if isinstance(raw_unk, list) else []:
         if isinstance(u, str) and u.strip():
-            if _URL_RE.search(u) or _INSTR_RE.search(u):
+            if _URL_RE.search(u) or _INSTR_RE.search(u) or (_KNOWN_RE.search(u) and not _UNSURE_RE.search(u)):
                 continue
             unknowns.append(u.strip()[:CARGO_UNKNOWN_MAX])
     for s in sizes:

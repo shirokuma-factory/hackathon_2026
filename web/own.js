@@ -9,7 +9,7 @@ const Own = (() => {
   const W = { year: 2026, rows: [], res: null, err: '', tok: 0, tm: null, partner: '', pasteMsg: '', pasteNote: '', bulkMsg: '', idxMap: [], bad: new Set() };
   const O = {
     data: null, loaded: false, active: false, tab: 'import', market: false, dec: {}, fixTxt: {}, open: new Set(), geo: null, markers: [], dropMsg: '',
-    sample: null, mode: 'sample', files: [], userAliases: {}, largeT: null, yearPick: null, cost: { perKm: '', perHour: '' }, lastCopy: '', copyMsg: '', munis: null, pairs: null, busy: false, pendingYear: null, pendingRoles: null, haishaUse: null, aiOwn: { avail: null, confirm: null, busy: false, msg: '', sugg: {} }, maxPayload: loadMaxPayload(),
+    sample: null, mode: 'sample', files: [], userAliases: {}, largeT: null, yearPick: null, cost: { perKm: '', perHour: '' }, lastCopy: '', copyMsg: '', munis: null, pairs: null, busy: false, pendingYear: null, pendingRoles: null, haishaUse: null, aiOwn: { avail: null, confirm: null, busy: false, msg: '', sugg: {}, none: {}, done: false }, maxPayload: loadMaxPayload(),
     monthPick: null, board: null, tmr: null, fileOrder: null, prevHaishaUsed: null,  rate: { kind: 'km', value: '' }, cmpId: '', saveMsg: '', roles: {}, restoreOffer: null, glossOpen: false,
     guided: false, goal: '', advOpen: false, focus: null, focusKey: '', focusGeo: null, fxT0: 0,
   };
@@ -502,18 +502,38 @@ const Own = (() => {
     const same = cols.every((x) => optsOf(x) === optsOf(cols[0])); // 選べる役割が全列で同じなら、表の下に 1 回だけ出す
     const rows = cols.map((x) => `<tr><td>${esc(x.header)}</td><td>${Object.entries(x.shape.classes).map(([k, v]) => `${esc(SHAPE_JA[k] || k)} ${Math.round(v * 100)}%`).join('、') || '—'}</td>
       <td class="num">${Math.round(x.shape.fill * 100)}%</td><td class="num">${x.shape.distinct}</td>${same ? '' : `<td>${esc(optsOf(x))}</td>`}</tr>`).join('');
+    const st = c.st, est = st && AiExplain.ownEstimate ? AiExplain.ownEstimate(c.payload, st) : null;
+    const left = st && typeof st.remaining === 'number' ? st.remaining : null, out = left === 0;
+    const costLine = est ? `<p class="o-hint" id="own-ai-cost">1 回の費用の目安: ${est.usdText}（${est.yenText}。1 ドル ${est.yen} 円と仮定。Haiku 5.5 を 1 回呼びます）。同じ内容は結果を再利用し、費用も回数もかかりません</p>` : '';
+    const leftLine = left !== null ? `<p class="o-hint ai-left" id="own-ai-left">今日の残り ${left} 回${st.limits && st.limits.daily ? `（1 日 ${st.limits.daily} 回まで）` : ''}</p>` : '';
     return `<div class="o-aiconf" role="group" aria-label="AI に送る内容の確認"><b>この内容を Anthropic の API に送ります</b>
-      <table class="o-tbl"><thead><tr><th>列の見出し</th><th>値の形（割合）</th><th>入力あり</th><th>種類の数</th>${same ? '' : '<th>選べる役割</th>'}</tr></thead><tbody>${rows}</tbody></table>
+      <div class="o-aibar">${out ? '' : '<button type="button" class="primary" data-act="ai-cols-send">送る</button>'}<button type="button" data-act="ai-cols-cancel">やめる</button></div>
+      ${out ? '<p class="errs">今日の上限に達しました。明日また使えます。列の役割は手で選んでください。</p>' : ''}${costLine}${leftLine}
+      <div class="o-aiscroll"><table class="o-tbl"><thead><tr><th>列の見出し</th><th>値の形（割合）</th><th>入力あり</th><th>種類の数</th>${same ? '' : '<th>選べる役割</th>'}</tr></thead><tbody>${rows}</tbody></table></div>
       ${same ? `<p class="o-hint">選べる役割（全列共通）: ${esc(optsOf(cols[0]))}</p>` : ''}
-      <p class="o-hint">値そのものは送りません（車番・運転者・地点名・金額は出ません）。見出しも、列名の辞書にあるものと一般的な語だけを送り、それ以外は「列 N」にしています。形の割合は、読み込んだ全行からこのブラウザの中で数えています。送るのは上の表だけで、AI の案を決めるのはあなたです。</p>
-      <div class="bar"><button type="button" class="primary" data-act="ai-cols-send">送る</button><button type="button" data-act="ai-cols-cancel">やめる</button></div></div>`;
+      <p class="o-hint">値そのものは送りません（車番・運転者・地点名・金額は出ません）。見出しも、列名の辞書にあるものと一般的な語だけを送り、それ以外は「列 N」にしています。形の割合は、読み込んだ全行からこのブラウザの中で数えています。送るのは表だけで、AI の案を決めるのはあなたです。</p></div>`;
+  }
+  // 区間を 1 件も読めないファイルに、まだ足りない列の役割。見出しの辞書・選んだ役割・AI の案から数える（1 行 = 1 便の形で要る日付と、発地か着地）
+  function missingRoles(p) {
+    const have = new Set(Object.values(O.aiOwn.sugg).map((x) => x.role));
+    Object.values(p.roles || {}).forEach((g) => Object.values(g || {}).forEach((r) => have.add(r)));
+    Object.values(p.sigs || {}).forEach((sg) => {
+      String(sg).split('|').slice(1).forEach((h) => { const r = OwnCalc.roleOf(h, null) || (OwnCalc.HAISHA_DICT || {})[h.normalize('NFKC').trim()]; if (r) have.add(r); });
+    });
+    if (have.has('start_time') && have.has('end_time')) return [];   // デジタコの形は、日時の列があれば読める
+    const miss = [];
+    if (!have.has('date')) miss.push('日付の列');
+    if (!have.has('from') && !have.has('to')) miss.push('発地か着地の列');
+    return miss;
   }
   function aiBoxHtml(need) {
     const A = O.aiOwn;
+    const miss = A.done && O.pendingRoles ? missingRoles(O.pendingRoles) : [];
     if (!A.avail && !A.msg) return '';
     const open = Object.keys(A.sugg).some((k) => need.some((x) => aiKey(x) === k));
     return `<div class="o-aibox" id="own-aibox">${A.avail ? `<button type="button" class="btn-link" data-act="ai-cols" ${A.busy || A.confirm ? 'disabled' : ''}>AI に列を整理してもらう</button><small class="o-hint"> 列の見出しと値の形だけを送ります（確認の画面が出ます）</small>` : ''}
       ${A.busy ? '<p class="o-hint" role="status">AI が列を整理しています…</p>' : ''}${A.msg ? `<p class="o-hint" role="status">${esc(A.msg)}</p>` : ''}${A.confirm ? aiConfirmHtml(A.confirm) : ''}
+      ${miss.length ? `<p class="o-hint errs" id="own-ai-missing" role="status">この表だけでは区間をつくれません。${esc(miss.join('、'))}が要ります。AI の案を決めても、この列は足りないままです。ファイルに列を足して、読み直してください。</p>` : ''}
       ${open ? '<button type="button" class="btn-link" data-act="ai-apply-all">AI の案をすべて決める</button>' : ''}</div>`;
   }
   // 役割を 1 列ぶん決める（選んだ役割の記録と、見出しの形ごとの記憶）。計算し直しは呼び出し側が 1 回だけ行う
@@ -553,6 +573,7 @@ const Own = (() => {
     AiExplain.ownColumns(c.payload).then((res) => {
       const need = aiNeed();
       let n = 0;
+      A.none = {}; A.done = true;
       for (const s of res.suggestions || []) {
         const key = c.keys[s.index], x = need.find((y) => aiKey(y) === key);
         const role = s.role === 'ignore' ? 'skip' : s.role;
@@ -560,6 +581,7 @@ const Own = (() => {
         if (!ok) continue;
         A.sugg[key] = { role, confidence: s.confidence, reason: s.reason_ja }; n++;
       }
+      c.keys.forEach((k) => { if (!A.sugg[k]) A.none[k] = true; });   // AI が案を付けなかった（または選べない役割だった）列
       A.busy = false; A.msg = n ? `AI の案が ${n} 列に付きました。内容を確かめて、決めてください（決めるまで計算は変わりません）` : 'AI は役割を決められませんでした。手で選んでください';
       renderLeft();
     }).catch((e) => { A.busy = false; A.msg = e.message || 'AI に整理してもらえませんでした。手で選んでください'; renderLeft(); });
@@ -569,7 +591,7 @@ const Own = (() => {
     if (typeof document === 'undefined' || document.getElementById('own-fmt-style')) return;
     const st = document.createElement('style');
     st.id = 'own-fmt-style';
-    st.textContent = '.o-fmt{margin:6px 0 8px}.o-fmt .o-hint{margin:2px 0}.o-aibox{margin:6px 0 8px}.o-aibox>small{display:block;margin:2px 0}.o-aiconf{margin:8px 0;padding:10px 12px;border:1px solid var(--line,#ccc);border-radius:10px;overflow-x:auto}' +
+    st.textContent = '.o-fmt{margin:6px 0 8px}.o-fmt .o-hint{margin:2px 0}.o-aibox{margin:6px 0 8px}.o-aibox>small{display:block;margin:2px 0}.o-aiconf{margin:8px 0;padding:10px 12px;border:1px solid var(--line,#ccc);border-radius:10px;flex:none;overflow:visible}.o-aiconf .o-aiscroll{overflow-x:auto}.o-aiconf .o-aibar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0}' +
       '.o-aiconf .o-tbl{margin:6px 0}.o-aitag{color:var(--accent,#1b5fbf)}.o-aitag b{border:1px solid currentColor;border-radius:999px;padding:0 8px}';
     document.head.appendChild(st);
   })();
@@ -582,7 +604,7 @@ const Own = (() => {
       const opts = [['', 'この列の中身を選ぶ']].concat(x.options && x.options.length ? x.options.map((o) => [o.role, o.label_ja]) : ROLE_OPTS);
       const why = x.reason_ja || (x.blocking ? 'この列の役割を決めないと、ファイルを読めません' : '列の名前から役割を決められませんでした。使うか、使わないかを選べます');
       const files = (x.files && x.files.length ? x.files : [x.file]).filter((f) => f);
-      return `<div class="o-rl"><span class="o-rn"><b>${esc(x.column)}</b><small>${esc(x.source || '')}・${esc(files.join('、'))}</small>${x.samples && x.samples.length ? `<small>中身の例: ${esc(x.samples.slice(0, 3).join('、'))}</small>` : ''}<small>${esc(why)}</small>${x.suggested_label_ja ? `<small>候補: ${esc(x.suggested_label_ja)}</small>` : ''}${sg ? `<small class="o-aitag"><b>AI の案</b>: ${esc(roleJa(sg.role))}（${{ high: '確からしい', medium: 'たぶん', low: '自信なし' }[sg.confidence] || ''}）${esc(sg.reason)} <button type="button" class="btn-link" data-act="ai-apply" data-key="${esc(aiKey(x))}">この案で決める</button></small>` : ''}</span>
+      return `<div class="o-rl"><span class="o-rn"><b>${esc(x.column)}</b><small>${esc(x.source || '')}・${esc(files.join('、'))}</small>${x.samples && x.samples.length ? `<small>中身の例: ${esc(x.samples.slice(0, 3).join('、'))}</small>` : ''}<small>${esc(why)}</small>${x.suggested_label_ja ? `<small>候補: ${esc(x.suggested_label_ja)}</small>` : ''}${!cur0 && !sg && O.aiOwn.none && O.aiOwn.none[aiKey(x)] ? '<small class="o-aitag" data-ai-none="1">この列は AI でも決められませんでした</small>' : ''}${sg ? `<small class="o-aitag"><b>AI の案</b>: ${esc(roleJa(sg.role))}（${{ high: '確からしい', medium: 'たぶん', low: '自信なし' }[sg.confidence] || ''}）${esc(sg.reason)} <button type="button" class="btn-link" data-act="ai-apply" data-key="${esc(aiKey(x))}">この案で決める</button></small>` : ''}</span>
         <select class="ctl sm o-rsel" data-role-source="${esc(x.source || '')}" data-role-col="${esc(x.column)}" data-role-files="${esc(files.join('|'))}" aria-label="${esc(x.column)} の役割">${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`;
     }).join('');
   }
@@ -1792,7 +1814,7 @@ const Own = (() => {
       if (d.failed && roleNeeds(d).length) { // 区間を 1 件も読めないが、列の役割を選べば読めるかもしれない: 年を選ぶときと同じく、選ぶまで前の表示のまま役割を選んでもらう
         const roles = O.roles;
         restore();
-        O.pendingRoles = { files: files2, bad, need: roleNeeds(d), roles, failed: d.failed };
+        O.pendingRoles = { files: files2, bad, need: roleNeeds(d), roles, failed: d.failed, sigs: d.shape_signatures || {} };
         O.tab = 'import';
         renderLeft();
         showDropMsg(`${d.failed}。列の役割を選ぶと読めるかもしれません。選ぶまで計算せず、前の表示のままです`);
@@ -2062,7 +2084,7 @@ const Own = (() => {
       if (b.dataset.act === 'tmr-make') { tmrSync(); O.tmr.text = OwnMonth.boardOne(O.tmr); O.tmr.msg = ''; renderLeft(); return; }
       if (b.dataset.act === 'tmr-copy') { tmrCopy(); return; }
       if (b.dataset.act === 'sample-csv') { saveSampleCsv(); return; }
-      if (b.dataset.act === 'ai-cols') { const c = buildAiPayload(); if (c.payload.columns.length) { O.aiOwn.confirm = c; O.aiOwn.msg = ''; renderLeft(); } return; }
+      if (b.dataset.act === 'ai-cols') { const c = buildAiPayload(); if (c.payload.columns.length) { O.aiOwn.confirm = c; O.aiOwn.msg = ''; renderLeft(); if (AiExplain.freshStatus) AiExplain.freshStatus().then((st) => { if (O.aiOwn.confirm === c && st && st.available) { c.st = st; renderLeft(); } }); } return; }
       if (b.dataset.act === 'ai-cols-cancel') { O.aiOwn.confirm = null; renderLeft(); return; }
       if (b.dataset.act === 'ai-cols-send') { aiSend(); return; }
       if (b.dataset.act === 'ai-apply') { aiApply([b.dataset.key]); return; }

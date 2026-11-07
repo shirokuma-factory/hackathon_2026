@@ -390,6 +390,12 @@ def _layout_from_row(rows: list[list[str]], i: int, roles: dict[str, str | None]
         return {"kind": "wide", "header_row": i, "head": cells, "data_start": i + (2 if weekday_row else 1), "weekday_row": weekday_row,
                 "plate_col": plate_col, "type_col": type_col, "heads": heads, "day_cols": [] if md else dayn, "roles": rl,
                 "needs_month": needs_month, "title_month": list(title) if title else None}
+    # 1 行 = 1 便の表（日付と発地か着地の列がある）では、「走行距離」の列はその便の距離。月の合計の表（日付が見出しに並ぶ形）では今までどおり読まない（own_calc.js の layoutFromRow と同じ）
+    if "distance_km" not in rl and "date" in rl and ("from" in rl or "to" in rl):
+        jk = next((j for j, h in enumerate(cells) if rl[j] == "skip" and "走行距離" in head_key(h) and not re.search(r"合計|月間|累計|総|平均", head_key(h))
+                   and not (roles is not None and col_key(h) in roles)), None)
+        if jk is not None:
+            rl[jk] = "distance_km"
     c = {r: next((j for j, x in enumerate(rl) if x == r), None) for r in ("date", "from", "to", "weight", "time", "mark")}
     if c["date"] is not None and (c["from"] is not None or c["to"] is not None):
         title = _title_month(rows, i) or ((None, month) if month else None)

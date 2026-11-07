@@ -1244,9 +1244,17 @@ const Find = (() => {
       else v = it.by === 'carrier' ? '<em class="fc-miss">未記入（運送会社が選びます）</em>' : '<em class="fc-miss">未登録</em>';
       return `<div class="fc-row${it.legal ? ' legal' : ''}"><span>${esc(it.label)}</span><b>${v}</b></div>`;
     }).join('');
+    const sh = (inp.sh = inp.sh || { name: d.shipper.name, address: d.shipper.address, corporate_number: d.shipper.corporate_number });
+    const fld = (k, label, ph, extra) => `<label class="fc-shf"><span>${label}</span><input class="ctl sm" type="text" data-sh="${k}" value="${esc(sh[k] || '')}" placeholder="${ph}"${extra || ''}></label>`;
+    const shForm = `<form class="fc-shipper" id="fc-shipper" novalidate><div class="fc-shh">荷主の情報（架空のデモの値を入れてください）</div>` +
+      fld('name', '荷主の名称', '例: 架空商事株式会社', ' maxlength="100" autocomplete="off"') +
+      fld('address', '荷主の住所', '例: 東京都江東区（架空の住所）', ' maxlength="100" autocomplete="off"') +
+      fld('corporate_number', '荷主の法人番号', '13 桁の数字（個人事業主は空欄）', ' inputmode="numeric" maxlength="13" autocomplete="off"') +
+      `<p class="fc-shnote">法人番号は 13 桁の数字です。個人事業主は空欄のままで保存できます。</p><p class="fc-sherr" role="alert">${esc(F.ctShErr || '')}</p>` +
+      `<button type="submit" class="btn-primary sm" id="fc-shsave">荷主の情報を保存</button></form>`;
     const miss = d.missing.length ? `<p class="fc-missing">${d.missing.map((m) => `未記入: ${esc(m)}`).join('<br>')}</p>` : '<p class="fc-ready">必要な項目はすべて埋まっています。</p>';
     const done = F.confirmed.has(d.hold_id);
-    q('#fc-body').innerHTML = `<div class="fc-sub num">仮予約 ${esc(d.hold_id)}・便 ${esc(d.trip_id)}</div>${rows}${miss}` +
+    q('#fc-body').innerHTML = `<div class="fc-sub num">仮予約 ${esc(d.hold_id)}・便 ${esc(d.trip_id)}</div>${rows}${shForm}${miss}` +
       (done ? '<p class="fc-done">確定しました（架空のデモです。実際の契約は結ばれません）。</p>' : '');
     const b = q('#fc-confirm');
     b.disabled = !d.ready || done;
@@ -1259,6 +1267,23 @@ const Find = (() => {
       if (!k) return;
       (F.ct[F.ctOpen] = F.ct[F.ctOpen] || {})[k] = e.target.value;
       loadContract();
+    });
+    q('#fc-body').addEventListener('input', (e) => {
+      const k = e.target.dataset && e.target.dataset.sh;
+      if (k && F.ctOpen) { const inp = (F.ct[F.ctOpen] = F.ct[F.ctOpen] || {}); (inp.sh = inp.sh || {})[k] = e.target.value; }
+    });
+    q('#fc-body').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = F.ctOpen, inp = F.ct[id] || {}, sh = inp.sh || {};
+      const name = (sh.name || '').trim(), address = (sh.address || '').trim(), cn = (sh.corporate_number || '').trim().replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248));
+      F.ctShErr = !name ? '荷主の名称を入れてください' : !address ? '荷主の住所を入れてください' : cn && !/^\d{13}$/.test(cn) ? '法人番号は 13 桁の数字で入れてください（個人事業主は空欄）' : '';
+      if (F.ctShErr) { renderContract(); return; }
+      try {
+        F.ctData = (await Work.api('/api/b/contract', { hold_id: id, fuel_surcharge: inp.fuel || null, payment_method: inp.pay || null, shipper: { name, address, corporate_number: cn } })).contract;
+        F.ctShErr = ''; inp.sh = null;
+        toast('荷主の情報を保存しました');
+      } catch (err) { F.ctShErr = err.message; }
+      renderContract();
     });
     q('#fc-close').addEventListener('click', () => {
       F.ctOpen = null; renderContract();

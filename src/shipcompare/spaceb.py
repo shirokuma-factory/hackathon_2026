@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import threading
 import time
+import unicodedata
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -580,7 +581,8 @@ class Board:
             return self._hold_dict(h)
 
     # --- 書面の下書き（SPEC §21.3）
-    def contract(self, hold_id: Any, fuel_surcharge: Any = None, payment_method: Any = None) -> dict[str, Any]:
+    def contract(self, hold_id: Any, fuel_surcharge: Any = None, payment_method: Any = None,
+                 shipper: Any = None) -> dict[str, Any]:
         """承諾済みの仮予約から、運送会社と荷主の間の書面の下書きを作る。承諾前は BoardError。
 
         燃料サーチャージなどの料金と支払方法は運送会社の役が選ぶ。選ばれていない項目は missing に入れ、ready を false にする。
@@ -592,6 +594,8 @@ class Board:
                 raise BoardError(f"仮予約 {hold_id!r} が見つかりません")
             if h.state != ACCEPTED:
                 raise BoardError("運送会社が承諾した仮予約だけ、書面の下書きを作れます")
+            if shipper is not None:
+                h.shipper = _clean_shipper(shipper)
             trip = self._by_id[h.trip_id]
             carrier = next((c for c in load_demo()["carriers"] + [SELF_CARRIER] if c["id"] == trip["carrier_id"]), {})
             options = carrier.get("payment_options") or []
@@ -608,6 +612,25 @@ def _text_or_none(v: Any, name: str) -> str | None:
     if not isinstance(v, str) or len(v) > 200:
         raise BoardError(f"{name} は 200 文字以内の文字列で入れてください")
     return v.strip() or None
+
+
+def _clean_shipper(v: Any) -> dict[str, str]:
+    """書面の画面で入れた荷主の名称・住所・法人番号を検めて返す。法人番号は空欄（個人事業主）か 13 桁の数字。"""
+    if not isinstance(v, dict) or not all(isinstance(x, str) for x in v.values()):
+        raise BoardError("荷主の情報は文字列の辞書で入れてください")
+    out: dict[str, str] = {}
+    for k, label in (("name", "名称"), ("address", "住所")):
+        t = unicodedata.normalize("NFKC", v.get(k, "")).strip()
+        if not t:
+            raise BoardError(f"荷主の{label}を入れてください")
+        if len(t) > 100:
+            raise BoardError(f"荷主の{label}は 100 文字以内で入れてください")
+        out[k] = t
+    cn = unicodedata.normalize("NFKC", v.get("corporate_number", "")).strip()
+    if cn and not (len(cn) == 13 and cn.isascii() and cn.isdigit()):
+        raise BoardError("法人番号は 13 桁の数字で入れてください（個人事業主は空欄）")
+    out["corporate_number"] = cn
+    return out
 
 
 # 改正法の書面の項目（SPEC §21.3）。画面の並びもこの順
@@ -666,11 +689,13 @@ def _contract_draft(h: _Hold, trip: dict[str, Any], carrier: dict[str, Any], fue
         {"key": "terms", "legal": False, "label": "運送約款", "value": carrier.get("terms")},
         {"key": "insurance", "legal": False, "label": "貨物保険", "value": carrier.get("insurance")},
         {"key": "license", "legal": False, "label": "許可番号", "value": carrier.get("license_no")},
-        {"key": "corp_no", "legal": False, "label": "荷主の法人番号（架空の番号）", "value": sh.get("corporate_number")},
+        {"key": "corp_no", "legal": False, "label": "荷主の法人番号（架空の番号）", "value": sh.get("corporate_number") or ("なし（個人事業主）" if "corporate_number" in sh and sh.get("name") else None)},
     ]
     missing = [i["label"] for i in items if not i["value"]]
     return {"hold_id": h.id, "trip_id": h.trip_id, "state": h.state, "items": items, "missing": missing,
-            "ready": not missing, "notice": CONTRACT_NOTICE, "fiction_notice": FICTION_NOTICE}
+            "ready": not missing,
+            "shipper": {"name": sh.get("name", ""), "address": sh.get("address", ""), "corporate_number": sh.get("corporate_number", "")},
+            "notice": CONTRACT_NOTICE, "fiction_notice": FICTION_NOTICE}
 
 
 # ---------------------------------------------------------------- 帰り便の値段の式（SPEC §21.6）

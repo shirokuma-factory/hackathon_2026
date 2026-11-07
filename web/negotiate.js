@@ -554,6 +554,7 @@ const Negotiate = (() => {
     return `<div class="neg-aibox" id="neg-ai-result"><b>${ok ? 'AI の案' : '確認が必要な案'}</b>
       ${ok ? '' : `<p class="neg-warn" id="neg-ai-problems">元の文と食い違う点があります。内容を確かめてから使ってください。</p><ul class="neg-ailist">${(r.problems || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`}
       <pre class="neg-aitext" id="neg-ai-proposal">${esc(r.text)}</pre>
+      ${(r.removed || []).length ? `<div class="neg-aigone" id="neg-ai-removed"><b>AI の案で消えた項目（${r.removed.length} 件）</b><ul class="neg-ailist">${r.removed.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p class="neg-note">必要な項目は、置き換えたあとで文に書き足してください。</p></div>` : ''}
       <p class="neg-note">元の文は、置き換えるまで変わりません。</p>
       <div class="neg-aibtns"><button type="button" class="btn-primary" id="neg-ai-replace" data-act="ai-replace">この案に置き換える</button><button type="button" class="btn-sm" id="neg-ai-close" data-act="ai-close">閉じる</button></div></div>`;
   }
@@ -643,6 +644,16 @@ const Negotiate = (() => {
     }
     if (!done) { const t = r.getBoundingClientRect().top; if (t < 0) window.scrollBy(0, t - 8); }
   }
+  // 下に留まる主ボタンの帯の実際の高さを --neg-btns-h に入れる。描き直したときと、帯の高さが変わったとき（折り返し、文字の大きさ、画面の向き）に更新する
+  let btnsRO = null;
+  function watchBtns(r) {
+    const b = r.querySelector('.neg-btns');
+    const set = () => r.style.setProperty('--neg-btns-h', (b ? Math.ceil(b.getBoundingClientRect().height) : 0) + 'px');
+    set();
+    if (btnsRO) btnsRO.disconnect();
+    if (b && typeof ResizeObserver !== 'undefined') { btnsRO = new ResizeObserver(set); btnsRO.observe(b); }
+  }
+
   function render() {
     closeTrip();
     const r = getRoot();
@@ -677,7 +688,7 @@ const Negotiate = (() => {
       if (had && h && !(keep && r.querySelector('#' + keep.id))) { h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll: true }); } catch (e) { /* 使えないとき */ } toTop(r); }
     }
     // 下に留まる主ボタンが内容を覆わないよう、ボタンの高さぶんを下に空ける（狭い画面。own.css の .neg-guided の padding-bottom）
-    if (ctx.guided) { const b = r.querySelector('.neg-btns'); r.style.setProperty('--neg-btns-h', (b ? Math.ceil(b.getBoundingClientRect().height) : 0) + 'px'); }
+    if (ctx.guided) watchBtns(r);
     if (ctx.onStep) ctx.onStep(ctx.guided ? guidedStep() : 0);
     if (ctx.onFocus) {
       const a2 = ctx.guided && guidedStep() >= 2 ? A() : null;

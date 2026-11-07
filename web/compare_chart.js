@@ -94,7 +94,7 @@ const CompareChart = (() => {
       const isCheck = !fit(c);
       const cheapest = !!r && base.includes(c) && c.amount === r.lo;
       const best = cheapest ? `<span class="cc-mark">${ref ? '最安（確認が要る）' : '最安'}</span>` : '';
-      const why = isCheck && c.why ? `<span class="cc-why" title="${esc(c.why)}">確かめること: ${esc(String(c.why).split('。')[0])}</span>` : '';
+      const why = isCheck && c.why ? `<span class="cc-why" style="display:block;overflow:visible" title="${esc(c.why)}">確かめること: ${esc(String(c.why).split('。')[0])}</span>` : '';
       const expl = c.label === 'カゴ台車' ? `<span class="cc-expl">${esc(CAGE_EXPL)}</span>` : '';
       return `<label class="cc-row${cheapest && !isCheck ? ' cheap' : ''}${isCheck ? ' chk' : ''}">${name(c, true)}` +
         `${ok(isCheck ? '要確認' : '使える', isCheck ? 'chk' : 'yes')}` +
@@ -106,7 +106,7 @@ const CompareChart = (() => {
       const alt = !!MODE_OF[c.label];   // 鉄道・船・飛行機: 公表の運賃表が無い。日数も出典のある値が無いので見積で確かめる
       const shipNoData = nonet && c.label !== '飛行機';   // 船: 持っている経路の表に無いだけ。船が無いとは言わず、見積を頼む形で選べるままにする
       const txt = unusable ? '—' : shipNoData ? '航路の表に入っていません' : nonet ? 'なし（つながる路線がありません）' : alt ? '日数と額は見積で確認' : '見積が要ります';   // 料金が取れない手段は 0 円にせず「要見積」
-      const note = unusable ? (c.none ? `<span class="cc-why">理由: ${esc(c.none)}</span>` : '') : shipNoData ? `<span class="cc-nofare">${esc(SHIP_NO_DATA)}</span>` : nonet ? '' : alt ? `<span class="cc-nofare">${esc(ALT_DETAIL[c.label])}。金額は見積で確かめます。道は地図に出ます。</span>` : '<span class="cc-why">この行き先の料金表がないため、見積で確かめてください。</span>';
+      const note = unusable ? (c.none ? `<span class="cc-why">理由: ${esc(c.none)}</span>` : '') : shipNoData ? `<span class="cc-nofare">${esc(SHIP_NO_DATA)}</span>` : nonet ? '' : alt ? `<span class="cc-nofare">${esc(ALT_DETAIL[c.label])}。金額は見積で確かめます。道は地図に出ます。</span>` : (c.none && /不足:.*荷物/.test(c.none) ? `<span class="cc-why">荷物の入力が足りないため計算できません。${esc(String(c.none).replace(/^計算できない[（(]?/, '').replace(/[）)]$/, ''))}</span>` : '<span class="cc-why">この行き先の料金表がないため、見積で確かめてください。</span>');
       const dy = alt && !c.days ? '<span class="cc-days unk" data-l="日数">見積で確認</span>' : days(c);
       return `<label class="cc-row off">${name(c, !unusable && (!nonet || shipNoData))}${ok(unusable ? '使えない' : '未確認', unusable ? 'no' : 'unk')}` +
         `<span class="cc-track" data-l="費用の目安"><span class="cc-off">${txt}</span></span>${dy}${note}</label>`;

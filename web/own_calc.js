@@ -317,6 +317,11 @@ const OwnCalc = (() => {
       return { kind: 'wide', header_row: i, head: cells, data_start: i + (weekdayRow ? 2 : 1), weekday_row: weekdayRow, plate_col: plateCol, type_col: typeCol, heads,
         day_cols: md.length ? [] : dayn, roles: rl, needs_month: needsMonth, title_month: title ? title.slice() : null };
     }
+    // 1 行 = 1 便の表（日付と発地か着地の列がある）では、「走行距離」の列はその便の距離。月の合計の表（日付が見出しに並ぶ形）では今までどおり読まない（own.py の _layout_from_row と同じ）
+    if (!rl.includes('distance_km') && rl.includes('date') && (rl.includes('from') || rl.includes('to'))) {
+      const jk = cells.findIndex((h, j) => rl[j] === 'skip' && headKey(h).includes('走行距離') && !/合計|月間|累計|総|平均/.test(headKey(h)) && !(roles && Object.prototype.hasOwnProperty.call(roles, colKey(h))));
+      if (jk >= 0) rl[jk] = 'distance_km';
+    }
     const c = {};
     for (const r of ['date', 'from', 'to', 'weight', 'time', 'mark']) { const j = rl.indexOf(r); c[r] = j >= 0 ? j : null; }
     { const jk = rl.indexOf('distance_km'), jd = rl.indexOf('dep_time'); if (jk >= 0) c.km = jk; if (jd >= 0) c.dep = jd; } // 走行km・出発時刻の列がある表だけ、このキーが付く（own.py の cols と同じ形を保つ）

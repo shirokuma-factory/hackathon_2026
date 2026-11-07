@@ -458,7 +458,7 @@ function setupTimebar() {
   const tl = Rt.timeline(), cb = document.body.classList;
   if (!tl) { cb.remove('has-route'); $('#truck-tag').classList.remove('on'); return; }
   const M = tl.M, axis = axisMax();
-  $('#tb-end').textContent = tl.single ? `到着 運転${fmtMin(M)}` : `トラックで走る時間 計${fmtMin(tl.truckMin)}`;
+  $('#tb-end').textContent = tl.single ? `到着 運転${fmtMin(M)}` : `トラックで走る時間 計${fmtMin(tl.truckMin)}${S.sel >= 0 && curOd() && curOd().ferry && curOd().ferry[S.sel] ? '（港・空港まで。船・飛行機の時間は見積で確認）' : ''}`;
   let t = '', lab = '';
   const pc = (v) => ((v / axis) * 100).toFixed(2);
   if (tl.single) {
@@ -750,12 +750,12 @@ function select(i, { fly = true, fromSearch = false } = {}) {
 function renderDetail(i, demo) {
   const od = curOd(), r = S.route;
   const ferry = !!(od.ferry && od.ferry[i]);
-  const km = demo ? demo.km : od.km[i], min = demo ? demo.minutes : od.min[i];
+  const km = demo ? demo.km : od.km[i], min = ferry ? null : demo ? demo.minutes : od.min[i];   // 船・飛行機でしか行けない着地は道路の運転時間を出さない（下の帯のトラックの区間と食い違うため）
   const days = ferry ? null : demo ? Math.max(1, Math.ceil(demo.minutes / 540)) : od.days[i];
   $('#d-from').textContent = od.name;
   $('#d-to').innerHTML = `<span class="ar">→</span><small>${escapeHtml(S.idx.prefs[i])}</small> ${escapeHtml(S.idx.names[i])}`;
   $('#s-km').innerHTML = km === null ? '—' : `${km.toFixed(1)}<small>km</small>`;
-  $('#s-time').innerHTML = min === null ? '—' : fmtMin(min).replace(/(\d+)(時間|分)/g, '$1<small>$2</small>');
+  $('#s-time').innerHTML = min === null ? (ferry ? '—<small>船の時間は見積で確認</small>' : '—') : fmtMin(min).replace(/(\d+)(時間|分)/g, '$1<small>$2</small>');
   $('#s-days').innerHTML = days === null ? '—' : `${days}<small>日</small>`;
   $('#route-kind').textContent = '距離と日数の数え方を見る';
   const rn = document.querySelector('.route-note p');
@@ -1225,7 +1225,7 @@ const CORE_MODULES = { PERF: () => typeof PERF, Hubs: () => typeof Hubs, Rt: () 
 const VIEW_MODULES = {
   market: { label: '全国の物流傾向', host: '#m-left', mods: { Market: () => typeof Market, Muni: () => typeof Muni } },
   find: { label: '空きを探す・つなぐ', host: '#find-view', mods: { Find: () => typeof Find } },
-  own: { label: '自社の運行', host: '#own-view', mods: { Own: () => typeof Own, OwnCalc: () => typeof OwnCalc, OwnMonth: () => typeof OwnMonth } },
+  own: { label: '自社の運行', host: '#own-view', mods: { Own: () => typeof Own, OwnCalc: () => typeof OwnCalc, OwnMonth: () => typeof OwnMonth, WaitingShared: () => typeof WaitingShared, WaitingMap: () => typeof WaitingMap } },
 };
 function showViewMissing(view) {
   const info = S.missingViews && S.missingViews[view];
@@ -1437,7 +1437,12 @@ function setupMarketNow(noN) {
   if (cb && cb.getAttribute('aria-expanded') === 'true') cb.click();
   if (S.guide) { const cd = q('#m-credits-d'); if (cd) { cd.open = false; b.classList.remove('cr-open'); } }   // 案内の表示では出典は閉じておく（開けば読める）
   const sum = q('#open-sum'), rank = q('#open-rank');
-  sum.addEventListener('click', () => b.classList.toggle('m-sum-open'));
+  const sheetOn = () => b.classList.contains('sheet-mode');   // 狭い画面は下のパネルの「数字」の切り替えで出す（#m-summary は sh-on のときだけ見える）
+  const sheetTab = (id) => { const t = q(`#sheet-tabs button[data-sh="${id}"]`); if (t) t.click(); return !!t; };
+  sum.addEventListener('click', () => {
+    if (sheetOn()) { if (!sheetTab(q('#m-summary').classList.contains('sh-on') ? 'm-left' : 'm-summary')) b.classList.toggle('m-sum-open'); return; }
+    b.classList.toggle('m-sum-open');
+  });
   q('#mg-next').addEventListener('click', () => {   // 選んだ区間（荷が多い向きの発地 pf と着地 pt）をアドレスで空きを探すへ渡す
     const r = V.Market.pairNames(), p = new URLSearchParams({ v: 'find', g: '1' });
     if (r) { p.set('pf', r.from); p.set('pt', r.to); }
@@ -1460,7 +1465,7 @@ function setupMarketNow(noN) {
   const sync = () => {
     const gNow = b.classList.contains('guided') && b.classList.contains('view-market');
     if (gNow !== lastG) { lastG = gNow; try { V.Market.syncMarkers(); } catch (e) { /* 地図が無いとき */ } }   // 案内の表示に入る・出るとき、上位 5 区間の番号を出し入れする
-    const so = b.classList.contains('m-sum-open'), ro = !b.classList.contains('m-right-collapsed');
+    const so = sheetOn() ? q('#m-summary').classList.contains('sh-on') : b.classList.contains('m-sum-open'), ro = !b.classList.contains('m-right-collapsed');
     sum.setAttribute('aria-expanded', String(so)); sum.textContent = so ? '全国の指標を閉じる' : '全国の指標を見る';
     rank.setAttribute('aria-expanded', String(ro)); rank.textContent = ro ? '区間の順位を閉じる' : '区間の順位を見る';
     try {   // 案内の表示: 帰りが空きやすい区間の上位 3 件（物流センサス）
@@ -1491,6 +1496,7 @@ function setupMarketNow(noN) {
   };
   const ob = new MutationObserver(sync);
   ob.observe(b, { attributes: true, attributeFilter: ['class'] });
+  ob.observe(q('#m-summary'), { attributes: true, attributeFilter: ['class'] });
   for (const s of ['#m-count', '#m-scope', '#m-mode', '#m-n-out', '#m-km-out', '#m-tbody']) { const e = q(s); if (e) ob.observe(e, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-pressed'] }); }
   sync();
 }

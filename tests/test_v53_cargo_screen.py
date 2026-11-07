@@ -132,7 +132,7 @@ def test_payload_is_only_the_text_and_rows_enter_only_when_pressed(app):
     page.wait(lambda: len(items(page)) != len(before) or items(page) != before, 10, "行の追加")
     it = items(page)[-1]
     assert (it["count"], it["length_cm"], it["width_cm"], it["height_cm"], it["weight_kg"]) == (1, 110, 110, 150, 450)
-    assert items(page)[:-1] == before and len(items(page)) == len(before) + 1                 # 段ボールの行はまだ入っていない（押した 1 行だけ増えた）
+    assert len(items(page)) == 1                                                              # 手を付けていない例の行は、入れた最初の AI の行に置き換わる（例の行は残らない）
     assert page.js("!!document.querySelector('#ai-cg-result') && document.querySelectorAll('[data-cg=insert][disabled]').length") == 1   # 入れた行は押せない
     assert "入れました" in T(page, "#ai-cg-result")
 

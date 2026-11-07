@@ -31,7 +31,7 @@ API（POST は Content-Type: application/json の JSON。入力の誤りは 400 
     POST /api/b/match   {shipment, dest_code, category?, in_container?, fragile?, is_box?, origin_code?, window_from?, window_to?}  便ごとの合否と理由
     POST /api/b/hold    {trip_id, shipment, dest_code, ..., hold_minutes? | hold_until?, shipper?}   期限付きの仮予約（余りを減らす。締切は 72 時間まで）
     POST /api/b/decide  {hold_id, decision: accept|decline}                  運送会社の役の承諾か辞退
-    POST /api/b/contract {hold_id, fuel_surcharge?, payment_method?}          承諾済みの仮予約から書面の下書き（SPEC §21.3。承諾前は 400）
+    POST /api/b/contract {hold_id, fuel_surcharge?, payment_method?, shipper?{name,address,corporate_number}}          承諾済みの仮予約から書面の下書き（SPEC §21.3。承諾前は 400）
     POST /api/b/price_formula {trip_id, shipment, base_load_rate?, lead_discount?, region?, min_fee_yen?}   個建運賃の参考額（SPEC §21.6。運送会社の役の画面で使う）
     POST /api/b/reset   {}                                                    初期の架空データに戻す
 """
@@ -717,7 +717,8 @@ def api_b_hold(body: Any) -> dict[str, Any]:
 def api_b_contract(body: Any) -> dict[str, Any]:
     body = _need_dict(body)
     try:
-        return {"contract": _board().contract(body.get("hold_id"), body.get("fuel_surcharge"), body.get("payment_method")),
+        return {"contract": _board().contract(body.get("hold_id"), body.get("fuel_surcharge"), body.get("payment_method"),
+                                       body.get("shipper")),
                 **_b_notices()}
     except spaceb.BoardError as e:
         raise BadRequest(str(e)) from e
