@@ -1020,6 +1020,7 @@ const WaitingShared = (() => {
   // 照合の鍵は 3 通り。車番が両方にあれば日付と車番（数字の下 4 桁）。車番が片方でも空なら、日付と場所と到着の時刻（±30 分）。場所も空なら日付と到着の時刻（±30 分）。
   // 候補が複数あって 1 組に決められない行は、組にせず candidates に並べる（推測で組にしない）
   const FALLBACK_MIN = 30;
+  const VEHICLE_MIN = 60;   // 車番が同じ行を同じ回とする到着の差の上限（分）
   const BEST_GAP = 10;   // 候補が複数あるとき、いちばん近い行が 2 番目より何分以上近ければ同じ回とするか
   const placeKey = (v) => nz(v).replace(/\s+/g, '').toLowerCase();
   const placeSame = (a, b) => { const x = placeKey(a), y = placeKey(b); return !!x && !!y && (x === y || (Math.min(x.length, y.length) >= 2 && (x.includes(y) || y.includes(x)))); };
@@ -1027,7 +1028,11 @@ const WaitingShared = (() => {
     const limit = thr == null ? 15 : thr;
     const mkPair = (c, s, key) => {
       const ad = sdiff(mm(c.arrive), mm(s.arrive)), sd = sdiff(mm(c.start), mm(s.start));
-      return { date: c.date, vehicle: c.vehicle_no || s.vehicle_no || '', key, carrier: c, shipper: s, arrive_diff: ad, start_diff: sd, differs: Math.abs(ad) >= limit || Math.abs(sd) >= limit };
+      // 待機の長さ（到着から荷役開始まで）の差と、荷役終了の差。到着と開始がそれぞれ限度未満でも、反対向きにずれて待機が長くなる書面を見逃さない
+      const wd = sdiff(fwd(mm(c.arrive), mm(c.start)), fwd(mm(s.arrive), mm(s.start)));
+      const ed = mm(c.end) !== null && mm(s.end) !== null ? sdiff(mm(c.end), mm(s.end)) : 0;
+      return { date: c.date, vehicle: c.vehicle_no || s.vehicle_no || '', key, carrier: c, shipper: s, arrive_diff: ad, start_diff: sd, wait_diff: wd, end_diff: ed,
+        differs: Math.abs(ad) >= limit || Math.abs(sd) >= limit || Math.abs(wd) >= limit || Math.abs(ed) >= limit };
     };
     const pairs = [], ambiguous = [];
     const usedC = new Set(), usedS = new Set();
@@ -1038,7 +1043,14 @@ const WaitingShared = (() => {
     for (const k of gc.keys()) {
       if (!gs.has(k)) continue;
       const cand = [];
-      gc.get(k).forEach((i) => gs.get(k).forEach((j) => cand.push([Math.abs(sdiff(mm(carrierRows[i].arrive), mm(shipperRows[j].arrive))), i, j])));
+      // 車番と日付が同じでも、場所が違う、または到着が VEHICLE_MIN 分より離れている行は、別の回として組にしない
+      gc.get(k).forEach((i) => gs.get(k).forEach((j) => {
+        const c = carrierRows[i], s = shipperRows[j];
+        if (placeKey(c.place) && placeKey(s.place) && !placeSame(c.place, s.place)) return;
+        const d = Math.abs(sdiff(mm(c.arrive), mm(s.arrive)));
+        if (!(d <= VEHICLE_MIN)) return;
+        cand.push([d, i, j]);
+      }));
       cand.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
       for (const [, i, j] of cand) {
         if (usedC.has(i) || usedS.has(j)) continue;

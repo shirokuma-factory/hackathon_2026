@@ -620,7 +620,7 @@ const yen = (v) => `${n0(v)} 円`;
 const hm = (m) => (m ? `${Math.floor(m / 60)} 時間 ${m % 60} 分` : '0 分');
 
 const S = { exampleAuto: false, year: 2026, rows: [], res: null, err: '', partner: '', idxMap: [], bad: new Set(), tm: null,
-  defaults: { vehicle_class: DEFAULT_CLASS, method: DEFAULT_METHOD }, askPartner: false, brokenRaw: null, memoRead: null, gTouched: false, mode: 'carrier', modeAuto: false, carrierText: '', cross: null, crossOn: false, crossCarrier: '', crossDocAmount: 0, noticeOpen: '' };
+  defaults: { vehicle_class: DEFAULT_CLASS, method: DEFAULT_METHOD }, askPartner: false, brokenRaw: null, memoRead: null, gTouched: false, mode: 'carrier', modeAuto: false, carrierText: '', cross: null, crossOn: false, crossCarrier: '', crossDocAmount: 0, crossDocBad: false, noticeOpen: '' };
 const blankRow = () => Object.fromEntries(COLS.map((c) => [c.k, '']));
 const isBlank = (r) => COLS.every((c) => !String(r[c.k] || '').trim());
 
@@ -1321,7 +1321,7 @@ function crossAmountHtml(c) {
   if (c.carrier_ambiguous) return `${lead}: ${docLabel}。自社の受付記録には運送会社が ${c.carriers.length} 社あり、書面の車番からどの会社の書面か決められなかったので、自社側の額は並べません。上の「自社の受付記録で照らす運送会社」で選ぶと、同じ会社どうしの額を並べます。`;
   const rowsOf = (n, fee) => `${n} 行（待機時間料 ${yen(fee)}）`;
   const cmpLine = c.pair_n
-    ? `<br><b>同じ行どうしの比較</b>（組になった ${c.pair_n} 組。書面 ${c.pair_n} 行と自社 ${c.pair_n} 件。待機時間料だけ）: 書面の時刻から数えた額 <b>${yen(c.pair_carrier_fee)}</b>、自社の受付の時刻から数えた額 <b>${yen(c.pair_shipper_fee)}</b>、差 ${yen(Math.abs(c.pair_carrier_fee - c.pair_shipper_fee))}（${c.pair_carrier_fee > c.pair_shipper_fee ? '書面のほうが多い' : c.pair_carrier_fee < c.pair_shipper_fee ? '書面のほうが少ない' : '差なし'}）。`
+    ? `<br><b>同じ行どうしの比較</b>（組になった ${c.pair_n} 組。書面 ${c.pair_n} 行と自社 ${c.pair_n} 件。待機時間料だけ）: 書面の時刻から数えた額 <b>${yen(c.pair_carrier_fee)}</b>、自社の受付の時刻から数えた額 <b>${yen(c.pair_shipper_fee)}</b>、差 ${yen(Math.abs(c.pair_carrier_fee - c.pair_shipper_fee))}（${c.pair_carrier_fee > c.pair_shipper_fee ? '書面のほうが多い' : c.pair_carrier_fee < c.pair_shipper_fee ? '書面のほうが少ない' : '差なし'}）。${c.class_diff_n ? `組のうち ${c.class_diff_n} 組は車種が違う（書面と受付簿の車種、または受付簿に車種が無く上の既定の単価で数えた）ので、この差には車種の違いによる単価の差が入っています。` : ''}`
     : '<br><b>同じ行どうしの比較</b>: 組になった行が無いので、額は並べません。';
   const rest = c.unpaired_carrier.length || c.unpaired_shipper.length
     ? `<br><b>組にならなかった行</b>（上の比較には入れていません）: 書面 ${rowsOf(c.unpaired_carrier.length, c.unpaired_carrier_fee)}、自社 ${rowsOf(c.unpaired_shipper.length, c.unpaired_shipper_fee)}。` : '';
@@ -1360,10 +1360,12 @@ function crossResultHtml() {
   const lim = c.limit;
   const miss = (arr, label) => (arr.length ? `<h3>${label}（${arr.length} 件）</h3><div class="scroll-x"><table class="par"><thead><tr><th>日付</th><th>車番</th><th>場所</th><th>到着</th><th>荷役開始</th></tr></thead><tbody>${arr.map((x) => `<tr><td>${esc(x.date)}</td><td>${esc(x.vehicle_no)}</td><td>${esc(x.place)}</td><td>${esc(x.arrive)}</td><td>${esc(x.start)}</td></tr>`).join('')}</tbody></table></div>` : '');
   return `<div id="cross-result">
-    <p><b>見比べた結果:</b> 同じ回と見られる ${c.pairs.length} 回のうち、時刻が ${lim} 分以上違うのは ${c.differ.length} 回です。書面だけにある回 ${c.only_carrier.length}、受付簿だけにある回 ${c.only_shipper.length}${c.ambiguous.length ? `、どの回か決められない行 ${c.ambiguous.length} 件` : ''}。</p>
+    <p><b>見比べた結果:</b> 同じ回と見られる ${c.pairs.length} 回のうち、時刻が ${lim} 分以上違うのは ${c.differ.length} 回です（到着・荷役開始・荷役終了のどれか、または待機の長さの差で数えます）。書面だけにある回 ${c.only_carrier.length}、受付簿だけにある回 ${c.only_shipper.length}${c.ambiguous.length ? `、どの回か決められない行 ${c.ambiguous.length} 件` : ''}。</p>
     <p class="small" id="cross-keys">見比べに使った項目: 車番 ${c.key_counts.vehicle} 回、場所と時刻 ${c.key_counts.place + c.key_counts.time} 回。${c.key_counts.vehicle === 0 && c.pairs.length ? '車番が無いので、場所と時刻で見比べました。' : ''}</p>
     <details id="cross-amount-d"${c.recalc ? '' : ' open'}><summary class="small">額の内訳（書面の額と自社の額の範囲）</summary><p id="cross-amount">${crossAmountHtml(c)}</p></details>
-    ${c.recalc ? `<div id="cross-recalc"><p><b>受付簿の時刻で数えた額:</b> 受付簿の時刻で数えると <b class="big">${yen(c.recalc.own)}</b> です。書面の時刻で数えると ${yen(c.recalc.carrier)} で、差は <b>${yen(Math.abs(c.recalc.diff))}</b>（${c.recalc.diff > 0 ? '書面のほうが多い' : c.recalc.diff < 0 ? '書面のほうが少ない' : '差なし'}）です。${c.recalc.doc != null ? `書面に書かれた額（${yen(c.recalc.doc)}）は荷役の分などを含むことがあるので、この比べ方には使っていません。` : ''}${c.recalc.reverted ? `置き換えると時刻の順が合わなくなる ${c.recalc.reverted} 組は、書面の時刻のままです。` : ''}</p>
+    ${c.recalc ? `<div id="cross-recalc"><p><b>受付簿の時刻で数えた額:</b> 受付簿の時刻で数えると <b class="big">${yen(c.recalc.own)}</b> です（書面と受付簿の両方にある ${c.recalc.pair_n} 回だけ。書面の額を借りて数えた回はありません）。書面の時刻で数えると ${yen(c.recalc.carrier)} で、差は <b>${yen(Math.abs(c.recalc.diff))}</b>（${c.recalc.diff > 0 ? '書面のほうが多い' : c.recalc.diff < 0 ? '書面のほうが少ない' : '差なし'}）です。${c.recalc.class_part ? `この差のうち ${yen(Math.abs(c.recalc.class_part))} は時刻ではなく車種の違いによる単価の差です（書面と受付簿の車種、または受付簿に車種が無く上の既定の単価で数えた違い）。` : ''}${c.recalc.doc != null ? `書面に書かれた額（${yen(c.recalc.doc)}）は荷役の分などを含むことがあるので、この比べ方には使っていません。` : ''}${c.recalc.reverted ? `置き換えると時刻の順が合わなくなる ${c.recalc.reverted} 組は、書面の時刻のままです。` : ''}</p>
+      ${c.recalc.unrecorded.n ? `<p id="cross-unrecorded"><b>受付簿に無い回（${c.recalc.unrecorded.n} 回、書面の額 ${yen(c.recalc.unrecorded.amount)}）:</b> 当方の記録で確かめられないので、上の額には入れていません。</p>` : ''}
+      ${c.recalc.undecided.n ? `<p id="cross-undecided"><b>どの回か決められない回（${c.recalc.undecided.n} 回、書面の額 ${yen(c.recalc.undecided.amount)}）:</b> 受付簿のどの回か決められないので、上の額には入れていません。</p>` : ''}
       <p class="small">国の標準的運賃の表で計算した目安です。</p>
       <textarea id="reply-ta" rows="9" readonly aria-label="運送会社への返信の文">${esc(replyText(c))}</textarea>
       <div class="bar"><button type="button" id="b-copyreply" class="primary">返信の文をコピー</button><span class="small" id="reply-msg" role="status"></span></div></div>` : ''}
@@ -1371,7 +1373,7 @@ function crossResultHtml() {
     ${c.carrier_errors ? `<p class="small">運送会社の書面の ${c.carrier_errors} 行は読めなかったので、照合から外しています。</p>` : ''}
     ${c.ambiguous.length ? `<div id="cross-ambiguous"><h3>どの回と同じか決められない行（${c.ambiguous.length} 件）</h3><p class="small">同じ日・場所に近い時刻の回が複数あります。</p><div class="scroll-x"><table class="par"><thead><tr><th>書面の行（日付・場所・到着・荷役開始）</th><th>自社の受付記録の候補</th></tr></thead><tbody>${c.ambiguous.map((g) => `<tr><td>${esc(g.carrier.date)} ${esc(g.carrier.place)} ${esc(g.carrier.arrive)} ${esc(g.carrier.start)}</td><td>${g.candidates.map((x) => `${esc(x.arrive)} ${esc(x.start)}${x.vehicle_no ? ' 車番 ' + esc(x.vehicle_no) : ''}`).join('<br>')}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
     ${c.differ.length ? `<h3>時刻が ${lim} 分以上違う行（${c.differ.length} 組）</h3><p class="small">差は、自社の受付記録の時刻 − 運送会社の書面の時刻です。プラスは自社の時刻のほうが遅いことを示します。</p>
-    <div class="scroll-x"><table class="par" id="cross-differ"><thead><tr><th>日付</th><th>車番・場所</th><th>見比べた項目</th><th>運送会社の到着</th><th>自社の受付</th><th>差（分）</th><th>運送会社の荷役開始</th><th>自社の作業開始</th><th>差（分）</th></tr></thead><tbody>${c.differ.map((p) => `<tr><td>${esc(p.date)}</td><td>${esc(p.vehicle || p.carrier.place)}</td><td>${KEY_LABEL[p.key]}</td><td>${esc(p.carrier.arrive)}</td><td>${esc(p.shipper.arrive)}</td>${diffCell(p.arrive_diff, lim)}<td>${esc(p.carrier.start)}</td><td>${esc(p.shipper.start)}</td>${diffCell(p.start_diff, lim)}</tr>`).join('')}</tbody></table></div>` : '<p class="empty">時刻が違う組はありません。</p>'}
+    <div class="scroll-x"><table class="par" id="cross-differ"><thead><tr><th>日付</th><th>車番・場所</th><th>見比べた項目</th><th>運送会社の到着</th><th>自社の受付</th><th>差（分）</th><th>運送会社の荷役開始</th><th>自社の作業開始</th><th>差（分）</th><th>待機の長さの差（分）</th></tr></thead><tbody>${c.differ.map((p) => `<tr><td>${esc(p.date)}</td><td>${esc(p.vehicle || p.carrier.place)}</td><td>${KEY_LABEL[p.key]}</td><td>${esc(p.carrier.arrive)}</td><td>${esc(p.shipper.arrive)}</td>${diffCell(p.arrive_diff, lim)}<td>${esc(p.carrier.start)}</td><td>${esc(p.shipper.start)}</td>${diffCell(p.start_diff, lim)}${diffCell(p.wait_diff, lim)}</tr>`).join('')}</tbody></table></div>` : '<p class="empty">時刻が違う組はありません。</p>'}
     <div id="cross-only">${miss(c.only_carrier, '運送会社の書面にあって、自社の受付記録に無い行')}${miss(c.only_shipper, '自社の受付記録にあって、運送会社の書面に無い行')}</div></div>`;
 }
 function carrierSelectHtml() {
@@ -1383,45 +1385,61 @@ function crossHtml() {
   return `<h2>運送会社から届いた書面と見比べる</h2>
     <p class="small">届いた書面の CSV か、紙・PDF の表をコピーして貼ります。時刻が 15 分以上違う回が出ます。</p>
     <textarea id="cross-ta" rows="4" placeholder="ここに運送会社の書面の CSV か、紙・PDF の表を貼り付け" aria-label="運送会社の書面の CSV を貼り付ける欄">${esc(S.carrierText || '')}</textarea>
-    <div class="bar">${carrierSelectHtml()}<label class="small">書面に書かれた金額の合計（円・税抜） <input type="text" inputmode="numeric" id="cross-doc-amount" size="10" value="${S.crossDocAmount > 0 ? S.crossDocAmount : ''}" aria-label="書面に書かれた金額の合計"></label></div>
+    <div class="bar">${carrierSelectHtml()}<label class="small">書面に書かれた金額の合計（円・税抜） <input type="text" inputmode="numeric" id="cross-doc-amount" size="10" value="${S.crossDocAmount > 0 ? S.crossDocAmount : ''}" aria-label="書面に書かれた金額の合計"></label>${S.crossDocBad ? '<span class="small" id="cross-doc-bad" role="alert">数字で入れてください（例 9000、¥9,000、1万）</span>' : ''}</div>
     <div class="bar"><button type="button" id="b-cross" class="primary">見比べる</button><button type="button" id="b-cross-ex">例の書面を入れる</button><label class="small">CSV ファイルを選ぶ <input type="file" id="crossfile" accept=".csv,text/csv" aria-label="運送会社の書面の CSV のファイルを選ぶ"></label><span class="small" id="cross-msg" role="status"></span></div>
     <div id="cross-out">${crossResultHtml()}</div>`;
 }
-// 時刻が違う組の到着と荷役開始を自社の時刻（受付・作業開始）に置き換えて、運送会社の書面の行を数え直す（SPEC §46）。
-// 置き換えると時刻の順が合わなくなる行は、書面の時刻のままにする
+// 自社の額は、受付簿にも書面にもある回（組になった回）だけを、受付簿の時刻（到着・荷役開始・荷役終了）で数える。
+// 書面だけにある回と、どの回か決められない行は、受付簿で確かめられないので自社の額に入れず、件数と書面の額を別に持つ（書面の額は書面の時刻から数えた額）。
+// 車種は、受付簿に車種があればそれで、無ければ上の既定の単価で数える。置き換えると時刻の順が合わなくなる行は、書面の時刻のままにする
 function recalcOwn(inRows, cc) {
   const pre = (s) => { const m = /^((?:[0-9]{4}[-/])?[0-9]{1,2}[-/月][0-9]{1,2}日?)\s+\S/.exec(String(s || '').trim()); return m ? m[1] + ' ' : ''; };
-  const sum = (rc) => rc.rows.reduce((a, x) => a + (x.reception_amount !== undefined ? x.reception_amount : x.amount), 0);
-  const mod = inRows.map((r) => ({ ...r }));
-  const changed = [];
-  for (const p of cc.differ) {
-    const i = p.carrier.row - 1;
-    if (!mod[i] || changed.includes(i)) continue;
-    mod[i] = { ...mod[i], arrive: pre(inRows[i].arrive) + p.shipper.arrive, start: pre(inRows[i].start) + p.shipper.start };
-    changed.push(i);
-  }
-  let rc = calc(mod, S.year, TARIFF, S.defaults);
+  const pairIdx = new Set(cc.pairs.map((p) => p.carrier.row - 1));
+  const sum = (rc) => rc.rows.filter((x) => pairIdx.has(x.row - 1)).reduce((a, x) => a + (x.reception_amount !== undefined ? x.reception_amount : x.amount), 0);
   const base = calc(inRows, S.year, TARIFF, S.defaults);
-  const was = new Set(base.errors.map((e) => e.row - 1));
-  let reverted = 0;
-  for (const e of rc.errors) { const i = e.row - 1; if (changed.includes(i) && !was.has(i) && mod[i] !== inRows[i]) { mod[i] = inRows[i]; reverted += 1; } }
-  if (reverted) rc = calc(mod, S.year, TARIFF, S.defaults);
-  const own = sum(rc), carrier = sum(base);
-  return { n: changed.length - reverted, reverted, carrier, own, diff: carrier - own };
+  const build = (withClass) => {
+    const mod = inRows.map((r) => ({ ...r }));
+    const changed = [];
+    for (const p of cc.pairs) {
+      const i = p.carrier.row - 1;
+      if (!mod[i] || changed.includes(i)) continue;
+      const o = { ...mod[i], arrive: pre(inRows[i].arrive) + p.shipper.arrive, start: pre(inRows[i].start) + p.shipper.start };
+      if (p.shipper.end && inRows[i].end) o.end = pre(inRows[i].end) + p.shipper.end;
+      if (withClass) o.vehicle_class = (p.shipper.defaults_used || []).includes('vehicle_class') ? '' : p.shipper.vehicle_class;
+      mod[i] = o; changed.push(i);
+    }
+    let rc = calc(mod, S.year, TARIFF, S.defaults);
+    const was = new Set(base.errors.map((e) => e.row - 1));
+    let reverted = 0;
+    for (const e of rc.errors) { const i = e.row - 1; if (changed.includes(i) && !was.has(i) && mod[i] !== inRows[i]) { mod[i] = inRows[i]; reverted += 1; } }
+    if (reverted) rc = calc(mod, S.year, TARIFF, S.defaults);
+    return { rc, reverted, n: changed.length - reverted };
+  };
+  const timeOnly = build(false), full = build(true);
+  const carrier = sum(base), own = sum(full.rc), ownTime = sum(timeOnly.rc);
+  const docOf = (x) => { const r = inRows[x.row - 1]; return r && r.doc_amount != null ? r.doc_amount : (x.reception_amount !== undefined ? x.reception_amount : x.amount); };
+  const amt = (arr) => arr.reduce((a, x) => a + docOf(x), 0);
+  const ambRows = cc.ambiguous.map((g) => g.carrier);
+  return { n: Math.max(0, cc.differ.length - full.reverted), reverted: full.reverted, carrier, own, diff: carrier - own, time_part: carrier - ownTime, class_part: ownTime - own, pair_n: cc.pairs.length,
+    unrecorded: { n: cc.only_carrier.length, amount: amt(cc.only_carrier), rows: cc.only_carrier }, undecided: { n: ambRows.length, amount: amt(ambRows), rows: ambRows } };
 }
 function replyText(cc) {
   const r = cc.recalc, lim = cc.limit;
   const L = ['（運送会社の担当者名）様', '', '荷待ち・荷役の書面をお送りいただき、ありがとうございます。当方の受付記録と照らし合わせました。', '',
-    `${cc.key_counts.place + cc.key_counts.time ? '同じ回と見られる' : '日付と車番が同じ'} ${cc.pairs.length} 回のうち、時刻が ${lim} 分以上違う回が ${cc.differ.length} 回ありました。`];
-  cc.differ.slice(0, 10).forEach((p) => L.push(`・${p.date} ${p.vehicle ? '車番 ' + p.vehicle : p.carrier.place}: 到着 書面 ${p.carrier.arrive} / 当方の受付 ${p.shipper.arrive}（差 ${signed(p.arrive_diff)} 分）、荷役開始 書面 ${p.carrier.start} / 当方の作業開始 ${p.shipper.start}（差 ${signed(p.start_diff)} 分）`));
+    `${cc.key_counts.place + cc.key_counts.time ? '同じ回と見られる' : '日付と車番が同じ'} ${cc.pairs.length} 回のうち、時刻が ${lim} 分以上違う回（到着・荷役開始・荷役終了のどれか、または待機の長さが違う回を含む）が ${cc.differ.length} 回ありました。`];
+  cc.differ.slice(0, 10).forEach((p) => L.push(`・${p.date} ${p.vehicle ? '車番 ' + p.vehicle : p.carrier.place}: 到着 書面 ${p.carrier.arrive} / 当方の受付 ${p.shipper.arrive}（差 ${signed(p.arrive_diff)} 分）、荷役開始 書面 ${p.carrier.start} / 当方の作業開始 ${p.shipper.start}（差 ${signed(p.start_diff)} 分）、待機の長さの差 ${signed(p.wait_diff)} 分`));
   if (cc.differ.length > 10) L.push(`・ほか ${cc.differ.length - 10} 組`);
   if (r) {
     const gap = r.diff === 0 ? 'どちらも同じ額です' : `当方の額は書面より ${yen(Math.abs(r.diff))} ${r.diff > 0 ? '少なくなります' : '多くなります'}`;
-    L.push('', `書面の時刻で数えた参考額は ${yen(r.carrier)}、当方の受付の時刻で数え直した参考額は ${yen(r.own)}（税抜）です。${gap}。`);
+    L.push('', `【両方の記録で確かめられた ${r.pair_n != null ? r.pair_n : cc.pairs.length} 回】`, `書面の時刻で数えた参考額は ${yen(r.carrier)}、当方の受付の時刻で数え直した参考額は ${yen(r.own)}（税抜）です。${gap}。`);
+    if (r.class_part) L.push(`この差のうち ${yen(Math.abs(r.class_part))} は、時刻ではなく車種の違いによる単価の差です。`);
     if (r.doc != null) L.push(`書面に書かれた額は ${yen(r.doc)} です。この額には荷役の分などが入っていることがあり、上の額とは範囲が違うため、差としては扱っていません。`);
     L.push('どちらも標準的運賃の表に当てた参考額で、支払いをお約束するものではありません。');
-  }
-  if (cc.only_carrier.length) L.push(`書面にあって当方の記録に無い行が ${cc.only_carrier.length} 件あります。`);
+    const lst = (arr) => arr.slice(0, 5).map((x) => `${x.date} ${x.place || ''} ${x.arrive}`.replace(/\s+/g, ' ')).join('、') + (arr.length > 5 ? ` ほか ${arr.length - 5} 件` : '');
+    const un = r.unrecorded || { n: 0 }, ud = r.undecided || { n: 0 };
+    if (un.n) L.push('', `【当方の受付簿に無い回 ${un.n} 回（書面の額 ${yen(r.unrecorded.amount)}）】`, `${lst(r.unrecorded.rows)}。当方の記録で確かめられないので、上の額には入れていません。これらの回の時刻の記録（運転日報など）をお知らせください。`);
+    if (ud.n) L.push('', `【どの回か決められない回 ${ud.n} 回（書面の額 ${yen(r.undecided.amount)}）】`, `${lst(r.undecided.rows)}。当方の記録に同じ時間帯の回が複数あり、どの回か決められないので、上の額には入れていません。車番をお知らせください。`);
+  } else if (cc.only_carrier.length) L.push(`書面にあって当方の記録に無い行が ${cc.only_carrier.length} 件あります。`);
   L.push('', '時刻が違う行について、貴社の記録（運転日報など）をご確認のうえ、ご連絡をお願いします。', '', '（荷主の名称・担当者名）');
   return L.join('\n');
 }
@@ -1472,7 +1490,8 @@ function runCross() {
     cc.unpaired_shipper = sRows.filter((x) => !cc.pairs.some((p) => p.shipper === x));
     cc.unpaired_carrier_fee = sumFee(cc.unpaired_carrier); cc.unpaired_shipper_fee = sumFee(cc.unpaired_shipper);
     cc.cand_n = inCands.size;
-    cc.recalc = cc.differ.length ? recalcOwn(rows, cc) : null;
+    cc.class_diff_n = cc.pairs.filter((p) => p.carrier.vehicle_class !== p.shipper.vehicle_class).length;
+    cc.recalc = cc.differ.length || cc.only_carrier.length || cc.ambiguous.length ? recalcOwn(rows, cc) : null;
     // 届いた書面に参考額が書いてあるときは、数え直した額ではなくその額を「書面の額」にする。無ければ手で入れた額
     const docs = rc.rows.map((x) => (rows[x.row - 1] ? rows[x.row - 1].doc_amount : null)).filter((v) => v != null);
     cc.doc_amount = docs.length && docs.length === rc.rows.length ? docs.reduce((a, v) => a + v, 0) : null;
@@ -1588,7 +1607,14 @@ function crossRowsOf(text) {
   }
 }
 
-const docAmountOf = (v) => { const t = WaitingShared.nz(v).replace(/[,円\s]/g, ''); return /^[0-9]+$/.test(t) ? Number(t) : null; };
+// 金額の欄の読み方。¥・￥・円・カンマ・空白・（税抜）（税込）を取り除き、「1万」「1.5万」「1万2000」も読む。読めなければ null
+function parseYen(v) {
+  const t = WaitingShared.nz(v).replace(/[（(][^）)]*[）)]/g, '').replace(/[,，、\s¥￥円]/g, '').replace(/税(抜き?|込み?)/g, '');
+  if (/^[0-9]+$/.test(t)) return Number(t);
+  const m = /^([0-9]+(?:\.[0-9]+)?)万([0-9]*)$/.exec(t);
+  return m ? Math.round(Number(m[1]) * 10000) + (m[2] ? Number(m[2]) : 0) : null;
+}
+const docAmountOf = (v) => parseYen(v);
 function csvToRows(text) {
   const table = parseCsv(text);
   if (!table.length) return [];
@@ -1873,7 +1899,7 @@ function init() {
     }
     if (t.id === 'year') { S.year = Number(t.value); doCalc(); }
     else if (t.id === 'cross-carrier') { S.crossCarrier = t.value; if (S.crossOn) renderResult(); }
-    else if (t.id === 'cross-doc-amount') { const v = Number(WaitingShared.nz(t.value).replace(/[,円\s]/g, '')); S.crossDocAmount = Number.isFinite(v) && v > 0 ? Math.round(v) : 0; if (S.crossOn) renderResult(); }
+    else if (t.id === 'cross-doc-amount') { const raw = WaitingShared.nz(t.value).trim(), v = parseYen(raw); S.crossDocAmount = v !== null && v > 0 ? v : 0; S.crossDocBad = !!raw && v === null; if (S.crossOn) renderResult(); }
     else if (t.id === 'crossfile') {
       const f = t.files && t.files[0];
       if (f) { const fr = new FileReader(); fr.onload = () => { S.carrierText = String(fr.result).replace(/^\uFEFF/, ''); S.crossOn = true; renderResult(); }; fr.onerror = () => { const m = $('#cross-msg'); if (m) m.textContent = 'ファイルを読めませんでした'; }; fr.readAsText(f, 'utf-8'); }

@@ -243,7 +243,7 @@ def test_cross_check_recalculates_with_own_times_and_writes_a_reply():
         r = out["r"]
         assert r["n"] == 1 and r["own"] < r["carrier"] and r["diff"] == r["carrier"] - r["own"] > 0, r
         assert "受付簿の時刻で数えた額" in out["text"] and "書面のほうが多い" in out["text"]
-        assert "当方の時刻で数え直した参考額" in out["reply"] and "2026-10-05" in out["reply"] and "（運送会社の担当者名）" in out["reply"]
+        assert "当方の受付の時刻で数え直した参考額" in out["reply"] and "2026-10-05" in out["reply"] and "（運送会社の担当者名）" in out["reply"]
         assert "荷役をした人が分からない" not in out["notes"]
 
 
