@@ -13,7 +13,7 @@
       "name": "もともと想定していたもの（計画 08・作成者の構想・SPEC）",
       "items": [
         {"id": "R01", "source": "計画08 操作1", "text": "出荷条件を入れて確定できる", "points": 3,
-         "check": {"type": "tests", "tests": ["tests/test_app.py::test_s1_confirm_shows_expected_amounts", "tests/test_app.py::test_confirm_same_content_keeps_version"]}},
+         "check": {"type": "tests", "tests": ["tests/test_v3_web.py::test_spec15_15_confirm_rules"]}},
         {"id": "R02", "source": "作成者の構想 / SPEC §9", "text": "S1〜S4 の目安額が作成者の構想の値と一致", "points": 6,
          "check": {"type": "tests", "tests": ["tests/test_scenarios.py::test_s1", "tests/test_scenarios.py::test_s2", "tests/test_scenarios.py::test_s3", "tests/test_scenarios.py::test_s4"]}},
         {"id": "R03", "source": "計画08 §3 / G05", "text": "寸法・重量の超過と積付けの要確認を区別する", "points": 3,
