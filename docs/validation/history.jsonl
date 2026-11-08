@@ -11,3 +11,5 @@
 {"timestamp": "2026-11-03T15:18:13+09:00", "head": "4cba2e9", "score": 81.0, "failed_ids": ["C1", "D1", "E3"]}
 {"timestamp": "2026-11-03T15:56:53+09:00", "head": "b92404d", "score": 100.0, "failed_ids": []}
 {"timestamp": "2026-11-03T12:53:09+00:00", "head": "67c574b", "score": 100.0, "failed_ids": []}
+{"timestamp": "2026-11-08T15:05:10+09:00", "head": "2efda57", "score": 80.0, "failed_ids": ["A1", "D1"]}
+{"timestamp": "2026-11-08T17:59:59+09:00", "head": "ea9bd06", "score": 90.0, "failed_ids": ["D1"]}

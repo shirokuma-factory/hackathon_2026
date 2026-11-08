@@ -1,9 +1,11 @@
 {
-  "score": 100.0,
-  "head": "67c574b",
-  "timestamp": "2026-11-03T12:53:09+00:00",
-  "fingerprint": "80def9185855479f1da26017830fbd8f4763094b1642074fd7df44c00415ec06",
-  "failed_ids": [],
+  "score": 90.0,
+  "head": "ea9bd06",
+  "timestamp": "2026-11-08T17:59:59+09:00",
+  "fingerprint": "f387c9f8e4cd1968c859b5efd43514cd6a9ad8a1b15c88f267e4e5532d083d4c",
+  "failed_ids": [
+    "D1"
+  ],
   "items": [
     {
       "group": "A",
@@ -270,9 +272,9 @@
       "id": "D1",
       "text": "最新のレビューが今のコードに対するもので、P0 と P1 が 0 件",
       "points": 10,
-      "got": 10,
-      "passed": true,
-      "reason": "",
+      "got": 0,
+      "passed": false,
+      "reason": "指紋が今のコードと違う（レビューが古い）",
       "excluded": false
     },
     {
