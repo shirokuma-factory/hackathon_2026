@@ -249,7 +249,7 @@ def test_document_for_the_receiving_shipper_shows_fault_column_early_split_and_n
         assert "指定の到着時刻が無く、到着が05:00から07:59までの回" in t
         assert "車種が記入されていない3行は『中型』の単価で計算しています" in t
         assert "運転者が荷役をして荷役の方法が記入されていない1行は『手積み』の単価" in t
-        assert "受付の時刻から数えた額" in doc["sum"]  # 文言の直し 2026-11-07 and "を除くと" not in doc["sum"]
+        assert "受付の時刻から数えた額" in page.js("document.querySelector('#partner-notes').textContent") and "受付の時刻から数えた額" not in doc["sum"]  # 文言の直し 2026-11-07 and "を除くと" not in doc["sum"]
         assert "車種が空欄の 3 行は『中型』" in doc["defaults"] and "積み降ろしの方法が空欄の 1 行" in doc["defaults"]  # 文言の直し 2026-11-07
         assert "運送を頼んできた会社として読みました" in doc["ask"] and doc["askDoc"]
         assert doc["process"].index("正式名") < doc["process"].index("取適法では、相手")

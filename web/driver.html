@@ -264,6 +264,11 @@ ul.recs li.empty { display: block; }
 .rec-t { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: var(--fs-1); font-variant-numeric: tabular-nums; }
 .rec-t time { white-space: nowrap; }
 .rec-t i { font-style: normal; color: var(--muted); margin-right: 4px; font-size: 12px; }
+ul.recs li .rec-act { display: flex; flex-direction: column; gap: 4px; }
+ul.recs li .rec-edit { grid-column: 1 / -1; }
+button.ed { min-width: 44px; min-height: 44px; padding: 0 4px; font-size: var(--fs-1); }
+.undo-bar { display: flex; align-items: center; gap: 12px; flex: 1 0 100%; order: -2; margin: 0; font-weight: 700; font-size: var(--fs-1); }
+.undo-bar[hidden] { display: none; }
 button.x { min-width: 44px; min-height: 44px; padding: 0; font-size: 20px; color: var(--muted); background: var(--none); border-color: var(--none); }
 .empty-state { padding: 8px 8px 16px; }
 .empty-state .ill { margin: 0 auto; }
@@ -331,11 +336,11 @@ dialog.sheet::backdrop { background: var(--scrim); }
   .print-head .fill { display: inline-block; min-width: 9em; border-bottom: 1px solid #000; }
   table#sheet { border-collapse: collapse; width: 100%; font-size: 10.5pt; table-layout: fixed; }
   table#sheet th, table#sheet td { border: 1px solid #000; padding: 6pt 5pt; color: #000; background: #fff; border-radius: 0; white-space: nowrap; overflow: hidden; }
-  table#sheet th { font-size: 10pt; font-weight: 700; }
+  table#sheet th { font-size: 10pt; font-weight: 700; white-space: normal; }
   table#sheet tr.blank td { height: 26pt; }
   table#sheet td:nth-child(2), table#sheet td:nth-child(3) { white-space: normal; }
   main { max-width: none; }
-  table#sheet th:nth-child(1) { width: 9%; } table#sheet th:nth-child(2), table#sheet th:nth-child(3) { width: 15%; } table#sheet th:nth-child(n+4):nth-child(-n+7) { width: 8.5%; } table#sheet th:nth-child(8) { width: 10%; } table#sheet th.pc { width: 16%; }
+  table#sheet th:nth-child(1) { width: 9%; } table#sheet th:nth-child(2), table#sheet th:nth-child(3) { width: 15%; } table#sheet th:nth-child(n+4):nth-child(-n+7) { width: 8.5%; } table#sheet th:nth-child(8) { width: 12%; } table#sheet th.pc { width: 16%; }
   #report > h2, #report > .sub { display: none; }
   .print-foot { font-size: 9pt; margin-top: 8pt; }
   .scroll { overflow: visible; }
@@ -372,6 +377,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 </section>
 
 <div class="actionbar is-sticky" id="copybar">
+  <p class="undo-bar" id="undo-bar" role="status" hidden><span id="undo-text"></span><button type="button" id="b-undo">元に戻す</button></p>
   <p class="msg" id="msg" role="status"></p>
   <p class="hint" id="send-to">コピーしたら、配車担当・事務の方に LINE で送ります。事務所では荷待ちのページに貼って書面にします。</p>
   <button type="button" class="primary btn-primary btn-block" id="b-copy">LINE に貼る文をコピー</button>
@@ -390,7 +396,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <section class="card" aria-label="日報に写す表" id="report">
   <div class="print-only print-head">
     <h2>荷待ちの記録（乗務記録に添える表）</h2>
-    <p>記録の日: <b id="ph-day"></b>　車番: <b id="ph-vno"></b>　運転者名: <span class="fill"></span>　所属: <span class="fill"></span></p>
+    <p>記録の日: <span id="ph-year"></span><b id="ph-day"></b>　車番: <b id="ph-vno"></b>　運転者名: <span class="fill"></span>　所属: <span class="fill"></span></p>
   </div>
   <h2>日報に写す表（選んだ日）</h2>
   <p class="sub hint">紙の運転日報の荷待ちの欄に書き写す順（着・荷役開始・荷役終了・出発）です。コピーして Excel や LINE に貼るか、印刷して日報に添えます。</p>
@@ -405,7 +411,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
   <summary>事務の方へ: このページを配るには</summary>
   <ol class="steps">
     <li><b>おすすめ:</b> URL を LINE で送る。</li>
-    <li><b>ファイルで送る:</b> 開けない端末があります。</li>
+    <li><b>ファイルで送る:</b> 保存したファイルを LINE で送り、受け取った人が端末のブラウザで開きます（開けない端末では URL で送ります）。</li>
     <li><b>ホーム画面に追加:</b> 次から 1 回で開きます。</li>
   </ol>
   <label>いま開いているページの URL<input id="own-url" type="text" readonly aria-label="いま開いているページの URL" style="width:100%"></label>
@@ -451,7 +457,7 @@ const SETTING_IDS = ['place', 'partner', 'vno', 'vclass', 'handler'];
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = (n) => String(n).padStart(2, '0');
-const S = { cur: null, recs: [], broken: false, clearArmed: false, day: '' };
+const S = { cur: null, recs: [], broken: false, clearArmed: false, day: '', editId: '', undo: null };
 const ALL_DAYS = '__all';
 
 function load(key) {
@@ -556,11 +562,15 @@ function recHtml(r, pending) {
   const times = STAMPS.filter(([k]) => shortTime(r[k])).map(([k, , word]) => `<time><i>${word}</i>${shortTime(r[k])}</time>`).join('');
   return `<div class="rec-body"><div class="rec-h"><b>${esc(clean(r.place) || '場所の入力なし')}</b>${pending ? '<em class="tag">保存前</em>' : ''}${wm !== '' ? `<strong class="rec-w">待ち ${wm} 分</strong>` : ''}</div>${who ? `<div class="rec-m">${esc(who)}</div>` : ''}<div class="rec-t">${times}</div></div>`;
 }
+// 保存した記録の時刻を直す欄。押すたびに保存し、日報の表も更新する
+function editHtml(r) {
+  return `<div class="rec-edit">` + STAMPS.map(([k, label]) => `<div class="stamp${r[k] ? ' done' : ''}"><span class="lb">${label}</span><input type="time" step="60" data-rtime="${k}" data-rid="${r.id}" value="${esc(r[k] || '')}" aria-label="保存した記録の${label}の時刻"><button type="button" class="x" data-rclear="${k}" data-rid="${r.id}" aria-label="${label}の時刻を消す">×</button></div>`).join('') + `</div>`;
+}
 function renderList() {
   const list = dayRecs();
   $('#list-title').textContent = `${viewDay() === today() ? '今日' : dayWord(viewDay())}の記録（${list.length} 件）`;
   const pending = curInView() ? `<li><span class="rl" hidden>保存前: ${esc(recordLine(curRecord()))}</span>${recHtml(curRecord(), true)}<span class="spacer"></span></li>` : '';
-  $('#recs').innerHTML = list.map((r) => `<li><span class="rl" hidden>${esc(recordLine(r))}</span>${recHtml(r, false)}<button type="button" class="x" data-del="${r.id}" aria-label="この記録を消す">×</button></li>`).join('') + pending ||
+  $('#recs').innerHTML = list.map((r) => `<li><span class="rl" hidden>${esc(recordLine(r))}</span>${recHtml(r, false)}<div class="rec-act"><button type="button" class="x" data-del="${r.id}" aria-label="この記録を消す">×</button><button type="button" class="ed" data-edit="${r.id}" aria-expanded="${S.editId === r.id}">${S.editId === r.id ? '閉じる' : '直す'}</button></div>${S.editId === r.id ? editHtml(r) : ''}</li>`).join('') + pending ||
     '<li class="empty empty-state"><img class="ill" src="data:image/webp;base64,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" alt="" width="96" height="96"><p>まだ記録がありません。着いたら「着いた」を押してください。</p></li>';
   const mins = list.map(waitMin).filter((v) => v !== '').reduce((a, v) => a + Number(v), 0).toLocaleString('ja-JP');
   $('#list-tot').textContent = list.some((r) => waitMin(r) !== '') ? `荷待ち 合計 ${mins} 分` : '';
@@ -591,6 +601,7 @@ function renderSheet() {
   $('#sheet-body').innerHTML = (rows.length ? rows.map((c) => `<tr>${c.map((v, i) => `<td${i === 7 ? ' class="num"' : ''}>${esc(v)}</td>`).join('')}<td class="pc"></td></tr>`).join('') : '<tr><td colspan="8">この日の記録はまだありません。</td></tr>') +
     Array.from({ length: blank }, () => '<tr class="blank">' + '<td></td>'.repeat(8) + '<td class="pc"></td></tr>').join('');
   $('#ph-day').textContent = viewDay() === ALL_DAYS ? '全部の日' : viewDay();
+  $('#ph-year').textContent = viewDay() === ALL_DAYS ? '' : `${new Date().getFullYear()}年 `;
   $('#ph-vno').textContent = clean($('#vno').value) || '（未入力）';
 }
 function sheetText() { return [['日付', '場所', '相手', '着', '荷役開始', '荷役終了', '出発', '荷待ち（分）'], ...sheetRows()].map((c) => c.join('\t')).join('\n'); }
@@ -649,6 +660,28 @@ function copyAll() {
   } catch (e) { fallback(); }
 }
 
+// 1 件消したあと数秒は「元に戻す」を出す。次の削除が来たら、前の分は確定する
+function deleteRec(id) {
+  const i = S.recs.findIndex((r) => r.id === id);
+  if (i < 0) return;
+  clearTimeout(S.undoTm);
+  const rec = S.recs[i];
+  S.undo = { rec, index: i };
+  S.recs.splice(i, 1);
+  if (S.editId === id) S.editId = '';
+  save(K_REC, S.recs); renderList(); setMsg('');
+  $('#undo-text').textContent = `${clean(rec.place) || '場所の入力なし'}の記録を消しました。`;
+  $('#undo-bar').hidden = false;
+  S.undoTm = setTimeout(hideUndo, 8000);
+}
+function hideUndo() { clearTimeout(S.undoTm); S.undo = null; $('#undo-bar').hidden = true; }
+function undoDelete() {
+  if (!S.undo) return;
+  S.recs.splice(Math.min(S.undo.index, S.recs.length), 0, S.undo.rec);
+  const d = S.undo.rec.date;
+  hideUndo();
+  save(K_REC, S.recs); S.day = d; renderList(); setMsg('記録を元に戻しました。');
+}
 function clearToday() {
   const btn = $('#b-clear');
   const all = viewDay() === ALL_DAYS, word = all ? '全部の記録' : '選んだ日の記録';
@@ -695,7 +728,10 @@ function init() {
     if (!t) return;
     if (t.dataset.stamp) stamp(t.dataset.stamp);
     else if (t.dataset.clear) { S.cur[t.dataset.clear] = ''; persistCur(); renderStamps(); renderList(); }
-    else if (t.dataset.del) { S.recs = S.recs.filter((r) => r.id !== t.dataset.del); save(K_REC, S.recs); renderList(); }
+    else if (t.dataset.del) deleteRec(t.dataset.del);
+    else if (t.dataset.edit) { S.editId = S.editId === t.dataset.edit ? '' : t.dataset.edit; renderList(); }
+    else if (t.dataset.rclear) { const r = S.recs.find((x) => x.id === t.dataset.rid); if (r) { r[t.dataset.rclear] = ''; save(K_REC, S.recs); renderList(); } }
+    else if (t.id === 'b-undo') undoDelete();
     else if (t.id === 'b-save') saveCurrent();
     else if (t.id === 'b-copy') copyAll();
     else if (t.id === 'b-copysheet') copySheet();
@@ -707,9 +743,11 @@ function init() {
   });
   $('#setup').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // 外側を押したら閉じる
   $('#setup').addEventListener('close', renderSetupSummary);
+  document.addEventListener('change', (e) => { if (e.target.dataset && e.target.dataset.rtime) renderList(); });   // 直し終わったら、荷待ちの分と合計を更新する
   document.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.dataset && t.dataset.time) { S.cur[t.dataset.time] = t.value; persistCur(); t.closest('.stamp').classList.toggle('done', !!t.value); updateStampButton(t.dataset.time); renderList(); }
+    if (t.dataset && t.dataset.rtime) { const r = S.recs.find((x) => x.id === t.dataset.rid); if (r) { r[t.dataset.rtime] = t.value; save(K_REC, S.recs); renderSheet(); } }
+    else if (t.dataset && t.dataset.time) { S.cur[t.dataset.time] = t.value; persistCur(); t.closest('.stamp').classList.toggle('done', !!t.value); updateStampButton(t.dataset.time); renderList(); }
     else if (t.id === 'day') { S.day = t.value; S.clearArmed = false; renderList(); setMsg(''); }
     else if (t.id === 'date') { S.cur.date = t.value; persistCur(); renderList(); }
     else if (SETTING_IDS.includes(t.id)) { persistSettings(); renderList(); }

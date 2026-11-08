@@ -70,6 +70,11 @@ ul.recs li.empty { display: block; }
 .rec-t { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: var(--fs-1); font-variant-numeric: tabular-nums; }
 .rec-t time { white-space: nowrap; }
 .rec-t i { font-style: normal; color: var(--muted); margin-right: 4px; font-size: 12px; }
+ul.recs li .rec-act { display: flex; flex-direction: column; gap: 4px; }
+ul.recs li .rec-edit { grid-column: 1 / -1; }
+button.ed { min-width: 44px; min-height: 44px; padding: 0 4px; font-size: var(--fs-1); }
+.undo-bar { display: flex; align-items: center; gap: 12px; flex: 1 0 100%; order: -2; margin: 0; font-weight: 700; font-size: var(--fs-1); }
+.undo-bar[hidden] { display: none; }
 button.x { min-width: 44px; min-height: 44px; padding: 0; font-size: 20px; color: var(--muted); background: var(--none); border-color: var(--none); }
 .empty-state { padding: 8px 8px 16px; }
 .empty-state .ill { margin: 0 auto; }
@@ -137,11 +142,11 @@ dialog.sheet::backdrop { background: var(--scrim); }
   .print-head .fill { display: inline-block; min-width: 9em; border-bottom: 1px solid #000; }
   table#sheet { border-collapse: collapse; width: 100%; font-size: 10.5pt; table-layout: fixed; }
   table#sheet th, table#sheet td { border: 1px solid #000; padding: 6pt 5pt; color: #000; background: #fff; border-radius: 0; white-space: nowrap; overflow: hidden; }
-  table#sheet th { font-size: 10pt; font-weight: 700; }
+  table#sheet th { font-size: 10pt; font-weight: 700; white-space: normal; }
   table#sheet tr.blank td { height: 26pt; }
   table#sheet td:nth-child(2), table#sheet td:nth-child(3) { white-space: normal; }
   main { max-width: none; }
-  table#sheet th:nth-child(1) { width: 9%; } table#sheet th:nth-child(2), table#sheet th:nth-child(3) { width: 15%; } table#sheet th:nth-child(n+4):nth-child(-n+7) { width: 8.5%; } table#sheet th:nth-child(8) { width: 10%; } table#sheet th.pc { width: 16%; }
+  table#sheet th:nth-child(1) { width: 9%; } table#sheet th:nth-child(2), table#sheet th:nth-child(3) { width: 15%; } table#sheet th:nth-child(n+4):nth-child(-n+7) { width: 8.5%; } table#sheet th:nth-child(8) { width: 12%; } table#sheet th.pc { width: 16%; }
   #report > h2, #report > .sub { display: none; }
   .print-foot { font-size: 9pt; margin-top: 8pt; }
   .scroll { overflow: visible; }
@@ -178,6 +183,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 </section>
 
 <div class="actionbar is-sticky" id="copybar">
+  <p class="undo-bar" id="undo-bar" role="status" hidden><span id="undo-text"></span><button type="button" id="b-undo">元に戻す</button></p>
   <p class="msg" id="msg" role="status"></p>
   <p class="hint" id="send-to">コピーしたら、配車担当・事務の方に LINE で送ります。事務所では荷待ちのページに貼って書面にします。</p>
   <button type="button" class="primary btn-primary btn-block" id="b-copy">LINE に貼る文をコピー</button>
@@ -196,7 +202,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <section class="card" aria-label="日報に写す表" id="report">
   <div class="print-only print-head">
     <h2>荷待ちの記録（乗務記録に添える表）</h2>
-    <p>記録の日: <b id="ph-day"></b>　車番: <b id="ph-vno"></b>　運転者名: <span class="fill"></span>　所属: <span class="fill"></span></p>
+    <p>記録の日: <span id="ph-year"></span><b id="ph-day"></b>　車番: <b id="ph-vno"></b>　運転者名: <span class="fill"></span>　所属: <span class="fill"></span></p>
   </div>
   <h2>日報に写す表（選んだ日）</h2>
   <p class="sub hint">紙の運転日報の荷待ちの欄に書き写す順（着・荷役開始・荷役終了・出発）です。コピーして Excel や LINE に貼るか、印刷して日報に添えます。</p>
@@ -211,7 +217,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
   <summary>事務の方へ: このページを配るには</summary>
   <ol class="steps">
     <li><b>おすすめ:</b> URL を LINE で送る。</li>
-    <li><b>ファイルで送る:</b> 開けない端末があります。</li>
+    <li><b>ファイルで送る:</b> 保存したファイルを LINE で送り、受け取った人が端末のブラウザで開きます（開けない端末では URL で送ります）。</li>
     <li><b>ホーム画面に追加:</b> 次から 1 回で開きます。</li>
   </ol>
   <label>いま開いているページの URL<input id="own-url" type="text" readonly aria-label="いま開いているページの URL" style="width:100%"></label>
@@ -257,7 +263,7 @@ const SETTING_IDS = ['place', 'partner', 'vno', 'vclass', 'handler'];
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = (n) => String(n).padStart(2, '0');
-const S = { cur: null, recs: [], broken: false, clearArmed: false, day: '' };
+const S = { cur: null, recs: [], broken: false, clearArmed: false, day: '', editId: '', undo: null };
 const ALL_DAYS = '__all';
 
 function load(key) {
@@ -362,11 +368,15 @@ function recHtml(r, pending) {
   const times = STAMPS.filter(([k]) => shortTime(r[k])).map(([k, , word]) => `<time><i>${word}</i>${shortTime(r[k])}</time>`).join('');
   return `<div class="rec-body"><div class="rec-h"><b>${esc(clean(r.place) || '場所の入力なし')}</b>${pending ? '<em class="tag">保存前</em>' : ''}${wm !== '' ? `<strong class="rec-w">待ち ${wm} 分</strong>` : ''}</div>${who ? `<div class="rec-m">${esc(who)}</div>` : ''}<div class="rec-t">${times}</div></div>`;
 }
+// 保存した記録の時刻を直す欄。押すたびに保存し、日報の表も更新する
+function editHtml(r) {
+  return `<div class="rec-edit">` + STAMPS.map(([k, label]) => `<div class="stamp${r[k] ? ' done' : ''}"><span class="lb">${label}</span><input type="time" step="60" data-rtime="${k}" data-rid="${r.id}" value="${esc(r[k] || '')}" aria-label="保存した記録の${label}の時刻"><button type="button" class="x" data-rclear="${k}" data-rid="${r.id}" aria-label="${label}の時刻を消す">×</button></div>`).join('') + `</div>`;
+}
 function renderList() {
   const list = dayRecs();
   $('#list-title').textContent = `${viewDay() === today() ? '今日' : dayWord(viewDay())}の記録（${list.length} 件）`;
   const pending = curInView() ? `<li><span class="rl" hidden>保存前: ${esc(recordLine(curRecord()))}</span>${recHtml(curRecord(), true)}<span class="spacer"></span></li>` : '';
-  $('#recs').innerHTML = list.map((r) => `<li><span class="rl" hidden>${esc(recordLine(r))}</span>${recHtml(r, false)}<button type="button" class="x" data-del="${r.id}" aria-label="この記録を消す">×</button></li>`).join('') + pending ||
+  $('#recs').innerHTML = list.map((r) => `<li><span class="rl" hidden>${esc(recordLine(r))}</span>${recHtml(r, false)}<div class="rec-act"><button type="button" class="x" data-del="${r.id}" aria-label="この記録を消す">×</button><button type="button" class="ed" data-edit="${r.id}" aria-expanded="${S.editId === r.id}">${S.editId === r.id ? '閉じる' : '直す'}</button></div>${S.editId === r.id ? editHtml(r) : ''}</li>`).join('') + pending ||
     '<li class="empty empty-state"><img class="ill" src="@@ILL:phone_driver:128@@" alt="" width="96" height="96"><p>まだ記録がありません。着いたら「着いた」を押してください。</p></li>';
   const mins = list.map(waitMin).filter((v) => v !== '').reduce((a, v) => a + Number(v), 0).toLocaleString('ja-JP');
   $('#list-tot').textContent = list.some((r) => waitMin(r) !== '') ? `荷待ち 合計 ${mins} 分` : '';
@@ -397,6 +407,7 @@ function renderSheet() {
   $('#sheet-body').innerHTML = (rows.length ? rows.map((c) => `<tr>${c.map((v, i) => `<td${i === 7 ? ' class="num"' : ''}>${esc(v)}</td>`).join('')}<td class="pc"></td></tr>`).join('') : '<tr><td colspan="8">この日の記録はまだありません。</td></tr>') +
     Array.from({ length: blank }, () => '<tr class="blank">' + '<td></td>'.repeat(8) + '<td class="pc"></td></tr>').join('');
   $('#ph-day').textContent = viewDay() === ALL_DAYS ? '全部の日' : viewDay();
+  $('#ph-year').textContent = viewDay() === ALL_DAYS ? '' : `${new Date().getFullYear()}年 `;
   $('#ph-vno').textContent = clean($('#vno').value) || '（未入力）';
 }
 function sheetText() { return [['日付', '場所', '相手', '着', '荷役開始', '荷役終了', '出発', '荷待ち（分）'], ...sheetRows()].map((c) => c.join('\t')).join('\n'); }
@@ -455,6 +466,28 @@ function copyAll() {
   } catch (e) { fallback(); }
 }
 
+// 1 件消したあと数秒は「元に戻す」を出す。次の削除が来たら、前の分は確定する
+function deleteRec(id) {
+  const i = S.recs.findIndex((r) => r.id === id);
+  if (i < 0) return;
+  clearTimeout(S.undoTm);
+  const rec = S.recs[i];
+  S.undo = { rec, index: i };
+  S.recs.splice(i, 1);
+  if (S.editId === id) S.editId = '';
+  save(K_REC, S.recs); renderList(); setMsg('');
+  $('#undo-text').textContent = `${clean(rec.place) || '場所の入力なし'}の記録を消しました。`;
+  $('#undo-bar').hidden = false;
+  S.undoTm = setTimeout(hideUndo, 8000);
+}
+function hideUndo() { clearTimeout(S.undoTm); S.undo = null; $('#undo-bar').hidden = true; }
+function undoDelete() {
+  if (!S.undo) return;
+  S.recs.splice(Math.min(S.undo.index, S.recs.length), 0, S.undo.rec);
+  const d = S.undo.rec.date;
+  hideUndo();
+  save(K_REC, S.recs); S.day = d; renderList(); setMsg('記録を元に戻しました。');
+}
 function clearToday() {
   const btn = $('#b-clear');
   const all = viewDay() === ALL_DAYS, word = all ? '全部の記録' : '選んだ日の記録';
@@ -501,7 +534,10 @@ function init() {
     if (!t) return;
     if (t.dataset.stamp) stamp(t.dataset.stamp);
     else if (t.dataset.clear) { S.cur[t.dataset.clear] = ''; persistCur(); renderStamps(); renderList(); }
-    else if (t.dataset.del) { S.recs = S.recs.filter((r) => r.id !== t.dataset.del); save(K_REC, S.recs); renderList(); }
+    else if (t.dataset.del) deleteRec(t.dataset.del);
+    else if (t.dataset.edit) { S.editId = S.editId === t.dataset.edit ? '' : t.dataset.edit; renderList(); }
+    else if (t.dataset.rclear) { const r = S.recs.find((x) => x.id === t.dataset.rid); if (r) { r[t.dataset.rclear] = ''; save(K_REC, S.recs); renderList(); } }
+    else if (t.id === 'b-undo') undoDelete();
     else if (t.id === 'b-save') saveCurrent();
     else if (t.id === 'b-copy') copyAll();
     else if (t.id === 'b-copysheet') copySheet();
@@ -513,9 +549,11 @@ function init() {
   });
   $('#setup').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // 外側を押したら閉じる
   $('#setup').addEventListener('close', renderSetupSummary);
+  document.addEventListener('change', (e) => { if (e.target.dataset && e.target.dataset.rtime) renderList(); });   // 直し終わったら、荷待ちの分と合計を更新する
   document.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.dataset && t.dataset.time) { S.cur[t.dataset.time] = t.value; persistCur(); t.closest('.stamp').classList.toggle('done', !!t.value); updateStampButton(t.dataset.time); renderList(); }
+    if (t.dataset && t.dataset.rtime) { const r = S.recs.find((x) => x.id === t.dataset.rid); if (r) { r[t.dataset.rtime] = t.value; save(K_REC, S.recs); renderSheet(); } }
+    else if (t.dataset && t.dataset.time) { S.cur[t.dataset.time] = t.value; persistCur(); t.closest('.stamp').classList.toggle('done', !!t.value); updateStampButton(t.dataset.time); renderList(); }
     else if (t.id === 'day') { S.day = t.value; S.clearArmed = false; renderList(); setMsg(''); }
     else if (t.id === 'date') { S.cur.date = t.value; persistCur(); renderList(); }
     else if (SETTING_IDS.includes(t.id)) { persistSettings(); renderList(); }

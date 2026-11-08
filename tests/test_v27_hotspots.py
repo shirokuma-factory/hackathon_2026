@@ -121,7 +121,7 @@ SCREEN_JS = """(function(){
   const t = document.querySelector('#hotspots');
   const rows = t ? [...t.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent)) : [];
   return {rows, head: t ? [...t.querySelectorAll('th')].map(th => th.textContent) : [],
-          line: document.querySelector('#partners').textContent.includes('この期間に荷主の都合で待った時間は、合計 16 時間 22 分です。'),
+          line: document.querySelector('#partners').textContent.includes('この期間に荷主の都合で待った時間は、全部の荷主を合わせると、合計 16 時間 22 分です。'),
           basis: document.querySelector('#basis').textContent, doc: document.querySelector('#wait-doc').textContent,
           h2: [...document.querySelectorAll('#partners h2')].map(h => h.firstChild.textContent)};
 })()"""
@@ -137,8 +137,8 @@ def test_g115_g116_g118_screen_basis_and_document(path):
         page.wait(lambda: page.js("!!document.querySelector('#hotspots')"), 30, "表")
         info = page.js(SCREEN_JS)
         # G115: 上位 5 組、合計 0 の組を出さない。列は 27.2 のとおり
-        assert info["h2"] == ["依頼元ごと", "待ち時間の長い場所と時間帯"] and info["line"]   # 文言の直し 2026-11-07
-        assert info["head"] == ["契約の相手", "場所", "到着の時間帯", "回数", "平均の荷待ち", "最長", "1 時間以上の回数", "参考額（円）", "メモ"]   # 文言の直し 2026-11-07
+        assert info["h2"] == ["荷主ごと", "待ち時間の長い場所と時間帯"] and info["line"]   # 文言の直し 2026-11-07
+        assert info["head"] == ["荷主", "場所", "到着の時間帯", "回数", "平均の荷待ち", "最長", "1 時間以上の回数", "参考額（円）", "メモ"]   # 文言の直し 2026-11-07
         rows = info["rows"]
         assert len(rows) == 5
         assert rows[0][:7] == ["架空 元請A物流", "江東区 地点07", "8時台", "5", "98 分", "135 分", "5"]
@@ -184,7 +184,7 @@ def test_g116_copy_button_in_artifact_has_the_consult_section():
     with cw.edge_page(1440, 900) as page:
         page.goto(_shell(ART) + "?example=1")
         page.wait(lambda: page.js("!!document.querySelector('#b-copydoc')"), 30, "例")
-        page.js("Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: () => Promise.reject(new Error('denied'))}}); document.querySelector('#b-copydoc').click()")
+        page.js("Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: () => Promise.reject(new Error('denied'))}}); document.querySelector('#b-copydoc').click(); document.querySelector('#b-copydoc').click()")   # 1 回目は空欄の警告だけ
         page.wait(lambda: page.js("document.querySelector('#copybox').hidden === false"), 10, "枠")
         text = page.js("document.querySelector('#copyta').value")
     assert "参考：荷待ちを減らすためのご相談" in text and "恒常的" not in text

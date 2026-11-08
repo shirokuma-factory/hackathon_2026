@@ -978,7 +978,7 @@ const WaitingShared = (() => {
     const dLabel = dests.map((h) => hourLabel(h.hour)).join('か ');
     const perDay = Math.ceil((src.count / days) * 10) / 10;
     const head = `${top.place}は ${hourLabel(src.hour)}の平均の待ちが最も長く（${src.avg_wait} 分、${src.count} 件）、${dLabel}が最も短い（${best} 分）です。`;
-    if (src.max_day <= cap) return head + `${hourLabel(src.hour)}は 1 日あたり平均 ${perDay} 件、最多の日でも ${src.max_day} 件で、短い時間帯の最多（${cap} 件）を超えないので、枠を決めても移す車は出ないので、枠の提案はありません。` + rc;
+    if (src.max_day <= cap) return head + `${hourLabel(src.hour)}は 1 日あたり平均 ${perDay} 件、最多の日でも ${src.max_day} 件で、短い時間帯の最多（${cap} 件）を超えません。予約の枠を決めても動かす車はないので、枠の提案はありません。` + rc;
     return head + `${hourLabel(src.hour)}の予約を 1 時間 ${cap} 件までにして（短い時間帯で実際にあった 1 日の最多に合わせた数です。この時間帯は 1 日あたり平均 ${perDay} 件、最多の日 ${src.max_day} 件）、超える分を ${dLabel}に移します。` + rc;
   }
   // 荷主が取れる行動（記録の数字から作る提案。実行するかは荷主が決める）

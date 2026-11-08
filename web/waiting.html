@@ -212,6 +212,7 @@ details[open].disc > summary::before, details[open].fold > summary::before, deta
 #hotspots th { padding: 4px 6px; white-space: normal; }
 #hotspots td { padding-left: 6px; padding-right: 6px; }
 #hotspots th:last-child { text-align: left; }
+#hotspots th:nth-child(-n+3), #placemonth th:nth-child(-n+2) { text-align: left; }   /* 文字の列は見出しも左寄せにして、値と同じ側にそろえる */
 #hotspots td.num, #hotspots th.num { white-space: nowrap; }
 /* 施設名・場所の列は縦に 1 文字ずつ並ばない幅を持たせる（空白では折り返す）。表が広いときは .scroll-x で横に動かす */
 table.par td:first-child, table.par th:first-child { min-width: 7em; }
@@ -238,6 +239,8 @@ table.par td, table.rec td { padding: 7px 8px; background: var(--head-bg); }
 table.par td:first-child, table.rec td:first-child { border-radius: 8px 0 0 8px; }
 table.par td:last-child, table.rec td:last-child { border-radius: 0 8px 8px 0; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
+#partners table.par td.num { white-space: nowrap; }
+#hotspots th:nth-child(n+4) { min-width: 4.5em; }
 table.par { min-width: 560px; }
 table.in td.n { white-space: nowrap; }
 table.par tr[data-pick] { cursor: pointer; }
@@ -395,7 +398,7 @@ td.num { font-variant-numeric: tabular-nums; }
 /* 例を入れた最初の画面は、数字・帯・Claude の欄・表の要点だけにする（記録を触ると全部出る） */
 body.demo #partners p:not(.ai-off):not(.keep-show), body.demo #partners h2 .small, body.demo #head-defs, body.demo .heat-card h3 .small { display: none; }
 @media (min-width: 601px) { body.demo #hotspots td.c3 { display: none; } }
-@media (min-width: 601px) { body.demo #partners > h2 + .scroll-x th:nth-child(3), body.demo #partners > h2 + .scroll-x td:nth-child(3), body.demo #partners > h2 + .scroll-x th:nth-child(n+6), body.demo #partners > h2 + .scroll-x td:nth-child(n+6) { display: none; } }
+@media (min-width: 601px) { body.demo #partners > h2 + .scroll-x th:nth-child(4), body.demo #partners > h2 + .scroll-x td:nth-child(4), body.demo #partners > h2 + .scroll-x th:nth-child(n+6), body.demo #partners > h2 + .scroll-x td:nth-child(n+6) { display: none; } }
 body.demo #partners .stat .stat-d, body.demo #hotspots th:last-child { display: none; }
 @media (min-width: 601px) { body.demo #hotspots th:nth-child(7), body.demo #hotspots td:nth-child(7) { display: none; } }
 @media (min-width: 1001px) { .app-header .app-page { display: none; } }
@@ -539,6 +542,18 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 @media (max-width: 760px) { #draft-area .wrap > #wait-doc { flex: 0 0 auto; } }
 @media (max-width: 480px) { .heat-ax span { white-space: nowrap; } .heat-ax span:not(:nth-child(6n+1)) { visibility: hidden; } #partners .stat .stat-n { white-space: nowrap; font-size: 26px; } #partners .stat.hero .stat-n { font-size: 40px; } }
 @media (max-width: 600px) { #wait-doc { font-size: 15px; } #wait-doc .m-head { grid-template-columns: 2.8em 1fr; font-size: 13.5px; } }
+/* スマホの幅では、メールの記録の表を 1 行ずつのカードにして、待機と参考額が横に動かさなくても見えるようにする */
+@media screen and (max-width: 600px) {
+  #wait-doc .rec-hint { display: none; }
+  #wait-doc .rec-w { overflow: visible; }
+  #wait-doc table.rec:not(.rate), #wait-doc table.rec:not(.rate) tbody, #wait-doc table.rec:not(.rate) tfoot { display: block; }
+  #wait-doc table.rec:not(.rate) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  #wait-doc table.rec:not(.rate) tr { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 7px 4px; border-bottom: 1px solid var(--paper-line); }
+  #wait-doc table.rec:not(.rate) td { display: block; border: 0; padding: 0; text-align: left; }
+  #wait-doc table.rec:not(.rate) td[data-l]::before { content: attr(data-l) " "; color: var(--paper-muted, #666); font-size: 11px; font-weight: 400; }
+  #wait-doc table.rec:not(.rate) tfoot tr { border-top: 1px solid var(--paper-text); }
+  #wait-doc table.rec:not(.rate) tfoot td.l-sum { flex: 0 0 100%; text-align: left; }
+}
 /*PRINT-START*/
 @page { size: A4 portrait; margin: 12mm; }
 @media print {
@@ -1656,7 +1671,7 @@ const WaitingShared = (() => {
     const dLabel = dests.map((h) => hourLabel(h.hour)).join('か ');
     const perDay = Math.ceil((src.count / days) * 10) / 10;
     const head = `${top.place}は ${hourLabel(src.hour)}の平均の待ちが最も長く（${src.avg_wait} 分、${src.count} 件）、${dLabel}が最も短い（${best} 分）です。`;
-    if (src.max_day <= cap) return head + `${hourLabel(src.hour)}は 1 日あたり平均 ${perDay} 件、最多の日でも ${src.max_day} 件で、短い時間帯の最多（${cap} 件）を超えないので、枠を決めても移す車は出ないので、枠の提案はありません。` + rc;
+    if (src.max_day <= cap) return head + `${hourLabel(src.hour)}は 1 日あたり平均 ${perDay} 件、最多の日でも ${src.max_day} 件で、短い時間帯の最多（${cap} 件）を超えません。予約の枠を決めても動かす車はないので、枠の提案はありません。` + rc;
     return head + `${hourLabel(src.hour)}の予約を 1 時間 ${cap} 件までにして（短い時間帯で実際にあった 1 日の最多に合わせた数です。この時間帯は 1 日あたり平均 ${perDay} 件、最多の日 ${src.max_day} 件）、超える分を ${dLabel}に移します。` + rc;
   }
   // 荷主が取れる行動（記録の数字から作る提案。実行するかは荷主が決める）
@@ -2194,29 +2209,35 @@ function recModel(p) {
   const hasVeh = rows.some((r) => r.vehicle_no);
   const hasPlace = rows.some((r) => r.place);   // 場所の列が無い記録では、場所の列を出さない
   const hu = handlerUnknown(p);
-  const notes = [];
-  const who = (r) => `${jdate(r.date, !oneYear)}${r.vehicle_no ? `（車番 ${r.vehicle_no}）` : ''}は、`;
-  const mark = (r, sentences) => { notes.push(who(r) + sentences.join('')); return notes.length; };
+  const hasRecCol = rows.some((r) => r.reception);   // 受付の時刻がある記録では、受付の列を足して、行ごとの注記は付けない
+  const who = (r) => `${jdate(r.date, !oneYear)}${r.vehicle_no ? `（車番 ${r.vehicle_no}）` : ''}`;
+  // 同じ文の注記は 1 つにまとめる（どの回かは並べて書く）
+  const noteMap = new Map(), noteList = [];
+  const mark = (r, sentences) => { const key = sentences.join(''); let e = noteMap.get(key); if (!e) { e = { who: [], text: key }; noteMap.set(key, e); noteList.push(e); } const w = who(r); if (!e.who.includes(w)) e.who.push(w); return noteList.indexOf(e) + 1; };
   const dash = (v) => (v === undefined || v === null || v === '' ? '—' : String(v));
   const body = rows.map((r) => {
     const waitMin = r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min;
     const amount = r.reception_amount !== undefined ? r.reception_amount : r.amount;
-    const arriveNotes = [r.reception ? `受付の時刻は${r.reception}です。` : '', r.early_arrival === 'assumed' && r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）の回です。' : '',
+    const arriveNotes = [r.early_arrival === 'assumed' && r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）の回です。' : '',
       r.early_arrival === 'designated' ? `指定の${r.appointed}より前に到着しています。` : ''].filter(Boolean);
-    const waitNotes = [r.reception_wait_min !== undefined ? `受付の${r.reception}から数えると${r.reception_wait_min}分で、到着から数えると${r.wait_min}分です。` : '', r.handler === '荷主側' && r.wait_min > 0 && r.end ? '貴社側で荷役をしていただいた時間も、待ち時間に含めています。' : '',
+    const waitNotes = [r.handler === '荷主側' && r.wait_min > 0 && r.end ? '貴社側で荷役をしていただいた時間も、待ち時間に含めています。' : '',
       r.post_wait_min > 0 ? `荷役のあとの待ち${r.post_wait_min}分も、待ち時間に含めています。` : '', r.wait_base_min > 0 ? `指定の${r.appointed}から数えた時間です。` : '', r.shipper_fault ? '' : '荷主等の都合によらない待ちとして記録しています。'].filter(Boolean);
     const sideNote = r.side_work ? [`${r.side_work}${r.side_min ? `（${r.side_min}分）` : ''}の作業も行いましたが、参考額には含めていません。`] : [];
     const cells = [{ t: jdate(r.date, !oneYear), cls: 'nw' }];
     if (hasVeh) cells.push({ t: dash(r.vehicle_no), cls: 'nw' });
     if (hasPlace) cells.push({ t: dash(r.place) });
-    cells.push({ t: dash(r.arrive), cls: 'nw', n: arriveNotes.length ? mark(r, arriveNotes) : 0 }, { t: dash(r.start), cls: 'nw' }, { t: dash(r.end), cls: 'nw' },
+    cells.push({ t: dash(r.arrive), cls: 'nw', n: arriveNotes.length ? mark(r, arriveNotes) : 0 });
+    if (hasRecCol) cells.push({ t: dash(r.reception), cls: 'nw' });
+    cells.push({ t: dash(r.start), cls: 'nw' }, { t: dash(r.end), cls: 'nw' },
       { t: String(waitMin), cls: 'num', n: waitNotes.length ? mark(r, waitNotes) : 0 },
       { t: r.handler === UNKNOWN_HANDLER ? '—' : String(r.handling_min), cls: 'num', n: sideNote.length ? mark(r, sideNote) : 0 },
-      { t: n0(amount), cls: 'num', n: r.reception_amount !== undefined && r.amount !== r.reception_amount ? mark(r, [`到着から数えると${n0(r.amount)}円です。`]) : 0 });
+      { t: n0(amount), cls: 'num' });
     return cells;
   });
-  const head = ['日付', ...(hasVeh ? ['車番'] : []), ...(hasPlace ? ['場所'] : []), '到着', '荷役開始', '荷役終了', '待機（分）', '荷役（分）', '参考額（円）'];
-  return { head, body, notes, lead: head.length - 3, total: [String(mainWait(p)), hu ? '—' : String(p.handling_minutes), n0(mainAmt(p))] };
+  const notes = noteList.map((e) => `${e.who.length <= 3 ? e.who.join('、') : `${e.who.slice(0, 2).join('、')}ほか ${e.who.length - 2} 回`}は、${e.text}`);
+  const tableNote = hasRecCol ? '「受付」の列に時刻がある回は、受付の時刻から数えると、表の待機と参考額になります。到着から数えた値ではありません。' : '';
+  const head = ['日付', ...(hasVeh ? ['車番'] : []), ...(hasPlace ? ['場所'] : []), '到着', ...(hasRecCol ? ['受付'] : []), '荷役開始', '荷役終了', '待機（分）', '荷役（分）', '参考額（円）'];
+  return { head, body, notes, tableNote, lead: head.length - 3, total: [String(mainWait(p)), hu ? '—' : String(p.handling_minutes), n0(mainAmt(p))] };
 }
 
 // メールの組み立て。件名・宛先・本文の段落・記録の表・結びは、ここで 1 回だけ作り、画面の HTML とコピーする文の両方が使う
@@ -2273,8 +2294,9 @@ const fillSpan = (k, hint) => `<span class="fill${SENDER[k] ? '' : ' is-blank'}"
 function recTableHtml(m) {
   const sup = (c) => (c.n ? `<sup class="fn">※${c.n}</sup>` : '');
   return `<p class="small rec-hint">表は横にスクロールできます。</p><div class="rec-w"><table class="rec"><thead><tr>${m.head.map((h, i) => `<th class="${i >= m.lead ? 'num' : 'nw'}">${esc(h)}</th>`).join('')}</tr></thead><tbody>` +
-    m.body.map((cells) => `<tr>${cells.map((c) => `<td${c.cls ? ` class="${c.cls}"` : ''}>${esc(c.t)}${sup(c)}</td>`).join('')}</tr>`).join('') +
-    `</tbody><tfoot><tr><td colspan="${m.lead}" class="l-sum">合計</td>${m.total.map((v) => `<td class="num">${esc(v)}</td>`).join('')}</tr></tfoot></table></div>` +
+    m.body.map((cells) => `<tr>${cells.map((c, i) => `<td${c.cls ? ` class="${c.cls}"` : ''} data-l="${esc(m.head[i])}">${esc(c.t)}${sup(c)}</td>`).join('')}</tr>`).join('') +
+    `</tbody><tfoot><tr><td colspan="${m.lead}" class="l-sum">合計</td>${m.total.map((v, i) => `<td class="num" data-l="${esc(m.head[m.lead + i])}">${esc(v)}</td>`).join('')}</tr></tfoot></table></div>` +
+    (m.tableNote ? `<p class="small" id="rec-basis">${esc(m.tableNote)}</p>` : '') +
     (m.notes.length ? `<ol class="small rec-notes" id="rec-notes">${m.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : '');
 }
 
@@ -2349,7 +2371,7 @@ function mountAi(p) {
   // 使えないときは、理由（サーバーが返す文）を本文に出す。吹き出しだけだと、画面から読めない
   if (mounted && mounted.then) mounted.then((ok) => {
     const b = $('#ai-box'), why = b && b.title, off = b && b.querySelector('.ai-off');
-    if (!ok && why && off) off.textContent = `説明文の自動作成: ${why.replace(/[。\s]+$/, '')}（今は型どおりの書面です）`;
+    if (!ok && why && off) off.textContent = /（費用の上限のため）[。\s]*$/.test(why) ? 'AI による言い換えは、この公開版では使えません。下書きは決まった文型で作っています。' : `説明文の自動作成: ${why.replace(/[。\s]+$/, '')}（今は型どおりの書面です）`;
   });
   // サーバー（http）で開き、説明文の自動作成が使えるときだけ、上の説明の 2 文目を変える（ファイルで開いた版・Artifact の版は元のまま）
   const box = $('#ai-box'), priv = $('#hdr-priv');
@@ -2376,6 +2398,7 @@ function mailTableText(rm) {
   const drop = k >= 0 && rm.body.every((cells) => !cells[k] || cells[k].t === '—');
   const keep = (a) => a.filter((_, i) => !(drop && i === k));
   const L = [keep(rm.head).join('｜'), ...rm.body.map((cells) => keep(cells.map(mk)).join('｜')), keep(['合計', ...Array(rm.lead - 1).fill(''), ...rm.total]).join('｜')];
+  if (rm.tableNote) L.push('', rm.tableNote);
   if (rm.notes.length) L.push('', ...rm.notes.map((x, i) => `※${i + 1} ${x}`));
   return L;
 }
@@ -2446,6 +2469,15 @@ function statsHtml(p) {
     `<div class="stat"><span class="stat-l">参考額（税抜）</span><span class="stat-n">${n0(mainAmt(p))}<span class="stat-u">円</span></span><span class="stat-d">${hasRec(p) ? '受付から数えた額' : '到着から数えた額'}</span></div>` +
     `<div class="stat"><span class="stat-l">記録の件数</span><span class="stat-n">${p.count}<span class="stat-u">件</span></span><span class="stat-d">1 時間以上の待ち ${p.over_1h_count} 件</span></div></div>`;
 }
+// 荷主ごとの表の参考額につく説明は、セルに入れず、表の下に 1 回だけ書く
+function partnerNotes(r) {
+  const L = [];
+  r.by_partner.forEach((x) => {
+    if (hasRec(x)) L.push(`${esc(x.partner)}: 参考額は受付の時刻から数えた額です${x.amount !== mainAmt(x) ? `（到着から数えると ${n0(x.amount)} 円）` : ''}。`);
+    if (earlyShown(x)) L.push(`${esc(x.partner)}: ${esc(earlyWord(x.partner))} ${noRecEarly(x).n} 回を除くと ${n0(mainAmt(x) - noRecEarly(x).amt)} 円です。`);
+  });
+  return L.length ? `<ul class="small" id="partner-notes">${L.map((x) => `<li>${x}</li>`).join('')}</ul>` : '';
+}
 function heatHtml(p) {
   const rows = partnerRows(p.partner), by = {};
   rows.forEach((r) => { const m = /^(\d{1,2}):/.exec(r.arrive || ''); if (!m) return; const hr = Number(m[1]); const v = r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min; by[hr] = (by[hr] || 0) + (Number(v) || 0); });
@@ -2457,7 +2489,7 @@ function heatHtml(p) {
   for (let hr = 0; hr <= 23; hr++) { const v = by[hr] || 0; cells.push(`<span class="${v ? '' : 'z'}" style="--v:${(0.3 + 0.7 * v / max).toFixed(2)};--h:${v ? Math.max(8, Math.round(v / max * 100)) : 0}%" title="${hr} 時台に着いた回の待ち ${v} 分"></span>`); axis.push(`<span>${hr % 3 === 0 ? hr : ''}</span>`); }
   return `<div class="heat-card" id="heat"><h3>何時に着いた回で待っているか<span class="small">　色が濃く高いほど待ち時間の合計が長い</span></h3><div class="heat" role="img" aria-label="到着の時間帯ごとの待ち時間の合計">${cells.join('')}</div><div class="heat-ax" aria-hidden="true">${axis.join('')}</div><div class="heat-legend" aria-hidden="true"><span>到着の時刻（時）</span><span class="lg"><span>少ない</span><i class="heat-scale"></i><span>多い（最大 ${max} 分）</span></span></div></div>`;
 }
-const HOT_DEF = '平均の荷待ち・最長は、到着から荷役開始までの分です（指定の到着時刻があって早く着いた回は、その時刻から）。貴社の書面のメールと同じ数え方です。';
+const HOT_DEF = '平均の荷待ち・最長は、到着から荷役開始までの分です（指定の到着時刻があって早く着いた回は、その時刻から）。荷主に送るメールと同じ数え方です。';
 const hotspotsHtml = (r) => {
   const total = r.rows.reduce((a, x) => a + (x.reception_wait_min !== undefined ? x.reception_wait_min : x.wait_min), 0);
   const top = reportHotspots().filter((h) => h.wait_minutes > 0).slice(0, 5);   // メールと同じ数え方（到着か指定の時刻から荷役開始まで）。荷主側の荷役の時間は入らない
@@ -2466,11 +2498,11 @@ const hotspotsHtml = (r) => {
   // SPEC §29.2: 荷主等の都合が はい の行で report_wait_min が 30 分未満の行が 0 件で、はい の行が 5 行以上のとき、強めの表示
   const trunc = truncWarn(r.rows);
   return `<h2>待ち時間の長い場所と時間帯<span class="small">　上位 5</span></h2>
-    <p>この期間に荷主の都合で待った時間は、合計 ${hm(total)}です。</p>
+    <p>この期間に荷主の都合で待った時間は、${r.by_partner.length > 1 ? '全部の荷主を合わせると、' : ''}合計 ${hm(total)}です。</p>
     ${trunc ? `<p class="errs" id="trunc-warn"><b>${esc(TRUNC_WARN)}</b></p>` : ''}
     <p class="small" id="trunc-line">${esc(TRUNC_LINE)}</p>
-    ${top.length ? `<p class="small" id="hot-def">${esc(HOT_DEF)}</p><div class="scroll-x"><table class="par" id="hotspots"><thead><tr><th>契約の相手</th><th>場所</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>参考額（円）</th><th>メモ</th></tr></thead><tbody>${tb}</tbody></table></div>` : '<p class="empty">荷待ちのある組はありません。</p>'}
-    <h3>場所ごと・月ごとの平均の荷待ち（分）</h3>
+    ${top.length ? `<p class="small" id="hot-def">${esc(HOT_DEF)}</p><div class="scroll-x"><table class="par" id="hotspots"><thead><tr><th>荷主</th><th>場所</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>参考額（円）</th><th>メモ</th></tr></thead><tbody>${tb}</tbody></table></div>` : '<p class="empty">荷待ちのある組はありません。</p>'}
+    <h3>場所ごと・月ごとの平均の荷待ち（分）${r.by_partner.length > 1 ? '<span class="small">　全部の荷主を合わせた数字です</span>' : ''}</h3>
     <p>${esc(PLACE_MONTH_LEAD)}</p>
     <p class="small" id="pm-def">${esc(PM_DEF)}</p>
     ${pm.length ? `<div class="scroll-x"><table class="par" id="placemonth"><thead><tr><th>場所</th><th>月</th><th>回数</th><th>平均の荷待ち（分）</th><th>1 時間以上の回数</th></tr></thead><tbody>${pm}</tbody></table></div>` : '<p class="empty">記録を入れると出ます。</p>'}`;
@@ -2482,7 +2514,7 @@ function renderResult() {
   if (S.mode === 'shipper') { renderShipper(); document.body.classList.toggle('no-rows', !(S.res && S.res.rows.length)); return; }
   const r = S.res;
   if (!r || !r.by_partner.length) {
-    $('#partners').innerHTML = '<h2>契約の相手ごと</h2><div class="empty-state"><img class="ill ill-128" src="data:image/webp;base64,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" alt="" width="128" height="128"><p class="empty">まだ記録がありません。記録を貼るか、「例を入れる」を押してください。</p></div>';
+    $('#partners').innerHTML = '<h2>荷主ごと</h2><div class="empty-state"><img class="ill ill-128" src="data:image/webp;base64,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" alt="" width="128" height="128"><p class="empty">まだ記録がありません。記録を貼るか、「例を入れる」を押してください。</p></div>';
     $('#draft-area').innerHTML = `<h2>荷主に出す相談のメール（下書き）</h2><div class="wrap"><div id="wait-doc"><div class="empty-state"><img class="ill ill-128" src="data:image/webp;base64,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" alt="" width="128" height="128"><p class="empty">記録を入れると、ここに下書きが出ます。</p></div></div><div class="side-col">${processHtml()}</div></div>`;
     document.body.classList.add('no-rows');
     return;
@@ -2491,12 +2523,13 @@ function renderResult() {
   S.partner = sel;
   const p = r.by_partner.find((x) => x.partner === sel);
   const tb = r.by_partner.map((x) => `<tr class="${x.partner === sel ? 'on' : ''}" data-pick="${esc(x.partner)}"><td class="c1">${esc(x.partner)}</td><td class="num" data-l="回数">${x.count}</td><td class="num" data-l="待機の合計">${hm(mainWait(x))}</td>` +
-    `<td class="num" data-l="運転者の荷役の合計">${hm(x.handling_minutes)}</td><td class="num" data-l="参考額"><b>${n0(mainAmt(x))}</b>${hasRec(x) ? `<small class="small">　受付の時刻から数えた額${x.amount !== mainAmt(x) ? `（着いた時刻からだと ${n0(x.amount)} 円）` : ''}</small>` : ''}${earlyShown(x) ? `<small class="small">　${earlyWord(x.partner)} ${noRecEarly(x).n} 回を除くと ${n0(mainAmt(x) - noRecEarly(x).amt)} 円</small>` : ''}</td><td class="num" data-l="1 時間以上">${x.over_1h_count}</td><td class="num" data-l="2 時間以上">${x.over_2h_count}</td></tr>`).join('');
+    `<td class="num" data-l="運転者の荷役の合計">${hm(x.handling_minutes)}</td><td class="num" data-l="参考額"><b>${n0(mainAmt(x))}</b></td><td class="num" data-l="1 時間以上">${x.over_1h_count}</td><td class="num" data-l="2 時間以上">${x.over_2h_count}</td></tr>`).join('');
   const earlyN = partnerRows(sel).filter((x) => x.early_arrival === 'assumed' && !x.arrive_from_reception).length;
   const lead = (S.exampleAuto ? '<p class="note keep-show" id="example-lead">例の記録です（架空）。自分の記録を貼ると置き換わります。</p>' : '') +
     `<p class="small keep-show" id="tile-for">この数字とメールは『${esc(sel)}』の分です。${r.by_partner.length > 1 ? 'ほかの相手は、下の表の行を押すと切り替わります。' : ''}</p>`;
-  $('#partners').innerHTML = `${provisionalHtml()}${faultDefaultHtml()}${handlerUnknownHtml()}${lead}${statsHtml(p)}${heatHtml(p)}<h2>依頼元ごと<span class="small" title="運送を頼んできた会社">（?）</span><span class="small">　金額は税抜。行を押すと書面の相手が変わります</span></h2>
-    <div class="scroll-x"><table class="par"><thead><tr><th>契約の相手</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th title="積み降ろしの作業">運転者の荷役の合計</th><th>参考額</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">待ちと荷役で 2 時間以上</th></tr></thead><tbody>${tb}</tbody></table></div>
+  $('#partners').innerHTML = `${provisionalHtml()}${faultDefaultHtml()}${handlerUnknownHtml()}${lead}${statsHtml(p)}${heatHtml(p)}<h2>荷主ごと<span class="small" title="運送を頼んできた会社（契約の相手）">（?）</span><span class="small">　金額は税抜。行を押すと書面の相手が変わります</span></h2>
+    <div class="scroll-x"><table class="par"><thead><tr><th>荷主</th><th>回数</th><th title="荷主側の荷役を含む待機">待機の合計</th><th title="積み降ろしの作業">運転者の荷役の合計</th><th>参考額</th><th title="待機（荷主側の荷役を含む）が 1 時間以上の回数">1 時間以上の荷待ち</th><th title="待機と運転者の荷役の合計が 2 時間以上の回数">待ちと荷役で 2 時間以上</th></tr></thead><tbody>${tb}</tbody></table></div>
+    ${partnerNotes(r)}
     <details class="defs" id="head-defs"><summary>表の見出しの意味</summary><ul>
       <li><b>待機の合計</b>: 荷主側の荷役の時間を含む待機の分です。</li>
       <li><b>1 時間以上の荷待ち</b>: 待機（荷主側の荷役を含む）が 1 時間以上だった回数です。</li>
@@ -2633,8 +2666,8 @@ function crossResultHtml() {
   return `<div id="cross-result">
     <p><b>見比べた結果:</b> 同じ回と見られる ${c.pairs.length} 回のうち、時刻が ${lim} 分以上違うのは ${c.differ.length} 回です。書面だけにある回 ${c.only_carrier.length}、受付簿だけにある回 ${c.only_shipper.length}${c.ambiguous.length ? `、どの回か決められない行 ${c.ambiguous.length} 件` : ''}。</p>
     <p class="small" id="cross-keys">見比べに使った項目: 車番 ${c.key_counts.vehicle} 回、場所と時刻 ${c.key_counts.place + c.key_counts.time} 回。${c.key_counts.vehicle === 0 && c.pairs.length ? '車番が無いので、場所と時刻で見比べました。' : ''}</p>
-    <p id="cross-amount">${crossAmountHtml(c)}</p>
-    ${c.recalc ? `<div id="cross-recalc"><p><b>受付簿の時刻で数えた額:</b> 受付簿の時刻で数えると <b class="big">${yen(c.recalc.own)}</b> です。書面は ${yen(c.recalc.carrier)} で、差は <b>${yen(Math.abs(c.recalc.diff))}</b>（${c.recalc.diff > 0 ? '書面のほうが多い' : c.recalc.diff < 0 ? '書面のほうが少ない' : '差なし'}）です。${c.recalc.reverted ? `置き換えると時刻の順が合わなくなる ${c.recalc.reverted} 組は、書面の時刻のままです。` : ''}</p>
+    <details id="cross-amount-d"${c.recalc ? '' : ' open'}><summary class="small">額の内訳（書面の額と自社の額の範囲）</summary><p id="cross-amount">${crossAmountHtml(c)}</p></details>
+    ${c.recalc ? `<div id="cross-recalc"><p><b>受付簿の時刻で数えた額:</b> 受付簿の時刻で数えると <b class="big">${yen(c.recalc.own)}</b> です。書面の時刻で数えると ${yen(c.recalc.carrier)} で、差は <b>${yen(Math.abs(c.recalc.diff))}</b>（${c.recalc.diff > 0 ? '書面のほうが多い' : c.recalc.diff < 0 ? '書面のほうが少ない' : '差なし'}）です。${c.recalc.doc != null ? `書面に書かれた額（${yen(c.recalc.doc)}）は荷役の分などを含むことがあるので、この比べ方には使っていません。` : ''}${c.recalc.reverted ? `置き換えると時刻の順が合わなくなる ${c.recalc.reverted} 組は、書面の時刻のままです。` : ''}</p>
       <p class="small">国の標準的運賃の表で計算した目安です。</p>
       <textarea id="reply-ta" rows="9" readonly aria-label="運送会社への返信の文">${esc(replyText(c))}</textarea>
       <div class="bar"><button type="button" id="b-copyreply" class="primary">返信の文をコピー</button><span class="small" id="reply-msg" role="status"></span></div></div>` : ''}
@@ -2686,7 +2719,12 @@ function replyText(cc) {
     `${cc.key_counts.place + cc.key_counts.time ? '同じ回と見られる' : '日付と車番が同じ'} ${cc.pairs.length} 回のうち、時刻が ${lim} 分以上違う回が ${cc.differ.length} 回ありました。`];
   cc.differ.slice(0, 10).forEach((p) => L.push(`・${p.date} ${p.vehicle ? '車番 ' + p.vehicle : p.carrier.place}: 到着 書面 ${p.carrier.arrive} / 当方の受付 ${p.shipper.arrive}（差 ${signed(p.arrive_diff)} 分）、荷役開始 書面 ${p.carrier.start} / 当方の作業開始 ${p.shipper.start}（差 ${signed(p.start_diff)} 分）`));
   if (cc.differ.length > 10) L.push(`・ほか ${cc.differ.length - 10} 組`);
-  if (r) L.push('', `当方の時刻で数え直した参考額は ${yen(r.own)}（税抜）で、書面の ${yen(r.carrier)} より ${yen(Math.abs(r.diff))} ${r.diff > 0 ? '少なくなります' : r.diff < 0 ? '多くなります' : '（同じ額）'}。標準的運賃の表に当てた参考額で、支払いをお約束するものではありません。`);
+  if (r) {
+    const gap = r.diff === 0 ? 'どちらも同じ額です' : `当方の額は書面より ${yen(Math.abs(r.diff))} ${r.diff > 0 ? '少なくなります' : '多くなります'}`;
+    L.push('', `書面の時刻で数えた参考額は ${yen(r.carrier)}、当方の受付の時刻で数え直した参考額は ${yen(r.own)}（税抜）です。${gap}。`);
+    if (r.doc != null) L.push(`書面に書かれた額は ${yen(r.doc)} です。この額には荷役の分などが入っていることがあり、上の額とは範囲が違うため、差としては扱っていません。`);
+    L.push('どちらも標準的運賃の表に当てた参考額で、支払いをお約束するものではありません。');
+  }
   if (cc.only_carrier.length) L.push(`書面にあって当方の記録に無い行が ${cc.only_carrier.length} 件あります。`);
   L.push('', '時刻が違う行について、貴社の記録（運転日報など）をご確認のうえ、ご連絡をお願いします。', '', '（荷主の名称・担当者名）');
   return L.join('\n');
@@ -2744,7 +2782,8 @@ function runCross() {
     cc.doc_amount = docs.length && docs.length === rc.rows.length ? docs.reduce((a, v) => a + v, 0) : null;
     cc.doc_manual = false;
     if (cc.doc_amount === null && S.crossDocAmount > 0) { cc.doc_amount = S.crossDocAmount; cc.doc_manual = true; }
-    if (cc.recalc && cc.doc_amount !== null) { cc.recalc.own = cc.doc_amount - (cc.recalc.carrier - cc.recalc.own); cc.recalc.carrier = cc.doc_amount; }
+    // 自社の額（recalc.own）は受付簿の時刻から数えた額のままにする。書面の額（doc_amount）は並べて見せるだけで、自社の額の計算には使わない
+    if (cc.recalc) cc.recalc.doc = cc.doc_amount;
     S.cross = cc;
   } catch (e) { S.cross = { error: e.message }; }
 }
@@ -2809,7 +2848,15 @@ function csvTextOf(resRows) {
 
 // 書き出す CSV は、いま選んでいる相手の行だけ。ほかの相手（ほかの荷主）の記録を一緒に渡さない（SPEC §46）
 const csvRowsOfPartner = () => { const rows = S.res.rows; const mine = S.partner ? rows.filter((r) => r.partner === S.partner) : []; return mine.length ? mine : rows; };
-const csvText = () => csvTextOf(csvRowsOfPartner());
+const csvSorted = () => csvRowsOfPartner().map((r, i) => [r, i]).sort((a, b) => String(a[0].date).localeCompare(String(b[0].date)) || String(a[0].arrive || '').localeCompare(String(b[0].arrive || '')) || a[1] - b[1]).map((x) => x[0]);   // 日付、到着の順
+const csvText = () => csvTextOf(csvSorted());
+// ファイル名は「荷待ちの記録_相手_期間.csv」。ファイル名に使えない文字は _ に替える
+function csvFileName() {
+  const rows = csvSorted(), safe = (t) => String(t || '').replace(/[\/:*?"<>|\s]+/g, '_').replace(/^_+|_+$/g, '');
+  const dates = rows.map((r) => String(r.date)).filter(Boolean), d0 = dates[0], d1 = dates[dates.length - 1];
+  const who = safe(S.partner || (rows[0] && rows[0].partner) || ''), per = d0 ? (d0 === d1 ? d0 : `${d0}_${d1}`) : '';
+  return ['荷待ちの記録', who, per].filter(Boolean).join('_') + '.csv';
+}
 
 // このページが書き出した CSV（引用符・改行つきの欄も可）を、入力の行に戻す。入力の 16 列だけを見て、残りの列（計算結果）は読み捨てる
 function parseCsv(text) {
@@ -2929,6 +2976,17 @@ function putExample() {
 function disarmExample() { S.exArmed = false; clearTimeout(S.exArmTm); const b = $('#b-example'); if (b) b.textContent = '例を入れる'; }
 function keepMsg(t) { const el = $('#keep-msg'); if (el) el.textContent = t ? `　${t}` : ''; }
 
+// 黄色の欄（会社名など）や【】が空のまま残っているとき、1 回目は知らせるだけにして、続けるなら同じボタンをもう一度押してもらう
+const BLANK_RE = /（(?:会社名|担当者名|電話番号|メールアドレス|部署・担当者名|荷主の会社名|運送会社の担当者名)）|【[^】\n]*】/g;
+function blankWarn(text, what) {
+  const left = [...new Set(String(text).match(BLANK_RE) || [])];
+  if (!left.length) { S.blankWarned = false; return false; }
+  if (S.blankWarned === what) { S.blankWarned = false; return false; }
+  S.blankWarned = what;
+  const msg = $('#copymsg');
+  if (msg) msg.textContent = `${left.join('・')} が空のままです。黄色の欄に入れてください。このままで${what}するときは、もう一度押します。`;
+  return true;
+}
 // Artifact の版: クリックの中で navigator.clipboard.writeText を呼ぶ。断られたら、見える枠に文を出して選ぶ
 function copyOut(text, what) {
   const box = $('#copybox'), ta = $('#copyta'), msg = $('#copymsg');
@@ -2945,10 +3003,12 @@ function copyOut(text, what) {
 function downloadCsv() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csvText()], { type: 'text/csv;charset=utf-8' }));
-  a.download = 'waiting_calc.csv';
+  a.download = csvFileName();
   document.body.appendChild(a);
   a.click();
+  const nm = a.download;
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  const mg = $('#copymsg'); if (mg) mg.textContent = `CSV を保存しました（${nm}）`;
 }
 /*LOCAL-ONLY-END*/
 
@@ -3160,12 +3220,12 @@ function init() {
         S.armed = true; t.textContent = 'もう一度押すと、保存した記録を消します'; clearTimeout(S.armTm); S.armTm = setTimeout(disarmForget, 6000);
       } else { disarmForget(); forgetRecords(); }
     }
-    else if (t.id === 'b-copydoc') { const p = S.res && S.res.by_partner.find((x) => x.partner === S.partner); if (p) copyOut(draftText(p), '本文'); }
+    else if (t.id === 'b-copydoc') { const p = S.res && S.res.by_partner.find((x) => x.partner === S.partner); if (p && !blankWarn(draftText(p), 'コピー')) copyOut(draftText(p), '本文'); }
     else if (t.id === 'b-copysubj') { const p = S.res && S.res.by_partner.find((x) => x.partner === S.partner); if (p) copyOut(draftSubject(p), '件名'); }
     else if (t.id === 'b-copycsv') { if (S.res && S.res.rows.length) copyOut(csvText(), 'CSV'); }
     else if (t.id === 'b-csvpaste') csvPasteIn();
 /*LOCAL-ONLY-START*/
-    else if (t.id === 'b-print') window.print();
+    else if (t.id === 'b-print') { const p = S.res && S.res.by_partner.find((x) => x.partner === S.partner); if (!p || !blankWarn(draftText(p), '印刷')) window.print(); }
     else if (t.id === 'b-csv') { if (S.res && S.res.rows.length) downloadCsv(); }
 /*LOCAL-ONLY-END*/
     else if (t.dataset && t.dataset.del !== undefined) { endExampleAuto(); S.memoRead = null; $('#memo-read').innerHTML = ''; S.rows.splice(Number(t.dataset.del), 1); renderTable(); doCalc(); }

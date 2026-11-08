@@ -276,9 +276,12 @@
       if (!st || !el.isConnected) return false;   // ファイルで開いたとき（st が無い）は、ページ自身の 1 行のまま
       if (!st.available) {
         // 使えない理由を、吹き出しではなく本文に出す
+        // サーバーで開いているのに「サーバーで開いたときだけ使えます」と出し続けると、次の 1 行と食い違う。ページが置いた仮の 1 行は、理由の 1 行に置き換える
+        el.querySelectorAll('p.w-small').forEach((x) => { if (/サーバーで開いたときだけ/.test(x.textContent)) x.remove(); });
         let off = el.querySelector('.ai-off');
         if (!off) { off = document.createElement('p'); off.className = 'small ai-off'; el.appendChild(off); }
-        off.textContent = `説明文の自動作成: ${reasonText(st)}（今は型どおりの書面です）`;
+        const why = reasonText(st);
+        off.textContent = /（費用の上限のため）$/.test(why) ? 'AI による言い換えは、この公開版では使えません。下書きは決まった文型で作っています。' : `説明文の自動作成: ${why}（今は型どおりの書面です）`;
         return false;
       }
       injectStyle();
