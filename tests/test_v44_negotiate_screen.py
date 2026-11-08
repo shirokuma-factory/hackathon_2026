@@ -225,6 +225,8 @@ def test_copy_copies_the_edited_text_and_falls_back_to_manual(app):
     v = page.js("document.querySelector('#neg-text').value") + "\n手で足した行 ABC"
     setv(page, "#neg-text", v)
     click(page, "#neg-copy")
+    assert page.js("window.__clip") is None and "がまだ書き換わっていません" in T(page, "#neg-copymsg")   # 2026-11-08: 【宛先】などが残っていれば、1 回目は知らせるだけ
+    click(page, "#neg-copy")
     page.wait(lambda: page.js("window.__clip") is not None, 5, "コピー")
     assert page.js("window.__clip") == v and "コピーしました" in T(page, "#neg-copymsg")
     # 社内の語を入れると、コピーを止める

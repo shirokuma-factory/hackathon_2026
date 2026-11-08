@@ -822,11 +822,11 @@ def _read_vertical(rows: list[list[str]], body: list[tuple[int, list[str]]], lay
             plates.append({"plate": pn, "raw": raw, "type": cell(row, tc), "driver": cell(row, dc)})
         frm, to = cell(row, c["from"]) or None, cell(row, c["to"]) or None
         mark = unicodedata.normalize("NFKC", cell(row, c["mark"]))
-        empty = is_empty_word(mark) or is_empty_word(to or "") or is_empty_word(frm or "")
+        empty = is_empty_mark_word(mark) or is_empty_word(to or "") or is_empty_word(frm or "")
         if not empty and any(has_empty_mark(cell(row, j)) for j in mark_cols):  # 備考・荷主・摘要の列の「空車回送」「帰荷なし」
             empty = True
             marked += 1
-        loaded_mark = (not empty) and mark.strip("()") in LOADED_WORDS
+        loaded_mark = (not empty) and (mark.strip("()") in LOADED_WORDS or mark.strip("()") in MARK_LOADED_EXTRA)
         if to and is_empty_word(to):
             to = None
         if frm and is_empty_word(frm):
@@ -983,6 +983,16 @@ def _arrival(rest: str) -> tuple[str | None, bool]:
         if not parse_weights(tok):
             bad = True
     return None, bad
+
+
+# 「実空の印」の列（荷物有無・区分など）のセルだけで使う語。「無」「なし」は備考の列では「特になし」の意味なので EMPTY_WORDS には入れない（web/own_calc.js の MARK_EMPTY_EXTRA と同じ）
+MARK_EMPTY_EXTRA = ("無", "無し", "なし", "ナシ", "空", "カラ", "から")
+MARK_LOADED_EXTRA = ("有", "あり", "アリ", "有り", "実")
+
+
+def is_empty_mark_word(s: str) -> bool:
+    t = unicodedata.normalize("NFKC", s or "").strip().strip("()").strip()
+    return t in MARK_EMPTY_EXTRA or is_empty_word(s)
 
 
 def is_empty_word(s: str) -> bool:

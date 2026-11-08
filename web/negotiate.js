@@ -43,7 +43,7 @@ const Negotiate = (() => {
   // 質問。cond は、その条件が未確認のときだけ聞く（load: 積込、recv: 受取、always: いつも）
   const QUESTIONS = {
     commodity: [
-      ['load', '荷物の品名・荷姿（箱・パレットなど）、1 個あたりの寸法・重量、数量'],
+      ['cargo', '荷物の品名・荷姿（箱・パレットなど）、1 個あたりの寸法・重量、数量'],
       ['load', '積込を希望する日時と、日程を広げられる範囲'],
       ['load', '積込場所の荷役設備（フォークリフト・ドックなど）と、積込にかかる時間'],
       ['load', 'ほかの荷物との混載の可否と、積み降ろしの順の希望'],
@@ -53,7 +53,7 @@ const Negotiate = (() => {
       ['always', '現在の送り方と、その条件（比べるため）'],
     ],
     returnable: [
-      ['load', '通い箱・パレットの種類（規格・寸法）と数量'],
+      ['cargo', '通い箱・パレットの種類（規格・寸法）と数量'],
       ['load', '積み重ねの可否と、重ねられる段数'],
       ['load', '回収・受け渡しの方法（誰が積み込み、検品をどうするか）'],
       ['load', '回収を希望する日時と、日程を広げられる範囲'],
@@ -98,11 +98,13 @@ const Negotiate = (() => {
   /* ------------------------------------------------------------ 状況（保留・見送り・下書き） */
 
   const STATUS_JA = { hold: '保留', skip: '見送り', skip_econ: '見送り（増えるもうけが 0 円以下）', ready: '条件はすべて確認済みです', draft: '未確認の項目は、相手への質問にしています' };
+  // 条件が「合う」でも、確認した内容が空なら、確認できたとは書けない（相手への文では未確認として質問にする）
+  const okCond = (c) => c.state === 'ok' && !!String(c.note || '').trim();
   function statusOf(p) {
     const ec = economics(p.econ || emptyEcon());
     if (ec.state === 'skip') return 'skip_econ';
     if (p.load.state === 'ng' || p.recv.state === 'ng') return p.hold && p.hold.action === 'skip' ? 'skip' : 'hold';
-    return p.load.state === 'ok' && p.recv.state === 'ok' ? 'ready' : 'draft';
+    return okCond(p.load) && okCond(p.recv) ? 'ready' : 'draft';
   }
 
   /* ------------------------------------------------------------ 文面（社外にコピーする文。社内の根拠・原価・車番などは入れない） */
@@ -116,6 +118,7 @@ const Negotiate = (() => {
     const from = phrase(p.fromMuni), to = phrase(p.toMuni), day = p.weekday ? `${p.weekday}曜日` : '【曜日】';
     const head = ['【宛先（会社名・ご担当者名）】 様', '', '突然のご連絡で失礼します。【運送会社名】の【担当者名】です。'];
     if (st === 'hold') {
+      head[2] = 'お世話になっております。【運送会社名】の【担当者名】です。先日ご相談した件でご連絡します。';
       const picks = (p.hold && p.hold.picks) || [];
       return [...head, '', `${from}から${to}へ戻る便でお運びする件で、条件が合わない点がありました。条件を変えられるか、再確認させてください。`, '',
         '■再確認したいこと', ...(picks.length ? picks.map((k) => `・${HOLD_ASK[k]}`) : ['・【再確認する内容を選ぶか、ここに書いてください】']), '',
@@ -129,9 +132,10 @@ const Negotiate = (() => {
       ? `${when}${from}から${to}へ戻る便に${vacant}。空の通い箱・パレットの返送にお使いいただけます。`
       : `${when}${from}から${to}へ戻るトラックに${vacant}。この方面へ出荷される荷物があれば、この便でお運びできます。`;
     const confirmed = [];
-    if (p.load.state === 'ok') confirmed.push(`・積込の条件: ${(p.load.note || '').trim() || '確認できています（内容は別途お伝えします）'}`);
-    if (p.recv.state === 'ok') confirmed.push(`・受取の条件: ${(p.recv.note || '').trim() || '確認できています（内容は別途お伝えします）'}`);
-    const asks = QUESTIONS[type].filter(([c]) => c === 'always' || (c === 'load' && p.load.state !== 'ok') || (c === 'recv' && p.recv.state !== 'ok')).map(([, t]) => `・${t}`);
+    if (okCond(p.load)) confirmed.push(`・積込の条件: ${p.load.note.trim()}`);
+    if (okCond(p.recv)) confirmed.push(`・受取の条件: ${p.recv.note.trim()}`);
+    // 内容を書いていない「合う」は未確認として質問に残す。荷物の内容（cargo）は、積込・受取の確認とは別に、いつも聞く
+    const asks = QUESTIONS[type].filter(([c]) => c === 'always' || c === 'cargo' || (c === 'load' && !okCond(p.load)) || (c === 'recv' && !okCond(p.recv))).map(([, t]) => `・${t}`);
     return [...head, '', intro, 'お運びできるかを確かめるため、次の点をお聞かせください。', '', '■確認できている条件', ...(confirmed.length ? confirmed : ['・現時点で、確認できている条件はありません']), '',
       '■お聞かせいただきたいこと', ...asks, '',
       'お見積りは、荷物の内容と日時を伺ってからお出しします。', '',
@@ -238,10 +242,19 @@ const Negotiate = (() => {
     const sel = wd != null && model.by_weekday.some((w) => w.wd === wd) ? wd : defaultWd(model, pair.default_wd);
     return { pairs, pair, model, target: OwnCalc.returnTarget(model, sel) };
   }
+  // 積込の確認の根拠の 1 行。空車の便だけを数え、出発の時刻が無い空車の便は、その本数を書く
+  function evLoadOf(a, tm) {
+    if (!tm) return '';
+    const er = emptyRowsOf(a.target), noTime = er.filter((r) => r.dt_basis !== 'dep').length;
+    return `${a.pair.fr_label}発・${a.target.weekday}曜の空車の便 ${er.length} 本（${(tm.split(' / ').find((x) => x.startsWith('出発')) || '').replace('出発の記録: ', '出発 ')}${noTime ? `。出発の時刻の記録が無い便 ${noTime} 本` : ''}）`;
+  }
   const hm = (iso) => (iso && iso.length >= 16 ? iso.slice(11, 16).replace(/^0/, '') : null);
+  // 時刻の記録は、空車の便だけで数える（実車で走った便の時刻を、空いている時刻として出さない）
+  const emptyRowsOf = (target) => target.rows.filter((r) => r.kind === 'empty');
   function timesNote(target) {
-    const deps = [...new Set(target.rows.filter((r) => r.dt_basis === 'dep').map((r) => hm(r.dt)))];
-    const arrs = target.rows.filter((r) => r.arr).map((r) => ({ t: hm(r.arr), wd: OwnCalc.returnWhen({ date: r.arr.slice(0, 10) })[2] })).filter((x) => x.t);
+    const er = emptyRowsOf(target);
+    const deps = [...new Set(er.filter((r) => r.dt_basis === 'dep').map((r) => hm(r.dt)))];
+    const arrs = er.filter((r) => r.arr).map((r) => ({ t: hm(r.arr), wd: OwnCalc.returnWhen({ date: r.arr.slice(0, 10) })[2] })).filter((x) => x.t);
     const out = [];
     if (deps.length) out.push(`出発の記録: ${deps.sort().join('、')}`);
     if (arrs.length) { const ts = arrs.map((a) => a.t).sort(); out.push(`到着の記録: ${WD[arrs[0].wd]}曜 ${ts[0]}〜${ts[ts.length - 1]}`); }
@@ -297,6 +310,8 @@ const Negotiate = (() => {
       <button type="button" class="btn-sm" data-act="to-entry">別のデータを選ぶ</button></div>`;
   }
 
+  // CSV の入口に出す、必要な列の案内（畳んだ欄の中に隠さない）
+  const csvGuideHtml = () => '<p class="neg-sub neg-csvguide">最低限ほしい列は、配車表なら「日付・車番・発地か着地」、デジタコなら「開始と終了の日時」か「日付と実車・空車の距離」です。Excel は「CSV として保存」します。文字コードは UTF-8 でも Shift_JIS でも読めます。</p>';
   function entryHtml() {
     const err = ctx.error ? `<p class="neg-err" role="alert">${esc(ctx.error)}</p>` : '';
     return `<div class="neg-box"><h3>帰りの空車を、荷主に案内する文を作る</h3>
@@ -309,7 +324,7 @@ const Negotiate = (() => {
     return `<div class="neg-box"><h3>自社の運行記録を読み込む</h3>
       <p class="neg-sub">配車表・デジタコの CSV を選んでください。読み込めないときは理由をここに出します。ファイルは外に送りません。</p>
       ${ctx.error ? `<p class="neg-err" role="alert">${esc(ctx.error)}</p>` : ''}
-      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-file" data-act="entry-file">CSV を選ぶ</button><button type="button" class="btn-sm" id="neg-entry-sample" data-act="entry-sample">架空のサンプルで試す</button></div></div>`;
+      ${csvGuideHtml()}<div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-file" data-act="entry-file">CSV を選ぶ</button><button type="button" class="btn-sm" id="neg-entry-sample" data-act="entry-sample">架空のサンプルで試す</button>${ctx.saveSample ? '<button type="button" class="btn-sm" data-act="sample-csv">見本の CSV を保存</button>' : ''}</div></div>`;
   }
 
   const wdOptions = (a) => (a.target.wd == null ? '<option value="" selected>曜日を選ぶ</option>' : '') + a.model.by_weekday.map((w) => `<option value="${w.wd}" ${w.wd === a.target.wd ? 'selected' : ''}>${w.weekday}曜（空車 ${w.empty} / ${w.trips} 便）</option>`).join('');
@@ -341,7 +356,7 @@ const Negotiate = (() => {
          <div class="neg-row"><span class="neg-lab">ほかの曜日</span>${bar(o.empty, o.judged)}<b class="neg-val">${o.empty} / ${o.judged} 便が空車</b></div>`;
     const basisNote = k.trips ? `行き先が分かった ${k.trips} 本のうち ${m.basis.date + m.basis.none} 本は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
     const warn = noEmpty
-      ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。配車表とデジタコの記録を確かめてください。</p>` : '';
+      ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。空車の記録がある曜日を選び直すか、実車か空車か分からない帰りの便があるときは、「確認」の欄で空車か実車かを決めてください（決めると数え直します）。それでも空車が出ないときは、配車表の空車の印の列を確かめてください。</p>` : '';
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。</p>` : '';
     return `<div class="neg-box" id="neg-result"><h3>曜日ごとの帰りの空車</h3>
       <div class="neg-pick">${pairSel}${wdSel}</div>
@@ -375,8 +390,8 @@ const Negotiate = (() => {
         ${ctx.home ? '<button type="button" class="btn-link" data-act="home">最初の画面に戻る</button>' : ''}</div></div>`;
   }
   function gFileWaitHtml() {
-    return `<div class="neg-box"><h3>自社の運行記録を読み込む</h3><p class="neg-sub">配車表・デジタコの CSV を選びます。</p>${ctx.error ? `<p class="neg-err" role="alert">${esc(ctx.error)}</p>` : ''}
-      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-file" data-act="entry-file">CSV を選ぶ</button><button type="button" class="btn-sm" id="neg-entry-sample" data-act="entry-sample">架空のサンプルで試す</button>
+    return `<div class="neg-box"><h3>自社の運行記録を読み込む</h3><p class="neg-sub">配車表・デジタコの CSV を選びます。</p>${csvGuideHtml()}${ctx.error ? `<p class="neg-err" role="alert">${esc(ctx.error)}</p>` : ''}
+      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-file" data-act="entry-file">CSV を選ぶ</button><button type="button" class="btn-sm" id="neg-entry-sample" data-act="entry-sample">架空のサンプルで試す</button>${ctx.saveSample ? '<button type="button" class="btn-sm" data-act="sample-csv">見本の CSV を保存</button>' : ''}
         <button type="button" class="btn-link" data-act="to-entry">戻る</button></div></div>`;
   }
   function gResultHtml(a) {
@@ -390,7 +405,7 @@ const Negotiate = (() => {
       <div class="neg-row"><span class="neg-lab">ほかの曜日</span>${bar(o.empty, o.judged)}<b class="neg-val">${o.empty} / ${o.judged} 便が空車</b></div>`;
     const basisNote = k.trips ? `行き先が分かった ${k.trips} 本のうち ${m.basis.date + m.basis.none} 本は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。</p>` : '';
-    const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。配車表とデジタコの記録を確かめてください。</p>` : '';
+    const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。空車の記録がある曜日を選び直すか、実車か空車か分からない帰りの便があるときは、「確認」の欄で空車か実車かを決めてください（決めると数え直します）。それでも空車が出ないときは、配車表の空車の印の列を確かめてください。</p>` : '';
     const pre = `<p class="neg-base" id="neg-base">帰りの便 <b>${c.trips} 本</b>（空車 ${c.empty}・実車 ${c.loaded}・不明 ${c.unknown}）のうち、行き先が分かった便は <b>${k.trips} 本</b>（空車 ${k.empty}・実車 ${k.loaded}）です。残り ${u.trips} 本は行き先と積荷が分からないので、${esc(a.pair.to_label)}に着いた便には入れていません。</p>
       <p class="neg-note">ほかの曜日で空車か実車か分からない ${o.unknown} 便は別に数えています。</p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}</p>${kmLine}
       <p class="neg-note">${ctx.mode === 'import' ? '過去の記録の集計です。今後も同じ曜日に空く保証ではなく、今予約できる便でもありません。' : '架空の過去の運行記録です。今予約できる便や、今後も毎週空く保証ではありません。'}</p>`;
@@ -414,11 +429,11 @@ const Negotiate = (() => {
     return `<fieldset class="neg-cond" id="neg-cond-${key}"><legend>${title}</legend><p class="neg-ev1">${esc(ev || '記録に時刻がありません')}</p>
       <label class="neg-pickrow">確認した結果<select id="neg-sel-${key}" class="ctl sm" name="neg-${key}" data-cond="${key}" aria-label="${title}の確認した結果">${opts}</select></label>
       ${st.state === 'unconfirmed' ? '' : `<label class="neg-nl">確認した内容（誰に・いつ・何を）<input type="text" class="ctl" data-note="${key}" value="${esc(st.note)}" autocomplete="off"></label>`}
-      ${st.state === 'ok' && !st.note.trim() ? '<p class="neg-note neg-y">確認した内容を書いてください</p>' : ''}</fieldset>`;
+      ${st.state === 'ok' && !st.note.trim() ? '<p class="neg-note neg-y">確認した内容を書いてください（書くまでは、相手への文では未確認として質問にします）</p>' : ''}</fieldset>`;
   }
   function gCondHtml(a) {
-    const tm = timesNote(a.target), deps = a.target.rows.filter((r) => r.dt_basis === 'dep').length;
-    const evLoad = tm ? `${a.pair.fr_label}発・${a.target.weekday}曜の便 ${deps} 本（${(tm.split(' / ').find((x) => x.startsWith('出発')) || '').replace('出発の記録: ', '出発 ')}）` : '';
+    const tm = timesNote(a.target);
+    const evLoad = evLoadOf(a, tm);
     const evRecv = tm && tm.includes('到着') ? tm.split(' / ').find((x) => x.startsWith('到着')) : '';
     return `<div class="neg-box" id="neg-cond"><h3>積込と受取の条件を確認する</h3><p class="neg-sub">分かっている条件を選びます。未確認は案内文で質問します。</p>
       ${gCondCard('load', `${a.target.weekday}曜の積込`, evLoad, S.load)}${gCondCard('recv', '受取（納品・返却）', evRecv, S.recv)}
@@ -434,7 +449,7 @@ const Negotiate = (() => {
       <p class="neg-ev1"><small>自社の記録</small>${esc(ev || '記録に時刻がありません')}</p>
       <div class="neg-rads" role="radiogroup" aria-label="${title}の確認した結果"><small>確認した結果</small>${radios}</div>
       <label class="neg-nl">確認した内容（誰に・いつ・何を確認したか）<input type="text" class="ctl" data-note="${key}" value="${esc(st.note)}" autocomplete="off" ${st.state === 'unconfirmed' ? 'placeholder="確認したら入れます"' : ''}></label>
-      ${st.state === 'ok' && !st.note.trim() ? '<p class="neg-note neg-y">確認した内容を書いてください</p>' : ''}</fieldset>`;
+      ${st.state === 'ok' && !st.note.trim() ? '<p class="neg-note neg-y">確認した内容を書いてください（書くまでは、相手への文では未確認として質問にします）</p>' : ''}</fieldset>`;
   }
 
   function econHtml() {
@@ -476,8 +491,7 @@ const Negotiate = (() => {
 
   function condHtml(a) {
     const tm = timesNote(a.target);
-    const deps = a.target.rows.filter((r) => r.dt_basis === 'dep').length;
-    const evLoad = tm ? `${a.pair.fr_label}発・${a.target.weekday}曜の便 ${deps} 本（${(tm.split(' / ').find((x) => x.startsWith('出発')) || '').replace('出発の記録: ', '出発 ')}）` : '';
+    const evLoad = evLoadOf(a, tm);
     const evRecv = tm && tm.includes('到着') ? tm.split(' / ').find((x) => x.startsWith('到着')) : '';
     const types = Object.entries(TYPES).map(([k, v]) => `<label class="neg-rad neg-type"><input type="radio" name="neg-type" data-type="${k}" ${S.type === k ? 'checked' : ''}><span><b>${labelOf(k, v, a)}</b><small>${hintOf(k, v, a)}</small></span></label>`).join('');
     return `<div class="neg-box" id="neg-cond"><h3>案内する荷主と条件を選ぶ</h3>
@@ -723,6 +737,9 @@ const Negotiate = (() => {
     S.draft.text = ta.value;
     const toks = internalTokens(ctx.data, a.model.rows, { fr: a.pair.fr, to: a.pair.to, kmText: kmText(a), econ: S.econ });
     const lk = leaks(S.draft.text, toks);
+    // 【宛先】【運送会社名】【担当者名】などの書き換え忘れが残っていれば、コピーの前に知らせる。もう一度押すとそのままコピーする
+    const ph = [...new Set(S.draft.text.match(/【[^】]*】/g) || [])];
+    if (!lk.length && ph.length && S.phAsked !== S.draft.text) { S.phAsked = S.draft.text; S.copyMsg = `${ph.join('')}がまだ書き換わっていません。直してからコピーしてください（このままコピーするときは、もう一度押してください）`; render(); return; }
     if (lk.length) { S.copyMsg = `社内の情報（${lk.join('、')}）が入っているので、コピーしていません`; render(); return; }
     const text = S.draft.text;
     let ok = false;
@@ -745,6 +762,7 @@ const Negotiate = (() => {
     const b = e.target.closest('[data-act]');
     if (!b || b.disabled) return;
     const act = b.dataset.act;
+    if (act === 'sample-csv') { if (ctx.saveSample) ctx.saveSample(); return; }
     if (act === 'entry-sample') { S.picking = false; S.entry = 'sample'; S.view = 'result'; if ((ctx.mode === 'import' || !ctx.data) && ctx.useSample) ctx.useSample(); else render(); }
     else if (act === 'entry-file') { if (!(ctx.guided && S.picking)) S.entry = 'file'; render(); if (ctx.pickFile) ctx.pickFile(); }
     else if (act === 'to-entry') { S.entry = null; S.view = 'result'; S.regenAsk = false; S.picking = true; S.wd = null; S.goalDone = false; render(); }
@@ -797,6 +815,6 @@ const Negotiate = (() => {
   const picked = (mode) => { S.picking = false; if (mode === 'import') S.entry = 'file'; };
   const setGoal = (g) => { const v = g === 'propose' ? 'propose' : g === 'empty' ? 'empty' : ''; if (S.goal !== v) { S.goal = v; S.goalDone = false; } };
   return { mount, update, park, render, picked, setGoal, step: () => (ctx.guided ? guidedStep() : 0), state: S, ctx: () => ctx,
-    parseMoney, economics, statusOf, buildDraft, internalTokens, leaks, newDraft, isEdited, isStale, syncDraft, regenerate, analysisOf, defaultWd, emptyEcon, draftKey, params,
+    __timesNote: (t) => timesNote(t), __evLoad: (a) => evLoadOf(a, timesNote(a.target)), parseMoney, economics, statusOf, buildDraft, internalTokens, leaks, newDraft, isEdited, isStale, syncDraft, regenerate, analysisOf, defaultWd, emptyEcon, draftKey, params,
     TYPES, labelOf, hintOf, QUESTIONS, HOLD_OPTS, STATUS_JA };
 })();

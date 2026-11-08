@@ -234,7 +234,8 @@ def test_negotiate_logic(local_server):
             js = json.dumps(p)
             return page.js(f"(function(){{const p = {js}; p.econ = {econ or 'window.NE'}; return Negotiate.{fn}(p);}})()")
         assert call("statusOf", P()) == "draft"
-        assert call("statusOf", P("ok", "ok")) == "ready"
+        assert call("statusOf", P("ok", "ok")) == "draft"   # 2026-11-08: 「合う」でも確認した内容が空なら、確認できたことにしない
+        assert page.js("(function(){const p = {type:'commodity', load:{state:'ok', note:'電話で確認'}, recv:{state:'ok', note:'FAX で確認'}, hold:{action:'hold',picks:[]}, econ: Negotiate.emptyEcon()}; return Negotiate.statusOf(p);})()") == "ready"
         assert call("statusOf", P("ng", "ok")) == "hold" and call("statusOf", P("ok", "ng")) == "hold"
         assert call("statusOf", P("ng", "ok", hold={"action": "skip", "picks": []})) == "skip"
         assert call("statusOf", P("ok", "ok", econ=E % json.dumps({**full, "cost": "10000"}))) == "skip_econ"

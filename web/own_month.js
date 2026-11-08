@@ -219,10 +219,11 @@ const OwnMonth = (() => {
     for (const l of emptyBackLegs(d)) {
       if (!l.frm || !l.to || l.frm === l.to) continue;
       const k = `${l.frm}|${l.to}`;
-      if (!m.has(k)) m.set(k, { frm: l.frm, to: l.to, n: 0, wd: {}, dep: {}, plates: {}, dates: [] });
+      if (!m.has(k)) m.set(k, { frm: l.frm, to: l.to, n: 0, wd: {}, dep: {}, plates: {}, dates: [], wdPlates: {}, wdDep: {} });
       const p = m.get(k), w = wdOf(l.dep || l.date), dep = (l.dep || '').slice(11, 16), dt = (l.dep || l.date || '').slice(0, 10);
       if (dt && !p.dates.includes(dt)) p.dates.push(dt);
       p.n++; if (w != null) p.wd[w] = (p.wd[w] || 0) + 1; if (dep) p.dep[dep] = (p.dep[dep] || 0) + 1; p.plates[l.plate] = (p.plates[l.plate] || 0) + 1;
+      if (w != null) { (p.wdPlates[w] = p.wdPlates[w] || {})[l.plate] = ((p.wdPlates[w] || {})[l.plate] || 0) + 1; if (dep) (p.wdDep[w] = p.wdDep[w] || {})[dep] = ((p.wdDep[w] || {})[dep] || 0) + 1; }
     }
     // 区間の集計（d.pairs: own_calc.js）があれば、その空車の便数と曜日別の空車の便数を優先する
     if (Array.isArray(d.pairs)) {
@@ -262,18 +263,23 @@ const OwnMonth = (() => {
   const WEEKLY_MIN = 3;
   const dateWd = (iso) => `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}（${WDN[wdOf(iso)]}）`;
   // 「毎週」は、その曜日の帰りの便が 3 回以上で、8 割以上が空のときだけ（negotiate.js の案内文と同じ規則）。そうでない曜日は、記録にあったことだけを書く
-  function dayText(p) {
+  // 掲示に書く曜日: 規則（3 回以上・8 割以上が空）に合う曜日だけ。多い順に 3 つまで
+  function weeklyDays(p) {
     const wdTrips = p.wdTrips || {};
     const isWeekly = (w) => p.wd[w] >= WEEKLY_MIN && (wdTrips[w] == null || p.wd[w] / wdTrips[w] >= 0.8);
     const all = Object.keys(p.wd).map(Number).filter((w) => p.wd[w] > 0);
-    const weekly = all.filter(isWeekly).sort((x, y) => p.wd[y] - p.wd[x] || x - y).slice(0, 3).sort((x, y) => x - y);
+    return all.filter(isWeekly).sort((x, y) => p.wd[y] - p.wd[x] || x - y).slice(0, 3).sort((x, y) => x - y);
+  }
+  function dayText(p) {
+    const all = Object.keys(p.wd).map(Number).filter((w) => p.wd[w] > 0);
+    const weekly = weeklyDays(p);
     const other = all.filter((w) => !weekly.includes(w)).sort((x, y) => x - y);
     const rest = (p.dates || []).filter((iso) => !weekly.includes(wdOf(iso)));
     const shown = rest.slice(0, 6).map(dateWd).join('・') + (rest.length > 6 ? `・ほか ${rest.length - 6} 日` : '');
     const w = weekly.length ? `毎週${weekly.map((x) => WDN[x] + '曜').join('・')}` : '';
     const o = other.length ? `これまでの記録では${other.map((x) => WDN[x] + '曜').join('・')}の帰りに空きがありました${shown ? `（${shown}）` : ''}` : '';
-    if (w && o) return `${w}。${o}`;
-    if (w) return w;
+    if (w) return w; // 規則に合う曜日があるときは、その曜日だけを書く。ほかの曜日を並べると毎日に読めるので、掲示には入れない
+    // 規則に合う曜日が無いときだけ、記録にあったことを書く
     if (o) return o;
     if (shown) return shown;
     return '（曜日を入れてください）';
@@ -308,9 +314,24 @@ const OwnMonth = (() => {
     const first = new Date((now || new Date()).getTime()); first.setDate(first.getDate() + 1);
     return { iso: isoOf(first), skipped: [], open: [...open].sort((a, b) => a - b), basis: false };
   }
+  // 空車の割合がいちばん高い曜日（掲示に書く曜日と同じ規則に合うもの。同じなら空車の便数が多い曜日）。規則に合う曜日が無ければ null
+  function bestWeekday(p) {
+    if (!p) return null;
+    const ws = weeklyDays(p), wt = p.wdTrips || {};
+    if (!ws.length) return null;
+    return ws.sort((x, y) => (p.wd[y] / (wt[y] || p.wd[y])) - (p.wd[x] / (wt[x] || p.wd[x])) || p.wd[y] - p.wd[x] || x - y)[0];
+  }
+  // 明日以降で、その曜日（0 = 月 … 6 = 日）になる最初の日
+  function nextOnWeekday(w, now) {
+    const t = new Date((now || new Date()).getTime());
+    t.setDate(t.getDate() + 1);
+    for (let i = 0; i < 7 && (t.getDay() + 6) % 7 !== w; i++) t.setDate(t.getDate() + 1);
+    return isoOf(t);
+  }
   function boardDefaults(d, now) {
     const p = returnPairs(d)[0];
-    const base = { date: nextWorkday(d, now).iso, frm: '', to: '', cls: '', kg: '', time: '', timeTo: '', bed: '', size: '' };
+    const best = bestWeekday(returnPairs(d)[0]);
+    const base = { date: best != null ? nextOnWeekday(best, now) : nextWorkday(d, now).iso, frm: '', to: '', cls: '', kg: '', time: '', timeTo: '', bed: '', size: '' };
     if (!p) return base;
     const top = (o) => Object.keys(o).sort((x, y) => o[y] - o[x] || (x < y ? -1 : 1))[0];
     const plate = top(p.plates), v = d.vehicles.find((x) => x.plate === plate);
@@ -350,13 +371,19 @@ const OwnMonth = (() => {
     for (const p of returnPairs(d)) {
       const a = d.places[p.frm], b = d.places[p.to];
       const day = dayText(p);
-      const wdCount = Object.keys(p.wd).map(Number).sort((x, y) => x - y).map((w) => `${WDN[w]}曜 ${p.wd[w]} 便`).join('・');
-      const dep = Object.keys(p.dep).sort((x, y) => p.dep[y] - p.dep[x] || (x < y ? -1 : 1))[0];
+      const wkEarly = weeklyDays(p);
+      // 掲示に書く曜日が決まっているときは、根拠もその曜日の便数だけ書く（ほかの曜日を並べると毎日に読める）
+      const wdCount = Object.keys(p.wd).map(Number).filter((w) => !wkEarly.length || wkEarly.includes(w)).sort((x, y) => x - y).map((w) => `${WDN[w]}曜 ${p.wd[w]} 便`).join('・');
+      const nShown = wkEarly.length ? wkEarly.reduce((a, w) => a + p.wd[w], 0) : p.n;
+      // 掲示に書く曜日が決まっているときは、その曜日の便だけから、出発の時刻と車の種類を数える
+      const wk = weeklyDays(p), sumBy = (src, all) => { if (!wk.length) return all; const o = {}; for (const w of wk) for (const [k, n] of Object.entries(src[w] || {})) o[k] = (o[k] || 0) + n; return Object.keys(o).length ? o : all; };
+      const depMap = sumBy(p.wdDep || {}, p.dep), plateMap = sumBy(p.wdPlates || {}, p.plates);
+      const dep = Object.keys(depMap).sort((x, y) => depMap[y] - depMap[x] || (x < y ? -1 : 1))[0];
       const mon = d.mon ? `${d.mon} 月は` : '';
-      const basis = `（${mon}この区間の帰りの空車 ${p.n} 便${wdCount ? `。${wdCount}` : ''}）`;
+      const basis = `（${mon}この区間の帰りの空車 ${nShown} 便${wdCount ? `。${wdCount}` : ''}）`;
       // 車の種類ごとに、便数と最大積載量（登録があればその値、無ければ種類の呼び名の重さ）
       const g = {};
-      for (const [plate, n] of Object.entries(p.plates)) {
+      for (const [plate, n] of Object.entries(plateMap)) {
         const v = d.vehicles.find((x) => x.plate === plate), raw = (v && v.cls) || '', tc = tariffClass(raw), key = tc || raw || '?';
         if (!g[key]) g[key] = { tc, raw, n: 0, kg: 0, assumed: false, nominal: false };
         const e = g[key]; e.n += n;
@@ -399,6 +426,6 @@ const OwnMonth = (() => {
     return rows;
   }
 
-  return { GLOSS, tipHtml, sig, headSig, list, save, clearAll, rolesGet, rolesSet, summary, summaries, compareRows, FARE, fare, tariffClass, revenue, revenueScope, returnPairs, boardText, workingWeekdays, nextWorkday, boardTexts, draftRows, waitClass, ownRevenue, boardDefaults, boardOne, CLASS_CHOICES, BED_CHOICES, readQuality, tomorrowIso, isHallWard, placeName, hash };
+  return { GLOSS, tipHtml, sig, headSig, list, save, clearAll, rolesGet, rolesSet, summary, summaries, compareRows, FARE, fare, tariffClass, revenue, revenueScope, returnPairs, boardText, workingWeekdays, nextWorkday, boardTexts, draftRows, waitClass, ownRevenue, boardDefaults, bestWeekday, nextOnWeekday, weeklyDays, boardOne, CLASS_CHOICES, BED_CHOICES, readQuality, tomorrowIso, isHallWard, placeName, hash };
 })();
 if (typeof window !== 'undefined') window.OwnMonth = OwnMonth;

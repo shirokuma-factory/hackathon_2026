@@ -30,11 +30,38 @@ const Own = (() => {
 
   /* ------------------------------------------------------------ 読み込み */
 
+  // サンプルの文には、匿名の呼び名「地点 07」「江東区の地点 07」が入っている。利用者には意味が分からず、1 枚のページ（own_lite）の地名とも食い違うので、地名（辰巳・江東（江東区））に置き換える。
+  // 地点の表（places）の pseudo も地名にそろえる。文字列だけを置き換え、数や並びは変えない
+  const reEsc = (t) => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pseudoSrc = (pseudo) => reEsc(pseudo).replace(/\s+/g, '\\s?');
+  function plainPlaces(sample) {
+    const ps = Object.values((sample && sample.places) || {}).filter((p) => p && p.pseudo);
+    if (!ps.length) return sample;
+    const subs = ps.map((p) => {
+      const nm = p.short || p.label || p.pseudo, withMuni = p.muni && p.muni !== nm && !String(p.muni).startsWith(nm);
+      const full = withMuni ? `${nm}（${p.muni}）` : nm;
+      const src = pseudoSrc(p.pseudo);
+      return { p, nm, full, rx: new RegExp(src, 'g'), rxMuni: p.muni ? new RegExp(`${reEsc(p.muni)}(?:の|\\s)${src}`, 'g') : null };
+    });
+    const fix = (str) => { let t = str; for (const x of subs) { if (x.rxMuni) t = t.replace(x.rxMuni, x.full); t = t.replace(x.rx, x.nm); } return t; };
+    const walk = (v) => {
+      if (typeof v === 'string') return fix(v);
+      if (Array.isArray(v)) { for (let i = 0; i < v.length; i++) v[i] = walk(v[i]); return v; }
+      if (v && typeof v === 'object') { for (const k of Object.keys(v)) v[k] = walk(v[k]); return v; }
+      return v;
+    };
+    walk(sample);
+    for (const x of subs) x.p.pseudo = x.nm;
+    plainFix = fix;
+    return sample;
+  }
+  let plainFix = (t) => t; // 荷待ちの例の「江東区 地点07」にも使う
+
   async function load() {
     if (O.loaded) return;
     try {
       O.rate = loadRate();
-      O.sample = await getJSON('data/own_sample.json');
+      O.sample = plainPlaces(await getJSON('data/own_sample.json'));
       O.data = O.sample;
       O.loaded = true;
       buildGeo();
@@ -740,6 +767,12 @@ const Own = (() => {
     if (c.effect === 'display') return '押すと、区間の時刻の表示だけが変わります。実車率などの数字は変わりません';
     return '計算は変わりません（印を付けるだけです）';
   }
+  // 列の対応づけの「修正」は、役割に無い語を通さないように、役割の選択肢から選ぶ（自由に書く欄にしない）
+  function fixInputHtml(c) {
+    if (c.kind !== 'column') return `<input class="ctl sm" type="text" placeholder="${esc(fixHint(c))}" aria-label="直した値">`;
+    const src = c.source === '配車表' || c.source === 'デジタコ' ? c.source : '';
+    return `<select class="ctl sm" aria-label="直した役割"><option value="">役割を選ぶ</option>${OwnCalc.roleOptions(src).filter((o) => o.role !== 'skip').map((o) => `<option value="${esc(o.label_ja)}">${esc(o.label_ja)}</option>`).join('')}</select>`;
+  }
   function fixHint(c) {
     if (c.kind === 'column') return '役割の名前（例: 走行距離）';
     if (c.kind === 'weight') return '重さ（例: 4.6t、4600kg）';
@@ -805,7 +838,7 @@ const Own = (() => {
           : (c.kind === 'return' ? '<button type="button" class="btn-sm" data-act="ru-empty">全部 空車にする</button><button type="button" class="btn-sm" data-act="ru-loaded">全部 実車</button><button type="button" class="btn-sm" data-act="ru-keep">不明のまま</button>'
             : '<button type="button" class="btn-sm" data-act="ok">確定</button><button type="button" class="btn-sm" data-act="fix">修正</button><button type="button" class="btn-sm" data-act="skip">読まない</button>')}</div>
         ${maxPayloadHtml(c, key)}
-        <div class="o-fix" ${O.open.has('fix' + key) && !st ? '' : 'hidden'}><input class="ctl sm" type="text" placeholder="${esc(fixHint(c))}" aria-label="直した値"><button type="button" class="btn-sm" data-act="fixok">反映</button></div>
+        <div class="o-fix" ${O.open.has('fix' + key) && !st ? '' : 'hidden'}>${fixInputHtml(c)}<button type="button" class="btn-sm" data-act="fixok">反映</button></div>
       </div>`;
     }).join('');
     return `<p class="o-sum">確認待ち <b class="num">${pend}</b> 件・確定 ${cnt.ok}・修正 ${cnt.fix}・読まない ${cnt.skip}<small>${isImport() ? '押した結果は計算に渡し、数字を計算し直します。確認の決定は、このブラウザに保存されます（「月ごとの保存」の欄で消せます）。' : '押した結果はこのページの中だけに残ります。'}</small></p>${common ? `<p class="o-hint" id="own-eff-common">${esc(common)}。</p>` : ''}${cards}`;
@@ -828,7 +861,8 @@ const Own = (() => {
     if (!OwnMonth.returnPairs(d).length) return '';
     if (!O.tmr) O.tmr = { ...OwnMonth.boardDefaults(d), text: '', msg: '' };
     const nw = OwnMonth.nextWorkday(d), WDJ = '月火水木金土日';
-    const dayHint = nw.basis ? `日付は、配車表で車が動いている曜日（${nw.open.map((w) => WDJ[w]).join('')}）の次の日にしました${nw.skipped.length ? `（休みの曜日の ${nw.skipped.map((x) => `${+x.slice(5, 7)}/${+x.slice(8, 10)}`).join('・')} は飛ばしました）` : ''}。` : '';
+    const bestW = OwnMonth.bestWeekday ? OwnMonth.bestWeekday(OwnMonth.returnPairs(d)[0]) : null;
+    const dayHint = bestW != null ? `日付は、空車が多い${WDJ[bestW]}曜の次の日（${+O.tmr.date.slice(5, 7)}/${+O.tmr.date.slice(8, 10)}）にしました。` : nw.basis ? `日付は、配車表で車が動いている曜日（${nw.open.map((w) => WDJ[w]).join('')}）の次の日にしました${nw.skipped.length ? `（休みの曜日の ${nw.skipped.map((x) => `${+x.slice(5, 7)}/${+x.slice(8, 10)}`).join('・')} は飛ばしました）` : ''}。` : '';
     const t = O.tmr, inp = (id, k, type, ph, extra) => `<input id="own-tmr-${id}" class="ctl sm" type="${type}" value="${esc(t[k])}" ${ph ? `placeholder="${esc(ph)}"` : ''} ${extra || ''}>`;
     return `<div class="o-tmr" id="own-tmr"><div class="o-h">明日の空車の掲示文を作る</div>
       <p class="o-hint">次に車が動く日に空く帰りの便を、日付つきの 1 便ぶんの文にします。いちばん多い空車の帰りの区間から初期値を入れました。${esc(dayHint)}違うところは直してください。</p>
@@ -856,7 +890,7 @@ const Own = (() => {
         <div class="o-ih"><span class="o-rule">${esc(i.rule_label_ja || '気づき ' + i.rule)}</span></div>
         <p class="o-it">${esc(i.text)}</p>
         <div class="o-chips">${i.numbers.map((n) => `<span class="o-chip"><small>${esc(n.k)}</small><b class="num">${esc(n.v)}</b></span>`).join('')}</div>
-        <div class="o-btns"><button type="button" class="${i.next.action === 'draft_backhaul' ? 'btn-primary sm' : 'btn-sm'}" data-act="next" data-a="${esc(i.next.action)}">${esc(i.next.label)}</button>
+        <div class="o-btns"><button type="button" class="${i.next.action === 'draft_backhaul' ? 'btn-primary sm' : 'btn-sm'}" data-act="next" data-a="${esc(i.next.action)}">${esc(i.next.action === 'show_evidence' ? (open ? '該当する記録を閉じる' : '該当する記録を見る') : i.next.label)}</button>
           ${i.next.action === 'draft_backhaul' ? '<button type="button" class="btn-sm" data-act="board">求荷求車に貼る文を作る</button>' : ''}
           <button type="button" class="btn-link" data-act="ev">${open ? '元の行を閉じる' : '元の行を見る'}（${i.evidence.length}）</button></div>${ev}${boardHtml(i)}</div>`;
     }).join('');
@@ -942,6 +976,14 @@ const Own = (() => {
     if (!unk && !unread && !((d.counts || {}).unreadable_rows)) return null;
     const pick = (o) => (o == null ? null : typeof o === 'object' ? (o.value != null ? o.value : null) : o);
     const ua = k.unknown_as_empty || {};
+    // 不明の区間に距離が無いと、km の率は不明を足しても動かない（1 枚のページ own_lite と同じく、そのときは区間の数で数える）
+    const unkKm = (d.legs || []).filter((l) => l.kind === 'unknown' && l.km != null).reduce((a, l) => a + l.km, 0);
+    if (unk && !(unkKm > 0)) {
+      const nl = d.legs.filter((l) => l.kind === 'loaded').length, ne = d.legs.filter((l) => l.kind === 'empty').length;
+      if (nl + ne > 0) {
+        return { v: nl / (nl + ne + unk), base: nl / (nl + ne), mode: 'count', full: false, unk, unread: (d.counts && d.counts.unreadable_rows != null) ? d.counts.unreadable_rows : unread, noKm: unk };
+      }
+    }
     let v = pick(k.loaded_rate_if_unknown_empty);
     if (v == null) v = pick(k.actual_rate_if_unknown_empty);
     if (v == null) v = pick(k.actual_rate && k.actual_rate.if_unknown_empty);
@@ -956,6 +998,7 @@ const Own = (() => {
   }
   function altText(a) {
     if (!a) return '';
+    if (a.mode === 'count') return `不明の区間を空とした場合 <b class="num">${pc(a.v, 1)}</b><small>（不明 ${a.unk} 区間には距離が無いので、km ではなく区間の数で数えています。不明を外すと ${pc(a.base, 1)}。読めない ${a.unread} 行は入れていません）</small>`;
     return `${a.full ? '不明・読めない行を空とした場合' : '不明の区間を空とした場合'} <b class="num">${pc(a.v, 1)}</b><small>（不明 ${a.unk} 区間・読めない ${a.unread} 行。読めない行は距離が分からないので、この率には入れられません）</small>`;
   }
 
@@ -1023,7 +1066,7 @@ const Own = (() => {
     const cs = OwnCalc.costs(d, O.cost.perKm, O.cost.perHour), nm = (id) => (d.places[id] ? d.places[id].short : '?');
     const extra = (cs.perKm != null ? 1 : 0) + (cs.perHour != null ? 1 : 0);
     const dockLong = (wd) => d.stops.filter((s) => s.place === d.dock && s.minutes >= 30 && s.cycle_wd === wd).reduce((a, s) => a + s.minutes, 0);
-    const head = `<thead><tr><th title="行きの行は車庫を出た日の曜日、帰りの行は帰りの便が出た日の曜日で数えています（荷主への案内文と同じ数え方）">便が出た曜日</th><th>便数</th><th>空車</th><th>空車の km</th><th>${esc(nm(d.dock))}での 30 分以上の停車</th>${cs.perKm != null ? '<th>空車の費用</th>' : ''}${cs.perHour != null ? '<th>停車の費用</th>' : ''}</tr></thead>`;
+    const head = `<thead><tr><th title="行きの行は車庫を出た日の曜日、帰りの行は帰りの便が出た日の曜日で数えています（荷主への案内文と同じ数え方）">便が出た曜日</th><th>便数</th><th>空車</th><th title="実車か空車かが分からない便です。手順の画面の「空車 ○ / ○ 便」は、この列の便を除いて数えています（便数 − 不明）">うち行き先不明</th><th>空車の km</th><th>${esc(nm(d.dock))}での 30 分以上の停車</th>${cs.perKm != null ? '<th>空車の費用</th>' : ''}${cs.perHour != null ? '<th>停車の費用</th>' : ''}</tr></thead>`;
     const legById = new Map((d.legs || []).map((l) => [l.id, l]));
     // 帰りの向きは、行きが車庫を出た曜日ではなく、帰りの便自身が出た日の曜日で数え直す（荷主への案内文と同じ基準。便が出た日が分からないときは元の数え方のまま）
     const byReturnDay = (rs) => {
@@ -1054,16 +1097,18 @@ const Own = (() => {
       const body = rs.map((t) => {
         const hot = t.trips >= 4 && t.empty * 4 >= (t.trips - t.unknown) * 3 && (t.trips - t.unknown) >= 4;
         const ls = atDock ? (((stopsOf(t.wd) || {}).long_stops) == null ? '—' : stopsOf(t.wd).long_stops) : '—';
-        return `<tr class="${hot ? 'hot' : ''}"><td>${WD[t.wd]}曜発${hot ? '<small class="o-hotmark">空車が多い</small>' : ''}</td><td class="num" data-l="便数">${t.trips}</td><td class="num" data-l="空車">${t.empty}</td><td class="num" data-l="空車の km">${t.empty_km ? n1(t.empty_km) : '—'}</td><td class="num" data-l="30 分以上の停車">${ls}</td>${costCells(t.empty_km, atDock ? dockLong(t.wd) : 0)}</tr>`;
+        return `<tr class="${hot ? 'hot' : ''}"><td>${WD[t.wd]}曜発${hot ? '<small class="o-hotmark">空車が多い</small>' : ''}</td><td class="num" data-l="便数">${t.trips}</td><td class="num" data-l="空車">${t.empty}</td><td class="num" data-l="うち行き先不明">${t.unknown || 0}</td><td class="num" data-l="空車の km">${t.empty_km ? n1(t.empty_km) : '—'}</td><td class="num" data-l="30 分以上の停車">${ls}</td>${costCells(t.empty_km, atDock ? dockLong(t.wd) : 0)}</tr>`;
       }).join('');
       const role = p.role === 'out' ? '行き（車庫から）' : p.role === 'back' ? '帰り（車庫へ）' : '';
-      return `<tr class="grp"><td colspan="${5 + extra}">${esc(p.label)}${role ? `<small>主な往復の「${role}」の向き${p.role === 'back' ? '・帰りの便が出た曜日で数えています' : ''}</small>` : ''}</td></tr>${body}
-        <tr class="tot"><td>合計</td><td class="num" data-l="便数">${tot.trips}</td><td class="num" data-l="空車">${tot.empty}</td><td class="num" data-l="空車の km">${tot.km ? n1(tot.km) : '—'}</td><td class="num" data-l="30 分以上の停車">${atDock ? tot.ls : '—'}</td>${costCells(tot.km, tot.lm)}</tr>`;
+      return `<tr class="grp"><td colspan="${6 + extra}">${esc(p.label)}${role ? `<small>主な往復の「${role}」の向き${p.role === 'back' ? '・帰りの便が出た曜日で数えています' : ''}</small>` : ''}</td></tr>${body}
+        <tr class="tot"><td>合計</td><td class="num" data-l="便数">${tot.trips}</td><td class="num" data-l="空車">${tot.empty}</td><td class="num" data-l="うち行き先不明">${tot.unk}</td><td class="num" data-l="空車の km">${tot.km ? n1(tot.km) : '—'}</td><td class="num" data-l="30 分以上の停車">${atDock ? tot.ls : '—'}</td>${costCells(tot.km, tot.lm)}</tr>`;
     };
     const gs = d.pairs.map(group).filter((x) => x);
     if (!gs.length) return '<p class="o-hint">区間の表を作れる便がありません。</p>';
     const first = gs.slice(0, PAIR_SHOW), rest = gs.slice(PAIR_SHOW);
-    return `${baseNote(d, nm)}<table class="o-tab" aria-label="区間と曜日の表">${head}<tbody>${first.join('')}</tbody></table>
+    const unkN = (d.counts && d.counts.unknown) || 0;
+    const unkNote = unkN ? `<p class="o-hint o-unknote" id="own-unknote">「うち行き先不明」は、実車か空車か分からない便 ${unkN} 本です。手順の画面の「空車 ○ / ○ 便」は、この便を除いて数えるので、便数がこの表より ${unkN} 本少なくなります。</p>` : '';
+    return `${baseNote(d, nm)}${unkNote}<table class="o-tab" aria-label="区間と曜日の表">${head}<tbody>${first.join('')}</tbody></table>
       ${rest.length ? `<details class="o-more2 o-pairrest"><summary>ほかの区間 ${rest.length} 本</summary><table class="o-tab" aria-label="ほかの区間と曜日の表">${head}<tbody>${rest.join('')}</tbody></table></details>` : ''}${scopeNote(d, cs, nm)}`;
   }
 
@@ -1196,6 +1241,13 @@ const Own = (() => {
     if (!el || !O.loaded) return;
     Negotiate.park(); // 帰り便の提案の欄は、右の欄を描き直しても消さない（編集した文面を守る）
     parkLeft(); // 左の欄も、右の中に入れているときは先に元へ戻す（描き直しで消えないように）
+    if (O.failMsg && !isImport()) {
+      el.innerHTML = `<div class="o-failview" id="own-failview" role="alert"><h3>このファイルは読めませんでした</h3>
+        <p>ファイル: ${esc(O.failMsg.name)}</p><p>理由: ${esc(O.failMsg.why)}</p>
+        <p>直し方: 配車表なら「日付・車番・発地か着地」の列、デジタコなら「開始と終了の日時を含む 3 列以上」か「日付と実車・空車の距離」の列を入れて、CSV で保存し直してください。左の「見本の CSV を保存」と見出しを比べると分かります。</p>
+        <p class="o-hint">下に出ていた実車率などの数字は架空のサンプルのものだったので、消しました。読めるファイルを入れると、そのファイルの数字を出します。</p></div>`;
+      return;
+    }
     if (O.tab === 'wait') { syncWaitMap(); const keep = (el.querySelector('.w-rbody') || {}).scrollTop || 0; el.innerHTML = waitRightHtml(); const b = el.querySelector('.w-rbody'); if (b) b.scrollTop = keep; mountAiExplain(el); return; }
     const d = O.data, k = d.kpis, n = d.national;
     const ar = k.actual_rate, lr = k.load_rate, le = k.load_efficiency, lar = k.large_actual_rate;
@@ -1267,7 +1319,7 @@ const Own = (() => {
     t.addEventListener('change', () => { const l = [...t.files]; t.remove(); importFiles(l); });
     document.body.appendChild(t); t.click();
   }
-  const negCtx = () => ({ data: O.data, mode: O.mode, error: O.dropMsg, useSample: () => backToSample(), pickFile, guided: O.guided,
+  const negCtx = () => ({ data: O.data, mode: O.mode, error: O.dropMsg, useSample: () => backToSample(), pickFile, saveSample: () => saveSampleCsv(), guided: O.guided,
     onFocus: (f) => setFocus(f), trip: () => ({ places: O.data.places, vehicles: O.data.vehicles, route: O.data.route, base: O.data.base, dock: O.data.dock }),
     // 「最初の画面に戻る」と「全部を見る」は、画面の上の案内の帯（#guide-bar）にあるので、手順の欄には出さない（同じ操作を 2 か所に置かない）
     onStep: (n) => { const r = q('#own-right'); if (r) r.dataset.step = String(n); if (O.step !== n) { const prev = O.step; O.step = n; try { syncMarkers(); stepCamera(prev, n); map.triggerRepaint(); } catch (e) { /* 地図が無いとき */ } } } });
@@ -1325,7 +1377,7 @@ const Own = (() => {
      告示の表は data/waiting_tariff.json（静的なファイル）。入れた記録は外に送らない。 */
 
   const W_COLS = [
-    { k: 'date', t: '日付', ph: '10/5', w: 76 }, { k: 'vehicle_no', t: '車番', w: 58 },
+    { k: 'date', t: '日付', ph: '10/5', w: 96 }, { k: 'vehicle_no', t: '車番', w: 58 },
     { k: 'vehicle_class', t: '車種', sel: ['', '小型', '中型', '大型', 'トレーラー'], w: 78 },
     { k: 'partner', t: '契約の相手', w: 118 }, { k: 'place', t: '場所', w: 104 },
     { k: 'arrive', t: '到着', ph: '09:00', w: 52 }, { k: 'start', t: '荷役開始', ph: '09:30', w: 52 },
@@ -1404,7 +1456,7 @@ const Own = (() => {
   function waitInit() { if (!W.rows.length) W.rows = [blankRow(), blankRow(), blankRow()]; }
 
   // 例の記録（架空）は waiting.html と同じもの（web/waiting_calc.js）。参考額 46,780 円など、地図の画面の数字が単独ページの例と一致する（SPEC §30.4）
-  const exampleRows = () => WaitingShared.exampleRows(W.year).map((r) => ({ ...blankRow(), ...r }));
+  const exampleRows = () => WaitingShared.exampleRows(W.year).map((r) => ({ ...blankRow(), ...r, ...(r.place ? { place: plainFix(String(r.place)) } : {}) }));
 
   function waitRowHtml(r, i) {
     const cells = W_COLS.map((c) => {
@@ -1430,7 +1482,7 @@ const Own = (() => {
   function waitHtml() {
     waitInit();
     const years = []; for (let y = 2024; y <= 2027; y++) years.push(y);
-    const nd = isImport() ? OwnMonth.draftRows(O.data).length : 0;
+    const nd = OwnMonth.draftRows(O.data).length;
     const needP = W.rows.some((r) => r._draft && !String(r.partner || '').trim());
     const draftBar = nd ? `<div class="w-bar w-draft"><button type="button" class="btn-primary sm" data-w="from-stops">デジタコの停車から下書きを入れる（30 分以上・${nd} 件）</button>
         ${needP ? '<label>契約の相手が空の行にまとめて入れる<input id="w-draft-partner" class="ctl sm" type="text" autocomplete="off" aria-label="契約の相手（下書きの行にまとめて入れる）"></label><button type="button" class="btn-sm" data-w="draft-partner">入れる</button>' : ''}
@@ -1714,7 +1766,7 @@ const Own = (() => {
   }
 
   function setData(d, mode, keep) {
-    O.data = d; O.mode = mode;
+    O.data = d; O.mode = mode; O.failMsg = null;
     Negotiate.picked(mode);
     if (mode === 'import') { O.fileOrder = d.file_order || null; O.prevHaishaUsed = d.haisha_choice && d.haisha_choice.used ? d.haisha_choice.used.slice() : null; }
     if (!keep) { O.dec = {}; O.fixTxt = {}; O.open = new Set(); O.yearPick = null; O.cmpId = ''; }
@@ -1822,6 +1874,8 @@ const Own = (() => {
       }
       if (d.failed) { // 区間を 1 件も読めなかった: 取り込みの失敗として扱い、前の表示を残す
         restore();
+        // 前の表示がサンプルのとき、サンプルの数字を残すと、読めたファイルの数字に見える。数字を消して、読めなかったことと直し方を出す
+        if (!isImport()) { O.failMsg = { name: files2.map((f) => f.name).join('、'), why: d.failed + (bad.length ? '。' + bad.join('。') : '') }; renderRight(); }
         showDropMsg(`${d.failed}。前の表示のままです${bad.length ? '。読めなかった: ' + bad.join('。') : ''}`);
         return;
       }
@@ -1864,11 +1918,19 @@ const Own = (() => {
       setData(d, 'import', true);
       monthSave();
       renderLeft(); renderRight();
+      // 列の役割を選んだあとなどで読めるようになったファイルが、上の黄色の文に「読めなかった」のまま残らないように、今の結果で文を作り直す
+      if (O.dropMsg && /読めなかった/.test(O.dropMsg)) {
+        const unread = (d.files_unread || []).map((u) => `${u.file}: ${u.reason}`);
+        O.dropMsg = `ファイル ${d.files_read} 件（区間 ${(d.legs || []).length} 件）を読みました${unread.length ? `。読めなかった ${unread.length} 件: ` + unread.join('。') : ''}`;
+        const m = q('#own-drop-msg');
+        if (m) { m.textContent = O.dropMsg; m.hidden = false; }
+      }
     } catch (e) { console.warn(e); showDropMsg(`計算できませんでした: ${e.message}`); }
   }
 
   function backToSample() {
     O.fileOrder = null; O.prevHaishaUsed = null;
+    O.failMsg = null;
     O.files = []; O.userAliases = {}; O.pendingYear = null; O.pendingRoles = null; O.haishaUse = null; O.restoreOffer = null; O.roles = {}; O.saveMsg = '';
     setData(O.sample, 'sample');
     O.dropMsg = '';
@@ -2002,6 +2064,13 @@ const Own = (() => {
     return `${m} 月は${p.weekday}曜${p.night ? 'の夜' : ''}に出た便の${body}。空き探しの画面にある架空の便 T7 は、この下書きの使い方を見せるための例です。`;
   }
 
+  // サンプルの地点は県の名前を持たない（市区町村コードだけ）ので、地図の市区町村の表から県を引く
+  function placeWithPref(p) {
+    if (!p || p.pref || !p.code) return p;
+    const m = (munisList() || []).find((x) => String(x.code) === String(p.code));
+    return m ? { ...p, pref: m.pref } : p;
+  }
+
   // 取り込んだ自社のファイルのとき: 下書きのもとにする区間（気づきの曜日・向きに当たる空車の区間。無ければ向きだけ合う区間）
   function importDraftLeg() {
     const ins = O.data.insights.find((i) => i.rule === 1), p = ins ? ins.next.payload : null;
@@ -2031,7 +2100,7 @@ const Own = (() => {
   // 登録の欄に、取り込んだ区間の発地・着地・曜日・時刻を入れる。入れた内容を文で返す
   function fillRegisterFromImport() {
     const leg = importDraftLeg();
-    const a = leg && O.data.places[leg.frm], b = leg && O.data.places[leg.to];
+    const a = leg && placeWithPref(O.data.places[leg.frm]), b = leg && placeWithPref(O.data.places[leg.to]);
     if (!leg || !a || !b || !a.pref || !b.pref) {
       Find.setRole('carrier');
       return '取り込んだ区間のうち、地図の市区町村に置けた帰りの区間が見つかりませんでした。登録の欄は自分で入れてください。';
@@ -2054,7 +2123,9 @@ const Own = (() => {
     App.setView('find');
     const st = Find.state;
     let note;
-    if (isImport()) note = fillRegisterFromImport(); // 自社のファイル: 取り込んだ区間を入れる。架空の便 T7 の説明は出さない
+    const leg0 = importDraftLeg(), pa = leg0 && placeWithPref(O.data.places[leg0.frm]), pb = leg0 && placeWithPref(O.data.places[leg0.to]);
+    // 取り込んだ区間（サンプルも同じ）に地図の市区町村へ置けた帰りの区間があれば、その発地・着地・次のその曜日を登録の欄に入れる（「指定なし」のまま移さない）
+    if (isImport() || (leg0 && pa && pb && pa.pref && pb.pref)) note = fillRegisterFromImport(); // 架空の便 T7 の説明は出さない
     else {
       if (st.carriers && st.carriers.some((c) => c.id === 'C4')) st.carrier = 'C4';
       Find.setRole('carrier');
@@ -2127,8 +2198,8 @@ const Own = (() => {
         else if (act === 'ok' || act === 'skip') O.dec[id] = act;
         else if (act === 'fix') { O.open.add('fix' + id); }
         else if (act === 'fixok') {
-          const v = card.querySelector('.o-fix input').value.trim();
-          if (!v) { toast('直した値を入れてください'); return; }
+          const fi = card.querySelector('.o-fix input, .o-fix select'), v = fi.value.trim();
+          if (!v) { toast(fi.tagName === 'SELECT' ? '役割を選んでください' : '直した値を入れてください'); return; }
           const why = c ? fixProblem(c, v) : '';
           if (why) { toast(why); return; }
           O.fixTxt[id] = v; O.dec[id] = 'fix'; O.open.delete('fix' + id);
@@ -2148,7 +2219,7 @@ const Own = (() => {
         else if (act === 'ev') { const k = 'ev' + id; if (O.open.has(k)) O.open.delete(k); else O.open.add(k); renderLeft(); }
         else if (act === 'next') {
           const a = b.dataset.a;
-          if (a === 'show_evidence') { O.open.add('ev' + id); renderLeft(); } else onNext(a);
+          if (a === 'show_evidence') { if (O.open.has('ev' + id)) O.open.delete('ev' + id); else O.open.add('ev' + id); renderLeft(); } else onNext(a);
         }
       }
     });

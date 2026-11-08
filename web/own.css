@@ -146,8 +146,9 @@ body.own-wait #own-right { width: clamp(440px, 42vw, 820px); }
 .w-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 6px 0; font-size: 12px; }
 .w-bar label { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11.5px; }
 .w-bar small { color: var(--faint); font-size: 11px; }
-.w-tw { overflow: auto; border: 1px solid var(--line); border-radius: 10px; max-height: 420px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
-.w-tbl { border-collapse: collapse; font-size: 12px; width: 100%; }
+.w-tw { overflow-x: scroll; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; max-height: 420px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+.w-tbl { border-collapse: collapse; font-size: 12px; width: max-content; min-width: 100%; } /* 18 列は欄に収まらないので、表ごと横に送る（見出しは上に残る） */
+.w-tbl th { white-space: nowrap; }
 .w-tbl th { position: sticky; top: 0; z-index: 1; background: var(--glass-solid); text-align: left; font-weight: 500; color: var(--muted); font-size: 10.5px; padding: 5px 4px; border-bottom: 1px solid var(--line-strong); white-space: normal; line-height: 1.3; }
 .w-tbl td { padding: 2px 2px; border-bottom: 1px solid var(--line); }
 .w-tbl td.w-n { color: var(--faint); font-size: 11px; text-align: right; padding: 0 6px; }
@@ -437,9 +438,12 @@ body.view-own #own-right .f-chk { display: flex; align-items: center; gap: 8px; 
 .o-pend .o-hint { margin: 4px 0; }
 .o-revt td.num { white-space: nowrap; font-size: 11.5px; }
 .o-rev2 > span { font-size: 11.5px; }
+.o-tab td.num, .o-tbl td.num { white-space: nowrap; }
 .o-sub { display: block; color: var(--faint); font-size: 10.5px; font-weight: 400; }
 @media (max-width: 600px) {
-  .o-revt td.num { white-space: normal; font-size: 11px; overflow-wrap: anywhere; } /* 長距離の帰り荷は金額が 6 桁になり、400px の幅に収まらなくなる */
+  .o-revt td.num { white-space: nowrap; font-size: 11px; overflow-wrap: normal; } /* 金額は桁の途中で折らない。区間の名前の列のほうを折り返す */
+  .o-revt th:first-child, .o-revt td:first-child { overflow-wrap: anywhere; min-width: 4.5em; }
+  .o-revt th { white-space: nowrap; } .o-revt th:first-child { white-space: normal; }
   .o-revt th, .o-revt td { padding-left: 2px; padding-right: 2px; }
 }
 .o-hired { margin: 4px 0; } .o-more2 summary { cursor: pointer; font-size: 11px; color: var(--accent); }

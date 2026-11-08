@@ -81,6 +81,8 @@ tr.grp td { background: var(--hi); font-weight: 700; }
 .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
 .charts svg { width: 100%; max-width: 520px; height: auto; display: block; }
 .charts .bar-r { fill: var(--bar); }
+.charts .bar-hot { fill: var(--warn); }
+.charts .hotlbl { fill: var(--warn); font-weight: 600; }
 .charts text { fill: var(--text); font-size: 11px; }
 .charts .axis { stroke: var(--line); stroke-width: 1; }
 .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -1082,9 +1084,9 @@ const OwnCalc = (() => {
       if (!plates.some((x) => x.plate === pn)) plates.push({ plate: pn, raw, type: cell(row, tc), driver: cell(row, dcol) });
       let frm = cell(row, c.from) || null, to = cell(row, c.to) || null;
       const mark = nfkc(cell(row, c.mark));
-      let empty = isEmptyWord(mark) || isEmptyWord(to || '') || isEmptyWord(frm || '');
+      let empty = isEmptyMarkWord(mark) || isEmptyWord(to || '') || isEmptyWord(frm || '');
       if (!empty && markCols.some((j) => hasEmptyMark(cell(row, j)))) { empty = true; marked++; } // 備考・荷主・摘要の列の「空車回送」「帰荷なし」
-      const loadedMark = !empty && LOADED_WORDS.includes(mark.replace(/^[()]+|[()]+$/g, ''));
+      const loadedMark = !empty && (LOADED_WORDS.includes(mark.replace(/^[()]+|[()]+$/g, '')) || MARK_LOADED_EXTRA.includes(mark.replace(/^[()]+|[()]+$/g, '')));
       if (to && isEmptyWord(to)) to = null;
       if (frm && isEmptyWord(frm)) frm = null;
       if (to && !prefName(to)) to = prefSplit(to)[1] || to; // 「東京都江東区」「東京 江東区」の都道府県は読み飛ばす
@@ -1209,6 +1211,10 @@ const OwnCalc = (() => {
   const TIME_DROPPED = '時刻が読めません';
   // 備考・荷主・摘要の列のセルに空車の印があるか（「空車回送」「空」「回送」「帰荷なし」）。「空港運輸」のように前後が仮名・漢字の「空」は印にしない（own.py の has_empty_mark と同じ）
   const hasEmptyMark = (s) => { const t = nfkc(s || '').trim(); return !!t && (isEmptyWord(t) || EMPTY_MARK.test(t)); };
+  // 「実空の印」の列（荷物有無・区分など）のセルだけで使う語。「無」「なし」は備考の列では「特になし」の意味なので、EMPTY_WORDS には入れない（own.py の MARK_EMPTY_EXTRA と同じ）
+  const MARK_EMPTY_EXTRA = ['無', '無し', 'なし', 'ナシ', '空', 'カラ', 'から'];
+  const MARK_LOADED_EXTRA = ['有', 'あり', 'アリ', '有り', '実'];
+  const isEmptyMarkWord = (s) => { const t = nfkc(s).trim().replace(/^[()]+|[()]+$/g, '').trim(); return MARK_EMPTY_EXTRA.includes(t) || isEmptyWord(s); };
   const isEmptyWord = (s) => { const t = nfkc(s).trim().replace(/^[()]+|[()]+$/g, '').trim(); return EMPTY_WORDS.includes(t) || t.includes('回送') || t.startsWith('空コン'); };
 
   // 「着」の前後の時刻。「着530」「着 5:30」「5:30着」。「着」の後ろが重さ（9.2t）のときは前の時刻を読む。戻り値は [時刻か null, 時刻を捨てたか]
@@ -3554,7 +3560,7 @@ const OwnCalc = (() => {
     parseRestraintHours, kousokuHours, buildShifts, kpis, weekdayTable, insights, matchMuni, legsCsv, costs, summaryText, pyRound,
     isNonPlace, prefSplit, prefName, toKitLegs, resolveRole, hallWard, CITY_HALL_WARD, HALL_WARD_NOTE, inferYear, assignHeadYears, parseKm, parseWeight, parseWeights, parseDT, overMaxLegs, parseUnit,
     detectHaisha, addVehicleCol, NO_PLATE_LABEL_JA, readHaisha, transposeDateDown, haishaRole, headKey, plateIdentity, detectDigitaco, parseDigitacoSummary, dedupeDigitaco, parseDateOnly, parseHm, tonsPair,
-    roleOptions, needingRoles, shapeSignature, hasEmptyMark, gouName, vdate, columnReasonJa, judgedRow, ROLE_LABEL_JA, weightConfirmItems, pairTables, legPair, returnTrips, returnTarget, returnPairs, returnWhen, srcCat, applyMaxPayload, roleOf, yearsInText, nearestYear, classOf, isEmptyWord, plateAttrConflicts, EMPTY_WORDS, ladenWords, cellNote, YEAR_RANGE: [YEAR_MIN, YEAR_MAX], DIGITACO_DICT, HAISHA_DICT, ROLE_LABEL, NATIONAL,
+    roleOptions, needingRoles, shapeSignature, hasEmptyMark, gouName, vdate, columnReasonJa, judgedRow, ROLE_LABEL_JA, weightConfirmItems, pairTables, legPair, returnTrips, returnTarget, returnPairs, returnWhen, srcCat, applyMaxPayload, roleOf, yearsInText, nearestYear, classOf, isEmptyWord, isEmptyMarkWord, MARK_EMPTY_EXTRA, MARK_LOADED_EXTRA, plateAttrConflicts, EMPTY_WORDS, ladenWords, cellNote, YEAR_RANGE: [YEAR_MIN, YEAR_MAX], DIGITACO_DICT, HAISHA_DICT, ROLE_LABEL, NATIONAL,
   };
 })();
 if (typeof window !== 'undefined') window.OwnCalc = OwnCalc;
@@ -3781,10 +3787,11 @@ const OwnMonth = (() => {
     for (const l of emptyBackLegs(d)) {
       if (!l.frm || !l.to || l.frm === l.to) continue;
       const k = `${l.frm}|${l.to}`;
-      if (!m.has(k)) m.set(k, { frm: l.frm, to: l.to, n: 0, wd: {}, dep: {}, plates: {}, dates: [] });
+      if (!m.has(k)) m.set(k, { frm: l.frm, to: l.to, n: 0, wd: {}, dep: {}, plates: {}, dates: [], wdPlates: {}, wdDep: {} });
       const p = m.get(k), w = wdOf(l.dep || l.date), dep = (l.dep || '').slice(11, 16), dt = (l.dep || l.date || '').slice(0, 10);
       if (dt && !p.dates.includes(dt)) p.dates.push(dt);
       p.n++; if (w != null) p.wd[w] = (p.wd[w] || 0) + 1; if (dep) p.dep[dep] = (p.dep[dep] || 0) + 1; p.plates[l.plate] = (p.plates[l.plate] || 0) + 1;
+      if (w != null) { (p.wdPlates[w] = p.wdPlates[w] || {})[l.plate] = ((p.wdPlates[w] || {})[l.plate] || 0) + 1; if (dep) (p.wdDep[w] = p.wdDep[w] || {})[dep] = ((p.wdDep[w] || {})[dep] || 0) + 1; }
     }
     // 区間の集計（d.pairs: own_calc.js）があれば、その空車の便数と曜日別の空車の便数を優先する
     if (Array.isArray(d.pairs)) {
@@ -3824,18 +3831,23 @@ const OwnMonth = (() => {
   const WEEKLY_MIN = 3;
   const dateWd = (iso) => `${+iso.slice(5, 7)}/${+iso.slice(8, 10)}（${WDN[wdOf(iso)]}）`;
   // 「毎週」は、その曜日の帰りの便が 3 回以上で、8 割以上が空のときだけ（negotiate.js の案内文と同じ規則）。そうでない曜日は、記録にあったことだけを書く
-  function dayText(p) {
+  // 掲示に書く曜日: 規則（3 回以上・8 割以上が空）に合う曜日だけ。多い順に 3 つまで
+  function weeklyDays(p) {
     const wdTrips = p.wdTrips || {};
     const isWeekly = (w) => p.wd[w] >= WEEKLY_MIN && (wdTrips[w] == null || p.wd[w] / wdTrips[w] >= 0.8);
     const all = Object.keys(p.wd).map(Number).filter((w) => p.wd[w] > 0);
-    const weekly = all.filter(isWeekly).sort((x, y) => p.wd[y] - p.wd[x] || x - y).slice(0, 3).sort((x, y) => x - y);
+    return all.filter(isWeekly).sort((x, y) => p.wd[y] - p.wd[x] || x - y).slice(0, 3).sort((x, y) => x - y);
+  }
+  function dayText(p) {
+    const all = Object.keys(p.wd).map(Number).filter((w) => p.wd[w] > 0);
+    const weekly = weeklyDays(p);
     const other = all.filter((w) => !weekly.includes(w)).sort((x, y) => x - y);
     const rest = (p.dates || []).filter((iso) => !weekly.includes(wdOf(iso)));
     const shown = rest.slice(0, 6).map(dateWd).join('・') + (rest.length > 6 ? `・ほか ${rest.length - 6} 日` : '');
     const w = weekly.length ? `毎週${weekly.map((x) => WDN[x] + '曜').join('・')}` : '';
     const o = other.length ? `これまでの記録では${other.map((x) => WDN[x] + '曜').join('・')}の帰りに空きがありました${shown ? `（${shown}）` : ''}` : '';
-    if (w && o) return `${w}。${o}`;
-    if (w) return w;
+    if (w) return w; // 規則に合う曜日があるときは、その曜日だけを書く。ほかの曜日を並べると毎日に読めるので、掲示には入れない
+    // 規則に合う曜日が無いときだけ、記録にあったことを書く
     if (o) return o;
     if (shown) return shown;
     return '（曜日を入れてください）';
@@ -3870,9 +3882,24 @@ const OwnMonth = (() => {
     const first = new Date((now || new Date()).getTime()); first.setDate(first.getDate() + 1);
     return { iso: isoOf(first), skipped: [], open: [...open].sort((a, b) => a - b), basis: false };
   }
+  // 空車の割合がいちばん高い曜日（掲示に書く曜日と同じ規則に合うもの。同じなら空車の便数が多い曜日）。規則に合う曜日が無ければ null
+  function bestWeekday(p) {
+    if (!p) return null;
+    const ws = weeklyDays(p), wt = p.wdTrips || {};
+    if (!ws.length) return null;
+    return ws.sort((x, y) => (p.wd[y] / (wt[y] || p.wd[y])) - (p.wd[x] / (wt[x] || p.wd[x])) || p.wd[y] - p.wd[x] || x - y)[0];
+  }
+  // 明日以降で、その曜日（0 = 月 … 6 = 日）になる最初の日
+  function nextOnWeekday(w, now) {
+    const t = new Date((now || new Date()).getTime());
+    t.setDate(t.getDate() + 1);
+    for (let i = 0; i < 7 && (t.getDay() + 6) % 7 !== w; i++) t.setDate(t.getDate() + 1);
+    return isoOf(t);
+  }
   function boardDefaults(d, now) {
     const p = returnPairs(d)[0];
-    const base = { date: nextWorkday(d, now).iso, frm: '', to: '', cls: '', kg: '', time: '', timeTo: '', bed: '', size: '' };
+    const best = bestWeekday(returnPairs(d)[0]);
+    const base = { date: best != null ? nextOnWeekday(best, now) : nextWorkday(d, now).iso, frm: '', to: '', cls: '', kg: '', time: '', timeTo: '', bed: '', size: '' };
     if (!p) return base;
     const top = (o) => Object.keys(o).sort((x, y) => o[y] - o[x] || (x < y ? -1 : 1))[0];
     const plate = top(p.plates), v = d.vehicles.find((x) => x.plate === plate);
@@ -3912,13 +3939,19 @@ const OwnMonth = (() => {
     for (const p of returnPairs(d)) {
       const a = d.places[p.frm], b = d.places[p.to];
       const day = dayText(p);
-      const wdCount = Object.keys(p.wd).map(Number).sort((x, y) => x - y).map((w) => `${WDN[w]}曜 ${p.wd[w]} 便`).join('・');
-      const dep = Object.keys(p.dep).sort((x, y) => p.dep[y] - p.dep[x] || (x < y ? -1 : 1))[0];
+      const wkEarly = weeklyDays(p);
+      // 掲示に書く曜日が決まっているときは、根拠もその曜日の便数だけ書く（ほかの曜日を並べると毎日に読める）
+      const wdCount = Object.keys(p.wd).map(Number).filter((w) => !wkEarly.length || wkEarly.includes(w)).sort((x, y) => x - y).map((w) => `${WDN[w]}曜 ${p.wd[w]} 便`).join('・');
+      const nShown = wkEarly.length ? wkEarly.reduce((a, w) => a + p.wd[w], 0) : p.n;
+      // 掲示に書く曜日が決まっているときは、その曜日の便だけから、出発の時刻と車の種類を数える
+      const wk = weeklyDays(p), sumBy = (src, all) => { if (!wk.length) return all; const o = {}; for (const w of wk) for (const [k, n] of Object.entries(src[w] || {})) o[k] = (o[k] || 0) + n; return Object.keys(o).length ? o : all; };
+      const depMap = sumBy(p.wdDep || {}, p.dep), plateMap = sumBy(p.wdPlates || {}, p.plates);
+      const dep = Object.keys(depMap).sort((x, y) => depMap[y] - depMap[x] || (x < y ? -1 : 1))[0];
       const mon = d.mon ? `${d.mon} 月は` : '';
-      const basis = `（${mon}この区間の帰りの空車 ${p.n} 便${wdCount ? `。${wdCount}` : ''}）`;
+      const basis = `（${mon}この区間の帰りの空車 ${nShown} 便${wdCount ? `。${wdCount}` : ''}）`;
       // 車の種類ごとに、便数と最大積載量（登録があればその値、無ければ種類の呼び名の重さ）
       const g = {};
-      for (const [plate, n] of Object.entries(p.plates)) {
+      for (const [plate, n] of Object.entries(plateMap)) {
         const v = d.vehicles.find((x) => x.plate === plate), raw = (v && v.cls) || '', tc = tariffClass(raw), key = tc || raw || '?';
         if (!g[key]) g[key] = { tc, raw, n: 0, kg: 0, assumed: false, nominal: false };
         const e = g[key]; e.n += n;
@@ -3961,7 +3994,7 @@ const OwnMonth = (() => {
     return rows;
   }
 
-  return { GLOSS, tipHtml, sig, headSig, list, save, clearAll, rolesGet, rolesSet, summary, summaries, compareRows, FARE, fare, tariffClass, revenue, revenueScope, returnPairs, boardText, workingWeekdays, nextWorkday, boardTexts, draftRows, waitClass, ownRevenue, boardDefaults, boardOne, CLASS_CHOICES, BED_CHOICES, readQuality, tomorrowIso, isHallWard, placeName, hash };
+  return { GLOSS, tipHtml, sig, headSig, list, save, clearAll, rolesGet, rolesSet, summary, summaries, compareRows, FARE, fare, tariffClass, revenue, revenueScope, returnPairs, boardText, workingWeekdays, nextWorkday, boardTexts, draftRows, waitClass, ownRevenue, boardDefaults, bestWeekday, nextOnWeekday, weeklyDays, boardOne, CLASS_CHOICES, BED_CHOICES, readQuality, tomorrowIso, isHallWard, placeName, hash };
 })();
 if (typeof window !== 'undefined') window.OwnMonth = OwnMonth;
 </script>
@@ -4011,7 +4044,7 @@ const Negotiate = (() => {
   // 質問。cond は、その条件が未確認のときだけ聞く（load: 積込、recv: 受取、always: いつも）
   const QUESTIONS = {
     commodity: [
-      ['load', '荷物の品名・荷姿（箱・パレットなど）、1 個あたりの寸法・重量、数量'],
+      ['cargo', '荷物の品名・荷姿（箱・パレットなど）、1 個あたりの寸法・重量、数量'],
       ['load', '積込を希望する日時と、日程を広げられる範囲'],
       ['load', '積込場所の荷役設備（フォークリフト・ドックなど）と、積込にかかる時間'],
       ['load', 'ほかの荷物との混載の可否と、積み降ろしの順の希望'],
@@ -4021,7 +4054,7 @@ const Negotiate = (() => {
       ['always', '現在の送り方と、その条件（比べるため）'],
     ],
     returnable: [
-      ['load', '通い箱・パレットの種類（規格・寸法）と数量'],
+      ['cargo', '通い箱・パレットの種類（規格・寸法）と数量'],
       ['load', '積み重ねの可否と、重ねられる段数'],
       ['load', '回収・受け渡しの方法（誰が積み込み、検品をどうするか）'],
       ['load', '回収を希望する日時と、日程を広げられる範囲'],
@@ -4066,11 +4099,13 @@ const Negotiate = (() => {
   /* ------------------------------------------------------------ 状況（保留・見送り・下書き） */
 
   const STATUS_JA = { hold: '保留', skip: '見送り', skip_econ: '見送り（増えるもうけが 0 円以下）', ready: '条件はすべて確認済みです', draft: '未確認の項目は、相手への質問にしています' };
+  // 条件が「合う」でも、確認した内容が空なら、確認できたとは書けない（相手への文では未確認として質問にする）
+  const okCond = (c) => c.state === 'ok' && !!String(c.note || '').trim();
   function statusOf(p) {
     const ec = economics(p.econ || emptyEcon());
     if (ec.state === 'skip') return 'skip_econ';
     if (p.load.state === 'ng' || p.recv.state === 'ng') return p.hold && p.hold.action === 'skip' ? 'skip' : 'hold';
-    return p.load.state === 'ok' && p.recv.state === 'ok' ? 'ready' : 'draft';
+    return okCond(p.load) && okCond(p.recv) ? 'ready' : 'draft';
   }
 
   /* ------------------------------------------------------------ 文面（社外にコピーする文。社内の根拠・原価・車番などは入れない） */
@@ -4084,6 +4119,7 @@ const Negotiate = (() => {
     const from = phrase(p.fromMuni), to = phrase(p.toMuni), day = p.weekday ? `${p.weekday}曜日` : '【曜日】';
     const head = ['【宛先（会社名・ご担当者名）】 様', '', '突然のご連絡で失礼します。【運送会社名】の【担当者名】です。'];
     if (st === 'hold') {
+      head[2] = 'お世話になっております。【運送会社名】の【担当者名】です。先日ご相談した件でご連絡します。';
       const picks = (p.hold && p.hold.picks) || [];
       return [...head, '', `${from}から${to}へ戻る便でお運びする件で、条件が合わない点がありました。条件を変えられるか、再確認させてください。`, '',
         '■再確認したいこと', ...(picks.length ? picks.map((k) => `・${HOLD_ASK[k]}`) : ['・【再確認する内容を選ぶか、ここに書いてください】']), '',
@@ -4097,9 +4133,10 @@ const Negotiate = (() => {
       ? `${when}${from}から${to}へ戻る便に${vacant}。空の通い箱・パレットの返送にお使いいただけます。`
       : `${when}${from}から${to}へ戻るトラックに${vacant}。この方面へ出荷される荷物があれば、この便でお運びできます。`;
     const confirmed = [];
-    if (p.load.state === 'ok') confirmed.push(`・積込の条件: ${(p.load.note || '').trim() || '確認できています（内容は別途お伝えします）'}`);
-    if (p.recv.state === 'ok') confirmed.push(`・受取の条件: ${(p.recv.note || '').trim() || '確認できています（内容は別途お伝えします）'}`);
-    const asks = QUESTIONS[type].filter(([c]) => c === 'always' || (c === 'load' && p.load.state !== 'ok') || (c === 'recv' && p.recv.state !== 'ok')).map(([, t]) => `・${t}`);
+    if (okCond(p.load)) confirmed.push(`・積込の条件: ${p.load.note.trim()}`);
+    if (okCond(p.recv)) confirmed.push(`・受取の条件: ${p.recv.note.trim()}`);
+    // 内容を書いていない「合う」は未確認として質問に残す。荷物の内容（cargo）は、積込・受取の確認とは別に、いつも聞く
+    const asks = QUESTIONS[type].filter(([c]) => c === 'always' || c === 'cargo' || (c === 'load' && !okCond(p.load)) || (c === 'recv' && !okCond(p.recv))).map(([, t]) => `・${t}`);
     return [...head, '', intro, 'お運びできるかを確かめるため、次の点をお聞かせください。', '', '■確認できている条件', ...(confirmed.length ? confirmed : ['・現時点で、確認できている条件はありません']), '',
       '■お聞かせいただきたいこと', ...asks, '',
       'お見積りは、荷物の内容と日時を伺ってからお出しします。', '',
@@ -4206,10 +4243,19 @@ const Negotiate = (() => {
     const sel = wd != null && model.by_weekday.some((w) => w.wd === wd) ? wd : defaultWd(model, pair.default_wd);
     return { pairs, pair, model, target: OwnCalc.returnTarget(model, sel) };
   }
+  // 積込の確認の根拠の 1 行。空車の便だけを数え、出発の時刻が無い空車の便は、その本数を書く
+  function evLoadOf(a, tm) {
+    if (!tm) return '';
+    const er = emptyRowsOf(a.target), noTime = er.filter((r) => r.dt_basis !== 'dep').length;
+    return `${a.pair.fr_label}発・${a.target.weekday}曜の空車の便 ${er.length} 本（${(tm.split(' / ').find((x) => x.startsWith('出発')) || '').replace('出発の記録: ', '出発 ')}${noTime ? `。出発の時刻の記録が無い便 ${noTime} 本` : ''}）`;
+  }
   const hm = (iso) => (iso && iso.length >= 16 ? iso.slice(11, 16).replace(/^0/, '') : null);
+  // 時刻の記録は、空車の便だけで数える（実車で走った便の時刻を、空いている時刻として出さない）
+  const emptyRowsOf = (target) => target.rows.filter((r) => r.kind === 'empty');
   function timesNote(target) {
-    const deps = [...new Set(target.rows.filter((r) => r.dt_basis === 'dep').map((r) => hm(r.dt)))];
-    const arrs = target.rows.filter((r) => r.arr).map((r) => ({ t: hm(r.arr), wd: OwnCalc.returnWhen({ date: r.arr.slice(0, 10) })[2] })).filter((x) => x.t);
+    const er = emptyRowsOf(target);
+    const deps = [...new Set(er.filter((r) => r.dt_basis === 'dep').map((r) => hm(r.dt)))];
+    const arrs = er.filter((r) => r.arr).map((r) => ({ t: hm(r.arr), wd: OwnCalc.returnWhen({ date: r.arr.slice(0, 10) })[2] })).filter((x) => x.t);
     const out = [];
     if (deps.length) out.push(`出発の記録: ${deps.sort().join('、')}`);
     if (arrs.length) { const ts = arrs.map((a) => a.t).sort(); out.push(`到着の記録: ${WD[arrs[0].wd]}曜 ${ts[0]}〜${ts[ts.length - 1]}`); }
@@ -4265,6 +4311,8 @@ const Negotiate = (() => {
       <button type="button" class="btn-sm" data-act="to-entry">別のデータを選ぶ<\/button><\/div>`;
   }
 
+  // CSV の入口に出す、必要な列の案内（畳んだ欄の中に隠さない）
+  const csvGuideHtml = () => '<p class="neg-sub neg-csvguide">最低限ほしい列は、配車表なら「日付・車番・発地か着地」、デジタコなら「開始と終了の日時」か「日付と実車・空車の距離」です。Excel は「CSV として保存」します。文字コードは UTF-8 でも Shift_JIS でも読めます。<\/p>';
   function entryHtml() {
     const err = ctx.error ? `<p class="neg-err" role="alert">${esc(ctx.error)}<\/p>` : '';
     return `<div class="neg-box"><h3>帰りの空車を、荷主に案内する文を作る<\/h3>
@@ -4277,7 +4325,7 @@ const Negotiate = (() => {
     return `<div class="neg-box"><h3>自社の運行記録を読み込む<\/h3>
       <p class="neg-sub">配車表・デジタコの CSV を選んでください。読み込めないときは理由をここに出します。ファイルは外に送りません。<\/p>
       ${ctx.error ? `<p class="neg-err" role="alert">${esc(ctx.error)}<\/p>` : ''}
-      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-file" data-act="entry-file">CSV を選ぶ<\/button><button type="button" class="btn-sm" id="neg-entry-sample" data-act="entry-sample">架空のサンプルで試す<\/button><\/div><\/div>`;
+      ${csvGuideHtml()}<div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-file" data-act="entry-file">CSV を選ぶ<\/button><button type="button" class="btn-sm" id="neg-entry-sample" data-act="entry-sample">架空のサンプルで試す<\/button>${ctx.saveSample ? '<button type="button" class="btn-sm" data-act="sample-csv">見本の CSV を保存<\/button>' : ''}<\/div><\/div>`;
   }
 
   const wdOptions = (a) => (a.target.wd == null ? '<option value="" selected>曜日を選ぶ<\/option>' : '') + a.model.by_weekday.map((w) => `<option value="${w.wd}" ${w.wd === a.target.wd ? 'selected' : ''}>${w.weekday}曜（空車 ${w.empty} / ${w.trips} 便）<\/option>`).join('');
@@ -4309,7 +4357,7 @@ const Negotiate = (() => {
          <div class="neg-row"><span class="neg-lab">ほかの曜日<\/span>${bar(o.empty, o.judged)}<b class="neg-val">${o.empty} / ${o.judged} 便が空車<\/b><\/div>`;
     const basisNote = k.trips ? `行き先が分かった ${k.trips} 本のうち ${m.basis.date + m.basis.none} 本は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
     const warn = noEmpty
-      ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。配車表とデジタコの記録を確かめてください。<\/p>` : '';
+      ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。空車の記録がある曜日を選び直すか、実車か空車か分からない帰りの便があるときは、「確認」の欄で空車か実車かを決めてください（決めると数え直します）。それでも空車が出ないときは、配車表の空車の印の列を確かめてください。<\/p>` : '';
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。<\/p>` : '';
     return `<div class="neg-box" id="neg-result"><h3>曜日ごとの帰りの空車<\/h3>
       <div class="neg-pick">${pairSel}${wdSel}<\/div>
@@ -4343,8 +4391,8 @@ const Negotiate = (() => {
         ${ctx.home ? '<button type="button" class="btn-link" data-act="home">最初の画面に戻る<\/button>' : ''}<\/div><\/div>`;
   }
   function gFileWaitHtml() {
-    return `<div class="neg-box"><h3>自社の運行記録を読み込む<\/h3><p class="neg-sub">配車表・デジタコの CSV を選びます。<\/p>${ctx.error ? `<p class="neg-err" role="alert">${esc(ctx.error)}<\/p>` : ''}
-      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-file" data-act="entry-file">CSV を選ぶ<\/button><button type="button" class="btn-sm" id="neg-entry-sample" data-act="entry-sample">架空のサンプルで試す<\/button>
+    return `<div class="neg-box"><h3>自社の運行記録を読み込む<\/h3><p class="neg-sub">配車表・デジタコの CSV を選びます。<\/p>${csvGuideHtml()}${ctx.error ? `<p class="neg-err" role="alert">${esc(ctx.error)}<\/p>` : ''}
+      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-file" data-act="entry-file">CSV を選ぶ<\/button><button type="button" class="btn-sm" id="neg-entry-sample" data-act="entry-sample">架空のサンプルで試す<\/button>${ctx.saveSample ? '<button type="button" class="btn-sm" data-act="sample-csv">見本の CSV を保存<\/button>' : ''}
         <button type="button" class="btn-link" data-act="to-entry">戻る<\/button><\/div><\/div>`;
   }
   function gResultHtml(a) {
@@ -4358,7 +4406,7 @@ const Negotiate = (() => {
       <div class="neg-row"><span class="neg-lab">ほかの曜日<\/span>${bar(o.empty, o.judged)}<b class="neg-val">${o.empty} / ${o.judged} 便が空車<\/b><\/div>`;
     const basisNote = k.trips ? `行き先が分かった ${k.trips} 本のうち ${m.basis.date + m.basis.none} 本は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。<\/p>` : '';
-    const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。配車表とデジタコの記録を確かめてください。<\/p>` : '';
+    const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。空車の記録がある曜日を選び直すか、実車か空車か分からない帰りの便があるときは、「確認」の欄で空車か実車かを決めてください（決めると数え直します）。それでも空車が出ないときは、配車表の空車の印の列を確かめてください。<\/p>` : '';
     const pre = `<p class="neg-base" id="neg-base">帰りの便 <b>${c.trips} 本<\/b>（空車 ${c.empty}・実車 ${c.loaded}・不明 ${c.unknown}）のうち、行き先が分かった便は <b>${k.trips} 本<\/b>（空車 ${k.empty}・実車 ${k.loaded}）です。残り ${u.trips} 本は行き先と積荷が分からないので、${esc(a.pair.to_label)}に着いた便には入れていません。<\/p>
       <p class="neg-note">ほかの曜日で空車か実車か分からない ${o.unknown} 便は別に数えています。<\/p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}<\/p>${kmLine}
       <p class="neg-note">${ctx.mode === 'import' ? '過去の記録の集計です。今後も同じ曜日に空く保証ではなく、今予約できる便でもありません。' : '架空の過去の運行記録です。今予約できる便や、今後も毎週空く保証ではありません。'}<\/p>`;
@@ -4382,11 +4430,11 @@ const Negotiate = (() => {
     return `<fieldset class="neg-cond" id="neg-cond-${key}"><legend>${title}<\/legend><p class="neg-ev1">${esc(ev || '記録に時刻がありません')}<\/p>
       <label class="neg-pickrow">確認した結果<select id="neg-sel-${key}" class="ctl sm" name="neg-${key}" data-cond="${key}" aria-label="${title}の確認した結果">${opts}<\/select><\/label>
       ${st.state === 'unconfirmed' ? '' : `<label class="neg-nl">確認した内容（誰に・いつ・何を）<input type="text" class="ctl" data-note="${key}" value="${esc(st.note)}" autocomplete="off"><\/label>`}
-      ${st.state === 'ok' && !st.note.trim() ? '<p class="neg-note neg-y">確認した内容を書いてください<\/p>' : ''}<\/fieldset>`;
+      ${st.state === 'ok' && !st.note.trim() ? '<p class="neg-note neg-y">確認した内容を書いてください（書くまでは、相手への文では未確認として質問にします）<\/p>' : ''}<\/fieldset>`;
   }
   function gCondHtml(a) {
-    const tm = timesNote(a.target), deps = a.target.rows.filter((r) => r.dt_basis === 'dep').length;
-    const evLoad = tm ? `${a.pair.fr_label}発・${a.target.weekday}曜の便 ${deps} 本（${(tm.split(' / ').find((x) => x.startsWith('出発')) || '').replace('出発の記録: ', '出発 ')}）` : '';
+    const tm = timesNote(a.target);
+    const evLoad = evLoadOf(a, tm);
     const evRecv = tm && tm.includes('到着') ? tm.split(' / ').find((x) => x.startsWith('到着')) : '';
     return `<div class="neg-box" id="neg-cond"><h3>積込と受取の条件を確認する<\/h3><p class="neg-sub">分かっている条件を選びます。未確認は案内文で質問します。<\/p>
       ${gCondCard('load', `${a.target.weekday}曜の積込`, evLoad, S.load)}${gCondCard('recv', '受取（納品・返却）', evRecv, S.recv)}
@@ -4402,7 +4450,7 @@ const Negotiate = (() => {
       <p class="neg-ev1"><small>自社の記録<\/small>${esc(ev || '記録に時刻がありません')}<\/p>
       <div class="neg-rads" role="radiogroup" aria-label="${title}の確認した結果"><small>確認した結果<\/small>${radios}<\/div>
       <label class="neg-nl">確認した内容（誰に・いつ・何を確認したか）<input type="text" class="ctl" data-note="${key}" value="${esc(st.note)}" autocomplete="off" ${st.state === 'unconfirmed' ? 'placeholder="確認したら入れます"' : ''}><\/label>
-      ${st.state === 'ok' && !st.note.trim() ? '<p class="neg-note neg-y">確認した内容を書いてください<\/p>' : ''}<\/fieldset>`;
+      ${st.state === 'ok' && !st.note.trim() ? '<p class="neg-note neg-y">確認した内容を書いてください（書くまでは、相手への文では未確認として質問にします）<\/p>' : ''}<\/fieldset>`;
   }
 
   function econHtml() {
@@ -4444,8 +4492,7 @@ const Negotiate = (() => {
 
   function condHtml(a) {
     const tm = timesNote(a.target);
-    const deps = a.target.rows.filter((r) => r.dt_basis === 'dep').length;
-    const evLoad = tm ? `${a.pair.fr_label}発・${a.target.weekday}曜の便 ${deps} 本（${(tm.split(' / ').find((x) => x.startsWith('出発')) || '').replace('出発の記録: ', '出発 ')}）` : '';
+    const evLoad = evLoadOf(a, tm);
     const evRecv = tm && tm.includes('到着') ? tm.split(' / ').find((x) => x.startsWith('到着')) : '';
     const types = Object.entries(TYPES).map(([k, v]) => `<label class="neg-rad neg-type"><input type="radio" name="neg-type" data-type="${k}" ${S.type === k ? 'checked' : ''}><span><b>${labelOf(k, v, a)}<\/b><small>${hintOf(k, v, a)}<\/small><\/span><\/label>`).join('');
     return `<div class="neg-box" id="neg-cond"><h3>案内する荷主と条件を選ぶ<\/h3>
@@ -4691,6 +4738,9 @@ const Negotiate = (() => {
     S.draft.text = ta.value;
     const toks = internalTokens(ctx.data, a.model.rows, { fr: a.pair.fr, to: a.pair.to, kmText: kmText(a), econ: S.econ });
     const lk = leaks(S.draft.text, toks);
+    // 【宛先】【運送会社名】【担当者名】などの書き換え忘れが残っていれば、コピーの前に知らせる。もう一度押すとそのままコピーする
+    const ph = [...new Set(S.draft.text.match(/【[^】]*】/g) || [])];
+    if (!lk.length && ph.length && S.phAsked !== S.draft.text) { S.phAsked = S.draft.text; S.copyMsg = `${ph.join('')}がまだ書き換わっていません。直してからコピーしてください（このままコピーするときは、もう一度押してください）`; render(); return; }
     if (lk.length) { S.copyMsg = `社内の情報（${lk.join('、')}）が入っているので、コピーしていません`; render(); return; }
     const text = S.draft.text;
     let ok = false;
@@ -4713,6 +4763,7 @@ const Negotiate = (() => {
     const b = e.target.closest('[data-act]');
     if (!b || b.disabled) return;
     const act = b.dataset.act;
+    if (act === 'sample-csv') { if (ctx.saveSample) ctx.saveSample(); return; }
     if (act === 'entry-sample') { S.picking = false; S.entry = 'sample'; S.view = 'result'; if ((ctx.mode === 'import' || !ctx.data) && ctx.useSample) ctx.useSample(); else render(); }
     else if (act === 'entry-file') { if (!(ctx.guided && S.picking)) S.entry = 'file'; render(); if (ctx.pickFile) ctx.pickFile(); }
     else if (act === 'to-entry') { S.entry = null; S.view = 'result'; S.regenAsk = false; S.picking = true; S.wd = null; S.goalDone = false; render(); }
@@ -4765,7 +4816,7 @@ const Negotiate = (() => {
   const picked = (mode) => { S.picking = false; if (mode === 'import') S.entry = 'file'; };
   const setGoal = (g) => { const v = g === 'propose' ? 'propose' : g === 'empty' ? 'empty' : ''; if (S.goal !== v) { S.goal = v; S.goalDone = false; } };
   return { mount, update, park, render, picked, setGoal, step: () => (ctx.guided ? guidedStep() : 0), state: S, ctx: () => ctx,
-    parseMoney, economics, statusOf, buildDraft, internalTokens, leaks, newDraft, isEdited, isStale, syncDraft, regenerate, analysisOf, defaultWd, emptyEcon, draftKey, params,
+    __timesNote: (t) => timesNote(t), __evLoad: (a) => evLoadOf(a, timesNote(a.target)), parseMoney, economics, statusOf, buildDraft, internalTokens, leaks, newDraft, isEdited, isStale, syncDraft, regenerate, analysisOf, defaultWd, emptyEcon, draftKey, params,
     TYPES, labelOf, hintOf, QUESTIONS, HOLD_OPTS, STATUS_JA };
 })();
 /* 選んだ 1 回の運行の図（TripView）。「どこを走ったか」「その区間に荷物があったか」を 1 枚で読む。
@@ -5436,23 +5487,22 @@ function tableHtml(d) {
     ${rest.length ? `<details><summary>ほか ${rest.length} 行</summary><div class="scroll-x"><table aria-label="区間と曜日の表の続き">${head}<tbody>${rest.map(body).join('')}</tbody></table></div></details>` : ''}`;
 }
 
-// 区間ごとの、曜日別の空車 km の棒（ライブラリなしの SVG）
+// 区間ごとの、曜日別の空車の割合の棒（ライブラリなしの SVG）。結論の曜日（4 便以上で 3/4 以上が空車）は色を変えて「空車が多い」と書く
 function chartHtml(d) {
   const ps = (d.pairs || []).filter((p) => p.empty_km > 0 && Array.isArray(p.by_weekday)).sort((a, b) => b.empty_km - a.empty_km).slice(0, 4);
   if (!ps.length) return '<p class="hint">空車の km がある区間はありません。</p>';
-  const mx = Math.max(1, ...ps.flatMap((p) => p.by_weekday.map((w) => w.empty_km || 0)));
-  const W = 360, H = 150, x0 = 12, bw = 36, gap = 13, top = 28, base = 118;
+  const W = 360, H = 160, x0 = 12, bw = 36, gap = 13, top = 34, base = 124;
   const one = (p) => {
     const wrows = weekdayRows(d).filter((t) => t.pair === p.id);
-    const vals = Array.from({ length: 7 }, (_, i) => { const w = wrows.find((x) => x.wd === i); return w ? (w.empty_km || 0) : 0; });
+    const vals = Array.from({ length: 7 }, (_, i) => { const w = wrows.find((x) => x.wd === i); return w ? { n: w.trips - (w.unknown || 0), e: w.empty || 0, km: w.empty_km || 0, hot: hasHot(w) } : { n: 0, e: 0, km: 0, hot: false }; });
     const bars = vals.map((v, i) => {
-      const h = Math.round((v / mx) * (base - top)), x = x0 + i * (bw + gap);
-      return `<rect class="bar-r" x="${x}" y="${base - h}" width="${bw}" height="${h}"><title>${WD[i]}曜 ${n1(v)} km</title></rect>${v > 0 ? `<text x="${x + bw / 2}" y="${base - h - 4}" text-anchor="middle">${Math.round(v)}</text>` : ''}<text x="${x + bw / 2}" y="${base + 16}" text-anchor="middle">${WD[i]}</text>`;
+      const h = v.n ? Math.round((v.e / v.n) * (base - top)) : 0, x = x0 + i * (bw + gap);
+      return `<rect class="${v.hot ? 'bar-r bar-hot' : 'bar-r'}" x="${x}" y="${base - h}" width="${bw}" height="${h}"><title>${WD[i]}曜 空車 ${v.e} / ${v.n} 便（空車の走行 ${n1(v.km)} km）</title></rect>${v.n > 0 ? `<text x="${x + bw / 2}" y="${base - h - 4}" text-anchor="middle">${v.e}/${v.n}</text>` : ''}${v.hot ? `<text class="hotlbl" x="${x + bw / 2}" y="${base + 30}" text-anchor="middle">空車が多い</text>` : ''}<text x="${x + bw / 2}" y="${base + 16}" text-anchor="middle">${WD[i]}</text>`;
     }).join('');
     return `<div><h3>${esc(p.label)}・${ROLE_JA[p.role] || '区間'}　空車 ${n1(p.empty_km)} km</h3>
-      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(p.label)} 曜日ごとの空車の km。${vals.map((v, i) => `${WD[i]} ${Math.round(v)}`).join('、')}"><line class="axis" x1="${x0 - 4}" y1="${base}" x2="${W - 4}" y2="${base}"/>${bars}</svg></div>`;
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(p.label)} 曜日ごとの空車の割合。${vals.map((v, i) => `${WD[i]} ${v.e}/${v.n}${v.hot ? '（空車が多い）' : ''}`).join('、')}"><line class="axis" x1="${x0 - 4}" y1="${base}" x2="${W - 4}" y2="${base}"/>${bars}</svg></div>`;
   };
-  return `<div class="charts" id="chart">${ps.map(one).join('')}</div><p class="hint">棒の上の数字は、その曜日に出た便の空車の km です。</p>`;
+  return `<div class="charts" id="chart">${ps.map(one).join('')}</div><p class="hint">棒の高さは、その曜日に出た便のうち空車だった割合です（上の数字は 空車 / 実車か空車か分かった便）。色の付いた棒は、4 便以上で 3/4 以上が空車の曜日です。空車の km は棒に重ねた説明に出ます。</p>`;
 }
 
 function insightsHtml(d) {
@@ -5543,7 +5593,7 @@ function tmDefaults(d) {
   const rp = OwnMonth.returnPairs(d)[0];
   const v = d.vehicles.find((x) => OwnMonth.tariffClass(x.cls)) || d.vehicles[0];
   // 日付は、配車表で車が動いている曜日の、今日の次の日から数えた最初の日（休みの曜日の日曜などは飛ばす）
-  return { date: OwnMonth.nextWorkday(d).iso, time: '19:00', frm: rp ? placeName(d.places[rp.frm]) : '', to: rp ? placeName(d.places[rp.to]) : '',
+  return { date: OwnMonth.boardDefaults(d).date, time: '19:00', frm: rp ? placeName(d.places[rp.frm]) : '', to: rp ? placeName(d.places[rp.to]) : '',
     cls: (v && OwnMonth.tariffClass(v.cls)) || '10t', kg: '', timeTo: '', bed: '', size: '' };
 }
 function tmText(f) {
@@ -5558,7 +5608,8 @@ function tmText(f) {
 function tomorrowHtml(d) {
   if (!S.tm) S.tm = tmDefaults(d);
   const nw = OwnMonth.nextWorkday(d);
-  const dayHint = nw.basis ? `<p class="hint" id="tm-dayhint">日付は次に車が動く日にしました。違うときは直してください。</p>` : '';
+  const bestW = OwnMonth.bestWeekday(OwnMonth.returnPairs(d)[0]);
+  const dayHint = bestW != null ? `<p class="hint" id="tm-dayhint">日付は、空車が多い${WD[bestW]}曜の次の日にしました。違うときは直してください。</p>` : nw.basis ? `<p class="hint" id="tm-dayhint">日付は次に車が動く日にしました。違うときは直してください。</p>` : '';
   const f = S.tm, opts = ['2t', '4t', '10t'].map((c) => `<option ${c === f.cls ? 'selected' : ''}>${c}</option>`).join('');
   const places = [...new Set(Object.values(d.places).map(placeName).filter(Boolean))];
   return `${dayHint}<datalist id="place-list">${places.map((p) => `<option value="${esc(p)}">`).join('')}</datalist>

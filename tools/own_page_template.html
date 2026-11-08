@@ -81,6 +81,8 @@ tr.grp td { background: var(--hi); font-weight: 700; }
 .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
 .charts svg { width: 100%; max-width: 520px; height: auto; display: block; }
 .charts .bar-r { fill: var(--bar); }
+.charts .bar-hot { fill: var(--warn); }
+.charts .hotlbl { fill: var(--warn); font-weight: 600; }
 .charts text { fill: var(--text); font-size: 11px; }
 .charts .axis { stroke: var(--line); stroke-width: 1; }
 .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -564,23 +566,22 @@ function tableHtml(d) {
     ${rest.length ? `<details><summary>ほか ${rest.length} 行</summary><div class="scroll-x"><table aria-label="区間と曜日の表の続き">${head}<tbody>${rest.map(body).join('')}</tbody></table></div></details>` : ''}`;
 }
 
-// 区間ごとの、曜日別の空車 km の棒（ライブラリなしの SVG）
+// 区間ごとの、曜日別の空車の割合の棒（ライブラリなしの SVG）。結論の曜日（4 便以上で 3/4 以上が空車）は色を変えて「空車が多い」と書く
 function chartHtml(d) {
   const ps = (d.pairs || []).filter((p) => p.empty_km > 0 && Array.isArray(p.by_weekday)).sort((a, b) => b.empty_km - a.empty_km).slice(0, 4);
   if (!ps.length) return '<p class="hint">空車の km がある区間はありません。</p>';
-  const mx = Math.max(1, ...ps.flatMap((p) => p.by_weekday.map((w) => w.empty_km || 0)));
-  const W = 360, H = 150, x0 = 12, bw = 36, gap = 13, top = 28, base = 118;
+  const W = 360, H = 160, x0 = 12, bw = 36, gap = 13, top = 34, base = 124;
   const one = (p) => {
     const wrows = weekdayRows(d).filter((t) => t.pair === p.id);
-    const vals = Array.from({ length: 7 }, (_, i) => { const w = wrows.find((x) => x.wd === i); return w ? (w.empty_km || 0) : 0; });
+    const vals = Array.from({ length: 7 }, (_, i) => { const w = wrows.find((x) => x.wd === i); return w ? { n: w.trips - (w.unknown || 0), e: w.empty || 0, km: w.empty_km || 0, hot: hasHot(w) } : { n: 0, e: 0, km: 0, hot: false }; });
     const bars = vals.map((v, i) => {
-      const h = Math.round((v / mx) * (base - top)), x = x0 + i * (bw + gap);
-      return `<rect class="bar-r" x="${x}" y="${base - h}" width="${bw}" height="${h}"><title>${WD[i]}曜 ${n1(v)} km</title></rect>${v > 0 ? `<text x="${x + bw / 2}" y="${base - h - 4}" text-anchor="middle">${Math.round(v)}</text>` : ''}<text x="${x + bw / 2}" y="${base + 16}" text-anchor="middle">${WD[i]}</text>`;
+      const h = v.n ? Math.round((v.e / v.n) * (base - top)) : 0, x = x0 + i * (bw + gap);
+      return `<rect class="${v.hot ? 'bar-r bar-hot' : 'bar-r'}" x="${x}" y="${base - h}" width="${bw}" height="${h}"><title>${WD[i]}曜 空車 ${v.e} / ${v.n} 便（空車の走行 ${n1(v.km)} km）</title></rect>${v.n > 0 ? `<text x="${x + bw / 2}" y="${base - h - 4}" text-anchor="middle">${v.e}/${v.n}</text>` : ''}${v.hot ? `<text class="hotlbl" x="${x + bw / 2}" y="${base + 30}" text-anchor="middle">空車が多い</text>` : ''}<text x="${x + bw / 2}" y="${base + 16}" text-anchor="middle">${WD[i]}</text>`;
     }).join('');
     return `<div><h3>${esc(p.label)}・${ROLE_JA[p.role] || '区間'}　空車 ${n1(p.empty_km)} km</h3>
-      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(p.label)} 曜日ごとの空車の km。${vals.map((v, i) => `${WD[i]} ${Math.round(v)}`).join('、')}"><line class="axis" x1="${x0 - 4}" y1="${base}" x2="${W - 4}" y2="${base}"/>${bars}</svg></div>`;
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(p.label)} 曜日ごとの空車の割合。${vals.map((v, i) => `${WD[i]} ${v.e}/${v.n}${v.hot ? '（空車が多い）' : ''}`).join('、')}"><line class="axis" x1="${x0 - 4}" y1="${base}" x2="${W - 4}" y2="${base}"/>${bars}</svg></div>`;
   };
-  return `<div class="charts" id="chart">${ps.map(one).join('')}</div><p class="hint">棒の上の数字は、その曜日に出た便の空車の km です。</p>`;
+  return `<div class="charts" id="chart">${ps.map(one).join('')}</div><p class="hint">棒の高さは、その曜日に出た便のうち空車だった割合です（上の数字は 空車 / 実車か空車か分かった便）。色の付いた棒は、4 便以上で 3/4 以上が空車の曜日です。空車の km は棒に重ねた説明に出ます。</p>`;
 }
 
 function insightsHtml(d) {
@@ -671,7 +672,7 @@ function tmDefaults(d) {
   const rp = OwnMonth.returnPairs(d)[0];
   const v = d.vehicles.find((x) => OwnMonth.tariffClass(x.cls)) || d.vehicles[0];
   // 日付は、配車表で車が動いている曜日の、今日の次の日から数えた最初の日（休みの曜日の日曜などは飛ばす）
-  return { date: OwnMonth.nextWorkday(d).iso, time: '19:00', frm: rp ? placeName(d.places[rp.frm]) : '', to: rp ? placeName(d.places[rp.to]) : '',
+  return { date: OwnMonth.boardDefaults(d).date, time: '19:00', frm: rp ? placeName(d.places[rp.frm]) : '', to: rp ? placeName(d.places[rp.to]) : '',
     cls: (v && OwnMonth.tariffClass(v.cls)) || '10t', kg: '', timeTo: '', bed: '', size: '' };
 }
 function tmText(f) {
@@ -686,7 +687,8 @@ function tmText(f) {
 function tomorrowHtml(d) {
   if (!S.tm) S.tm = tmDefaults(d);
   const nw = OwnMonth.nextWorkday(d);
-  const dayHint = nw.basis ? `<p class="hint" id="tm-dayhint">日付は次に車が動く日にしました。違うときは直してください。</p>` : '';
+  const bestW = OwnMonth.bestWeekday(OwnMonth.returnPairs(d)[0]);
+  const dayHint = bestW != null ? `<p class="hint" id="tm-dayhint">日付は、空車が多い${WD[bestW]}曜の次の日にしました。違うときは直してください。</p>` : nw.basis ? `<p class="hint" id="tm-dayhint">日付は次に車が動く日にしました。違うときは直してください。</p>` : '';
   const f = S.tm, opts = ['2t', '4t', '10t'].map((c) => `<option ${c === f.cls ? 'selected' : ''}>${c}</option>`).join('');
   const places = [...new Set(Object.values(d.places).map(placeName).filter(Boolean))];
   return `${dayHint}<datalist id="place-list">${places.map((p) => `<option value="${esc(p)}">`).join('')}</datalist>

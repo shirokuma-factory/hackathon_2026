@@ -633,9 +633,9 @@ const OwnCalc = (() => {
       if (!plates.some((x) => x.plate === pn)) plates.push({ plate: pn, raw, type: cell(row, tc), driver: cell(row, dcol) });
       let frm = cell(row, c.from) || null, to = cell(row, c.to) || null;
       const mark = nfkc(cell(row, c.mark));
-      let empty = isEmptyWord(mark) || isEmptyWord(to || '') || isEmptyWord(frm || '');
+      let empty = isEmptyMarkWord(mark) || isEmptyWord(to || '') || isEmptyWord(frm || '');
       if (!empty && markCols.some((j) => hasEmptyMark(cell(row, j)))) { empty = true; marked++; } // 備考・荷主・摘要の列の「空車回送」「帰荷なし」
-      const loadedMark = !empty && LOADED_WORDS.includes(mark.replace(/^[()]+|[()]+$/g, ''));
+      const loadedMark = !empty && (LOADED_WORDS.includes(mark.replace(/^[()]+|[()]+$/g, '')) || MARK_LOADED_EXTRA.includes(mark.replace(/^[()]+|[()]+$/g, '')));
       if (to && isEmptyWord(to)) to = null;
       if (frm && isEmptyWord(frm)) frm = null;
       if (to && !prefName(to)) to = prefSplit(to)[1] || to; // 「東京都江東区」「東京 江東区」の都道府県は読み飛ばす
@@ -760,6 +760,10 @@ const OwnCalc = (() => {
   const TIME_DROPPED = '時刻が読めません';
   // 備考・荷主・摘要の列のセルに空車の印があるか（「空車回送」「空」「回送」「帰荷なし」）。「空港運輸」のように前後が仮名・漢字の「空」は印にしない（own.py の has_empty_mark と同じ）
   const hasEmptyMark = (s) => { const t = nfkc(s || '').trim(); return !!t && (isEmptyWord(t) || EMPTY_MARK.test(t)); };
+  // 「実空の印」の列（荷物有無・区分など）のセルだけで使う語。「無」「なし」は備考の列では「特になし」の意味なので、EMPTY_WORDS には入れない（own.py の MARK_EMPTY_EXTRA と同じ）
+  const MARK_EMPTY_EXTRA = ['無', '無し', 'なし', 'ナシ', '空', 'カラ', 'から'];
+  const MARK_LOADED_EXTRA = ['有', 'あり', 'アリ', '有り', '実'];
+  const isEmptyMarkWord = (s) => { const t = nfkc(s).trim().replace(/^[()]+|[()]+$/g, '').trim(); return MARK_EMPTY_EXTRA.includes(t) || isEmptyWord(s); };
   const isEmptyWord = (s) => { const t = nfkc(s).trim().replace(/^[()]+|[()]+$/g, '').trim(); return EMPTY_WORDS.includes(t) || t.includes('回送') || t.startsWith('空コン'); };
 
   // 「着」の前後の時刻。「着530」「着 5:30」「5:30着」。「着」の後ろが重さ（9.2t）のときは前の時刻を読む。戻り値は [時刻か null, 時刻を捨てたか]
@@ -3105,7 +3109,7 @@ const OwnCalc = (() => {
     parseRestraintHours, kousokuHours, buildShifts, kpis, weekdayTable, insights, matchMuni, legsCsv, costs, summaryText, pyRound,
     isNonPlace, prefSplit, prefName, toKitLegs, resolveRole, hallWard, CITY_HALL_WARD, HALL_WARD_NOTE, inferYear, assignHeadYears, parseKm, parseWeight, parseWeights, parseDT, overMaxLegs, parseUnit,
     detectHaisha, addVehicleCol, NO_PLATE_LABEL_JA, readHaisha, transposeDateDown, haishaRole, headKey, plateIdentity, detectDigitaco, parseDigitacoSummary, dedupeDigitaco, parseDateOnly, parseHm, tonsPair,
-    roleOptions, needingRoles, shapeSignature, hasEmptyMark, gouName, vdate, columnReasonJa, judgedRow, ROLE_LABEL_JA, weightConfirmItems, pairTables, legPair, returnTrips, returnTarget, returnPairs, returnWhen, srcCat, applyMaxPayload, roleOf, yearsInText, nearestYear, classOf, isEmptyWord, plateAttrConflicts, EMPTY_WORDS, ladenWords, cellNote, YEAR_RANGE: [YEAR_MIN, YEAR_MAX], DIGITACO_DICT, HAISHA_DICT, ROLE_LABEL, NATIONAL,
+    roleOptions, needingRoles, shapeSignature, hasEmptyMark, gouName, vdate, columnReasonJa, judgedRow, ROLE_LABEL_JA, weightConfirmItems, pairTables, legPair, returnTrips, returnTarget, returnPairs, returnWhen, srcCat, applyMaxPayload, roleOf, yearsInText, nearestYear, classOf, isEmptyWord, isEmptyMarkWord, MARK_EMPTY_EXTRA, MARK_LOADED_EXTRA, plateAttrConflicts, EMPTY_WORDS, ladenWords, cellNote, YEAR_RANGE: [YEAR_MIN, YEAR_MAX], DIGITACO_DICT, HAISHA_DICT, ROLE_LABEL, NATIONAL,
   };
 })();
 if (typeof window !== 'undefined') window.OwnCalc = OwnCalc;

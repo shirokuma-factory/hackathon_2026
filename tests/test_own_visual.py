@@ -92,7 +92,7 @@ def test_x3_board_text_says_weekly_only_for_the_weekday_that_is_mostly_empty(cal
     joined = "\n".join(texts)
     assert "毎週土曜" in joined
     assert "毎週土曜・水曜" not in joined and "毎週水曜" not in joined
-    assert "これまでの記録では水曜の帰りに空きがありました" in joined
+    assert "水曜" not in joined   # 2026-11-08: 掲示には規則に合う曜日だけ書く。合わない水曜は並べない
 
 
 def test_x3_day_text_rule_is_in_the_source():
