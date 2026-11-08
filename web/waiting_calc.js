@@ -903,6 +903,32 @@ const WaitingShared = (() => {
     if (TIME_KEYS.has(k)) { const x = parseTime(norm(a)), y = parseTime(norm(b)); if (x !== null && y !== null) return x === y; }
     return nz(a) === nz(b);
   };
+  // 車番が空などで rowKey が空の行は自動では同じ行とみなさない（別のトラックが同じ時刻に着くことがある）。
+  // ただし、既にある行と全部の欄が同じ行は、同じ貼り付けや同じ CSV をもう一度入れた可能性が高いので、数えて画面で聞く。
+  // fresh は同じでなかった行、dup は既にある行と全欄が同じだった行の数（既にある行 1 つにつき 1 回までしか数えない）
+  function splitIdentical(existing, incoming, year) {
+    const used = new Set();
+    // 同じ表を貼り直した行と、書き出した CSV を読み直した行は書き方が違う（10/5 と 2026-10-05、8:50 と 08:50、車種の空欄と書き出しの既定の中型）ので、日付と時刻は値にそろえて比べる。参考額（doc_amount）は計算で出る欄なので比べない
+    const canon = (k, v) => {
+      const t = String(v == null ? '' : v).trim();
+      if (k === 'date') return parseDate(t, year) || t;
+      if (TIME_KEYS.has(k)) { const m = parseTime(t); return m === null ? t : String(m); }
+      if (k === 'vehicle_class') return t || '中型';
+      return t;
+    };
+    const sig = (r) => Object.keys(r).filter((k) => !META_KEYS.has(k) && k !== 'doc_amount' && (canon(k, r[k]) !== '' || k === 'vehicle_class')).sort().map((k) => k + '=' + canon(k, r[k])).join('');
+    const pool = new Map();
+    existing.forEach((r, i) => { if (rowKey(r, year)) return; const g = sig(r); if (!pool.has(g)) pool.set(g, []); pool.get(g).push(i); });
+    const fresh = []; let dup = 0;
+    for (const r of incoming) {
+      if (!rowKey(r, year)) {
+        const arr = pool.get(sig(r));
+        if (arr && arr.length) { arr.shift(); dup += 1; continue; }
+      }
+      fresh.push(r);
+    }
+    return { fresh, dup };
+  }
   // existing に incoming を足す。同じ行は足さず、既にある行の空欄だけを埋める。値が違う欄は既にある値を残し、conflicts に数える
   function mergeRows(existing, incoming, year) {
     const out = existing.map((r) => ({ ...r }));
@@ -1116,7 +1142,7 @@ const WaitingShared = (() => {
   }
 
   return {
-    rowKey, mergeRows, shipperSummary, shipperActions, noticeTemplate, crossCheck, hourLabel, vehicleKey, REVERSE_MAX_MIN,
+    rowKey, mergeRows, splitIdentical, shipperSummary, shipperActions, noticeTemplate, crossCheck, hourLabel, vehicleKey, REVERSE_MAX_MIN,
     HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, parseMemoText, looseTableToTsv, MEMO_NO_PARTNER, PROVISIONAL_PARTNER, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
     BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE, CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, PM_PARTNER_SCREEN_NOTE,
   };

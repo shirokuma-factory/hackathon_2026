@@ -1735,7 +1735,13 @@ function downloadCsv() {
 /*LOCAL-ONLY-END*/
 
 // 貼り付けは表の後ろに足す。同じ行（日付・場所・到着・車番）は足さずに 1 つにし、足した行数と同じだった行数を知らせる。足す前の記録は「元に戻す」で戻せる（SPEC §42）
-function pasteIn() {
+// 既にある行と全部の欄が同じ行（車番が空で自動では同じと言えない行）が入ってくるとき、足す前に 1 回だけ聞く。何も押さなければ足さない（表は変えない）
+function askDup(msgEl, n, again) {
+  S.dupAgain = again;
+  msgEl.innerHTML = `同じ記録がもう入っています（${n} 行）。<button type="button" id="dup-skip">足さない</button> <button type="button" id="dup-add">足す</button>`;
+}
+function dupChoose(c) { const f = S.dupAgain; S.dupAgain = null; if (f) f(c); }
+function pasteIn(choice) {
   const text = $('#paste').value;
   if (!text.trim()) { $('#paste-msg').textContent = '貼り付ける欄が空です'; return; }
   const pf = parsePasteFull(text), inp = pf.rows;
@@ -1743,8 +1749,11 @@ function pasteIn() {
   const faultDef = pf.defaulted.includes('shipper_fault');
   const incoming = inp.map((r) => ({ ...blankRow(), ...r, ...(faultDef ? { fault_default: '1' } : {}) }));
   const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
+  const sp = WaitingShared.splitIdentical(keep, incoming, S.year);
+  if (sp.dup && !choice) { askDup($('#paste-msg'), sp.dup, pasteIn); return; }
+  const skipped = choice === 'skip' ? sp.dup : 0;
   endExampleAuto();
-  const m = WaitingShared.mergeRows(keep, incoming, S.year);
+  const m = WaitingShared.mergeRows(keep, skipped ? sp.fresh : incoming, S.year);
   if (keep.length) undoSet({ year: S.year, label: `貼り付けた内容を表の後ろに足しました（足した ${m.added} 行、同じ行 ${m.merged} 行）。`, rows: keep.map((r) => ({ ...r })) });
   S.rows = m.rows.length ? m.rows : [blankRow(), blankRow(), blankRow()];
   if (pf.asks.includes(ASK_PARTNER)) S.askPartner = true;
@@ -1752,7 +1761,7 @@ function pasteIn() {
   if (pf.shipper_log && S.mode !== 'shipper') { S.modeAuto = true; setMode('shipper', false); }
   else if (!pf.shipper_log && S.mode === 'shipper' && (pf.carrier_table || pf.memo_read)) { S.modeAuto = true; setMode('carrier', false); }
   $('#paste-msg').textContent = `${m.added} 行を足しました` + (m.merged ? `。同じ回の ${m.merged} 行は足さずに、空いた欄だけ埋めました${m.conflicts ? `（うち ${m.conflicts} 行は値が違うので、表の値を残しています）` : ''}` : '') +
-    (keep.length ? `。これまでの記録 ${keep.length} 行は消えていません` : '');
+    (keep.length ? `。これまでの記録 ${keep.length} 行は消えていません` : '') + (skipped ? `。同じ記録 ${skipped} 行は足していません` : '');
   $('#paste-note').innerHTML = (faultDef ? [DEFAULT_FAULT_NOTE, ...pf.notes] : pf.notes).map((x) => `<span>${esc(x)}</span>`).join('<br>');
   const keyOf = (r) => WaitingShared.rowKey(r, S.year);
   S.memoRead = pf.memo_read ? pf.memo_read.map((x, k) => ({ ...x, i: keyOf(incoming[k]) ? S.rows.findIndex((r) => keyOf(r) === keyOf(incoming[k])) : -1 })) : null;
@@ -1762,18 +1771,24 @@ function pasteIn() {
   doCalc();
 }
 
+// CSV の行を表の後ろに足す。既にある行と全部の欄が同じ行があれば、足す前に聞く
+function csvApply(inp, msgEl, choice) {
+  const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
+  const sp = WaitingShared.splitIdentical(keep, inp, S.year);
+  if (sp.dup && !choice) { askDup(msgEl, sp.dup, (c) => csvApply(inp, msgEl, c)); return; }
+  const skipped = choice === 'skip' ? sp.dup : 0;
+  endExampleAuto();
+  const m = WaitingShared.mergeRows(keep, skipped ? sp.fresh : inp, S.year);
+  S.rows = m.rows;
+  if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
+  msgEl.textContent = `CSV の ${m.added} 行を表の後ろに足しました` + (m.merged ? `。同じ行を ${m.merged} 行まとめました` : '') + (skipped ? `。同じ記録 ${skipped} 行は足していません` : '');
+  renderTable(); doCalc();
+}
 function csvIn(file) {
   const fr = new FileReader();
   fr.onload = () => {
     try {
-      const inp = csvToRows(String(fr.result));
-      const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
-      endExampleAuto();
-      const m = WaitingShared.mergeRows(keep, inp, S.year);
-      S.rows = m.rows;
-      if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
-      $('#paste-msg').textContent = `CSV の ${m.added} 行を表の後ろに足しました` + (m.merged ? `。同じ行を ${m.merged} 行まとめました` : '');
-      renderTable(); doCalc();
+      csvApply(csvToRows(String(fr.result)), $('#paste-msg'));
     } catch (e) { $('#errs').innerHTML = `<div class="errs">${esc(e.message)}</div>`; }
   };
   fr.onerror = () => { $('#errs').innerHTML = '<div class="errs">ファイルを読めませんでした</div>'; };
@@ -1785,14 +1800,7 @@ function csvPasteIn() {
   const text = $('#csvpaste').value;
   if (!text.trim()) { $('#csvpaste-msg').textContent = '貼り付ける欄が空です'; return; }
   try {
-    const inp = csvToRows(text);
-    const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
-    endExampleAuto();
-    const m = WaitingShared.mergeRows(keep, inp, S.year);
-    S.rows = m.rows;
-    if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
-    $('#csvpaste-msg').textContent = `CSV の ${m.added} 行を表の後ろに足しました` + (m.merged ? `。同じ行を ${m.merged} 行まとめました` : '');
-    renderTable(); doCalc();
+    csvApply(csvToRows(text), $('#csvpaste-msg'));
   } catch (e) { $('#csvpaste-msg').textContent = e.message; }
 }
 
@@ -1931,6 +1939,8 @@ function init() {
     else if (t.id === 'b-clear') { if (S.modeAuto && S.mode === 'shipper' && !S.guide) { S.modeAuto = false; setMode('carrier', false); } endExampleAuto(); S.memoRead = null; $('#memo-read').innerHTML = ''; S.askPartner = false; $('#paste-note').innerHTML = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderBoxes(); renderResult(); }
     else if (t.id === 'b-add') { endExampleAuto(); S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
     else if (t.id === 'b-paste') pasteIn();
+    else if (t.id === 'dup-skip') dupChoose('skip');
+    else if (t.id === 'dup-add') dupChoose('add');
     else if (t.id === 'b-g-sample') { const g = guidedState(); if (g && g !== 'choose') { $('#paste').value = gSampleText(g); $('#paste').focus(); } }
     else if (t.id === 'b-fault-yes') bulkFault('はい');
     else if (t.id === 'b-fault-no') bulkFault('いいえ');

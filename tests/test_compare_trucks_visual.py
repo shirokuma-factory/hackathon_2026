@@ -109,8 +109,8 @@ def test_request_text_keeps_the_vehicle_class():
 
 def test_request_step_has_optional_date_inputs_in_both_screens():
     src = _read("work.js")
-    assert src.count("data-opt-date") >= 3 and "出荷日・希望着日（任意）" in src
-    assert "${need}${dates}" in src and "${miss}${need || dates}" in src
+    assert src.count("data-opt-date") >= 3 and "出荷日・希望着日</b>" in src
+    assert "${need}${fork}${dates}" in src and "${miss}${need || dates}${fork}" in src
 
 
 def test_two_t_check_sentence_is_not_clipped():

@@ -53,6 +53,8 @@ button.tile.done::after { content: "✓"; position: absolute; bottom: 12px; righ
 button.tile:active { transform: scale(0.985); }
 .setup-chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 48px; margin: 0 0 8px; padding: 0 16px; font-size: var(--fs-1); text-align: left; background: var(--none); border: 1px dashed var(--line); color: var(--muted); }
 .setup-chip::after { content: "直す"; flex: none; color: var(--accent); font-weight: 700; }
+.overnight { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 14px; }
+.overnight input { width: 28px; height: 44px; margin: 0; flex: none; }
 .save-row { display: block; width: 100%; min-height: 44px; }
 .note { margin: 8px 0; padding: 8px 12px; border-left: 4px solid var(--warn); background: var(--card); font-size: var(--fs-1); }
 
@@ -170,6 +172,8 @@ dialog.sheet::backdrop { background: var(--scrim); }
   <div id="stamps" class="tiles"></div>
   <p class="msg bad" id="order-warn" role="status" hidden></p>
   <button type="button" class="setup-chip" id="setup-sum">場所・荷主・車番</button>
+  <label class="overnight"><input type="checkbox" id="overnight"> 夜中の 0 時をまたいだ回（あとの時刻が前の時刻より小さく見える）</label>
+  <p class="msg bad" id="save-err" role="alert" hidden></p>
   <button type="button" class="save-row btn-secondary" id="b-save">この回を保存する</button>
 </section>
 
@@ -242,6 +246,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
       <label>指定の到着時刻（あれば）<input id="appointed" type="time" step="60"></label>
     </div>
     <label>日付（月/日）<input id="date" type="text" inputmode="numeric" autocomplete="off" placeholder="例 11/10"></label>
+    <p class="msg bad" id="date-err" role="alert" hidden></p>
     <p class="hint">場所・荷主・車番・車種・荷役をした人は、次に開いたときも残ります。</p>
   </div>
 </dialog>
@@ -436,14 +441,48 @@ function stamp(k) {
   persistCur(); renderStamps(); renderList(); setMsg('');
 }
 
+// 日付（月/日）が暦にあるか。うるう日は通す（年は持っていない）
+const MDAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+function dateError(v) {
+  const m = /^([0-9]{1,2})\/([0-9]{1,2})$/.exec(String(v || '').trim());
+  if (!m) return '日付は 11/10 のように、月/日で入れてください。';
+  const mo = Number(m[1]), d = Number(m[2]);
+  if (mo < 1 || mo > 12 || d < 1 || d > MDAYS[mo - 1]) return `${String(v).trim()} は暦にない日付です。月は 1〜12、日はその月の日数までで、11/10 のように入れてください。`;
+  return '';
+}
+// 時刻の前後。前の時刻より小さいときは、夜中をまたいだ回（半日以内）として明示されているときだけ保存する
+function timeErrors(cur) {
+  const out = [], names = Object.fromEntries(STAMPS.map(([k, l, w]) => [k, w]));
+  const seq = ['arrive', 'start', 'end', 'depart'].filter((k) => toMin(cur[k]) !== null);
+  for (let i = 1; i < seq.length; i++) {
+    const a = seq[i - 1], b = seq[i], d = toMin(cur[b]) - toMin(cur[a]);
+    if (d >= 0) continue;
+    const fwd = d + 1440, what = `${names[b]}の ${shortTime(cur[b])} が ${names[a]}の ${shortTime(cur[a])} より前です`;
+    if (fwd > 720) out.push({ k: b, msg: `${what}（そのまま進めると ${Math.floor(fwd / 60)} 時間 ${fwd % 60} 分かかったことになります）。時刻を直してください。` });
+    else if (!cur.overnight) out.push({ k: b, msg: `${what}。夜中の 0 時をまたいだ回なら、上の「夜中の 0 時をまたいだ回」にチェックを入れてから保存してください。違うなら時刻を直してください。` });
+  }
+  return out;
+}
+function showSaveErr(msgs, fixKey) {
+  const el = $('#save-err');
+  el.hidden = !msgs.length; el.textContent = msgs.join(' ');
+  document.querySelectorAll('#fixes input[data-time]').forEach((i) => i.removeAttribute('aria-invalid'));
+  if (fixKey) { const i = document.querySelector(`#fixes input[data-time="${fixKey}"]`); if (i) i.setAttribute('aria-invalid', 'true'); $('#more').open = true; $('#fix').open = true; }
+}
 function saveCurrent() {
+  showSaveErr([]); $('#date-err').hidden = true;
   if (!S.cur.arrive) { setMsg('「着いた」の時刻がありません。先に「着いた」を押してください。', true); return; }
-  if (!/^[0-9]{1,2}\/[0-9]{1,2}$/.test(S.cur.date.trim())) { setMsg('日付は 11/10 のように、月/日で入れてください。', true); return; }
+  const de = dateError(S.cur.date);
+  if (de) { setMsg('', false); $('#date-err').textContent = de; $('#date-err').hidden = false; showSaveErr([de]); const d = $('#setup'); if (d.showModal && !d.open) d.showModal(); else d.setAttribute('open', ''); $('#date').focus(); return; }
+  const te = timeErrors(S.cur);
+  if (te.length) { setMsg('', false); showSaveErr(te.map((x) => x.msg), te[0].k); return; }
   const rec = { id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...curRecord(), date: S.cur.date.trim() };
+  delete rec.overnight;
   S.recs.push(rec);
   S.recs = S.recs.slice(-300);
   save(K_REC, S.recs);
   S.cur = blankCur(); persistCur(); renderStamps(); S.day = rec.date; renderList();
+  $('#overnight').checked = false;
   $('#date').value = S.cur.date;
   setMsg('保存しました。');
 }
@@ -528,6 +567,7 @@ function init() {
   S.recs = Array.isArray(recs) ? recs.filter((r) => r && typeof r === 'object' && typeof r.date === 'string') : [];
   $('#broken').hidden = !S.broken;
   $('#date').value = S.cur.date;
+  $('#overnight').checked = !!S.cur.overnight;
   renderStamps(); renderList();
   document.addEventListener('click', (e) => {
     const t = e.target.closest('button');
@@ -555,7 +595,8 @@ function init() {
     if (t.dataset && t.dataset.rtime) { const r = S.recs.find((x) => x.id === t.dataset.rid); if (r) { r[t.dataset.rtime] = t.value; save(K_REC, S.recs); renderSheet(); } }
     else if (t.dataset && t.dataset.time) { S.cur[t.dataset.time] = t.value; persistCur(); t.closest('.stamp').classList.toggle('done', !!t.value); updateStampButton(t.dataset.time); renderList(); }
     else if (t.id === 'day') { S.day = t.value; S.clearArmed = false; renderList(); setMsg(''); }
-    else if (t.id === 'date') { S.cur.date = t.value; persistCur(); renderList(); }
+    else if (t.id === 'date') { S.cur.date = t.value; persistCur(); renderList(); const de = t.value.trim() ? dateError(t.value) : ''; const dl = $('#date-err'); dl.textContent = de; dl.hidden = !de; }
+    else if (t.id === 'overnight') { S.cur.overnight = t.checked; persistCur(); }
     else if (SETTING_IDS.includes(t.id)) { persistSettings(); renderList(); }
     else if (t.id === 'appointed') renderList();
   });

@@ -87,7 +87,7 @@ def contacts_for_rows(rows: list[EstimateRow], contacts: dict[str, list[dict[str
             for g in seen for e in contacts[g]]
 
 
-CONTACT_POINTER = "窓口は比べるページの「見積を頼む先」にあります"
+CONTACT_POINTER = "窓口は「地図なしの比べるページ」の「見積を頼む先」にあります"
 
 
 def request_contacts(public: bool = False, contacts: dict[str, list[dict[str, Any]]] | None = None,

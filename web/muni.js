@@ -504,7 +504,7 @@ const Muni = (() => {
     const osmN = U.d.osm_types.length ? U.d.osm.reduce((a, c) => a + (c ? c.reduce((x, y) => x + y, 0) : 0), 0) : 0;
     box.innerHTML =
       `<div class="mlg-t">施設<small>色と形で見分けられます</small></div>` +
-      `<div class="fac-chips">${P31_ORDER.map((k) => chip(k, GLYPH[k][0], noP31 || U.p31 === undefined ? null : (n31[k] || 0), noP31)).join('')}` +
+      `<div class="fac-chips">${noP31 ? '' : P31_ORDER.map((k) => chip(k, GLYPH[k][0], U.p31 === undefined ? null : (n31[k] || 0), false)).join('')}` +
       `${chip('air', '空港', U.c28 ? U.c28.items.length : null, false)}` +
       `<button class="fac-chip fac-osm" data-fac="osm" aria-pressed="${!!U.types.osm}"><i class="fac-dot"></i><span>倉庫・物流施設（OSM）</span><em class="num">${n0(osmN)}</em></button></div>` +
       (noP31 ? `<p class="fac-msg">物流拠点の地図は公開の決まりで載せられません。</p>` : '') +

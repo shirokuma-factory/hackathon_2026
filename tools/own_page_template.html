@@ -515,7 +515,7 @@ function kpiHtml(d) {
     <p>実車か空車かが不明の区間は ${d.counts.unknown} 区間（${pc(d.counts.unknown_ratio)}）あり、実車率に入れていません。読めなかった行・セルは ${d.counts.unreadable} 件で、これも入れていません。</p>
     ${ladenHtml(d)}
     ${alt ? `<div class="alt" id="alt-unknown">分からない区間を空車とみると、${alt.mode === 'km' ? `実車率は <b>${pc(alt.rate)}</b> です` : `実車の区間の割合は、不明を外した ${pc(alt.base)} から <b>${pc(alt.rate)}</b> に下がります（不明 ${alt.unkLegs} 区間には距離が無いので、km ではなく区間の数で数えています）`}。上の ${pc(ar.value)} は不明を外した値なので、高めに出ています。</div>` : ''}
-    ${assumed ? `<p class="hint"><label>大型の最大積載量が分からないので <input id="large-t" type="number" min="1" max="40" step="0.5" value="${largeShown}" aria-label="大型の最大積載量（トン）"> t として計算しています。</label></p>${raisedNote}` : ''}
+    ${assumed ? `<p class="hint"><label>大型の最大積載量が分からないので <input id="large-t" type="number" min="0.5" max="30" step="0.5" value="${largeShown}" aria-label="大型の最大積載量（トン）"> t として計算しています。</label> <span class="warn" id="large-t-msg" role="alert"></span></p>${raisedNote}` : ''}
     <details><summary>用語の説明</summary><ul>${Object.entries(OwnMonth.GLOSS).map(([t, v]) => `<li><b>${esc(t)}</b>　${esc(v)}</li>`).join('')}</ul><p class="hint">全国の値の出典: ${esc(n.source)}</p></details>
   </section>`;
 }
@@ -667,6 +667,20 @@ function boardHtml(d) {
     <div class="bar"><button type="button" class="sm" data-act="copy-board-all">全部をコピー</button></div>`;
 }
 
+const LARGE_T_MAX = 30;   // 大型の最大積載量として受ける上限（t）
+const largeShownNow = () => { const mr = S.data && S.data.max_load_raised; return mr ? mr.to_kg / 1000 : 10; };
+const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+// 掲示の文を作る前の確かめ。空きは車格の最大積載量以下、出る日は今日以降
+function tmErrors(f) {
+  const out = [], cap = parseFloat(f.cls), kg = String(f.kg).trim();
+  if (kg !== '') {
+    const v = Number(kg);
+    if (!(v > 0)) out.push('空きの重さは 0 より大きい数で入れてください。');
+    else if (cap > 0 && v > cap) out.push(`空きの重さ ${v} t が、${f.cls}車の最大積載量 ${cap} t を超えています。${f.cls}車なら ${cap} t 以下で入れるか、車格を直してください。`);
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(f.date || '') && f.date < localToday()) out.push(`出る日 ${f.date} は過ぎた日です。今日（${localToday()}）以降の日付にしてください。`);
+  return out;
+}
 // 明日の空きから作る小さな入力
 function tmDefaults(d) {
   const rp = OwnMonth.returnPairs(d)[0];
@@ -696,6 +710,7 @@ function tomorrowHtml(d) {
       <label>発地<input type="text" list="place-list" data-tm="frm" value="${esc(f.frm)}" placeholder="例 東京都江東区"></label><label>着地<input type="text" list="place-list" data-tm="to" value="${esc(f.to)}" placeholder="例 兵庫県加古川市"></label>
       <label>車格<select data-tm="cls">${opts}</select></label><label>荷台の形<select data-tm="bed"><option value="">選ばない</option>${OwnMonth.BED_CHOICES.map((c) => `<option ${c === f.bed ? 'selected' : ''}>${c}</option>`).join('')}</select></label><label>荷台の内寸（長さ×幅×高さ）<input type="text" data-tm="size" value="${esc(f.size || '')}" placeholder="例 9.6m×2.4m×2.4m"></label><label>空きの重さ（t）<input type="number" min="0" step="0.5" inputmode="decimal" data-tm="kg" value="${esc(f.kg)}" placeholder="例 5"></label></div>
     <div class="bar"><button type="button" class="primary sm" data-act="tm-make">文を作る</button></div>
+    ${S.tmErr && S.tmErr.length ? `<p class="warn" id="tm-err" role="alert">${S.tmErr.map(esc).join('<br>')}</p>` : ''}
     ${S.tmOut ? `<div data-copyable><textarea id="tm-out" readonly rows="9" aria-label="明日の空きの掲示の文">${esc(S.tmOut)}</textarea><div class="bar"><button type="button" class="primary sm" data-act="copy-ta" data-what="明日の空きの掲示の文">コピー</button></div></div>` : ''}`;
 }
 
@@ -908,7 +923,7 @@ document.addEventListener('click', (e) => {
   if (act === 'copy-ta') { const ta = b.closest('[data-copyable]').querySelector('textarea'); copyText(ta.value, b.dataset.what || '文'); return; }
   if (act === 'copy-board-all') { copyText(OwnMonth.boardTexts(d).map((x) => x.text).join('\n\n----------\n\n'), '掲示の文（全部）'); return; }
   if (act === 'merge-toggle') { S.mergePlaces = S.mergePlaces === false; recompute(); return; }
-  if (act === 'tm-make') { S.tmOut = tmText(S.tm); render(); const t = $('#tm-out'); if (t) t.scrollIntoView({ block: 'center' }); return; }
+  if (act === 'tm-make') { S.tmErr = tmErrors(S.tm); S.tmOut = S.tmErr.length ? '' : tmText(S.tm); render(); const t = $('#tm-out'); if (t) t.scrollIntoView({ block: 'center' }); return; }
   if (act === 'copy-summary') { copyText(OwnCalc.summaryText(d, OwnCalc.costs(d, S.cost.perKm, S.cost.perHour)), '数字と気づきの文'); return; }
   if (act === 'copy-csv') { copyText(OwnCalc.legsCsv(d), '区間の判定の CSV '); return; }
   if (act === 'print') { if (typeof doPrint === 'function') doPrint(); return; }
@@ -927,7 +942,12 @@ document.addEventListener('change', (e) => {
   if (t.id === 'year-pick' && t.value) { S.yearPick = Number(t.value); recompute(); return; }
   if (t.id === 'year-sel') { S.yearPick = Number(t.value); recompute(); return; }
   if (t.id === 'month-sel' && t.value) { S.monthPick = Number(t.value); recompute(); return; }
-  if (t.id === 'large-t') { const v = Number(t.value); if (v > 0 && v <= 40) { S.largeT = v; recompute(); } return; }
+  if (t.id === 'large-t') {
+    const v = Number(t.value), msg = $('#large-t-msg');
+    if (t.value.trim() !== '' && v >= 0.5 && v <= LARGE_T_MAX) { S.largeT = v; recompute(); }
+    else if (msg) msg.textContent = `最大積載量は 0.5〜${LARGE_T_MAX} t の数で入れてください（入れた値: ${t.value.trim() || '空'}）。直るまでは ${S.largeT || largeShownNow()} t のまま計算しています。`;
+    return;
+  }
   if (t.id === 'cmp-sel') { S.cmpId = t.value; render(); return; }
   if (t.matches && t.matches('input[data-hf]')) {
     const l = $$('input[data-hf]').filter((x) => x.checked).map((x) => x.dataset.hf);

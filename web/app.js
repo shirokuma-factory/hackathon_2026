@@ -451,6 +451,8 @@ function frame(now) {
 
 /* ------------------------------------------------------------ 時間の帯 */
 
+// 船・飛行機でしか行けない着地か（道路の運転時間・日数を出さない。上の欄と時間の帯で同じ規則にする）
+const seaDest = () => !!(S.sel >= 0 && curOd() && curOd().ferry && curOd().ferry[S.sel]);
 const axisMax = () => { const tl = Rt.timeline(); return tl ? tl.M * 1.06 : 1; };
 const NOTE_TT = '時間は時刻表で確かめてください';
 // 時間の帯: トラックの区間だけ分で進む。電車・船・飛行機の区間は固定の幅の帯で、時間は表さない（SPEC §17.2）
@@ -458,10 +460,13 @@ function setupTimebar() {
   const tl = Rt.timeline(), cb = document.body.classList;
   if (!tl) { cb.remove('has-route'); $('#truck-tag').classList.remove('on'); return; }
   const M = tl.M, axis = axisMax();
-  $('#tb-end').textContent = tl.single ? `到着 運転${fmtMin(M)}` : `トラックで走る時間 計${fmtMin(tl.truckMin)}${S.sel >= 0 && curOd() && curOd().ferry && curOd().ferry[S.sel] ? '（港・空港まで。船・飛行機の時間は見積で確認）' : ''}`;
+  const sea = seaDest();
+  $('#tb-end').textContent = tl.single && sea ? '運転時間は出しません（船・飛行機の時間は見積で確認）' : tl.single ? `到着 運転${fmtMin(M)}` : `トラックで走る時間 計${fmtMin(tl.truckMin)}${S.sel >= 0 && curOd() && curOd().ferry && curOd().ferry[S.sel] ? '（港・空港まで。船・飛行機の時間は見積で確認）' : ''}`;
   let t = '', lab = '';
   const pc = (v) => ((v / axis) * 100).toFixed(2);
-  if (tl.single) {
+  if (tl.single && sea) {
+    // 海を渡る着地: 道路だけの時間と日数は出さない（目盛りも付けない）
+  } else if (tl.single) {
     const days = Math.ceil(M / 540);
     for (let d = 1; d < days; d++) t += `<div class="tick" style="left:${pc(d * 540)}%"></div>`;
     for (let d = 0; d < days; d++) lab += `<span class="st" style="left:${pc(d * 540)}%">${d + 1}日目</span>`;
@@ -497,8 +502,9 @@ function updateTime() {
   const arrived = S.t >= M, st = Rt.tlState(S.t), gap = st && !st.seg.truck && !arrived;
   const el = truckElapsed(tl, S.t);
   const day = Math.min(Math.ceil(M / 540), Math.floor(Math.max(0, S.t - 1e-6) / 540) + 1);
-  $('#tb-now').textContent = S.t <= 0 ? '出発' : arrived ? '到着' : gap ? `${Rt.LABEL[st.seg.leg.mode]}の区間（${NOTE_TT}）` : `トラックの運転 ${fmtMin(el)}`;
-  $('#tb-day').textContent = arrived || gap || !tl.single ? '' : `${day}日目`;
+  const sea = tl.single && seaDest();
+  $('#tb-now').textContent = S.t <= 0 ? '出発' : arrived ? '到着' : sea ? '道の目安（船の時間は見積で確認）' : gap ? `${Rt.LABEL[st.seg.leg.mode]}の区間（${NOTE_TT}）` : `トラックの運転 ${fmtMin(el)}`;
+  $('#tb-day').textContent = arrived || gap || sea || !tl.single ? '' : `${day}日目`;
   const tr = $('#track');
   tr.setAttribute('aria-valuenow', String(Math.round((S.t / axis) * 100)));
   tr.setAttribute('aria-valuetext', $('#tb-now').textContent);
@@ -639,6 +645,7 @@ function buildCards(i, est) {
     // 路線便の試算が出せる区間の限り（比べるページには額が無い理由）は、吹き出しだけでなくカードの本文に出す（SPEC §32 #5）
     const rosenNote = m.key === 'rosen' ? r.notes.find((x) => x.startsWith('路線便の試算は')) : null;
     cards.push({ label: m.label, model: cardModel(m.key, r), sub: r.detail && r.detail.vehicle ? `${r.detail.vehicle}車` : '', status: r.status, note: rosenNote || (r.detail && r.detail.load_note) || '',
+      sample: /架空の表/.test(`${r.label || ''}${r.source && r.source.name || ''}`),   // 架空の表から出した額か（画面にも「架空の表の例」と出す）
       amount: isEst ? round100(r.amount) : r.amount, low: isEst ? round100(r.low) : r.low, high: isEst ? round100(r.high) : r.high, est: isEst, days: dayText, tip, why: r.status === '要確認' ? ((r.reasons && r.reasons[0]) || (r.issues && r.issues[0] && r.issues[0].message) || '条件を確かめてください') : '', src: srcOf(r),
       pick: m.key === 'kashikiri' && r.detail && r.detail.vehicle ? `${m.label} ${r.detail.vehicle}車` : undefined });
     }
@@ -674,9 +681,10 @@ function charterOnlyNote(cards) {
 
 function renderCards(cards) {
   const max = Math.max(0, ...cards.map((c) => c.amount || 0));
-  $('#cards').innerHTML = (typeof CompareChart !== 'undefined' ? CompareChart.html(cards, S.pickLabel, document.body.classList.contains('guided')) : '') + '<p class="cards-note">金額は税抜です。引き受けてもらえるかは見積で確かめてください。</p>' + charterOnlyNote(cards) + '<details class="cards-more"><summary>送り方ごとの金額の出どころ</summary>' + cards.map((c, n) => {
+  const exNote = typeof Work !== 'undefined' && Work.isExample && Work.isExample() ? '<p class="cards-note ex-note" role="note"><b>例の荷物（架空）で計算しています。</b>自分の荷物に変えてください（左の「荷物」）。</p>' : '';
+  $('#cards').innerHTML = exNote + (typeof CompareChart !== 'undefined' ? CompareChart.html(cards, S.pickLabel, document.body.classList.contains('guided')) : '') + '<p class="cards-note">金額は税抜です。引き受けてもらえるかは見積で確かめてください。</p>' + charterOnlyNote(cards) + '<details class="cards-more"><summary>送り方ごとの金額の出どころ</summary>' + cards.map((c, n) => {
     const amt = c.amount !== null && c.amount !== undefined
-      ? `<div class="amt"><b class="num" data-to="${c.amount}">${fmt(c.amount)}</b><span>円（税抜${c.est ? '・試算' : ''}）</span>` +
+      ? `<div class="amt"><b class="num" data-to="${c.amount}">${fmt(c.amount)}</b><span>円（税抜${c.est ? '・試算' : ''}${c.sample ? '・架空の表の例' : ''}）</span>` +
         (c.low && c.high ? `<span class="range num">${fmt(c.low)}〜${fmt(c.high)}円の幅</span>` : '') + '</div>' +
         `<div class="bar"><i data-w="${Math.max(3, (c.amount / max) * 100).toFixed(1)}"></i></div>`
       : '';
@@ -693,7 +701,7 @@ function renderCards(cards) {
     return `<article class="card${c.dim ? ' dim' : ''}${none ? ' none' : ''}" style="--n:${n}"><div class="top">${th}<h3>${c.label}${c.sub ? `<small>${c.sub}</small>` : ''}</h3>` +
       `${none}<span class="chip ${CHIP[c.status] || 'na'}">${CHIP_WORD[c.status] || c.status}</span></div>${amt}${note}${basis}${meta}${hub}${foot}</article>`;
   }).join('') + '</details>';
-  // 案内の表示は操作部品を 8 つまでに抑えるため、鉄道・船・飛行機の欄は閉じた「手段ごとの内訳」の中へ移す
+  // 案内の表示は操作部品を 8 つまでに抑えるため、鉄道・船・飛行機の選べる欄は閉じた「手段ごとの内訳」の中へ移す。表には 1 行の説明（cc-alt-line）を残す
   if (document.body.classList.contains('guided')) { const alt = document.querySelector('#cards .cc-alt'), more = document.querySelector('#cards .cards-more'); if (alt && more) more.insertBefore(alt, more.children[1] || null); }
   syncPick();
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -754,6 +762,8 @@ function renderDetail(i, demo) {
   const days = ferry ? null : demo ? Math.max(1, Math.ceil(demo.minutes / 540)) : od.days[i];
   $('#d-from').textContent = od.name;
   $('#d-to').innerHTML = `<span class="ar">→</span><small>${escapeHtml(S.idx.prefs[i])}</small> ${escapeHtml(S.idx.names[i])}`;
+  const kk = $('#s-km').previousElementSibling;
+  if (kk) kk.textContent = ferry ? '経路の距離（海を含む）' : '道路距離';   // 海を渡る経路は「道路距離」と呼ばない
   $('#s-km').innerHTML = km === null ? '—' : `${km.toFixed(1)}<small>km</small>`;
   $('#s-time').innerHTML = min === null ? (ferry ? '—<small>船の時間は見積で確認</small>' : '—') : fmtMin(min).replace(/(\d+)(時間|分)/g, '$1<small>$2</small>');
   $('#s-days').innerHTML = days === null ? '—' : `${days}<small>日</small>`;
@@ -773,6 +783,10 @@ async function refreshEstimate() {
   const i = S.sel, tok = ++S.estTok;
   if (!document.querySelector('#cards .card')) $('#cards').innerHTML = '<p class="cards-note">費用を計算しています</p>';
   try {
+    // 荷物の欄に確定していない変更があるときは、その場で確定して同じ荷物で計算する。確定できないときは、別の荷物の額を出さずに理由を出す
+    const pend = await Work.syncPending();
+    if (tok !== S.estTok || S.sel !== i) return;
+    if (pend) { S.estimate = null; $('#cards').innerHTML = `<p class="cards-note err">荷物の変更を確定してください（${escapeHtml(pend)}）。いまの結果は、確定した前の荷物のものではなく、出していません。</p>`; return; }
     const est = await Work.api('/api/estimate', estimateBody());
     if (tok !== S.estTok || S.sel !== i) return;
     S.estimate = est;
@@ -798,6 +812,13 @@ async function refreshFareLayer() {
   } catch (e) { toast('貸切の運賃の色を出せませんでした。'); }
 }
 
+// 送り方（表の行の名前）が、いまの荷物では使えないとき、その理由。表と同じ /api/estimate の行を読む。使えるか分からないときは空
+const MODE_GROUP = { 宅配: 'takuhai', 路線便: 'rosen', カゴ台車: 'jitbox', 貸切: 'kashikiri' };
+function modeProblem(mode) {
+  const g = MODE_GROUP[mode], rows = S.estimate && S.estimate.rows ? S.estimate.rows.filter((x) => x.group === g) : [];
+  if (!rows.length || !rows.every((x) => x.status === '使えない')) return '';
+  return (rows[0].reasons && rows[0].reasons[0]) || '表で「使えない」になっています';
+}
 function onCargoChange() {
   S.fareStamp = {};
   refreshFareLayer();
@@ -1071,7 +1092,7 @@ function syncGuideBar() {
   const lg = document.getElementById('g-legend'), st = document.getElementById('g-steps');
   if (lg) {
     const html = !g ? '' : S.view === 'compare'
-      ? `<span class="g-k">色は${LAYER_WORD[S.layer] || '道路距離'}（遠いほど明るい水色）</span>${(Rt.guideLegend && S.sel >= 0 ? Rt.guideLegend() : '')}<span class="g-k g-more">線と車の絵は道の目安で、実際の便ではありません。</span>`
+      ? `${b.contains('has-work') ? '' : `<span class="g-k">色は${LAYER_WORD[S.layer] || '道路距離'}（遠いほど明るい水色）</span>`}${(Rt.guideLegend && S.sel >= 0 ? Rt.guideLegend() : '')}<span class="g-k g-more">線と車の絵は道の目安で、実際の便ではありません。</span>`
       : (GUIDE_LEGEND[S.view] || '');
     if (lg.dataset.k !== html) { lg.dataset.k = html; lg.innerHTML = html; }
     lg.hidden = !html;
@@ -1294,6 +1315,7 @@ async function main() {
   $('#origin').value = S.origin;
   await Work.init({
     onCargoChange: () => { onCargoChange(); V.Find.onCargo(); },
+    modeProblem,
     onWorkToggle: () => {},
     routeLabel: () => S.workLabel || '',
   });
@@ -1473,7 +1495,11 @@ function setupMarketNow(noN) {
       if (P) {
         const sk = st.sel;
         // 帰りが空きやすい向き（荷が多い向きの逆）で書く。数字は、その向きに足りない荷の量（不足量 = 荷が多い向きの量 − 逆向きの量）。番号は地図の番号と同じ
-        q('#mg-rows').innerHTML = st.rows.slice(0, 5).map((r, i) => `<li><button type="button" class="mg-row" data-k="${escapeHtml(r.k)}" aria-pressed="${r.k === sk}"><span class="mg-no num" aria-hidden="true">${i + 1}</span><span class="mg-pair">${escapeHtml(P[r.ti])} → ${escapeHtml(P[r.fi])}</span><span class="num mg-short">足りない荷 ${Math.round(r.short).toLocaleString('ja-JP')} t</span></button></li>`).join('');
+        // 例の便がある向きに印を付ける。一番上の行に例の便が無いことがあるので、「おすすめ」は例の便がある最初の行にする（番号は地図の番号のまま）
+        const fl = V.Find.state, hasTrip = (r) => !fl.loaded || V.Find.hasReturn({ from: P[r.fi], to: P[r.ti] });
+        if (!fl.loaded && !sync.loading && st.rows[0]) { sync.loading = true; V.Find.checkFit({ from: P[st.rows[0].fi], to: P[st.rows[0].ti] }).then(() => sync()); }
+        const rec = fl.loaded ? st.rows.slice(0, 5).findIndex(hasTrip) : -1;
+        q('#mg-rows').innerHTML = st.rows.slice(0, 5).map((r, i) => `<li><button type="button" class="mg-row" data-k="${escapeHtml(r.k)}" aria-pressed="${r.k === sk}"><span class="mg-no num" aria-hidden="true">${i + 1}</span><span class="mg-pair">${escapeHtml(P[r.ti])} → ${escapeHtml(P[r.fi])}</span><span class="num mg-short">足りない荷 ${Math.round(r.short).toLocaleString('ja-JP')} t</span>${fl.loaded ? `<small class="mg-tag${i === rec ? ' rec' : ''}">${hasTrip(r) ? (i === rec ? 'おすすめ・例の便あり' : '例の便あり') : '例の便なし'}</small>` : ''}</button></li>`).join('');
         const sr = st.rows.find((r) => r.k === sk), n0 = (v) => Math.round(v).toLocaleString('ja-JP');
         q('#mg-sel').textContent = sr ? `${P[sr.ti]}から${P[sr.fi]}へ帰る荷は ${n0(sr.back)} t で、行きの ${n0(sr.go)} t より少なくなっています。` : '上の一覧から 1 つ選んでください。';
       }
@@ -1615,19 +1641,7 @@ function loadHeroLoop() {
   if (/[?&]hero3d=1(&|$)/.test(location.search) && window.Hero3D && Hero3D.capable()) { Hero3D.start(box).then((ok) => { if (!ok && S.view === 'home') loadHeroVideo(box); }); return; }
   loadHeroVideo(box);
 }
-// 確認用: ?hero=v4 / ?hero=v5 で、物流網が広がる背景（img/hero/v4/・v5/）を使う。作成者が採ったら既定に入れ替える（2026-11-07）
-const HERO_VER = (location.search.match(/[?&]hero=(v4|v5|v6|v7)(&|$)/) || [])[1];
-const HERO_DIR = HERO_VER ? 'img/hero/' + HERO_VER + '/' : 'img/hero/';
-(function heroPreview() {
-  if (HERO_DIR === 'img/hero/') return;
-  const pic = document.querySelector('.home-hero picture');
-  if (!pic) return;
-  const phone = matchMedia('(max-width: 700px)').matches;
-  pic.querySelectorAll('source').forEach((s) => { s.srcset = s.srcset.replace('img/hero/', HERO_DIR).replace(HERO_DIR + 'hero_800.webp', HERO_DIR + 'hero_portrait_720.webp'); });
-  const im = pic.querySelector('img'); if (im) im.src = HERO_DIR + (phone ? 'hero_portrait_720.webp' : 'hero_1920.webp');
-  document.documentElement.style.setProperty('--hero-pos-x', '50%');
-  document.documentElement.style.setProperty('--hero-pos-y', phone ? '0%' : '50%');
-})();
+const HERO_DIR = 'img/hero/';   // 背景の絵と映像の置き場（版の切り替えは廃止）
 /* 背景の映像に合わせた場面の字幕。時刻と位置は HERO_DIR + 'scenes.json'（{segments:[{key,t0,t1,anchor:{x,y}}]}、x・y は映像の幅・高さに対する 0〜1）、
    文言はここの HERO_CAPTIONS。JSON がなければ何も出さない。パネル（.home-wrap）と名前（.home-brand）に重ならない位置へ寄せる */
 const HERO_CAPTIONS = {

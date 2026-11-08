@@ -62,7 +62,7 @@ def test_contract_accepts_shipper_and_becomes_ready():
         assert st == 200, c
         d = c["contract"]
         assert d["ready"] and d["missing"] == [], d
-        assert next(i for i in d["items"] if i["key"] == "corp_no")["value"] == "なし（個人事業主）"
+        assert next(i for i in d["items"] if i["key"] == "corp_no")["value"] == "未記入"
         # 13 桁を入れたら、その番号が書面に出る
         sh["corporate_number"] = "1234567890123"
         st, c = _post(port, "/api/b/contract", {"hold_id": hid, "fuel_surcharge": "なし", "payment_method": pay, "lift_equipment": "あり（架空）", "shipper": sh})
@@ -117,7 +117,7 @@ def test_contract_form_lets_the_shipper_confirm(w, h):
             page.wait(lambda: "13 桁" in page.js("document.querySelector('.fc-sherr').textContent"), 10, "法人番号の誤り")
             page.js(f"({fill})('corporate_number','')")   # 個人事業主
             page.js("document.getElementById('fc-shipper').requestSubmit()")
-            page.wait(lambda: "なし（個人事業主）" in page.js("document.getElementById('fc-body').innerText"), 30, "保存")
+            page.wait(lambda: "未記入" in page.js("document.getElementById('fc-body').innerText"), 30, "保存")
             page.js("""(function(){const s=document.querySelectorAll('#fc-body select[data-ct]'); s.forEach((e)=>{e.value=e.options[1].value; e.dispatchEvent(new Event('change',{bubbles:true}));});})()""")
             page.wait(lambda: page.js("document.getElementById('fc-confirm').disabled") is False, 30, "確定できる")
             page.js("document.getElementById('fc-confirm').click()")

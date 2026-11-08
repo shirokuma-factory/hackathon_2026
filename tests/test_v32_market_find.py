@@ -21,7 +21,7 @@ def read(name: str) -> str:
 def test_g142_1_rail_ship_entry_text_claims_only_what_the_screen_shows():
     mk = read("market.js")
     assert "日数と目安額の差で見られます" not in mk
-    assert "日数と費用は問い合わせてください。" in mk   # 文言の直し 2026-11-07
+    assert "日数と費用は、事業者に問い合わせてください。" in mk   # 文言の直し 2026-11-07。2026-11-08 総点検の直しに合わせて「事業者に」を足した
 
 
 def test_g142_2_corridor_detail_has_no_heavy_vehicle_chart_but_the_layer_stays():
@@ -51,7 +51,7 @@ def test_g142_2_corridor_screen_has_no_chart():
         open_("#v=market&p=27-12")
         assert page.js("!!document.querySelector('#m-pair .mp-title')")
         assert not page.js("!!document.querySelector('#m-pair svg#ch, #m-pair .mp-j')")
-        assert "日数と費用は問い合わせてください" in page.js("document.querySelector('#m-pair .mp-clo').textContent")
+        assert "日数と費用は、事業者に問い合わせてください" in page.js("document.querySelector('#m-pair .mp-clo').textContent")
         assert not page.js("window.__errs.length")
 
 

@@ -150,9 +150,36 @@ html body.guided.view-compare .cc-row, html body.guided.view-compare .cc-head { 
 html body .cc-nofare { grid-column: 1 / -1; margin: 0; padding-left: 22px; font-size: 11px; line-height: 1.45; color: var(--muted); }
 
 /* 案内の「送り方を比べる」の最初の画面: 集荷地の注記と 3D の入口は「詳しい条件」の中・全部を見る表示に置く。確定済みの版の表示も出さない */
-body.guided.view-compare .p-origin { display: none !important; }
+body.guided.view-compare .p-origin { display: block; margin: 0 0 8px; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+body.guided.view-compare .p-origin a { color: var(--accent); }
+body.guided.view-compare.has-detail .p-origin { display: none; }
 .ed-origin-note { display: none; margin: 0 0 8px; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
 .ed-origin-note a { color: var(--accent); }
 body.guided .ed-origin-note { display: block; }
 body.guided #ed-3d { display: none; }
 body.guided .ed-state:not(.dirty):not(.err) { display: none; }
+
+/* 使えない手段は 1 つの欄に畳む。額が出ない鉄道・船・飛行機の欄と同じ見た目 */
+.cc-unusable { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 4px; }
+.cc-unusable > summary { cursor: pointer; color: var(--muted); font-size: 12px; padding: 4px 0; }
+
+/* 荷物の欄を開いたとき: パネルを画面の高さに収め、欄の中でスクロールする（「この条件で確定」を隠さない）。電話の幅は下の段の表示なので対象外 */
+@media (min-width: 601px) {
+  body.cargo-open #panel { display: flex; flex-direction: column; max-height: calc(100vh - 76px - 16px); }
+  body.guided.cargo-open #panel { max-height: calc(100vh - 52px - 16px); }
+  body.cargo-open #panel > * { flex: none; }
+  body.cargo-open #panel > #cargo-editor { flex: 1 1 auto; min-height: 0; max-height: none; }
+  /* 届け先を選んだあと荷物の欄が開いたままでも、色の凡例（貸切の目安額など）を欄の右に出す */
+  body.cargo-open.has-detail:not(.guided) #legend { opacity: 1; pointer-events: auto; left: calc(var(--gutter) + 372px + 16px); }
+}
+.w-need .w-date-err { grid-column: 1 / -1; font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--error, #ff8a8a); }
+.w-need .w-date-err[hidden] { display: none; }
+.cc-alt-line { margin: 6px 0 0; padding-top: 4px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); line-height: 1.5; }
+.cc-alt-line { display: none; }
+body.guided .cc-alt-line { display: block; }
+small.cg-ex { margin-left: 6px; font-size: 10.5px; color: var(--warn); font-weight: 400; }
+.ex-note { color: var(--warn); }
+.mg-row { flex-wrap: wrap; }
+.mg-row .mg-tag { flex: 0 0 100%; padding-left: 34px; font-size: 13px; font-weight: 400; color: var(--muted); }
+.mg-row .mg-tag.rec { color: var(--ok); font-weight: 700; }
+.cc-val em.cc-sample { color: var(--warn); }

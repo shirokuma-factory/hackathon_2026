@@ -338,7 +338,11 @@ def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf
         free = _dec(free_src)
         need = shipment.total_floor_m2
         if need > free:
-            reasons.append(f"床の空き {_g2(free)}m² に対して荷の床 {_g2(need)}m² で、超えます（{_over(need - free, 'm²')}）")
+            rf, rn = free.quantize(Decimal("0.01")), need.quantize(Decimal("0.01"))  # 小数 2 桁にそろえる。丸めて差が消えるときだけ正確な桁を出す
+            if rn > rf:
+                reasons.append(f"床の空き {_g2(rf)}m² に対して荷の床 {_g2(rn)}m² で、超えます（+{_g2(rn - rf)}m²）")
+            else:
+                reasons.append(f"床の空き {_g2(free)}m² に対して荷の床 {_g2(need)}m² で、超えます（{_over(need - free, 'm²')}）")
 
     # 容器
     if trip["container_required"] and not shipment.in_container:
@@ -631,6 +635,7 @@ def _clean_shipper(v: Any) -> dict[str, str]:
     if cn and not (len(cn) == 13 and cn.isascii() and cn.isdigit()):
         raise BoardError("法人番号は 13 桁の数字で入れてください（個人事業主は空欄）")
     out["corporate_number"] = cn
+    out["sole_proprietor"] = "1" if (not cn and str(v.get("sole_proprietor", "")) == "1") else ""
     return out
 
 
@@ -695,12 +700,12 @@ def _contract_draft(h: _Hold, trip: dict[str, Any], carrier: dict[str, Any], fue
         {"key": "terms", "legal": False, "label": "運送約款", "value": carrier.get("terms")},
         {"key": "insurance", "legal": False, "label": "貨物保険", "value": carrier.get("insurance")},
         {"key": "license", "legal": False, "label": "許可番号", "value": carrier.get("license_no")},
-        {"key": "corp_no", "legal": False, "label": "荷主の法人番号（架空の番号）", "value": sh.get("corporate_number") or ("なし（個人事業主）" if "corporate_number" in sh and sh.get("name") else None)},
+        {"key": "corp_no", "legal": False, "label": "荷主の法人番号（架空の番号）", "value": sh.get("corporate_number") or ("未記入（個人事業主は不要）" if sh.get("sole_proprietor") == "1" else "未記入" if sh.get("name") else None)},
     ]
     missing = [i["label"] for i in items if not i["value"]]
     return {"hold_id": h.id, "trip_id": h.trip_id, "state": h.state, "items": items, "missing": missing,
             "ready": not missing,
-            "shipper": {"name": sh.get("name", ""), "address": sh.get("address", ""), "corporate_number": sh.get("corporate_number", "")},
+            "shipper": {"name": sh.get("name", ""), "address": sh.get("address", ""), "corporate_number": sh.get("corporate_number", ""), "sole_proprietor": sh.get("sole_proprietor", "")},
             "notice": CONTRACT_NOTICE, "fiction_notice": FICTION_NOTICE}
 
 

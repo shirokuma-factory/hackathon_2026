@@ -1596,6 +1596,32 @@ const WaitingShared = (() => {
     if (TIME_KEYS.has(k)) { const x = parseTime(norm(a)), y = parseTime(norm(b)); if (x !== null && y !== null) return x === y; }
     return nz(a) === nz(b);
   };
+  // 車番が空などで rowKey が空の行は自動では同じ行とみなさない（別のトラックが同じ時刻に着くことがある）。
+  // ただし、既にある行と全部の欄が同じ行は、同じ貼り付けや同じ CSV をもう一度入れた可能性が高いので、数えて画面で聞く。
+  // fresh は同じでなかった行、dup は既にある行と全欄が同じだった行の数（既にある行 1 つにつき 1 回までしか数えない）
+  function splitIdentical(existing, incoming, year) {
+    const used = new Set();
+    // 同じ表を貼り直した行と、書き出した CSV を読み直した行は書き方が違う（10/5 と 2026-10-05、8:50 と 08:50、車種の空欄と書き出しの既定の中型）ので、日付と時刻は値にそろえて比べる。参考額（doc_amount）は計算で出る欄なので比べない
+    const canon = (k, v) => {
+      const t = String(v == null ? '' : v).trim();
+      if (k === 'date') return parseDate(t, year) || t;
+      if (TIME_KEYS.has(k)) { const m = parseTime(t); return m === null ? t : String(m); }
+      if (k === 'vehicle_class') return t || '中型';
+      return t;
+    };
+    const sig = (r) => Object.keys(r).filter((k) => !META_KEYS.has(k) && k !== 'doc_amount' && (canon(k, r[k]) !== '' || k === 'vehicle_class')).sort().map((k) => k + '=' + canon(k, r[k])).join('');
+    const pool = new Map();
+    existing.forEach((r, i) => { if (rowKey(r, year)) return; const g = sig(r); if (!pool.has(g)) pool.set(g, []); pool.get(g).push(i); });
+    const fresh = []; let dup = 0;
+    for (const r of incoming) {
+      if (!rowKey(r, year)) {
+        const arr = pool.get(sig(r));
+        if (arr && arr.length) { arr.shift(); dup += 1; continue; }
+      }
+      fresh.push(r);
+    }
+    return { fresh, dup };
+  }
   // existing に incoming を足す。同じ行は足さず、既にある行の空欄だけを埋める。値が違う欄は既にある値を残し、conflicts に数える
   function mergeRows(existing, incoming, year) {
     const out = existing.map((r) => ({ ...r }));
@@ -1809,7 +1835,7 @@ const WaitingShared = (() => {
   }
 
   return {
-    rowKey, mergeRows, shipperSummary, shipperActions, noticeTemplate, crossCheck, hourLabel, vehicleKey, REVERSE_MAX_MIN,
+    rowKey, mergeRows, splitIdentical, shipperSummary, shipperActions, noticeTemplate, crossCheck, hourLabel, vehicleKey, REVERSE_MAX_MIN,
     HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, parseMemoText, looseTableToTsv, MEMO_NO_PARTNER, PROVISIONAL_PARTNER, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
     BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE, CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, PM_PARTNER_SCREEN_NOTE,
   };
@@ -3051,7 +3077,13 @@ function downloadCsv() {
 /*LOCAL-ONLY-END*/
 
 // 貼り付けは表の後ろに足す。同じ行（日付・場所・到着・車番）は足さずに 1 つにし、足した行数と同じだった行数を知らせる。足す前の記録は「元に戻す」で戻せる（SPEC §42）
-function pasteIn() {
+// 既にある行と全部の欄が同じ行（車番が空で自動では同じと言えない行）が入ってくるとき、足す前に 1 回だけ聞く。何も押さなければ足さない（表は変えない）
+function askDup(msgEl, n, again) {
+  S.dupAgain = again;
+  msgEl.innerHTML = `同じ記録がもう入っています（${n} 行）。<button type="button" id="dup-skip">足さない</button> <button type="button" id="dup-add">足す</button>`;
+}
+function dupChoose(c) { const f = S.dupAgain; S.dupAgain = null; if (f) f(c); }
+function pasteIn(choice) {
   const text = $('#paste').value;
   if (!text.trim()) { $('#paste-msg').textContent = '貼り付ける欄が空です'; return; }
   const pf = parsePasteFull(text), inp = pf.rows;
@@ -3059,8 +3091,11 @@ function pasteIn() {
   const faultDef = pf.defaulted.includes('shipper_fault');
   const incoming = inp.map((r) => ({ ...blankRow(), ...r, ...(faultDef ? { fault_default: '1' } : {}) }));
   const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
+  const sp = WaitingShared.splitIdentical(keep, incoming, S.year);
+  if (sp.dup && !choice) { askDup($('#paste-msg'), sp.dup, pasteIn); return; }
+  const skipped = choice === 'skip' ? sp.dup : 0;
   endExampleAuto();
-  const m = WaitingShared.mergeRows(keep, incoming, S.year);
+  const m = WaitingShared.mergeRows(keep, skipped ? sp.fresh : incoming, S.year);
   if (keep.length) undoSet({ year: S.year, label: `貼り付けた内容を表の後ろに足しました（足した ${m.added} 行、同じ行 ${m.merged} 行）。`, rows: keep.map((r) => ({ ...r })) });
   S.rows = m.rows.length ? m.rows : [blankRow(), blankRow(), blankRow()];
   if (pf.asks.includes(ASK_PARTNER)) S.askPartner = true;
@@ -3068,7 +3103,7 @@ function pasteIn() {
   if (pf.shipper_log && S.mode !== 'shipper') { S.modeAuto = true; setMode('shipper', false); }
   else if (!pf.shipper_log && S.mode === 'shipper' && (pf.carrier_table || pf.memo_read)) { S.modeAuto = true; setMode('carrier', false); }
   $('#paste-msg').textContent = `${m.added} 行を足しました` + (m.merged ? `。同じ回の ${m.merged} 行は足さずに、空いた欄だけ埋めました${m.conflicts ? `（うち ${m.conflicts} 行は値が違うので、表の値を残しています）` : ''}` : '') +
-    (keep.length ? `。これまでの記録 ${keep.length} 行は消えていません` : '');
+    (keep.length ? `。これまでの記録 ${keep.length} 行は消えていません` : '') + (skipped ? `。同じ記録 ${skipped} 行は足していません` : '');
   $('#paste-note').innerHTML = (faultDef ? [DEFAULT_FAULT_NOTE, ...pf.notes] : pf.notes).map((x) => `<span>${esc(x)}</span>`).join('<br>');
   const keyOf = (r) => WaitingShared.rowKey(r, S.year);
   S.memoRead = pf.memo_read ? pf.memo_read.map((x, k) => ({ ...x, i: keyOf(incoming[k]) ? S.rows.findIndex((r) => keyOf(r) === keyOf(incoming[k])) : -1 })) : null;
@@ -3078,18 +3113,24 @@ function pasteIn() {
   doCalc();
 }
 
+// CSV の行を表の後ろに足す。既にある行と全部の欄が同じ行があれば、足す前に聞く
+function csvApply(inp, msgEl, choice) {
+  const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
+  const sp = WaitingShared.splitIdentical(keep, inp, S.year);
+  if (sp.dup && !choice) { askDup(msgEl, sp.dup, (c) => csvApply(inp, msgEl, c)); return; }
+  const skipped = choice === 'skip' ? sp.dup : 0;
+  endExampleAuto();
+  const m = WaitingShared.mergeRows(keep, skipped ? sp.fresh : inp, S.year);
+  S.rows = m.rows;
+  if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
+  msgEl.textContent = `CSV の ${m.added} 行を表の後ろに足しました` + (m.merged ? `。同じ行を ${m.merged} 行まとめました` : '') + (skipped ? `。同じ記録 ${skipped} 行は足していません` : '');
+  renderTable(); doCalc();
+}
 function csvIn(file) {
   const fr = new FileReader();
   fr.onload = () => {
     try {
-      const inp = csvToRows(String(fr.result));
-      const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
-      endExampleAuto();
-      const m = WaitingShared.mergeRows(keep, inp, S.year);
-      S.rows = m.rows;
-      if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
-      $('#paste-msg').textContent = `CSV の ${m.added} 行を表の後ろに足しました` + (m.merged ? `。同じ行を ${m.merged} 行まとめました` : '');
-      renderTable(); doCalc();
+      csvApply(csvToRows(String(fr.result)), $('#paste-msg'));
     } catch (e) { $('#errs').innerHTML = `<div class="errs">${esc(e.message)}</div>`; }
   };
   fr.onerror = () => { $('#errs').innerHTML = '<div class="errs">ファイルを読めませんでした</div>'; };
@@ -3101,14 +3142,7 @@ function csvPasteIn() {
   const text = $('#csvpaste').value;
   if (!text.trim()) { $('#csvpaste-msg').textContent = '貼り付ける欄が空です'; return; }
   try {
-    const inp = csvToRows(text);
-    const keep = S.exampleAuto ? [] : S.rows.filter((r) => !isBlank(r));
-    endExampleAuto();
-    const m = WaitingShared.mergeRows(keep, inp, S.year);
-    S.rows = m.rows;
-    if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
-    $('#csvpaste-msg').textContent = `CSV の ${m.added} 行を表の後ろに足しました` + (m.merged ? `。同じ行を ${m.merged} 行まとめました` : '');
-    renderTable(); doCalc();
+    csvApply(csvToRows(text), $('#csvpaste-msg'));
   } catch (e) { $('#csvpaste-msg').textContent = e.message; }
 }
 
@@ -3247,6 +3281,8 @@ function init() {
     else if (t.id === 'b-clear') { if (S.modeAuto && S.mode === 'shipper' && !S.guide) { S.modeAuto = false; setMode('carrier', false); } endExampleAuto(); S.memoRead = null; $('#memo-read').innerHTML = ''; S.askPartner = false; $('#paste-note').innerHTML = ''; S.rows = [blankRow(), blankRow(), blankRow()]; S.res = null; S.err = ''; S.bad = new Set(); renderTable(); $('#errs').innerHTML = ''; renderBoxes(); renderResult(); }
     else if (t.id === 'b-add') { endExampleAuto(); S.rows.push(blankRow()); renderTable(); const ins = document.querySelectorAll('#tbody tr:last-child .w-in'); if (ins[0]) ins[0].focus(); }
     else if (t.id === 'b-paste') pasteIn();
+    else if (t.id === 'dup-skip') dupChoose('skip');
+    else if (t.id === 'dup-add') dupChoose('add');
     else if (t.id === 'b-g-sample') { const g = guidedState(); if (g && g !== 'choose') { $('#paste').value = gSampleText(g); $('#paste').focus(); } }
     else if (t.id === 'b-fault-yes') bulkFault('はい');
     else if (t.id === 'b-fault-no') bulkFault('いいえ');

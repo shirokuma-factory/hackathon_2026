@@ -325,7 +325,8 @@ def test_purpose_step_routes_and_keeps_g_in_the_address():
         page.js("document.querySelector('#role-carrier').click()")
         assert page.js("location.hash") == "#r=carrier"
         vis = _purposes(page)
-        assert vis == [["どの曜日の帰りが空いているか知りたい", "帰りの空車を荷主に案内する文を作りたい", "荷待ちの時間を荷主に示す書面を作りたい", "ドライバーに荷待ちの時刻を記録してもらいたい"]], vis
+        # 2026-11-08 総点検の直しに合わせて 先頭に「帰り便の空きを載せて…（空きをつなぐ）」を足した
+        assert vis == [["帰り便の空きを載せて、荷主に見つけてもらいたい（空きをつなぐ）", "どの曜日の帰りが空いているか知りたい", "帰りの空車を荷主に案内する文を作りたい", "荷待ちの時間を荷主に示す書面を作りたい", "ドライバーに荷待ちの時刻を記録してもらいたい"]], vis
         assert page.js("document.getElementById('p-car-wait').getAttribute('href')") == "waiting.html#g"
         assert page.js("document.getElementById('p-car-driver').getAttribute('href')") == "driver.html"
         page.js("document.getElementById('p-car-propose').click()")
@@ -338,10 +339,14 @@ def test_purpose_step_routes_and_keeps_g_in_the_address():
         page.wait(lambda: page.js("location.hash") == "" and page.js("!document.getElementById('home-step1').hidden"), 30, "役割の選択に戻る")
         page.js("document.querySelector('#role-shipper').click()")
         vis = _purposes(page)
-        assert vis[0][0] == "この荷物の送り方と費用の目安を知りたい" and "荷待ちの記録を確かめたい" in vis[0][1], vis
+        # 2026-11-08 総点検の直しに合わせて 荷主の先頭に「帰りの空いたトラックの空きに、荷物を載せたい（空きを探す）」を足した
+        assert vis[0][0] == "帰りの空いたトラックの空きに、荷物を載せたい（空きを探す）" and vis[0][1] == "この荷物の送り方と費用の目安を知りたい" and "荷待ちの記録を確かめたい" in vis[0][2], vis
 
 
 BUDGETS = {1920: 450, 360: 300}
+# 2026-11-08 総点検の直しに合わせて: 案内の「すべての便」は、合わない便も理由つきで並べる決まりになった（test_guided_all_trips_shows_cards_with_reasons）。
+# 最初の画面に便のカードが入るぶん、1920 の find だけ 1000 字まで。カードの中身を縮めると画面に入るカードが増えて字数も増えるため、予算でなく表示の決まりに合わせた
+FIND_ALL_TRIPS_1920 = 1000
 
 
 @pytest.mark.parametrize("view,w,h", [(v, w, h) for v in ("compare", "market", "find") for w, h in ((1920, 1080), (360, 800))])
@@ -354,7 +359,8 @@ def test_guided_screens_stay_within_the_reading_budget(view, w, h):
         time.sleep(2.5)
         assert page.js("document.body.classList.contains('guided')") is True
         r = json.loads(page.js(COUNT_JS))
-        assert r["chars"] <= BUDGETS[w] and r["primary"] <= 1 and r["controls"] <= 8, {k: v for k, v in r.items() if k != "samples"}
+        budget = FIND_ALL_TRIPS_1920 if (view, w) == ("find", 1920) else BUDGETS[w]
+        assert r["chars"] <= budget and r["primary"] <= 1 and r["controls"] <= 8, {k: v for k, v in r.items() if k != "samples"}
         if view == "compare":   # 結果を出した状態も同じ予算
             page.js("(() => { const A = window.__app; A.select(A.S.idx.codes.indexOf('27128')); })()")
             page.wait(lambda: page.js("!!document.querySelector('#cards .cc-row')"), 90, "結果の表")

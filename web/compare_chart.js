@@ -50,7 +50,8 @@ const CompareChart = (() => {
   // 公表の運賃表を持たない手段（鉄道・船・飛行機）。額は出さず、地図に経路を出すだけ
   const MODE_OF = { '鉄道': 'rail', '船': 'ferry', '飛行機': 'air' };
   let altOpen = true;   // 鉄道・船・飛行機の欄の開閉（表を作り直しても保つ）
-  document.addEventListener('toggle', (e) => { if (e.target && e.target.classList && e.target.classList.contains('cc-alt')) altOpen = e.target.open; }, true);
+  let altTouched = false;
+  document.addEventListener('toggle', (e) => { if (e.target && e.target.classList && e.target.classList.contains('cc-alt')) { altOpen = e.target.open; altTouched = true; } }, true);
   const CAGE_EXPL = 'カゴ単位で払う便';
   const SHIP_NO_DATA = 'このデモの航路の表に入っていません。船会社に見積を頼んでください。';
   const NO_FARE = '公表の運賃表を持っていないため、額は出しません';
@@ -81,7 +82,10 @@ const CompareChart = (() => {
     const r = ratioOf(base);
     const others = cards.filter((c) => !priced(c));
     const alt = others.filter((c) => MODE_OF[c.label]);   // 鉄道・船・飛行機は別の欄（案内の表示は上から 3 行だけ出すので、その外に置く）
-    const plain = others.filter((c) => !MODE_OF[c.label]);
+    const plainAll = others.filter((c) => !MODE_OF[c.label]);
+    // 使えない手段は、画面の入口に関わらず 1 つの規則で畳む（行の数が入口で変わらない）。額が出ない「見積が要ります」の行は表に残す
+    const plain = plainAll.filter((c) => c.status !== '使えない');
+    const unusable = plainAll.filter((c) => c.status === '使えない');
     // 他の手段が「要見積」（表を持たない）のとき、額の出る 1 つだけを最安として初めから選ばない（r7b 指摘1）
     const unknownOthers = others.some((c) => c.status !== '使えない' && !c.routeNone);
     if (auto && !pick && base.length && (r || !unknownOthers)) { const f = r ? base.find((c) => c.amount === r.lo) : base[0]; if (f) pick = pickOf(f); }
@@ -93,12 +97,12 @@ const CompareChart = (() => {
       const w = Math.max(3, (c.amount / max) * 50).toFixed(1); // 値の文字と印が右に付くので、最長の棒でも 50% まで
       const isCheck = !fit(c);
       const cheapest = !!r && base.includes(c) && c.amount === r.lo;
-      const best = cheapest ? `<span class="cc-mark">${ref ? '最安（確認が要る）' : '最安'}</span>` : '';
+      const best = cheapest ? `<span class="cc-mark">${ref ? '最安（確認が要る）' : '最安'}${c.sample ? '（架空の表の例）' : ''}</span>` : '';
       const why = isCheck && c.why ? `<span class="cc-why" style="display:block;overflow:visible" title="${esc(c.why)}">確かめること: ${esc(String(c.why).split('。')[0])}</span>` : '';
       const expl = c.label === 'カゴ台車' ? `<span class="cc-expl">${esc(CAGE_EXPL)}</span>` : '';
       return `<label class="cc-row${cheapest && !isCheck ? ' cheap' : ''}${isCheck ? ' chk' : ''}">${name(c, true)}` +
         `${ok(isCheck ? '要確認' : '使える', isCheck ? 'chk' : 'yes')}` +
-        `<span class="cc-track" data-l="費用の目安"><i class="cc-bar" style="width:${w}%"></i><b class="cc-val num">${fmt(c.amount)}円${c.est ? '<em>概算</em>' : ''}</b>${best}</span>${days(c)}${why}${expl}</label>`;
+        `<span class="cc-track" data-l="費用の目安"><i class="cc-bar" style="width:${w}%"></i><b class="cc-val num">${fmt(c.amount)}円${c.est ? '<em>概算</em>' : ''}${c.sample ? '<em class="cc-sample" title="実在の運賃ではありません。架空の表から出した例です">架空の表の例</em>' : ''}</b>${best}</span>${days(c)}${why}${expl}</label>`;
     };
     const none = (c) => {
       const unusable = c.status === '使えない';
@@ -112,7 +116,8 @@ const CompareChart = (() => {
         `<span class="cc-track" data-l="費用の目安"><span class="cc-off">${txt}</span></span>${dy}${note}</label>`;
     };
     let sum = '';
-    if (r) sum = `<p class="cc-ratio">${esc(ratioText(r, ref))}</p>`;
+    const anySample = base.some((c) => c.sample);   // 最安・倍率に架空の表の額が入っているときは、そう書く
+    if (r) sum = `<p class="cc-ratio">${esc(ratioText(r, ref))}${anySample ? esc('（架空の表の例を含む）') : ''}</p>`;
     else if (fits.length === 1) sum = `<p class="cc-only">${esc(onlyText(fits[0], cards.filter((c) => c !== fits[0])))}</p>`;
     const near = nearText(cards);
     if (near) sum += `<p class="cc-near">${esc(near)}</p>`;
@@ -122,7 +127,9 @@ const CompareChart = (() => {
       `<h4 class="cc-title">${ttl}<small class="cc-long">税抜・この荷物 1 件分です。高速代と待機料は別です。</small><small class="cc-unit">円・税抜・この荷物 1 件分。付帯料金は別</small></h4>` +
       `${sum}<div class="cc-head" aria-hidden="true"><span>送り方</span><span>使えるか</span><span title="棒の長さは金額の大きさです">費用の目安</span><span>日数</span></div>` +
       `<div class="cc-rows" role="radiogroup" aria-label="見積依頼文を作る送り方">${fits.map(line).join('')}${checks.map(line).join('')}${plain.map(none).join('')}</div>` +
-      (alt.length ? `<details class="cc-alt"${altOpen ? ' open' : ''}><summary>鉄道・船・飛行機（見積で確認）</summary><div class="cc-alt-rows" role="radiogroup" aria-label="見積依頼文を作る送り方（額を出さない手段）">${alt.map(none).join('')}</div></details>` : '') +
+      (unusable.length ? `<details class="cc-unusable"><summary>使えない手段 ${unusable.length} 件（${unusable.map((c) => esc(disp(c.label))).join('・')}）</summary><div class="cc-alt-rows">${unusable.map(none).join('')}</div></details>` : '') +
+      (auto && alt.length ? `<p class="cc-alt-line">${alt.map((c) => esc(disp(c.label))).join('・')}: 見積で確認（地図に経路を出しています）</p>` : '') +
+      (alt.length ? `<details class="cc-alt"${(auto ? altTouched && altOpen : altOpen) ? ' open' : ''}><summary>鉄道・船・飛行機（見積で確認）</summary><div class="cc-alt-rows" role="radiogroup" aria-label="見積依頼文を作る送り方（額を出さない手段）">${alt.map(none).join('')}</div></details>` : '') +
       `</section>`;
   }
 

@@ -1299,8 +1299,17 @@ body.guided.view-compare .cc-row { grid-template-columns: 6.4em 5em minmax(0, 1f
 .home-all { color: var(--muted); font-size: 12.5px; }
 .fg-sub { display: none; }
 body.guided.view-find .fg-sub { display: block; margin: 0 0 8px; font-size: 13px; }
-body.guided.view-find :is(#f-role, #find-view .f-grid, #find-view .f-checks, #find-view .f-hint, #f-bh, #own-draft, #find-view .f-foot, #find-notes, #f-pairbar, #f-rsub, #find-view .f-row .btn-link, #f-list > :not(.f-card):not(.f-zero), #f-list .f-card:not(.ok):not(.hold-mine), #f-list .f-card:is(.ok, .hold-mine) ~ .f-card:not(.hold-mine), #f-list:has(.f-card.hold-mine) .f-card:not(.hold-mine), #f-list .f-card .f-sub, #f-list .f-card .f-route, #f-list .f-card .f-bar, #f-list .f-card .f-arc) { display: none !important; }
+body.guided.view-find :is(#f-role, #find-view .f-grid, #find-view .f-checks, #find-view .f-hint, #f-bh, #own-draft, #find-view .f-foot, #find-notes, #f-pairbar, #f-rsub, #find-view .f-row .btn-link, #f-list > :not(.f-card):not(.f-zero), #f-list .f-card.carrier.off, #f-list .f-card:not(.carrier) .f-sub, #f-list .f-card:not(.carrier) .f-route, #f-list .f-card:not(.carrier) .f-bar, #f-list .f-card:not(.carrier) .f-arc) { display: none !important; }
 body.m-right-collapsed #m-right .m-public { display: none; }
+body.guided.view-find:not(.f-showall) :is(#f-list .f-card:not(.carrier):not(.ok):not(.hold-mine), #f-list .f-card:not(.carrier):is(.ok, .hold-mine) ~ .f-card:not(.carrier):not(.hold-mine), #f-list:has(.f-card.hold-mine) .f-card:not(.carrier):not(.hold-mine)) { display: none !important; }
+/* 案内の「すべての便」（区間を決めていないとき）は、合わない便も理由つきで出す */
+body.guided.view-find.f-showall #f-list .f-card :is(.f-sub, .f-route, .f-bar) { display: block !important; }
+body.guided.view-find.f-showall #f-list .f-card .f-arc { display: block !important; }
+body.guided.view-find.f-showall .f-zero-why { display: block; }
+.f-pickupline { margin: 2px 0 6px; font-size: 12.5px; color: var(--muted); }
+@media (max-width: 600px) { body.guided .f-pickupline, body.guided #f-destnote { display: none; } }
+.fc-sole { display: block; margin: 4px 0 8px; font-size: 13px; }
+.fc-hint { margin: 8px 0; font-size: 13px; }
 
 /* ---------- 地図を入口にする（最初の画面の行と、案内の全国の物流傾向）---------- */
 .home-map { display: flex; align-items: center; gap: 24px; width: 100%; max-width: 520px; margin: 0 auto; padding: 16px 24px; border: 0; border-radius: var(--radius); background: var(--glass-solid); color: var(--text); text-align: left; }

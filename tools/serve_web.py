@@ -430,7 +430,14 @@ def api_request(body: Any) -> dict[str, Any]:
     mode = body.get("mode")
     if mode is not None and (not isinstance(mode, str) or mode not in MODE_REQUEST_TEXT):
         raise BadRequest("mode は宅配・路線便・カゴ台車・貸切・鉄道・船・飛行機のどれかで渡してください")
-    draft = build_request(s, scenario, place, mode)
+    packaging = body.get("packaging")
+    if packaging is not None and packaging != "pallet":
+        raise BadRequest("packaging は pallet か null で渡してください")
+    raw_today = body.get("today")
+    if raw_today is not None and not isinstance(raw_today, str):
+        raise BadRequest("today は YYYY-MM-DD の文字列で渡してください")
+    today = _parse_date(raw_today, "today") if raw_today else date.today()
+    draft = build_request(s, scenario, place, mode, packaging, today)
     contacts, pointer = request_contacts(public=_CTX.public)  # 手段の名前も列も持たない（SPEC §31.2）
     return {
         "status": draft.status,

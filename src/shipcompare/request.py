@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 
 from .estimate import Totals, summarize
@@ -63,6 +64,8 @@ def missing_items(shipment: Shipment, totals: Totals | None = None) -> tuple[lis
         required.append("出荷日")
     if shipment.desired_date is None:
         required.append("希望着日")
+    if shipment.ship_date is not None and shipment.desired_date is not None and shipment.desired_date < shipment.ship_date:
+        required.append("希望着日が出荷日より前です（日付を直してください）")
 
     optional: list[str] = []
     if shipment.forklift is None:
@@ -93,13 +96,21 @@ MODE_REQUEST_TEXT = {
 
 
 def build_request(shipment: Shipment, scenario: dict | None = None, place: dict | None = None,
-                  mode: str | None = None) -> RequestDraft:
+                  mode: str | None = None, packaging: str | None = None, today: date | None = None) -> RequestDraft:
     """place は地図で選んだ発地・着地（label は「新宿区 → 大阪市中央区」、km は道路距離、note は距離の注記）。
     あれば「発着」の行に区間の想定の値ではなく、この市区町村と道路距離を書く（SPEC §31.5 #16）。"""
     totals = summarize(shipment)
     required, optional = missing_items(shipment, totals)
     if place and place.get("label") and mode in ("鉄道", "船", "飛行機"):
         required = [x for x in required if x != "距離 km"]   # 道路の距離では測れない送り方。届け先の名前があれば足りる
+    # 出荷日が今日より前（打ち間違い）は完了にしない。today は呼び出し側の時計（デモの日付。省略すると確かめない）
+    if today is not None and shipment.ship_date is not None and shipment.ship_date < today:
+        required.append(f"出荷日が今日（{today.isoformat()}）より前です（日付を直してください）")
+    # パレット渡しの荷は、フォークリフトの有無を必須にする（手積みの荷と読まれないように）
+    pallet = packaging == "pallet"
+    if pallet and shipment.forklift is None:
+        required.append("フォークリフトの有無（パレットのため）")
+        optional = [x for x in optional if x != "フォークリフトの有無"]
     status = STATUS_READY if not required else STATUS_DRAFT
 
     lines: list[str] = []
@@ -113,6 +124,7 @@ def build_request(shipment: Shipment, scenario: dict | None = None, place: dict 
             f"  {i}. 個数 {it.count if it.count is not None else '不明'} / "
             f"縦 {_fmt(to_decimal(it.length_cm))} × 横 {_fmt(to_decimal(it.width_cm))} × "
             f"高さ {_fmt(to_decimal(it.height_cm))} cm / 1個 {_fmt(to_decimal(it.weight_kg))} kg"
+            + ("（パレット渡し）" if pallet else "")
         )
     lines.append(f"  合計重量: {_fmt(totals.weight_kg)} kg")
     vol = totals.volume_m3.quantize(Decimal("0.001")) if totals.volume_m3 is not None else None

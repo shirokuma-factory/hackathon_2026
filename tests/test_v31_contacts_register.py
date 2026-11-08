@@ -49,7 +49,7 @@ def test_g138_public_request_contacts_have_no_mode_and_hide_single_company_windo
     status, r = post(pub, "/api/request", s1_body())
     assert status == 200
     assert r["contacts"] == []  # SPEC §32 #4: 公開版は窓口を 1 社も並べず、案内の文だけ
-    assert r["contacts_note"] == CONTACT_POINTER == "窓口は比べるページの「見積を頼む先」にあります"
+    assert r["contacts_note"] == CONTACT_POINTER == "窓口は「地図なしの比べるページ」の「見積を頼む先」にあります"
     assert "佐川" not in r["text"] and "ヤマト" not in r["text"]
 
 
@@ -224,7 +224,7 @@ def test_g141_16_work_js_sends_place():
     js = (WEB / "work.js").read_text(encoding="utf-8")
     assert "place: W.place" in js or "{ place: W.place }" in js
     # 2026-11-08 の直しに合わせて: 版の署名の末尾は pickedMode() から pickedFull() に変わった（比べる方法の選択の全体）。W.place の代入と送信は残っている
-    assert "W.place = " in js and "W.place, pickedFull()]" in js  # 版の署名にも入れる（比べる方法の選択も署名に加わった）
+    assert "W.place = " in js and "W.place, pickedFull()" in js  # 版の署名にも入れる（比べる方法の選択も署名に加わった）
 
 
 def test_g141_17_published_sources_have_no_repo_file_names():

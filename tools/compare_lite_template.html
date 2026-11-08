@@ -265,6 +265,7 @@ ol.bars li .chip { min-height: 22px; padding: 0 8px; font-size: 12px; }
       <p class="exnote" id="example-note" hidden>例の荷物が入っています（架空）。表を空にして、自分の荷物を入れてください</p>
       <details class="fold" id="cargo-d"><summary>荷物の表を開いて直す・貼る</summary>
       <div class="scroll-x"><table class="in" aria-label="荷物の表"><thead><tr><th>個数</th><th>縦 cm</th><th>横 cm</th><th>高さ cm</th><th>1 個の重さ kg</th><th title="荷物の包み方">荷姿</th><th></th></tr></thead><tbody id="pbody"></tbody></table></div>
+      <div id="row-errs" role="alert"></div>
       <details class="paste-cargo" id="cargo-paste-box"><summary>Excel の出荷予定を貼る</summary>
         <ul class="small"><li>列: 個数・縦・横・高さ・重さ</li><li>寸法が1つの欄: 120×50×50 も可</li><li>見出しの行: あってもなくても可</li></ul>
         <textarea id="cargo-paste" rows="4" spellcheck="false" aria-label="荷物の表の貼り付け欄" placeholder="個数&#9;縦&#9;横&#9;高さ&#9;重さ&#10;3&#9;120&#9;50&#9;50&#9;40"></textarea>
@@ -471,12 +472,12 @@ const mmLooksAbsurd = (l, w, h, kg) => {
   return (v >= 0.5 && kg / v < 10) || ((l + w + h) > 260 && kg <= 30);
 };
 function parsePieces(rows) {
-  const pieces = [], errs = [], mmRows = [], soft = [];
+  const pieces = [], errs = [], rowErrs = [], mmRows = [], soft = [];
   rows.forEach((r, i) => {
     const vals = [r.n, r.l, r.w, r.h, r.kg].map((x) => String(x == null ? '' : x).normalize('NFKC').trim());
     if (vals.every((x) => !x)) return;
     const [n, l, w, h, kg] = vals.map(readNum);
-    if (!(Number.isInteger(n) && n >= 1) || !(l > 0) || !(w > 0) || !(h > 0) || !(kg > 0)) { errs.push(`${i + 1} 行目: 個数は 1 以上の整数、寸法と重さは 0 より大きい数で入れてください（1e3 のような書き方は使えません）`); return; }
+    if (!(Number.isInteger(n) && n >= 1) || !(l > 0) || !(w > 0) || !(h > 0) || !(kg > 0)) { rowErrs.push(`${i + 1} 行目: 個数は 1 以上の整数、寸法と重さは 0 より大きい数で入れてください（1e3 のような書き方は使えません）。この行は計算に入れていません`); return; }
     const big = [['縦', l], ['横', w], ['高さ', h]].find(([, v]) => v > 1000);
     if (big) { errs.push(`${i + 1} 行目: ${big[0]} ${fx(big[1])}cm は 1,000cm（10m）を超えます。mm ではありませんか（mm の数字なら 10 で割って cm にするか、貼り付けるときに見出しか数字の後ろに mm と書いてください）。下のボタンで、mm として読むか、cm のまま計算するかを選んでください。選ぶまで計算していません`); mmRows.push(i); return; }
     const unitless = !(Number(r.sz) > 0) && !r.cmOk;
@@ -493,7 +494,7 @@ function parsePieces(rows) {
     const q = soft[0];
     errs.push(`${q.i + 1} 行目: ${fx(q.l)}×${fx(q.w)}×${fx(q.h)}cm・${fx(q.kg)}kg は荷として大きすぎます（${fx(q.l * q.w * q.h / 1e6)}m³）。この表は mm で書かれていますか？ 下のボタンで選んでください。選ぶまで計算していません`);
   }
-  return { pieces: mmAll ? [] : pieces, errs, mmRows, mmAll };
+  return { pieces: mmAll ? [] : pieces, errs, rowErrs, mmRows, mmAll };
 }
 
 // 床と重さの合計は整数で足す（JS の小数のまま足すと 0.4m² を 15 回足して 6.000000000000001 になり、床 6.0m² ちょうどの荷を断ってしまう。SPEC §42）。
@@ -706,17 +707,18 @@ function evalHome(pieces, t, flex, inp) {
 
 const kmOf = (inp) => { const v = inp && inp.km != null && String(inp.km).trim() !== '' ? readNum(inp.km) : null; return v === null ? NaN : v; };
 function evaluate(inp) {
-  const { pieces, errs, mmRows, mmAll } = parsePieces(inp.rows);
-  if (errs.length || !pieces.length) return { errs: errs.length ? errs : ['荷物を 1 行以上入れてください'], options: [], totals: null, pieces, mmRows, mmAll };
+  const { pieces, errs, rowErrs, mmRows, mmAll } = parsePieces(inp.rows);
+  // 読めない行があっても、読める行があれば、読める行だけで計算する（読めない行は rowErrs に残して、表の下に出す）
+  if (errs.length || !pieces.length) return { errs: errs.length ? [...errs, ...rowErrs] : rowErrs.length ? rowErrs : ['荷物を 1 行以上入れてください'], rowErrs, options: [], totals: null, pieces, mmRows, mmAll };
   const kmRaw = inp.km == null ? '' : String(inp.km).normalize('NFKC').trim();
-  if (kmRaw !== '' && readNum(kmRaw) === null) return { errs: ['道路の距離は数字で入れてください（1e3・Infinity のような書き方は使えません）'], options: [], totals: null, pieces };
-  if (kmRaw !== '' && readNum(kmRaw) <= 0) return { errs: ['道路の距離は 0 km より大きい数で入れてください（0 や負の数では額を出せません）'], options: [], totals: null, pieces };
+  if (kmRaw !== '' && readNum(kmRaw) === null) return { errs: ['道路の距離は数字で入れてください（1e3・Infinity のような書き方は使えません）'], rowErrs, options: [], totals: null, pieces };
+  if (kmRaw !== '' && readNum(kmRaw) <= 0) return { errs: ['道路の距離は 0 km より大きい数で入れてください（0 や負の数では額を出せません）'], rowErrs, options: [], totals: null, pieces };
   const t = totals(pieces), km = kmOf(inp);
   const options = [evalTakuhai(pieces), evalKazai(pieces, inp.recv), evalAkabane(t, pieces, inp), evalKei(pieces, t, inp), evalJitbox(pieces, t, inp.recv), evalRosen(t, inp.recv, palletHandling(pieces, inp)),
     evalKashikiri('2t', pieces, t, inp.from, km, inp), evalKashikiri('4t', pieces, t, inp.from, km, inp), ...(t.kg > RULES.t4.payloadKg ? [evalKashikiri('10t', pieces, t, inp.from, km, inp)] : []), evalHome(pieces, t, flexOf(inp), inp), ...(seaCross(inp.from, inp.to) ? [evalShip(inp)] : [])];   // 10t は 4t ウイングの積載（約 2,700kg）を超える荷のときだけ並べる（小さな荷に大型の行を出さない）
   const tk = options[0];
   if (tk.status === 'ok') { const pub = publicTakuhai(pieces, inp.from, inp.to); if (pub) tk.pub = pub; }
-  return { errs: [], options, totals: t, pieces };
+  return { errs: [], rowErrs, options, totals: t, pieces };
 }
 
 /* ---------------------------------------------------------------- 自社の契約単価（任意。ブラウザの中だけに保存する） */
@@ -1328,7 +1330,7 @@ function setStepper(res) {
 function optRow(o, per, inp, top) {
   const cas = per.filter((p) => p.has && p.am[o.id] && p.am[o.id].src === '契約単価' && p.am[o.id].amount != null);
   const contractAmt = cas.map((p) => `<div class="amount">契約単価${p.label ? `（${esc(p.label)}）` : ''}で およそ <b class="yen">${fmt(p.am[o.id].amount)} 円</b>（税抜）${p.am[o.id].note ? `<div class="small">${esc(p.am[o.id].note)}</div>` : ''}</div>`).join('');
-  const pubAmt = o.pub && !cas.length ? `<div class="amount" id="pub-amount">架空の宅配の表からの例 およそ <b class="yen">${fmt(o.pub.low)}〜${fmt(o.pub.high)} 円</b>（税抜）<div class="small">実在の会社の運賃ではない、説明のための値です。自社の契約運賃を入れてください。安いほうは営業所に持ち込む額、高いほうは集荷の額です。</div></div>` : '';
+  const pubAmt = o.pub && !cas.length ? `<div class="amount" id="pub-amount">架空の宅配の表からの例 およそ <b class="yen">${fmt(o.pub.low)}〜${fmt(o.pub.high)} 円</b>（税抜）<div class="small">実在の会社の運賃ではない、説明のための値です。自社の契約運賃を入れてください。安いほうは営業所に持ち込む額、高いほうは集荷の額です。</div>${per.some((p) => p.has) ? '<div class="small" id="pub-excluded">契約単価を入れたので、この例は上の「最安」と額の比べには入れていません（契約単価の額だけを比べています）。</div>' : ''}</div>` : '';
   const amt = o.amount != null ? `<div class="amount">目安 およそ <b class="yen">${fmt(o.amount)} 円</b>（税抜）</div>` : (contractAmt || pubAmt);
   const home = o.home ? `<div class="home">${esc(o.reasons[0])}</div>` : `<ul class="rs"><li>${esc(o.reasons[0] || '')}</li></ul>${o.reasons.length > 1 ? `<details class="disc rs-more"><summary>理由 ${o.reasons.length} 件</summary><ul class="rs">${o.reasons.slice(1).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}`;
   const noText = typeof NO_ESTIMATES[o.id] === 'function' ? NO_ESTIMATES[o.id](o, inp) : NO_ESTIMATES[o.id];
@@ -1368,7 +1370,8 @@ function headlineText(res) {
 function render() {
   const inp = inputs(), res = evaluate(inp);
   S.res = res;
-  $('#cargo-line').textContent = res.totals ? `荷物 ${res.totals.count} 個・${f1(res.totals.kg)}kg` : '荷物が入っていません。';
+  $('#cargo-line').textContent = res.totals ? `荷物 ${res.totals.count} 個・${f1(res.totals.kg)}kg${res.rowErrs && res.rowErrs.length ? `（読めない ${res.rowErrs.length} 行は入れていません）` : ''}` : (res.rowErrs && res.rowErrs.length ? '読める荷物の行がありません。' : '荷物が入っていません。');
+  { const re = $('#row-errs'); if (re) re.innerHTML = res.rowErrs && res.rowErrs.length ? `<div class="errs">${res.rowErrs.map(esc).join('<br>')}</div>` : ''; }
   setStepper(res);
   S.ctx = null;
   { const kl = $('#km-label'); if (kl) kl.textContent = seaCross($('#from').value, $('#to').value) ? '集荷先から届け先までの経路の距離（海を含む・km）' : '集荷先から届け先までの道路の距離（km）'; }
@@ -1416,12 +1419,12 @@ const histList = () => HIST_MEM || loadHistory();
 function renderHistory() {
   const el = $('#h-out');
   if (!el) return;
-  const list = histList().slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  const list = histList().map((x, i) => ({ ...x, _i: i })).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a._i < b._i ? 1 : -1));
   if (!list.length) { el.innerHTML = '<p class="small">まだ記録がありません。</p>'; return; }
   const months = {};
   list.forEach((x) => { const m = x.date.slice(0, 7); months[m] = (months[m] || 0) + x.amount; });
   el.innerHTML = `<table class="cmpt" id="h-month"><thead><tr><th>月</th><th>運賃の合計（税抜）</th></tr></thead><tbody>${Object.keys(months).sort().reverse().map((m) => `<tr><td>${esc(m)}</td><td class="num">${yen(months[m])}</td></tr>`).join('')}</tbody></table>` +
-    `<div class="scroll-x"><table class="cmpt" id="h-list"><thead><tr><th>日付</th><th>区間</th><th>送り方</th><th>額（税抜）</th></tr></thead><tbody>${list.slice(0, 50).map((x) => `<tr><td>${esc(x.date)}</td><td>${esc(x.route)}</td><td>${esc(x.method)}</td><td class="num">${yen(x.amount)}</td></tr>`).join('')}</tbody></table></div>`;
+    `<div class="scroll-x"><table class="cmpt" id="h-list"><thead><tr><th>日付</th><th>区間</th><th>送り方</th><th>額（税抜）</th><th></th></tr></thead><tbody>${list.slice(0, 50).map((x) => `<tr><td>${esc(x.date)}</td><td>${esc(x.route)}</td><td>${esc(x.method)}</td><td class="num">${yen(x.amount)}</td><td><button type="button" class="del" data-hdel="${x._i}" aria-label="${esc(x.date)} ${yen(x.amount)} の記録を消す">×</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 function refreshHistoryMethods() {
   const sel = $('#h-method');
@@ -1431,14 +1434,29 @@ function refreshHistoryMethods() {
   sel.innerHTML = all.map((n) => `<option>${esc(n)}</option>`).join('');
   if (all.includes(cur)) sel.value = cur;
 }
+// 円の額を読む。全角、¥・￥・円・カンマ、「12万」「1.5万」「12万5000」を読む。空欄は { empty: true }、読めなければ { bad: true }
+function readYen(raw) {
+  const s = nfkc(raw).replace(/[¥￥円,，、\s]/g, '');
+  if (s === '') return { empty: true };
+  const m = /^([0-9]+(?:\.[0-9]+)?)万([0-9]{0,4})$/.exec(s);
+  const v = m ? Math.round(Number(m[1]) * 10000) + (m[2] ? Number(m[2]) : 0) : readNum(s);
+  return v !== null && v > 0 && v <= CMAX ? { v } : { bad: true };
+}
+const YEN_HINT = '額は 0 より大きい数で入れてください（例 120000、12万円、¥120,000）';
+let LAST_HADD = null;   // 直前に記録した内容と時刻。同じ内容をすぐにもう一度押しても足さない
 function addHistory() {
-  const msg = $('#h-msg'), raw = $('#h-amt').value.toString().normalize('NFKC').replace(/[,，\s円]/g, ''), v = raw === '' ? null : readNum(raw);
-  if (!(v !== null && v > 0 && v <= CMAX)) { msg.textContent = '額は 0 より大きい数で入れてください'; return; }
+  const msg = $('#h-msg'), ry = readYen($('#h-amt').value), v = ry.v == null ? null : ry.v;
+  if (ry.empty && LAST_HADD && Date.now() - LAST_HADD.t < 10000) { msg.textContent = 'いま記録しました。同じ内容は足していません（続けて押しても 1 件です）'; return; }
+  if (!(v !== null && v > 0 && v <= CMAX)) { msg.textContent = YEN_HINT; return; }
   const date = $('#h-date').value || todayStr();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { msg.textContent = '日付を入れてください'; return; }
   const from = $('#from').value, to = $('#to').value, route = from || to ? `${from || '?'} → ${to || '?'}` : '（区間なし）';
   const list = histList().slice();
-  list.push({ date, route, method: $('#h-method').value, amount: Math.round(v) });
+  const entry = { date, route, method: $('#h-method').value, amount: Math.round(v) };
+  const sig = JSON.stringify(entry), nowT = Date.now();
+  if (LAST_HADD && LAST_HADD.sig === sig && nowT - LAST_HADD.t < 10000) { msg.textContent = '同じ内容をいま記録したので、足していません（同じ出荷をもう一度記録するときは、10 秒あけてから押してください）'; return; }
+  LAST_HADD = { sig, t: nowT };
+  list.push(entry);
   const kept = list.slice(-500), ok = saveHistory(kept);
   HIST_MEM = ok ? null : kept;
   msg.textContent = ok ? '記録しました' : '記録しました（このブラウザには保存できませんでした。ページを閉じると消えます）';
@@ -1451,9 +1469,8 @@ function readAnswers() {
   return Array.from({ length: ANS_N }, (_, i) => {
     const name = ($('#ans-name-' + i) ? $('#ans-name-' + i).value : '').trim().slice(0, 20);
     const raw = $('#ans-amt-' + i) ? $('#ans-amt-' + i).value : '';
-    const amt = raw.toString().normalize('NFKC').replace(/[,，\s円]/g, '');
-    const v = amt === '' ? null : readNum(amt);
-    return { name, raw, amount: v !== null && v > 0 ? Math.round(v) : null, bad: amt !== '' && !(v !== null && v > 0) };
+    const ry = readYen(raw);
+    return { name, raw, amount: ry.v != null ? Math.round(ry.v) : null, bad: !!ry.bad };
   });
 }
 function saveAnswers() {
@@ -1475,7 +1492,7 @@ function renderAnswers() {
   const bad = readAnswers().filter((a) => a.bad);
   const el = $('#ans-out');
   if (!el) return;
-  let h = bad.length ? `<div class="errs">額は 0 より大きい数で入れてください（${bad.map((a) => esc(a.name || '空の会社名')).join('、')}）</div>` : '';
+  let h = bad.length ? `<div class="errs">${YEN_HINT}（${bad.map((a) => esc(a.name || '空の会社名')).join('、')}）</div>` : '';
   if (list.length) {
     const low = list[0].amount, calc = S.bestCalc;
     h += `<table class="cmpt" id="ans-table"><thead><tr><th>順</th><th>会社</th><th>回答の額（税抜）</th><th>最安との差</th></tr></thead><tbody>` +
@@ -1572,7 +1589,19 @@ function init() {
     else if (t.id === 'b-add') { S.rows.push(blank()); renderRows(); $('#cargo-d').open = true; }
     else if (t.id === 'b-cargopaste') cargoPaste();
     else if (t.id === 'b-hadd') addHistory();
-    else if (t.id === 'b-hclear') { HIST_MEM = null; saveHistory([]); $('#h-msg').textContent = '消しました'; renderHistory(); }
+    else if (t.id === 'b-hclear') {
+      const n = histList().length;
+      if (!n) { $('#h-msg').textContent = '消す記録がありません'; }
+      else if (!S.hArmed) {   // Artifact では confirm が使えないので、同じボタンを 8 秒以内にもう一度押してもらう
+        S.hArmed = true; t.textContent = `本当に ${n} 件を全部消す（もう一度押す）`; $('#h-msg').textContent = `記録 ${n} 件を全部消します。消したものは戻せません。消すなら、もう一度押してください`;
+        clearTimeout(S.hArmTm); S.hArmTm = setTimeout(() => { S.hArmed = false; t.textContent = '記録を全部消す'; }, 8000);
+      } else { S.hArmed = false; clearTimeout(S.hArmTm); t.textContent = '記録を全部消す'; HIST_MEM = null; saveHistory([]); LAST_HADD = null; $('#h-msg').textContent = '消しました'; renderHistory(); }
+    }
+    else if (t.dataset && t.dataset.hdel !== undefined) {
+      const list = histList().slice(); list.splice(Number(t.dataset.hdel), 1);
+      const ok = saveHistory(list); HIST_MEM = ok ? null : list; LAST_HADD = null;
+      $('#h-msg').textContent = '1 件消しました'; renderHistory();
+    }
     else if (t.id === 'b-ansclear') { document.querySelectorAll('.ain').forEach((el) => { el.value = ''; }); saveAnswers(); renderAnswers(); $('#ans-msg').textContent = '消しました'; }
     else if (t.id === 'b-copy' || t.id === 'b-copy-top') {
       const q = $('#quote'), msg = $('#copy-msg');

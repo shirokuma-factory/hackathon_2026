@@ -239,7 +239,7 @@ def test_compare_step2_preselects_cheapest_and_step3_shows_needed_inputs(w, h):
         note = page.js("document.getElementById('p-origin').textContent")
         assert "関東の 7 か所" in note and page.js("document.querySelector('#p-origin a').getAttribute('href')") == "compare_lite.html", note
         # 案内の最初の画面では集荷地の注記は出さず、荷物の編集欄（ed-origin-note）に移した（compare.css）
-        assert page.js("document.getElementById('p-origin').getClientRects().length > 0") is False
+        assert page.js("document.getElementById('p-origin').getClientRects().length > 0") is True   # 2026-11-08 U-03: 関東以外の荷主向けの案内は最初の画面に見せる
         assert "ed-origin-note" in (ROOT / "web" / "work.js").read_text(encoding="utf-8")
         assert "右の結果欄" not in page.js("document.body.innerText")
         m = _count(page)

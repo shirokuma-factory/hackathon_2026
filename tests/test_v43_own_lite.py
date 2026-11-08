@@ -222,10 +222,10 @@ def test_sample_screen_flow_and_outputs():
         assert "そのまま 1" in page.js("document.querySelector('#sec-confirm h2').textContent")
 
         # 明日の空きから作る
-        page.js("""(function () { const s = window.OwnLite.state; const f = document.querySelector('[data-tm=date]'); f.value = '2026-11-07'; f.dispatchEvent(new Event('change', {bubbles: true}));
+        page.js("""(function () { const s = window.OwnLite.state; const f = document.querySelector('[data-tm=date]'); f.value = '2030-11-09'; f.dispatchEvent(new Event('change', {bubbles: true}));
                   const k = document.querySelector('[data-tm=kg]'); k.value = '5'; k.dispatchEvent(new Event('change', {bubbles: true})); document.querySelector('[data-act=tm-make]').click(); })()""")
         out = page.js("(document.querySelector('#tm-out') || {}).value")
-        assert out.startswith("【求荷】空車情報") and "11/7（土）" in out and "最大 5 t まで" in out
+        assert out.startswith("【求荷】空車情報") and "11/9（土）" in out and "最大 5 t まで" in out
 
         # 単価を入れると費用が式つきで出る
         page.js("var e = document.querySelector('#perkm'); e.value = '30'; e.dispatchEvent(new Event('input', {bubbles: true}))")

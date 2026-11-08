@@ -406,7 +406,8 @@ def test_total_only_quotes_rank_with_the_unknown_breakdown_mark():
     ev = {e["quote"]["carrier"]: e for e in r["evaluations"]}
     assert r["ranking_shown"] and ev["B社"]["rank"] == 1 and ev["A社"]["rank"] == 2 and ev["B社"]["state"] == "complete", r
     js = (ROOT / "web" / "work.js").read_text(encoding="utf-8")
-    assert "isTotalOnly" in js and "（内訳不明）" in js and 'name="total"' in js
+    # 2026-11-08 総点検の直しに合わせて 名前のそばの「（内訳不明）」をやめ、状態は「合計だけの回答」の1つにそろえた
+    assert "isTotalOnly" in js and "合計だけの回答" in js and "（内訳不明）" not in js and 'name="total"' in js
 
 
 # ---------------------------------------------------------------- 部品: 終了が開始より前の区間、400px の名札と出典

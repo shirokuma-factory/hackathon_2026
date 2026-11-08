@@ -748,7 +748,7 @@ const Rt = (() => {
   /* ------------------------------------------------------------ 凡例 */
 
   function legendHtml() {
-    return '<div class="rt-lg-cap">手段</div>' + ORDER.map((m) => `<div class="rt-lg-row"><span class="rt-lg-ic">${iconInline(m, 24)}${M3D.thumb(M3D.MODE_MODEL[m], 40, 25, 'mth-lg')}</span><span>${LABEL[m]}</span></div>`).join('');
+    return '<div class="rt-lg-cap" title="左の絵は地図の経路の色、右の絵は車両の 3D 模型です">手段（左: 経路の色 / 右: 車両）</div>' + ORDER.map((m) => `<div class="rt-lg-row"><span class="rt-lg-ic"><span title="地図の経路の色">${iconInline(m, 24)}</span><span title="車両の 3D 模型">${M3D.thumb(M3D.MODE_MODEL[m], 40, 25, 'mth-lg')}</span></span><span>${LABEL[m]}</span></div>`).join('');
   }
   // 案内の表示の凡例: 地図の線の色と手段の名前（色だけで区別しない）。経路のある手段だけ
   function guideLegend() {

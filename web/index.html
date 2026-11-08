@@ -47,10 +47,12 @@
     </div>
     <div id="home-step2" hidden>
       <div class="home-purposes" data-for="shipper">
+        <button type="button" class="purpose" id="p-ship-find" data-go="v=find&amp;g=1">帰りの空いたトラックの空きに、荷物を載せたい（空きを探す）</button>
         <button type="button" class="purpose" id="p-ship-compare" data-go="v=compare&amp;g=1">この荷物の送り方と費用の目安を知りたい</button>
         <a class="purpose" id="p-ship-wait" href="waiting.html#g=shipper">運送会社から届いた荷待ちの記録を確かめたい</a>
       </div>
       <div class="home-purposes" data-for="carrier">
+        <button type="button" class="purpose" id="p-car-find" data-go="v=find&amp;g=1&amp;r=carrier">帰り便の空きを載せて、荷主に見つけてもらいたい（空きをつなぐ）</button>
         <button type="button" class="purpose" id="p-car-empty" data-go="v=own&amp;g=empty">どの曜日の帰りが空いているか知りたい</button>
         <button type="button" class="purpose" id="p-car-propose" data-go="v=own&amp;g=propose">帰りの空車を荷主に案内する文を作りたい</button>
         <a class="purpose" id="p-car-wait" href="waiting.html#g">荷待ちの時間を荷主に示す書面を作りたい</a>
@@ -111,7 +113,7 @@
   <div class="cap">重ねる</div>
   <button class="lyr tgl" data-toggle="hubs" aria-pressed="false" title="貨物駅・港・フェリー航路（OpenStreetMap）">拠点<small>駅・港</small></button>
   <button class="lyr tgl v-market" data-toggle="jartic" aria-pressed="true" title="国の常設観測点の大型車（JARTIC）">大型車<small>観測点</small></button>
-  <button class="lyr tgl v-market" data-toggle="conc" aria-pressed="false" title="道路貨物運送業（44）と倉庫業（47）の従業者数（令和6年経済センサス‐基礎調査）">物流の<br>集積<small>44・47</small></button>
+  <button class="lyr tgl v-market" data-toggle="conc" aria-pressed="false" title="道路貨物運送業（44）と倉庫業（47）の従業者数（令和6年経済センサス‐基礎調査）">物流の<br>集積<small>運送業・倉庫業</small></button>
   <button class="lyr tgl v-market" data-toggle="fac" aria-pressed="false" title="トラックターミナル・貨物駅・空港・倉庫などの施設">施設<small>空港・倉庫ほか</small></button>
   <div class="rt-legend" aria-label="手段の凡例"></div>
   <label class="cap" for="quality" title="動きがカクつくときは、低にしてください。自動は、画面の動きの滑らかさを見て切り替えます">画質</label>
@@ -209,7 +211,7 @@
 <div id="m-left" class="v-market sh-panel">
   <section id="m-guide" class="glass" aria-labelledby="mg-h">
     <h1 class="p-title" id="mg-h" tabindex="-1">全国の物流傾向</h1>
-    <p class="mg-sub">帰りが空きやすい向きの上位 5 つです。<span class="mg-sub-x">数字は、その向きに足りない荷の量です。</span></p>
+    <p class="mg-sub">帰りが空きやすい向きの上位 5 つです。<span class="mg-sub-x">矢印は荷を送る向き（帰りが空く向き）で、数字はその向きに足りない荷の量です。</span></p>
     <ol class="mg-list" id="mg-rows" aria-label="帰りが空きやすい区間の上位 5（営業用トラック）"></ol>
     <p class="mg-sel" id="mg-sel" aria-live="polite">1 つ選ぶと、地図がその県の間を大きく出します。</p>
     <button type="button" class="btn-primary" id="mg-next" data-go-view="find">この向きで帰り便を探す<small class="mg-badge">架空のデモ</small></button>
@@ -343,7 +345,7 @@
       <label><span class="lbl">1口の料金（円・税抜）</span><input id="f-price-in" class="ctl sm num" type="number" min="0" step="any"></label>
     </div>
     <div class="f-btns"><button type="button" class="btn-sm" id="f-apply">この値で便を並べ直す</button>
-      <button type="button" class="btn-sm" id="f-dl" disabled>JSON をダウンロード</button></div>
+      <button type="button" class="btn-sm" id="f-dl" disabled title="直した値を、機械で読める形式（JSON）のファイルに保存します">直した値を JSON（機械で読める形式）で保存</button></div>
     <p class="f-edit-note" id="f-edit-note"></p>
     <p class="f-hint">変えた値は保存されません。</p>
     <div id="f-formula" class="f-formula" aria-label="運送会社として見るだけの欄"></div>

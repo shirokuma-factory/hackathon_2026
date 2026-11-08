@@ -100,7 +100,7 @@ const Market = (() => {
     const t = M.d.totals[M.mode];
     q('#m-rsub').textContent = `${MODE_LABEL[M.mode]}・上位 ${M.rows.length}`;
     q('#m-rtot').innerHTML = `帰りの荷が足りない分: ${n0(t.shortfall_t)} t（県をまたぐ荷の ${Math.round(t.share * 100)}%）` +
-      (M.mode === 'rail' ? ' 鉄道コンテナは標本が小さく、参考です。' : '');
+      (M.mode === 'rail' ? ' 鉄道コンテナは標本が小さく、参考です。' : '') + ' 量は物流センサスの 3 日間の量（年間ではありません）。';
     renderTable();
     buildFlows();
     renderLegend();
@@ -215,6 +215,8 @@ const Market = (() => {
       routes.push(route);
     });
     M.flows = { items, base, routes, actBase, roadBase, unkBase, ports };
+    const cnt = q('#m-count');
+    if (cnt && unkBase.length && !cnt.textContent.includes('細い点線')) cnt.textContent += ' 細い点線は、経路のデータが無い区間を結んだだけの線です（実際の経路ではありません）。';
     M.endpointSet = new Set(M.rows.flatMap((r) => [r.fi, r.ti]));
     M.endpoints = [...M.endpointSet].map((i) => ({ p: M.d.cap[i], name: M.d.prefs[i] }));
   }
@@ -482,7 +484,7 @@ const Market = (() => {
       },
       getLineColor: mu ? [236, 244, 255, 190] : [210, 226, 255, 80], lineWidthMinPixels: mu ? 1.6 : 0.8, getLineWidth: mu ? 1.6 : 0.8, lineWidthUnits: 'pixels',
       autoHighlight: Muni.prefFilled(), highlightColor: [255, 255, 255, 38],
-      updateTriggers: { getFillColor: [M.mode, G, M.sel], getLineColor: [mu], getLineWidth: [mu], getElevation: [G, M.sel] },
+      updateTriggers: { getFillColor: [M.mode, G, M.sel, Muni.prefFilled()], getLineColor: [mu], getLineWidth: [mu], getElevation: [G, M.sel] },
       transitions: { getFillColor: { duration: MapFx.ms(300), easing: ease }, ...(ext ? { getElevation: { duration: MapFx.ms(900), easing: ease } } : {}) },
     });
     if (G && sp) { out.push(prefLayer('m-pref', sp.minor, false)); out.push(prefLayer('m-pref-3d', sp.main, true)); } else out.push(prefLayer('m-pref', S.pref, false));
@@ -724,14 +726,14 @@ const Market = (() => {
       `<div class="mp-stats"><div><span>行き</span><b class="num">${n0(r.go)}</b><small>t</small></div><div><span>帰り</span><b class="num">${n0(r.back)}</b><small>t</small></div>` +
       `<div><span>帰りに足りない荷</span><b class="num">${n0(r.short)}</b><small>t</small></div>` +
       `<div><span>直線</span><b class="num">${n0(r.km)}</b><small>km</small></div></div>` +
-      `<p class="mp-msg">${esc(b)}から${esc(a)}へ帰る荷が少ないため、<b>帰りが空きやすい向き</b>です。</p>` +
-      `<ul class="mp-notes"><li>県ごとの数字です。各社の実際の空きとは違います。</li></ul>`;
+      `<p class="mp-msg">荷が多い向きは ${esc(a)}→${esc(b)}。${esc(b)}から${esc(a)}へ帰る荷が少ないため、<b>帰りが空く向き</b>は ${esc(b)}→${esc(a)} です。</p>` +
+      `<ul class="mp-notes"><li>県ごとの数字です。各社の実際の空きとは違います。</li><li>量は物流センサスの 3 日間の量（年間ではありません）。</li></ul>`;
     h += '<div class="mp-roles">' +
       '<div class="mp-role"><span>荷主の方</span><button class="btn-primary mp-go" data-act="find">この向きの帰り便を探す</button></div>' +
       `<div class="mp-role"><span>運送会社の方</span><button class="btn-ghost mp-go" data-act="carrier">この向きの帰り便を載せる</button></div></div>`;
     const clo = cloTarget(r);
     if (clo && r.km >= CLO_KM) {
-      h += `<div class="mp-clo"><p>日数と費用は問い合わせてください。</p>` +
+      h += `<div class="mp-clo"><p>鉄道・船の日数と費用は、事業者に問い合わせてください。</p>` +
         `<button class="btn-ghost mp-go" data-act="clo"><span class="mp-go-main">鉄道と船も入れて送り方を比べる</span><span class="mp-go-sub">${esc(clo.oName)} から ${esc(clo.dName)} へ</span></button></div>`;
     } else if (!clo) {
       h += '<div class="mp-clo"><p class="mp-clo-why">集荷地は関東の 7 か所だけのため、この向きは比べられません。</p></div>';
@@ -940,7 +942,7 @@ const Market = (() => {
     c.innerHTML = `<div class="nc-head"><b class="nc-title">${esc(d.name)}</b><button type="button" class="nc-close" aria-label="閉じる">×</button></div>`
       + `<dl class="nc-nums"><div><dt>出荷</dt><dd class="num">${n0(d.out)} t</dd></div><div><dt>入荷</dt><dd class="num">${n0(d.inn)} t</dd></div></dl>`
       + `<div class="nc-cmp" aria-hidden="true"><span class="nc-bar"><i class="nc-out" style="width:${Math.round((100 * d.out) / max)}%"></i></span><span class="nc-bar"><i class="nc-in" style="width:${Math.round((100 * d.inn) / max)}%"></i></span></div>`
-      + `<div class="nc-sub"><i class="sw-dash"></i>空車で戻りやすい向き（荷の差 t）</div><ul class="nc-list">${bars || '<li>該当する区間がありません</li>'}</ul>`;
+      + `<div class="nc-sub"><i class="sw-dash"></i>空車で戻りやすい向き（荷の差 t・3 日間の量）</div><ul class="nc-list">${bars || '<li>該当する区間がありません</li>'}</ul>`;
     c.hidden = false;
     const rt = q('#m-right'), shown = rt && rt.getClientRects().length && getComputedStyle(rt).position === 'fixed' && innerWidth > 1100;
     c.style.right = shown ? `${Math.round(innerWidth - rt.getBoundingClientRect().left + 16)}px` : '';
