@@ -23,7 +23,7 @@ VOICE = ROOT / "outputs" / "video" / "voice"
 # 項目: (読みの言葉, その言葉より何秒前に出始めるか)
 # r10: P1 は「運転手が足りない」と「2030 年度に約 3 分の 1」だけを言うので、図も 2 項目（two）にする
 # 英語版（11/8、--lang en）: 読みは docs/video/shots_en.json。英語は「足りなく（fall short）」が「4分の1（a quarter）」より先に来る
-ANCHORS_EN = {"n2": ("truck drivers", 0.4), "n3": ("twenty thirty", 0.2), "n3c": ("up to a quarter", 0.5), "n3d": ("fall short", 0.3)}
+ANCHORS_EN = {"n2": ("running short", 0.4), "n3": ("twenty thirty", 0.2), "n3c": ("up to a quarter", 0.5), "n3d": ("fall short", 0.3)}
 H1_EN = ("There aren't enough", "sixty percent")
 ANCHORS = {"n2": ("運転手が", 0.4), "n3": ("にせんさんじゅうねんど", 0.2), "n3c": ("よんぶんのいち", 0.5), "n3d": ("足りなく", 0.3)}  # n3c は「さんぶんのいち」（r14 で「運ぶ力が」を「トラックによる運送能力が」に）
 
@@ -78,7 +78,7 @@ def main() -> None:
     out, m = re.subn(r'data-duration="[0-9.]+"', f'data-duration="{tm["D"]}"', out)
     if n != 1 or m != 1:
         raise SystemExit("CHAIN_m.html の TM か data-duration が見つかりません")
-    with open(ROOT / "docs/video/motion/CHAIN_p1_m.html", "w", encoding="utf-8", newline="\n") as f:
+    with open(ROOT / f"docs/video/motion/CHAIN_p1_m{sfx}.html", "w", encoding="utf-8", newline="\n") as f:
         f.write(out)
     print(json.dumps(tm, ensure_ascii=False))
 

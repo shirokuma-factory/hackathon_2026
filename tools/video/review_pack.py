@@ -122,7 +122,7 @@ def main() -> None:
     for st in range(0, int(total) + 1, 20):
         ims = []
         for t in range(st, min(st + 20, int(total) + 1)):
-            im = frame(mp4, t + 0.5, 384)
+            im = frame(mp4, min(t + 0.5, total - 0.1), 384)  # 長さが 0.5 秒刻みで終わると最後のコマが取れない（英語版 165.5 秒）
             ImageDraw.Draw(im).rectangle([0, 0, 70, 30], fill="black")
             ImageDraw.Draw(im).text((6, 2), f"{t}s", fill="yellow", font=font)
             ims.append(im)

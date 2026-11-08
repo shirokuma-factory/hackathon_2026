@@ -502,3 +502,19 @@
 - 2026-11-08 09:07 `2318cc0` Refresh counts before redeploying
 
 - 訂正（2026-11-08）: DEVLOG のフックは手元の Windows でも動いていた（11/3 21:51 の「動いていない」は誤り）。記録されなかったのは `git -c user.name=… commit` の形とマージ・amend で、`-c` の形は 037ee54 で拾うようにした。記録は 311 件中 66 件（11/8 07:35 の時点）。
+- 2026-11-08 09:24 `e786e85` Fix grader r5e findings (documents only)
+- 2026-11-08 09:24 `5ceb565` SPEC A53-4: worst-case cost matches §53.3 (Haiku draft, optional Opus)
+- 2026-11-08 09:25 `100b0c0` Refresh counts
+- 2026-11-08 09:28 `80b09e8` README: narrow the Python/JS sameness claim (grader r5b P2)
+- 2026-11-08 11:37 `6e18652` YouTube description: describe the AI draft as the app does now
+- 2026-11-08 11:38 `b43a220` Waiting: screen hotspots use the email's measure; memo rows without partner; Python provisional partner
+- 2026-11-08 11:40 `8116444` Fix grader r5 findings: map data row, plain MIT LICENSE, history counts, r21 video sources
+- 2026-11-08 11:43 `924fa5a` Forklift rule in the map compare, safe handling text in the booking document, ODbL on OSM data
+- 2026-11-08 11:47 `5c7ca1c` English demo video en1: script, voice settings, graphics, captions, plan
+- 2026-11-08 11:51 `a5668b3` Plan: stop the grading loop at round 5 (author's decision)
+- 2026-11-08 11:52 `e56b9ab` Compare lite: r5c fixes (whole-table mm question, mm button over 1,000 cm, 縦×横×高さ header, partial modes not counted)
+- 2026-11-08 12:10 `b5499fe` Final full test run and refreshed counts before the last redeploy
+- 2026-11-08 12:15 `d466cc8` Test: compare view keeps animated truck, rail, ship and plane layers; no CSP violations
+- 英語版 en1（作成者の指示 11/8: 日本語版を残して編集できるまま、アメリカ英語の英語版。中身は全部英語、デモの画面は日本語のまま）: 台本 `docs/video/shots_en.json`（13 区間を同じ内容で）、声は ElevenLabs の Eric（アメリカ英語、男性）・eleven_v4・1.05 倍。図・章の見出し・ロゴは *_en.html（coder が 15 本を英語にした）、字幕 `subs_en1_layout.json`、出典の行 `sources_en_map.json`、組み立て `tools/video/en1_plan.json`。英語は語順が違うので、画面の切り替えは字幕の切れ目ではなく言葉の時刻（until_say）で決める。道具は英語に対応させた（文の切れ目、間の種類、文字起こしの言語）。日本語版 r21 を作り直して EDL と字幕が前と同じことを確かめた。
+- 英語版の途中の誤り: 連鎖図の時刻を作る道具が、英語の出力先を日本語版の CHAIN_p1_m.html に書いていた（本線の直し漏れ）。日本語の .mov は描き直していなかったので動画には影響なし。git から戻し、出力先を直した。check_sync で、2 文目の頭の 1 秒の黒（図の最初の項目を文の後ろの言葉に合わせていた）を見つけて直した。
+- Resolve の Backfull_en1 タイムライン → `outputs/video/assembly/Backfull_en1c.mp4`（167.1 秒、-14.6 LUFS、check_sync 誤り 0 件）。日本語版のタイムライン Backfull_r21 はそのまま残してある。

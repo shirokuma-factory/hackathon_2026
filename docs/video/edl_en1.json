@@ -230,9 +230,9 @@
    {
     "s": 4865,
     "off": 6,
-    "path": "outputs/video/motion/LOGO_F_en.mov",
+    "path": "outputs/video/motion/LOGO_Fh_en.mov",
     "p": {},
-    "e": 4964,
+    "e": 5012,
     "xfade_out": 0
    }
   ],
@@ -249,11 +249,11 @@
     "off": 0,
     "path": "outputs/video/motion/CHAIN_p1_m_en.mov",
     "fade_out": 6,
-    "e": 805,
+    "e": 773,
     "p": {}
    },
    {
-    "s": 805,
+    "s": 773,
     "off": 0,
     "path": "outputs/video/motion/MG9_m_en.mov",
     "e": 875,
@@ -297,11 +297,11 @@
     "path": "outputs/video/overlays/scrim.mov",
     "fade_in": 9,
     "fade_out": 9,
-    "e": 814,
+    "e": 782,
     "p": {}
    },
    {
-    "s": 805,
+    "s": 773,
     "off": 0,
     "path": "outputs/video/overlays/scrim.mov",
     "fade_in": 9,
@@ -371,8 +371,8 @@
    {
     "s": 0,
     "off": 0,
-    "path": "outputs/video/subs_en1/subs_114312_4k.mov",
-    "e": 4964,
+    "path": "outputs/video/subs_en1/subs_121248_4k.mov",
+    "e": 5012,
     "p": {}
    }
   ],
@@ -380,8 +380,8 @@
    {
     "s": 0,
     "off": 0,
-    "path": "outputs/video/subs_en1/sources_114312_4k.mov",
-    "e": 4964,
+    "path": "outputs/video/subs_en1/sources_121248_4k.mov",
+    "e": 5012,
     "p": {}
    }
   ]
@@ -695,11 +695,11 @@
    {
     "s": 0,
     "off": 0,
-    "path": "outputs/video/bgm/r04/bgm_en1_114312.wav",
-    "e": 4964,
+    "path": "outputs/video/bgm/r04/bgm_en1_121248.wav",
+    "e": 5012,
     "p": {}
    }
   ]
  },
- "total": 165.46230952380955
+ "total": 167.06230952380955
 }

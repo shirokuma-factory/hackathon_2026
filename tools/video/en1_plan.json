@@ -1,5 +1,5 @@
 {
- "_説明": "英語版 en1（作成者の指示 11/8: 日本語版 r21 を残したまま、アメリカ英語の英語版を作る。中身は全部英語、デモの画面は日本語のまま）。r21 の組み立てを写し、声は docs/video/shots_en.json（ElevenLabs Eric、eleven_v4）、図・章の見出し・ロゴは *_en、字幕は subs_en1_layout.json、出典の行は sources_en_map.json。英語は語順が違うので、画面の切り替えは言葉の時刻（until_say）で決める",
+ "_説明": "英語版 en1（作成者の指示 11/8: 日本語版 r21 を残したまま、アメリカ英語の英語版を作る。中身は全部英語、デモの画面は日本語のまま）。r21 の組み立てを写し、声は docs/video/shots_en.json（ElevenLabs Eric、eleven_v4）、図・章の見出し・ロゴは *_en、字幕は subs_en1_layout.json、出典の行は sources_en_map.json。英語は語順が違うので、画面の切り替えは言葉の時刻（until_say）で決める 締めのロゴは描き終わり（3.6 秒）から 2.4 秒止める版（LOGO_Fh_en）にし、描き終わってから約 2 秒残す",
  "name": "en1",
  "shots": "docs/video/shots_en.json",
  "voice_dir": "voice/tight_en",
@@ -116,7 +116,7 @@
      "track": 5,
      "path": "motion/MG9_m_en.mov",
      "at": {
-      "say": "with no load",
+      "say": "the miles",
       "land": 1.2
      },
      "scrim": true,
@@ -315,9 +315,9 @@
      "until_say": "Backfull."
     },
     {
-     "path": "motion/LOGO_F_en.mov",
+     "path": "motion/LOGO_Fh_en.mov",
      "off": 0.2,
-     "len": 3.0
+     "len": 4.6
     }
    ],
    "over": []
