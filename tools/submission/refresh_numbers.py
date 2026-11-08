@@ -31,7 +31,8 @@ def facts() -> dict:
     tests = int(m.group(1)) if m else None
     # 公開されるもの（git が追跡しているファイル）だけを数える。未コミットの記録は数えない
     reviews = len([x for x in run("git", "-c", "core.quotepath=false", "ls-files", "docs/reviews").splitlines() if x.endswith(".md")])
-    return {"commits": commits, "days": days, "tests": tests, "reviews": reviews, "ndays": len(days)}
+    plans = len([x for x in run("git", "-c", "core.quotepath=false", "ls-files", "docs/plan").splitlines() if x.endswith(".md") and x.count("/") == 2])
+    return {"commits": commits, "days": days, "tests": tests, "reviews": reviews, "ndays": len(days), "plans": plans}
 
 
 def fmt(n: int) -> str:
@@ -72,6 +73,7 @@ def main() -> None:
         (r"## 数字で見る \d+ 日間", f"## 数字で見る {nd} 日間"),
         (r"\| コミット（提出のブランチ） \| \d+ \|", f"| コミット（提出のブランチ） | {c} |"),
         (r"\| 採点・監査の記録 \| \d+ 件 \|", f"| 採点・監査の記録 | {rv} 件 |"),
+        (r"\| 計画・判断の記録 \| \d+ 件 \|", f"| 計画・判断の記録 | {f['plans']} 件 |"),
         (r"(\| 自動試験 \| 127 → 727 → 1,442 → )[\d,]+( 件 \|)", rf"\g<1>{tests}\g<2>"),
         (r"`git rev-list --count HEAD`（[^）]*の時点）", f"`git rev-list --count HEAD`（{now} の時点）"),
     ])
