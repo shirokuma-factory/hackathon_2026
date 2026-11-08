@@ -518,3 +518,7 @@
 - 英語版 en1（作成者の指示 11/8: 日本語版を残して編集できるまま、アメリカ英語の英語版。中身は全部英語、デモの画面は日本語のまま）: 台本 `docs/video/shots_en.json`（13 区間を同じ内容で）、声は ElevenLabs の Eric（アメリカ英語、男性）・eleven_v4・1.05 倍。図・章の見出し・ロゴは *_en.html（coder が 15 本を英語にした）、字幕 `subs_en1_layout.json`、出典の行 `sources_en_map.json`、組み立て `tools/video/en1_plan.json`。英語は語順が違うので、画面の切り替えは字幕の切れ目ではなく言葉の時刻（until_say）で決める。道具は英語に対応させた（文の切れ目、間の種類、文字起こしの言語）。日本語版 r21 を作り直して EDL と字幕が前と同じことを確かめた。
 - 英語版の途中の誤り: 連鎖図の時刻を作る道具が、英語の出力先を日本語版の CHAIN_p1_m.html に書いていた（本線の直し漏れ）。日本語の .mov は描き直していなかったので動画には影響なし。git から戻し、出力先を直した。check_sync で、2 文目の頭の 1 秒の黒（図の最初の項目を文の後ろの言葉に合わせていた）を見つけて直した。
 - Resolve の Backfull_en1 タイムライン → `outputs/video/assembly/Backfull_en1c.mp4`（167.1 秒、-14.6 LUFS、check_sync 誤り 0 件）。日本語版のタイムライン Backfull_r21 はそのまま残してある。
+- 2026-11-08 12:18 `209bd2c` English video en1c: retimed graphics, held closing logo, chain output path fix
+- 2026-11-08 12:31 `0cb08bd` Refresh counts after the final redeploy
+- 2026-11-08 12:32 `97dde6f` Test: vehicles move in the guided compare flow without clicks
+- 2026-11-08 作成者が提出した（「多少問題あるけど submit した」）。日本語版 r21 系と英語版 en1c まで。残りの指摘（声で言う Opus・Sonnet・Haiku の役割分担とアプリの既定の食い違い、英語版の新しい採点者による採点）は未対応。
