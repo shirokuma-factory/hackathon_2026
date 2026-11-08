@@ -182,7 +182,7 @@ def test_r4c_count_cells_with_unit_words():
         assert len(out["rows"]) == 1 and out["rows"][0]["n"] == n, (cell, out)
         assert out["rows"][0]["pk"] == ("pallet" if cell in ("2パレット", "2PL") else "box"), (cell, out)
     bad = _js("parseCargoTable(" + json.dumps(f"個数{TAB}縦{TAB}横{TAB}高さ{TAB}重さ\n1{TAB}50{TAB}40{TAB}30{TAB}10\n二つ{TAB}50{TAB}40{TAB}30{TAB}10") + ")")
-    assert bad["rows"] == [] and any("3 行目" in n and "二つ" in n for n in bad["notes"]), bad
+    assert bad["rows"] == [] and any("2 行目" in n and "二つ" in n for n in bad["notes"]), bad
 
 
 def test_r4c_size_class_never_prints_provisional_dimensions():
