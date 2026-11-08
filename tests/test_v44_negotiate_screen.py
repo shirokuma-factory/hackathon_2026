@@ -96,12 +96,12 @@ def test_entry_choice_and_first_result_with_denominators(app):
     assert "架空のサンプル" in head and "2026-10-03〜2026-10-31" in head and "江東 → 鹿屋" in head  # 2026-11-07 見本の鹿児島化
     assert page.js("document.querySelector('#neg-ev').open") is False  # 根拠は閉じたまま
     base = T(page, "#neg-base")
-    assert "53 本" in base and "45 本" in base and "空車 20・実車 25" in base, base  # 文言の直し 2026-11-07
+    assert "53 便" in base and "45 便" in base and "空車 20・実車 25" in base, base  # 文言の直し 2026-11-07。2026-11-08 の最終評価に合わせて「本」を「便」にそろえた
     page.js("document.querySelector('#neg-more').open = true")  # 数え方・距離・注意は閉じた「詳しく」に入れた（SPEC §45）
     res = T(page, "#neg-result")
     assert "曜日ごとの帰りの空車" in res  # 文言の直し 2026-11-07
     assert "5 / 5 便が空車" in res and "15 / 40 便が空車" in res and "空車か実車か分かった便で割っています" in res
-    assert "6,931.9 km" in res and "32 本" in T(page, "#neg-basis")  # 2026-11-07 見本の鹿児島化
+    assert "6,931.9 km" in res and "32 便" in T(page, "#neg-basis")  # 2026-11-07 見本の鹿児島化
     assert "今後は未定" in res  # 文言の直し 2026-11-07
     assert page.js("document.querySelector('#neg-wd').selectedOptions[0].textContent").startswith("土曜")  # 2026-11-07 見本の鹿児島化
     # 便ごとの根拠（開くと 53 行）
@@ -178,8 +178,8 @@ def test_draft_edit_protection_regenerate_confirm_and_copy(app):
     assert "【宛先" in v0 and "江東区周辺" in v0 and "土曜日" in v0 and "積み込みを希望する日時" in v0 and "お受けできるかどうかとお見積りをお送りします" in v0
     assert "社内の根拠" in T(page, "#neg-internal") or page.js("!!document.querySelector('#neg-internal')")
     page.js("document.querySelector('#neg-internal').open = true")
-    assert "5 本中 空車 5 本" in T(page, "#neg-internal") and "6,931.9 km" in T(page, "#neg-internal")  # 2026-11-07 見本の鹿児島化（文言の直し 2026-11-07 で「便」を「本」に統一）
-    assert "5 便中" not in v0 and "5 本中" not in v0 and page.js("!document.querySelector('#neg-text').closest('#neg-internal')")
+    assert "5 便中 空車 5 便" in T(page, "#neg-internal") and "6,931.9 km" in T(page, "#neg-internal")  # 2026-11-07 見本の鹿児島化（文言の直し 2026-11-07 で「便」を「本」に統一）
+    assert "5 便中" not in v0 and "5 便中" not in v0 and page.js("!document.querySelector('#neg-text').closest('#neg-internal')")
     # 手で直す
     edited = v0.replace("【宛先（会社名・ご担当者名）】", "山田商事 ご担当者") + "\n追記: 手で書いた一行"
     setv(page, "#neg-text", edited)
@@ -294,11 +294,11 @@ def test_csv_import_flow_failure_and_no_empty(app, tmp_path):
     page.wait(lambda: page.js("!!document.querySelector('#neg-result')"), 20, "結果")
     assert "自社のファイル" in T(page, "#neg-head") and "架空のサンプル" not in T(page, "#neg-head")
     base = T(page, "#neg-base")
-    assert "53 本" in base and "45 本" in base, base  # 文言の直し 2026-11-07
+    assert "53 便" in base and "45 便" in base, base  # 文言の直し 2026-11-07
     page.js("document.querySelector('#neg-more').open = true")  # 数え方・距離・注意は閉じた「詳しく」に入れた（SPEC §45）
     res = T(page, "#neg-result")
     assert "5 / 5 便が空車" in res and "6,931.9 km" in res and "15 / 40 便が空車" in res and "自社" not in T(page, "#neg-basis") + "x"
-    assert "32 本" in T(page, "#neg-basis")  # 2026-11-07 見本の鹿児島化
+    assert "32 便" in T(page, "#neg-basis")  # 2026-11-07 見本の鹿児島化
     # 空車が 1 件も確認できない自社のファイル（（空）の印を消した配車表だけ）: 提案の作成は無効
     txt = (EXAMPLES / "haisha_2026-10.csv").read_text(encoding="utf-8").replace("（空）", "")
     nf = tmp_path / "haisha_noempty.csv"

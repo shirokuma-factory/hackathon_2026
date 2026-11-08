@@ -53,6 +53,9 @@ _HEADER_ALIASES = {
     "荷役作業の終了日時": "end", "荷役終了日時": "end", "荷役作業終了日時": "end",
     "出発日時": "depart", "出発の日時": "depart", "荷役作業等の内容": "work_content", "荷役作業の内容": "work_content",
     "車両登録番号": "vehicle_no", "自動車登録番号": "vehicle_no", "登録番号": "vehicle_no",
+    # 2026-11-08 の最終評価に合わせて: Excel で自然に付ける見出し（JS 側と同じ表）
+    "着いた時刻": "arrive", "着いた": "arrive", "着いた時間": "arrive", "指定の時刻": "appointed", "指定の時間": "appointed",
+    "荷主の都合": "shipper_fault", "荷主の都合か": "shipper_fault", "荷主の都合で待ったか": "shipper_fault",
     "荷主都合": "shipper_fault", "荷主都合か": "shipper_fault", "荷主都合の有無": "shipper_fault", "荷主起因": "shipper_fault",
     # 読まない列（見出しとしては知っている。名前の無い列と同じく、黙って読み飛ばす）
     "乗務員氏名": "_ignore", "運転者氏名": "_ignore", "乗務員名": "_ignore", "運転者名": "_ignore", "氏名": "_ignore",

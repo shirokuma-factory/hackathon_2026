@@ -165,7 +165,7 @@ const WaitingMap = (() => {
     const hs = res.hotspots.filter((h) => (h.place) === M.sel);
     const e = M.pts.find((p) => p.place === M.sel) || M.unplaced.find((p) => p.place === M.sel);
     const rows = hs.map((h) => `<tr><td data-l="相手">${esc(h.partner)}</td><td data-l="到着の時間帯">${esc(h.band)}</td><td class="num" data-l="回数">${h.count}</td><td class="num" data-l="平均の荷待ち">${h.avg_minutes} 分</td>
-      <td class="num" data-l="最長">${h.max_minutes} 分</td><td class="num" data-l="1 時間以上">${h.over_1h_count}</td><td class="num" data-l="荷待ちの計">${h.wait_minutes} 分</td><td class="w-small wm-c3">${SH.hotspotNotes(h, false).map((x) => `（${esc(x)}）`).join('')}</td></tr>`).join('');
+      <td class="num" data-l="最長">${h.max_minutes} 分</td><td class="num" data-l="1 時間以上">${h.over_1h_count}</td><td class="num" data-l="荷待ちの計">${h.wait_minutes} 分</td><td class="w-small wm-c3">${SH.hotspotNoteCell(h, esc)}</td></tr>`).join('');
     return `<div class="wm-detail" id="wm-detail"><b>${esc(M.sel)}</b><span class="w-small">　荷待ちの計 ${e ? hm(e.total) : '—'}（定期報告の数え方）、${e ? e.count : 0} 回</span>
       <div class="w-recw"><table class="w-par wm-card" id="wm-detail-tab"><thead><tr><th>契約の相手</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>荷待ちの計</th><th>注記</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
@@ -186,7 +186,7 @@ const WaitingMap = (() => {
     const total = res.rows.reduce((a, x) => a + x.wait_min, 0);
     const top = res.hotspots.filter((h) => h.wait_minutes > 0).slice(0, 5);
     const tb = top.map((h) => `<tr><td class="wm-c1">${esc(h.partner)}</td><td class="wm-c1">${esc(h.place)}</td><td class="wm-c1">${esc(h.band)}</td><td class="num" data-l="回数">${h.count}</td><td class="num" data-l="平均の荷待ち">${h.avg_minutes} 分</td>
-      <td class="num" data-l="最長">${h.max_minutes} 分</td><td class="num" data-l="1 時間以上">${h.over_1h_count}</td><td class="num" data-l="参考額（円）">${n0(h.amount)}</td><td class="w-small wm-c3">${SH.hotspotNotes(h, false).map((x) => `（${esc(x)}）`).join('')}</td></tr>`).join('');
+      <td class="num" data-l="最長">${h.max_minutes} 分</td><td class="num" data-l="1 時間以上">${h.over_1h_count}</td><td class="num" data-l="参考額（円）">${n0(h.amount)}</td><td class="w-small wm-c3">${SH.hotspotNoteCell(h, esc)}</td></tr>`).join('');
     const pm = res.by_place_month.map((m) => `<tr><td class="wm-c1">${esc(m.place)}</td><td class="wm-c1">${esc(SH.monthLabel(m.month))}</td><td class="num" data-l="回数">${m.count}</td><td class="num" data-l="平均（分）">${m.avg_minutes}</td><td class="num" data-l="1 時間以上">${m.over_1h_count}</td></tr>`).join('');
     return `<div class="w-sect" id="wm-hot"><div class="m-rh"><b>どこで・いつ待っているか</b><span class="m-rsub">荷待ちの合計が大きい上位 5 組。到着の時間帯は実際の到着で分けています</span></div>
       <p class="w-small wm-total">この期間の荷主等の都合の荷待ちは計 ${hm(total)}です。</p>

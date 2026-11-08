@@ -59,6 +59,15 @@ const WaitingShared = (() => {
     h.designated_count * 2 < h.count && h.avg_minutes >= 30 ? (doc ? '指定の到着時刻の無い到着を含みます' : '指定の到着時刻が無い到着が多い組です。相手に到着の時刻を決めてもらうか、到着を遅らせて待ちが減るかを確かめてください。') : '',
     h.shipper_handling_count > 0 ? '荷主側の荷役の時間を含む' : '',
     h.count < 3 ? '回数が少ない' : ''].filter(Boolean);
+  // 表のセルに入れる短い注記（2026-11-08 の最終評価 W-06）。長い文は title（ツールチップ）に出す
+  const hotspotNoteCell = (h, esc) => {
+    const long = hotspotNotes(h, false);
+    const short = [
+      h.designated_count * 2 < h.count && h.avg_minutes >= 30 ? '到着の指定なし' : '',
+      h.shipper_handling_count > 0 ? '荷主側の荷役を含む' : '',
+      h.count < 3 ? '回数が少ない' : ''].filter(Boolean);
+    return short.length ? `<span title="${esc(long.join(' '))}">${esc(short.join('・'))}</span>` : '';
+  };
   // 相手に渡す書面では、注記を括弧にせず、続く文にする
   const consultNotes = (h) => [
     h.designated_count * 2 < h.count && h.avg_minutes >= 30 ? '指定の到着時刻のない到着を含みます。' : '',
@@ -131,6 +140,9 @@ const WaitingShared = (() => {
       '荷役作業の終了日時': 'end', '荷役終了日時': 'end', '荷役作業終了日時': 'end',
       '出発日時': 'depart', '出発の日時': 'depart', '荷役作業等の内容': 'work_content', '荷役作業の内容': 'work_content',
       '車両登録番号': 'vehicle_no', '自動車登録番号': 'vehicle_no', '登録番号': 'vehicle_no',
+      // 2026-11-08 の最終評価に合わせて: Excel で自然に付ける見出し（着いた時刻・指定の時刻・荷主の都合）も読む
+      '着いた時刻': 'arrive', '着いた': 'arrive', '着いた時間': 'arrive', '指定の時刻': 'appointed', '指定の時間': 'appointed',
+      '荷主の都合': 'shipper_fault', '荷主の都合か': 'shipper_fault', '荷主の都合で待ったか': 'shipper_fault',
       '荷主都合': 'shipper_fault', '荷主都合か': 'shipper_fault', '荷主都合の有無': 'shipper_fault', '荷主起因': 'shipper_fault',
       // 読まない列（見出しとしては知っている。黙って読み飛ばす）
       '乗務員氏名': '_ignore', '運転者氏名': '_ignore', '乗務員名': '_ignore', '運転者名': '_ignore', '氏名': '_ignore',
@@ -1150,7 +1162,7 @@ const WaitingShared = (() => {
 
   return {
     rowKey, mergeRows, splitIdentical, shipperSummary, shipperActions, noticeTemplate, crossCheck, hourLabel, vehicleKey, REVERSE_MAX_MIN,
-    HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, parseMemoText, looseTableToTsv, MEMO_NO_PARTNER, PROVISIONAL_PARTNER, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
+    HEADER_ALIASES, headerKey, COLUMNS, parseDriverText, parseMemoText, looseTableToTsv, MEMO_NO_PARTNER, PROVISIONAL_PARTNER, ASK_PARTNER, EARLY_FROM_MIN, EARLY_UNTIL_MIN, DRIVER_LABEL, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, MAX_ROWS, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, hotspotNoteCell, consultLines, monthLabel, truncWarn, gmenBasis, exampleRows, EXAMPLE,
     BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE, CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, PM_PARTNER_SCREEN_NOTE,
   };
 })();

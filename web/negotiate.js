@@ -248,7 +248,7 @@ const Negotiate = (() => {
   function evLoadOf(a, tm) {
     if (!tm) return '';
     const er = emptyRowsOf(a.target), noTime = er.filter((r) => r.dt_basis !== 'dep').length;
-    return `${a.pair.fr_label}発・${a.target.weekday}曜の空車の便 ${er.length} 本（${(tm.split(' / ').find((x) => x.startsWith('出発')) || '').replace('出発の記録: ', '出発 ')}${noTime ? `。出発の時刻の記録が無い便 ${noTime} 本` : ''}）`;
+    return `${a.pair.fr_label}発・${a.target.weekday}曜の空車の便 ${er.length} 便（${(tm.split(' / ').find((x) => x.startsWith('出発')) || '').replace('出発の記録: ', '出発 ')}${noTime ? `。出発の時刻の記録が無い便 ${noTime} 便` : ''}）`;
   }
   const hm = (iso) => (iso && iso.length >= 16 ? iso.slice(11, 16).replace(/^0/, '') : null);
   // 時刻の記録は、空車の便だけで数える（実車で走った便の時刻を、空いている時刻として出さない）
@@ -314,8 +314,12 @@ const Negotiate = (() => {
 
   // CSV の入口に出す、必要な列の案内（畳んだ欄の中に隠さない）
   const csvGuideHtml = () => '<p class="neg-sub neg-csvguide">最低限ほしい列は、配車表なら「日付・車番・発地か着地」、デジタコなら「開始と終了の日時」か「日付と実車・空車の距離」です。Excel は「CSV として保存」します。文字コードは UTF-8 でも Shift_JIS でも読めます。</p>';
-  function entryHtml() {
+  function entryHtml(loaded) {
     const err = ctx.error ? `<p class="neg-err" role="alert">${esc(ctx.error)}</p>` : '';
+    // 2026-11-08 の最終評価に合わせて: 数字がもう出ているときは、データを選び直させず「空いた帰りを見る」から始める
+    if (loaded) return `<div class="neg-box"><p class="neg-sub">帰りが空いている曜日を調べ、荷主に空きを案内する文を作ります。送信はしません。</p>
+      <div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-sample" data-act="entry-sample">空いた帰りを見る</button>
+        <button type="button" class="btn-link" id="neg-entry-file" data-act="entry-file">自社の CSV に替える</button></div>${err}</div>`;
     return `<div class="neg-box"><h3>帰りの空車を、荷主に案内する文を作る</h3>
       <p class="neg-sub">帰りが空いている曜日を調べ、荷主に空きを案内する文を作ります。送信はしません。</p>
       <div class="neg-btns"><button type="button" class="btn-primary" id="neg-entry-sample" data-act="entry-sample">架空のサンプルで試す</button>
@@ -339,9 +343,9 @@ const Negotiate = (() => {
       <td class="num" data-l="距離 km">${r.km == null ? '不明' : n1(r.km)}<small>${SRC_JA[r.km_src_cat]}</small></td><td data-l="行き先">${r.dest_confirmed ? '確認済み' : '未確認'}</td></tr>`).join('');
     const wdRows = a.model.by_weekday.map((w) => `<tr><td>${w.weekday}</td><td class="num">${w.trips}</td><td class="num">${w.empty}</td><td class="num">${w.loaded}</td><td class="num">${w.unknown}</td><td class="num">${n1(w.empty_km)}${w.km_missing ? `（距離不明 ${w.km_missing} 便）` : ''}</td><td class="num">${w.basis.date}</td></tr>`).join('');
     return `<details class="neg-ev" id="neg-ev"><summary>どの便を数えたか見る</summary>${pre || ''}
-      <ul class="neg-ul" id="neg-ev-list"><li>帰りの便: ${a.model.candidates.trips} 本</li><li>行き先が分かった便: ${a.model.confirmed.trips} 本</li><li>うち空車: ${a.model.confirmed.empty} 本</li><li>時刻なし（日付で数えた）: ${a.model.basis.date + a.model.basis.none} 本</li><li>距離が分からない便: ${a.target.confirmed.km_missing || 0} 本</li></ul>
+      <ul class="neg-ul" id="neg-ev-list"><li>帰りの便: ${a.model.candidates.trips} 便</li><li>行き先が分かった便: ${a.model.confirmed.trips} 便</li><li>うち空車: ${a.model.confirmed.empty} 便</li><li>時刻なし（日付で数えた）: ${a.model.basis.date + a.model.basis.none} 便</li><li>距離が分からない便: ${a.target.confirmed.km_missing || 0} 便</li></ul>
       <div class="neg-tw scroll-x"><table class="neg-tbl"><caption>曜日別の帰りの便（行き先が分かった便）</caption><thead><tr><th>曜日</th><th>便数</th><th>空車</th><th>実車</th><th>不明</th><th>空車の km</th><th>時刻なしの便</th></tr></thead><tbody>${wdRows}</tbody></table></div>
-      <div class="neg-tw neg-cardable scroll-x"><table class="neg-tbl"><caption>帰りの便 ${a.model.candidates.trips} 本（色つき: 選んだ曜日）</caption><thead><tr><th>便</th><th>ファイルの行</th><th></th><th>出発日時</th><th>曜日</th><th>空車・実車</th><th>距離 km</th><th>行き先</th></tr></thead><tbody>${body}</tbody></table></div>
+      <div class="neg-tw neg-cardable scroll-x"><table class="neg-tbl"><caption>帰りの便 ${a.model.candidates.trips} 便（色つき: 選んだ曜日）</caption><thead><tr><th>便</th><th>ファイルの行</th><th></th><th>出発日時</th><th>曜日</th><th>空車・実車</th><th>距離 km</th><th>行き先</th></tr></thead><tbody>${body}</tbody></table></div>
       <div class="neg-tripbox" id="neg-tripbox" hidden></div></details>`;
   }
 
@@ -356,17 +360,17 @@ const Negotiate = (() => {
       ? ''
       : `<div class="neg-row neg-sel"><span class="neg-lab">${t.weekday}曜の帰り便</span>${bar(t.confirmed.empty, t.confirmed.trips)}<b class="neg-val">${t.confirmed.empty} / ${t.confirmed.trips} 便が空車</b></div>
          <div class="neg-row"><span class="neg-lab">ほかの曜日</span>${bar(o.empty, o.judged)}<b class="neg-val">${o.empty} / ${o.judged} 便が空車</b></div>`;
-    const basisNote = k.trips ? `行き先が分かった ${k.trips} 本のうち ${m.basis.date + m.basis.none} 本は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
+    const basisNote = k.trips ? `行き先が分かった ${k.trips} 便のうち ${m.basis.date + m.basis.none} 便は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
     const warn = noEmpty
-      ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もないため、' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がないため、`}案内文は作れません。空車の記録がある曜日を選び直すか、実車か空車か分からない帰りの便があるときは、「確認」の欄で空車か実車かを決めてください（決めると数え直します）。それでも空車が出ないときは、配車表の空車の印の列を確かめてください。</p>` : '';
+      ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 便もないため、' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がないため、`}案内文は作れません。別の曜日を選ぶか、「確認」の欄で空車か実車かを決めてください。それでも出ないときは、配車表に空車の印を入れてください。</p>` : '';
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。</p>` : '';
     return `<div class="neg-box" id="neg-result"><h3>曜日ごとの帰りの空車</h3>
       <div class="neg-pick">${pairSel}${wdSel}</div>
-      <p class="neg-base" id="neg-base">帰りの便 <b>${c.trips} 本</b>のうち、行き先が分かった <b>${k.trips} 本</b>（空車 ${k.empty}・実車 ${k.loaded}）を数えています。</p>
+      <p class="neg-base" id="neg-base">帰りの便 <b>${c.trips} 便</b>のうち、行き先が分かった <b>${k.trips} 便</b>（空車 ${k.empty}・実車 ${k.loaded}）を数えています。</p>
       ${lines}<p class="neg-note">空車か実車か分かった便で割っています。</p>
       ${warn}
       <details class="neg-more" id="neg-more"><summary>数え方</summary>
-        <ul class="neg-ul"><li>ほかの曜日で空車か実車か分からない便: ${o.unknown} 本</li><li id="neg-basis">時刻なし（日付で数えた）: ${m.basis.date + m.basis.none} 本</li><li>同じ行を 1 本にした: ${m.duplicates_dropped || 0} 件</li><li>${t.weekday}曜の空車の距離: ${n1(t.confirmed.empty_km)} km</li><li>過去の記録です。今後は未定</li></ul></details>
+        <ul class="neg-ul"><li>ほかの曜日で空車か実車か分からない便: ${o.unknown} 便</li><li id="neg-basis">時刻なし（日付で数えた）: ${m.basis.date + m.basis.none} 便</li><li>同じ行を 1 便にした: ${m.duplicates_dropped || 0} 件</li><li>${t.weekday}曜の空車の距離: ${n1(t.confirmed.empty_km)} km</li><li>過去の記録です。今後は未定</li></ul></details>
       ${evidenceHtml(a)}
       <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-cond" data-act="go-cond" ${noEmpty ? 'disabled aria-disabled="true"' : ''}>案内する荷主と条件を選ぶ</button></div></div>`;
   }
@@ -405,16 +409,16 @@ const Negotiate = (() => {
     const bar = (e, n) => `<span class="neg-bar"><i style="width:${n ? Math.round((e / n) * 100) : 0}%"></i></span>`;
     const lines = t.wd == null ? '' : `<div class="neg-row neg-sel"><span class="neg-lab">${t.weekday}曜</span>${bar(t.confirmed.empty, t.confirmed.trips)}<b class="neg-val">${t.confirmed.empty} / ${t.confirmed.trips} 便が空車</b></div>
       <div class="neg-row"><span class="neg-lab">ほかの曜日</span>${bar(o.empty, o.judged)}<b class="neg-val">${o.empty} / ${o.judged} 便が空車</b></div>`;
-    const basisNote = k.trips ? `行き先が分かった ${k.trips} 本のうち ${m.basis.date + m.basis.none} 本は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
+    const basisNote = k.trips ? `行き先が分かった ${k.trips} 便のうち ${m.basis.date + m.basis.none} 便は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。</p>` : '';
-    const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もないため、' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がないため、`}案内文は作れません。空車の記録がある曜日を選び直すか、実車か空車か分からない帰りの便があるときは、「確認」の欄で空車か実車かを決めてください（決めると数え直します）。それでも空車が出ないときは、配車表の空車の印の列を確かめてください。</p>` : '';
-    const pre = `<p class="neg-base" id="neg-base">帰りの便 <b>${c.trips} 本</b>（空車 ${c.empty}・実車 ${c.loaded}・不明 ${c.unknown}）のうち、行き先が分かった便は <b>${k.trips} 本</b>（空車 ${k.empty}・実車 ${k.loaded}）です。残り ${u.trips} 本は行き先と積荷が分からないので、${esc(a.pair.to_label)}に着いた便には入れていません。</p>
-      <p class="neg-note">ほかの曜日で空車か実車か分からない ${o.unknown} 本は別に数えています。</p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}</p>${kmLine}
+    const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 便もないため、' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がないため、`}案内文は作れません。別の曜日を選ぶか、配車表に空車の印を入れてください。${ctx.toFull ? '空車か実車か分からない便は、「すべての項目を見る」の「確認」で決められます。' : ''}</p>` : '';
+    const pre = `<p class="neg-base" id="neg-base">帰りの便 <b>${c.trips} 便</b>（空車 ${c.empty}・実車 ${c.loaded}・不明 ${c.unknown}）のうち、行き先が分かった便は <b>${k.trips} 便</b>（空車 ${k.empty}・実車 ${k.loaded}）です。残り ${u.trips} 便は行き先と積荷が分からないので、${esc(a.pair.to_label)}に着いた便には入れていません。</p>
+      <p class="neg-note">ほかの曜日で空車か実車か分からない ${o.unknown} 便は別に数えています。</p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}</p>${kmLine}
       <p class="neg-note">${ctx.mode === 'import' ? '過去の記録の集計です。今後も同じ曜日に空く保証ではなく、今予約できる便でもありません。' : '架空の過去の運行記録です。今予約できる便や、今後も毎週空く保証ではありません。'}</p>`;
     return `<div class="neg-box" id="neg-result"><h3>空いた帰りを見る</h3>
       <div class="neg-pick">${pairSel}${wdSel}</div>${lines}
       <p class="neg-lg" id="neg-lg"><i class="lg-s"></i>実線＝荷物あり、<i class="lg-d"></i>点線＝空車</p>
-      <p class="neg-note" id="neg-denom">行き先まで分かった便だけ数えています（ほか ${u.trips} 本は除外）。</p>${warn}
+      <p class="neg-note" id="neg-denom">行き先まで分かった便だけ数えています（ほか ${u.trips} 便は除外）。</p>${warn}
       ${evidenceHtml(a, pre)}
       <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-cond" data-act="go-cond" ${noEmpty ? 'disabled aria-disabled="true"' : ''}>荷主に案内する文を作る</button>
         <button type="button" class="btn-sm" data-act="to-entry">別のデータを選ぶ</button></div></div>`;
@@ -509,7 +513,7 @@ const Negotiate = (() => {
   function internalHtml(a) {
     const t = a.target, k = t.confirmed;
     return `<details class="neg-int" id="neg-internal"><summary>社内用のメモ（コピーされません）</summary><ul class="neg-ul">
-      <li>${esc(a.pair.fr_label)} → ${esc(a.pair.to_label)}・${t.weekday}曜: 行き先が分かった帰りの便 ${k.trips} 本中 空車 ${k.empty} 本（空車の走行 ${n1(k.empty_km)} km）</li>
+      <li>${esc(a.pair.fr_label)} → ${esc(a.pair.to_label)}・${t.weekday}曜: 行き先が分かった帰りの便 ${k.trips} 便中 空車 ${k.empty} 便（空車の走行 ${n1(k.empty_km)} km）</li>
       <li>ほかの曜日: 空車・実車が判定できた ${t.others.judged} 便中 空車 ${t.others.empty} 便（不明 ${t.others.unknown} 便は別）</li>
       <li>${esc(timesNote(t) || '時刻の記録なし')}</li><li>これは過去の記録です。今後の空きや受注の保証ではありません</li></ul></details>`;
   }
@@ -681,7 +685,7 @@ const Negotiate = (() => {
     let html;
     if (ctx.guided) html = guidedHtml();
     else if (S.entry === null) html = !ctx.guided && ctx.data && ctx.mode !== 'import' && !S.picking
-      ? `<details class="neg-entry-d"><summary>荷主に案内する文を作る</summary>${entryHtml()}</details>`   // サンプルがもう読み込まれている全部を見る画面では、入口を閉じた欄に入れる（主ボタンを出さない）
+      ? `<details class="neg-entry-d"><summary>荷主に案内する文を作る</summary>${entryHtml(true)}</details>`   // サンプルがもう読み込まれている全部を見る画面では、入口を閉じた欄に入れる（主ボタンを出さない）
       : entryHtml();
     else if (S.entry === 'file' && ctx.mode !== 'import') html = fileWaitHtml();
     else if (!ctx.data) html = '';
@@ -741,7 +745,7 @@ const Negotiate = (() => {
     const lk = leaks(S.draft.text, toks);
     // 【宛先】【運送会社名】【担当者名】などの書き換え忘れが残っていれば、コピーの前に知らせる。もう一度押すとそのままコピーする
     const ph = [...new Set(S.draft.text.match(/【[^】]*】/g) || [])];
-    if (!lk.length && ph.length && S.phAsked !== S.draft.text) { S.phAsked = S.draft.text; S.copyMsg = `${ph.join('')}がまだ書き換わっていません。直してからコピーしてください（このままコピーするときは、もう一度押してください）`; render(); return; }
+    if (!lk.length && ph.length && S.phAsked !== S.draft.text) { S.phAsked = S.draft.text; S.copyMsg = `${ph.join('')}がまだ書き換わっていません。もう一度押すと、そのままコピーします`; render(); return; }
     if (lk.length) { S.copyMsg = `社内の情報（${lk.join('、')}）が入っているので、コピーしていません`; render(); return; }
     const text = S.draft.text;
     let ok = false;

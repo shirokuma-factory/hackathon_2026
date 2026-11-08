@@ -131,7 +131,7 @@ def test_g126_note_needs_average_30_min(path):
         got = _feed(page, rows)
         by = {r[1]: r for r in got["rows"]}
         assert NOTE_NO_DESIGNATED not in by["X"][8]
-        assert by["Y"][8] == f"（{NOTE_NO_DESIGNATED}）"
+        assert by["Y"][8] == "到着の指定なし"   # 2026-11-08 の最終評価に合わせて: 表のセルは短い語にし、長い文はツールチップへ
         assert NOTE_NO_DESIGNATED not in by["Z"][8]
 
 

@@ -659,7 +659,7 @@ function dt(key, summary, inner, def) {
 // 求荷求車に貼る文（空車の帰りの区間ごと）。own_month.js の boardTexts と同じ文
 function boardHtml(d) {
   const items = OwnMonth.boardTexts(d);
-  if (!items.length) return '<p class="hint">空車の帰りの区間がないので、掲示の文は作れません。下の「明日の空車の掲示文を作る」を使ってください。</p>';
+  if (!items.length) return '<p class="hint">空車の帰りの区間がないので、掲示の文は作れません。下の「次の空車の掲示文を作る」を使ってください。</p>';
   const rows = items.map((it, k) => dt('board' + it.key, `${esc(it.label)} <small>（この月の空車 ${it.n} 便）</small>`,
     `<div data-copyable><textarea readonly rows="12" aria-label="${esc(it.label)} の求荷求車に貼る文">${esc(it.text)}</textarea>
       <div class="bar"><button type="button" class="primary sm" data-act="copy-ta" data-what="${esc(it.label)}の掲示の文">コピー</button></div></div>`, k === 0)).join('');
@@ -783,7 +783,7 @@ function waitingHtml(d) {
 function outputsHtml(d) {
   return `<section class="card" id="sec-actions"><h2>貼る文と印刷</h2>
     <h3>求荷求車に貼る文</h3>${boardHtml(d)}
-    <h3>明日の空車の掲示文を作る</h3>${tomorrowHtml(d)}
+    <h3>次の空車の掲示文を作る</h3>${tomorrowHtml(d)}
     <h3>帰り荷 1 便の売上の目安</h3>${revenueHtml(d)}
     <h3>荷待ちの下書き</h3>${waitingHtml(d)}
     <h3>数字を文や CSV でコピーする</h3>

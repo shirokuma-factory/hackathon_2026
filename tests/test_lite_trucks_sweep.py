@@ -139,13 +139,13 @@ def test_h18_static_snapshot_is_one_clear_line():
           d.static = true; d.fetched_at = ago(5); S.api.refresh();
           o.flagStatic = { fresh: document.querySelector('#fresh').innerText, pollHidden: document.querySelector('#poll').hidden };
           return o; })()""")
-        assert "取得の写しです" in out["old"]["fresh"] and out["old"]["pollHidden"] and out["old"]["btnHidden"], out
+        assert "の写し（" in out["old"]["fresh"] and "リアルタイムではありません" in out["old"]["fresh"] and out["old"]["pollHidden"] and out["old"]["btnHidden"], out
         assert "遅れ" not in out["old"]["fresh"] and "今すぐ" not in out["old"]["fresh"] and "古いデータです" not in out["old"]["fresh"], out
         import re
-        assert re.search(r"20\d\d/\d\d/\d\d \d\d:\d\d 取得の写しです", out["old"]["fresh"]), out
-        assert "取得の写しです" not in out["live"]["fresh"] and "遅れ" not in out["live"]["fresh"] and not out["live"]["pollHidden"] and not out["live"]["btnHidden"], out
+        assert re.search(r"20\d\d/\d\d/\d\d \d\d:\d\d 取得", out["old"]["fresh"]), out
+        assert "の写し（" not in out["live"]["fresh"] and "遅れ" not in out["live"]["fresh"] and not out["live"]["pollHidden"] and not out["live"]["btnHidden"], out
         assert out["flag"]["pollHidden"] is False, out
-        assert out["flagStatic"]["pollHidden"] is True and "取得の写しです" in out["flagStatic"]["fresh"], out
+        assert out["flagStatic"]["pollHidden"] is True and "の写し（" in out["flagStatic"]["fresh"], out
         assert page.js("window.__errs.length") == 0
         _shot(page, "trucks_1920.png")
 

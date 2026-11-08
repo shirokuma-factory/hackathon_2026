@@ -227,7 +227,7 @@
       a = [64, 92]; b = [296, 92];
       svg.appendChild(el('line', { class: 'tv-schem-line', x1: a[0] + 36, y1: a[1], x2: b[0] - 40, y2: b[1] }));
       svg.appendChild(el('polygon', { class: 'tv-schem-head', points: `${b[0] - 40},${b[1] - 6} ${b[0] - 28},${b[1]} ${b[0] - 40},${b[1] + 6}` }));
-      svg.appendChild(el('text', { class: 'tv-schem-note', x: VW / 2, y: 78, 'text-anchor': 'middle' }, '出発と到着の位置だけを示しています'));
+      svg.appendChild(el('text', { class: 'tv-schem-note', x: VW / 2, y: 28, 'text-anchor': 'middle' }, '出発と到着の位置だけを示しています'));
     }
     const near = Math.abs(a[0] - b[0]) < 110;
     svg.appendChild(warehouse(a[0], a[1], 'origin')); svg.appendChild(warehouse(b[0], b[1], 'dest'));

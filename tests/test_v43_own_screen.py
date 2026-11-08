@@ -152,7 +152,7 @@ def test_tomorrow_form_makes_a_dated_single_trip_text(app, tmp_path):
     _import(page, [_write(tmp_path, "haisha_far.csv", FAR_HAISHA)])
     page.js("Own.setTab('insight')")
     assert page.js("!!document.querySelector('#own-tmr')")
-    assert "明日の空車の掲示文を作る" in page.js("document.querySelector('#own-tmr').innerText")
+    assert "次の空車の掲示文を作る" in page.js("document.querySelector('#own-tmr').innerText")
     v = json.loads(page.js("""JSON.stringify({date: document.querySelector('#own-tmr-date').value, frm: document.querySelector('#own-tmr-frm').value, to: document.querySelector('#own-tmr-to').value,
       cls: document.querySelector('#own-tmr-cls').value, kg: document.querySelector('#own-tmr-kg').value, time: document.querySelector('#own-tmr-time').value})"""))
     assert v["date"] == page.js("OwnMonth.tomorrowIso()") and v["frm"] and v["to"] and v["frm"] != v["to"], v  # 初期値は明日の日付と、いちばん多い空車の帰りの区間
@@ -247,7 +247,9 @@ def test_own_files_never_mention_claude_and_say_what_stays_and_what_disappears(a
     _import(page, EX_FILES)
     page.js("Own.setTab('confirm')")
     body = page.js("document.querySelector('#own-body').innerText")
-    notes = page.js("document.querySelector('#own-notes').innerText")
+    # 2026-11-08 の最終評価に合わせて: 「CSV の中身は…」は閉じた「詳しく」の中に移ったので、textContent で確かめる
+    notes = page.js("document.querySelector('#own-notes').textContent")
+    body = page.js("document.querySelector('#own-body').textContent")
     assert "Claude" not in body and "Claude" not in notes, (body[:300], notes)
     page.js("Own.setTab('import')")
     imp = page.js("document.querySelector('#own-body').innerText")

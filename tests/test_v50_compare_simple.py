@@ -65,10 +65,10 @@ def test_chart_renames_cage_row_explains_it_and_offers_rail_and_air():
         far = h([_card("カゴ台車", 20000, note="1 本分（20,000 円）"), _card("貸切", 98000, sub="2t車")])
         assert "近い量です" not in far and "cc-near" not in far
         # 鉄道・船・飛行機: 額は出さず、選べる。値は内部の名前のまま
-        for lab in ("鉄道（コンテナ貨物）。金額は見積で確かめてください", "船（フェリー）。金額は見積で確かめてください", "飛行機（航空便）。金額は見積で確かめてください"):  # 文言の直し 2026-11-07
-            assert lab in html, lab
-        assert html.count("金額は見積で確かめてください。経路は地図に表示しています。") >= 3  # 文言の直し 2026-11-07
-        assert html.count("日数と額は見積で確認") >= 3
+        for lab in ("コンテナ貨物", "フェリー", "航空便"):  # 2026-11-08 の最終評価に合わせて: 行ごとの注は消し、名前の横に小さく添える
+            assert f"<small>{lab}</small>" in html, lab
+        assert "金額は見積で確かめてください。経路は地図に表示しています。" not in html  # 2026-11-08 の最終評価に合わせて: 上の「円・税抜…」と重なるので共通の 1 行も消した
+        assert html.count("額は見積で確認") >= 3 and html.count('data-l="日数">見積で確認') >= 3  # 2026-11-08 の最終評価に合わせて: 日数の欄は「見積で確認」1 語
         assert 'value="鉄道"' in html and 'value="飛行機"' in html and 'value="船"' in html
         assert not re.search(r"(?<![\d,])0円", html)   # 0 円と書かない
 

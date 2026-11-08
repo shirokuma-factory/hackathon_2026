@@ -180,7 +180,7 @@ def test_guided_steps_stay_within_budget(app, w):
     assert step_of(page) == 2
     res = T(page, "#neg-result")
     assert "5 / 5 便が空車" in res and "15 / 40 便が空車" in res and "金曜" in res and "ほかの曜日" in res
-    assert "ほか 8 本は除外" in T(page, "#neg-denom")   # 文言の直し 2026-11-07
+    assert "ほか 8 便は除外" in T(page, "#neg-denom")   # 文言の直し 2026-11-07
     assert page.js("document.querySelector('#neg-ev').open") is False and page.js("document.querySelector('#own-adv').open") is False
     assert "データ" in T(page, "#neg-head") and "架空のサンプル" in T(page, "#neg-head")  # 選んだあとも、どのデータかが見える
     m = measure(page); report(f"手順2 {w}", m)
@@ -219,7 +219,7 @@ def test_key_numbers_reachable_and_evidence_via_the_summary(app):
     page.js("document.querySelector('#neg-ev > summary').click()")
     time.sleep(0.2)
     opened = T(page, "#neg-ev")
-    assert "53 本" in opened and "45 本" in opened and "行き先と積荷が分からない" in opened and "32 本は出発時刻の記録がなく" in opened and "6,931.9 km" in opened   # 文言の直し 2026-11-07
+    assert "53 便" in opened and "45 便" in opened and "行き先と積荷が分からない" in opened and "32 便は出発時刻の記録がなく" in opened and "6,931.9 km" in opened   # 文言の直し 2026-11-07
     assert page.js("document.querySelectorAll('#neg-ev tbody tr').length") == 7 + 53 and page.js("document.querySelectorAll('#neg-ev tr.neg-hit').length") == 5
     assert "空車 20・実車 25・不明 8" in opened
     # 詳しく（取り込みの結果・全体の数字・費用）は右の欄の中の閉じた欄にある

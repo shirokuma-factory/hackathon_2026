@@ -318,7 +318,7 @@ def test_right_panel_puts_notes_under_details_and_explains_jargon(app):
     assert "13,500 kg" in right and "仮定" in right and "77.6%" in right and "辰巳" in right, right
     assert "区分は、200 km を超えた分を" in right
     # 用語: ファイルを落とす欄の UTF-8 / Shift_JIS に一言の説明がある
-    assert "文字コードは UTF-8 でも Shift_JIS でも読めます" in page.js("document.querySelector('#own-drop').innerText")
+    assert "文字コードは UTF-8 でも Shift_JIS でも読めます" in page.js("document.querySelector('#own-fmt').textContent")  # 2026-11-08 の最終評価に合わせて: 文字コードの説明は「読める CSV の形」（閉じた詳しく）へ移した
     _to_sample(page)
     # 組み込みのサンプルの OSRM にも一言の説明がある
     page.js("Own.setTab('import')")

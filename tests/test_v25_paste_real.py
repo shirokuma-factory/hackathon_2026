@@ -139,9 +139,11 @@ def test_g96_page_paste_in_headless_edge_has_zero_errors_and_shows_the_note():
           return {rows: document.querySelectorAll('#tbody tr').length, errs: document.querySelector('#errs').textContent,
                   note: document.querySelector('#paste-note').textContent, msg: document.querySelector('#paste-msg').textContent,
                   noteVisible: document.querySelector('#paste-note').getBoundingClientRect().height > 0,
+                  faultBox: (document.querySelector('#fault-box') || {textContent: ''}).textContent,
                   classes: sel('vehicle_class'), partners: [...document.querySelectorAll('#partners table.par:not(#hotspots):not(#placemonth) tbody tr td:first-child')].map((t) => t.textContent)};
         })()""")
-    assert got["rows"] == 6 and got["errs"] == "" and got["note"] == NOTE and got["noteVisible"]
+    # 2026-11-08 の最終評価に合わせて: 運送会社の画面では、この注意は上の帯（#fault-box）に 1 文で出し、左の欄では繰り返さない
+    assert got["rows"] == 6 and got["errs"] == "" and got["note"] == "" and "全部「はい」にしました" in got["faultBox"]
     assert "6 行を足しました" in got["msg"]  # 文言の直し 2026-11-07  # 貼り付けは表の後ろに足す（SPEC §42）
     assert got["classes"][0] == "4t車" and got["classes"][1] == "中型車"   # 選べる語に無い書き方も、入れた文字のまま表に出す
     assert sorted(got["partners"]) == ["A運輸", "B商事"]

@@ -121,6 +121,8 @@ details.defs ul { margin: 4px 0; padding-left: 18px; font-size: 12.5px; }
 }
 /* SPEC §46: 案内の入口（#g）、書面の協議に使う額、メモの読み取り結果 */
 .fold { margin: 8px 0; }
+details.fold-in { margin: 4px 0; font-size: 12.5px; }
+details.fold-in > summary { cursor: pointer; color: var(--muted); }
 body:not(.guided):not(.demo) details.fold > summary { display: none; }
 #result-d > summary { display: none; }   /* 結果は最初から開いたままにする（デザインの作り直し 2026-11-07） */
 body.demo #basis, body.demo #notes-fold { display: none; }
@@ -142,7 +144,7 @@ body.g-step #paste-d { order: -1; margin-top: 0; }
 body.g-step.no-rows #result { display: none; }
 body.g-step main { grid-template-columns: minmax(0, 1fr); max-width: 860px; margin: 0 auto; }
 body.guided header.top, body.guided .protect { max-width: 860px; margin-inline: auto; }
-body.g-choose header.top { max-width: 640px; }
+body.g-choose header.top { max-width: 1500px; }   /* 2026-11-08 W-07: ロゴと見出しと枠の左端をそろえる */
 details.doc-alt { margin: 6px 0; }
 #memo-read ul { margin: 4px 0; padding-left: 0; list-style: none; }
 #memo-read li { margin: 6px 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; }
@@ -174,6 +176,12 @@ main { display: grid; grid-template-columns: minmax(0, 720px) minmax(0, 1fr); ga
 @media (max-width: 1500px) { main { grid-template-columns: minmax(0, 1fr); } }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0; font-size: var(--fs-1); }
 .bar small { color: var(--muted); }
+.bar label.small { max-width: 100%; }
+header.top p.mode-now { margin: 2px 0 6px; }
+body.g-choose .mode-now { display: none; }
+body.shipper-mode header.top p.mode-now { padding: 6px 12px; border-left: 4px solid var(--accent); background: var(--hi); color: var(--text); border-radius: 0 var(--r-s) var(--r-s) 0; font-weight: 700; }
+#b-mode-top { border: 0; background: none; padding: 0 4px; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
+#crossfile { max-width: 100%; min-width: 0; }
 #bulk select { max-width: 100%; min-width: 0; }
 #bulk label { min-width: 0; max-width: 100%; }
 details { margin-top: 8px; }
@@ -321,6 +329,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 #wait-doc table.rec th.num { text-align: right; }
 #wait-doc table.rec td { padding: 6px 8px; background: none; border-bottom: 1px solid var(--paper-line); border-radius: 0; vertical-align: top; white-space: normal; overflow-wrap: anywhere; }
 #wait-doc table.rec td.nw { white-space: nowrap; }
+@media screen and (min-width: 601px) { #wait-doc table.rec:not(.rate) th, #wait-doc table.rec:not(.rate) td { padding-left: 4px; padding-right: 4px; font-size: 12px; } #wait-doc table.rec:not(.rate) td small { max-width: 8em; } }   /* 2026-11-08 の最終評価 W2-03: 参考額の列が右で切れない幅にする */
 #wait-doc table.rec td.num, #wait-doc table.rec th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #wait-doc table.rec tfoot td { font-weight: 700; border-top: 1px solid var(--paper-text); border-bottom: 1px solid var(--paper-text); }
 #wait-doc table.rec tfoot td.l-sum { text-align: right; }
@@ -369,7 +378,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   html, body { background: #fff; margin: 0; padding: 0; }
   header.top, .app-header, .protect, #selftest, .col-in, #partners, #ai-box, #draft-area > h2, #draft-area > .bar, #draft-area > .ask, aside#process, .scr-only { display: none !important; }
   main, .col-out, section.card, #draft-area, .wrap { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; width: auto; }
-  #wait-doc { border: 0; border-radius: 0; box-shadow: none; padding: 0; width: auto; max-width: none; min-height: 0; color: #000; background: #fff; font-size: 10pt; line-height: 1.6; }
+  #wait-doc { border: 0; border-radius: 0; box-shadow: none; padding: 0; width: auto; max-width: none; min-height: 0; color: #000; background: #fff; font-size: 10pt; line-height: 1.5; }
   #draft-area > .doc-hint { display: none !important; }
   #basis, #guide, #notes-fold { display: none !important; }
   section.card { box-shadow: none !important; }
@@ -408,6 +417,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 <div class="app-header page-head"><span class="wm"><i class="wm-mark" aria-hidden="true"></i>Backfull</span><span class="app-page">荷待ちの書面</span></div>
 <header class="top">
   <h1 id="h1">荷待ちの記録から、荷主に出す相談の書面を作る</h1>
+  <p class="mode-now" id="mode-now"><span id="mode-now-t"></span> <button type="button" id="b-mode-top"></button></p>
   <p id="g-bar" hidden><a href="index.html" id="g-home">最初の画面に戻る</a><a href="#g" id="g-again">最初から選ぶ</a><a href="#all" id="g-all">すべての欄を出す</a></p>
   <p id="g-lead" class="small" hidden></p>
   <p id="hdr-priv">ファイルを開くだけで使えます。記録は外に送りません。</p>
@@ -439,20 +449,24 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
         <label>年（月/日だけの日付に付ける年）<select id="year"></select></label>
         <button type="button" id="b-example">例を入れる</button>
         <button type="button" id="b-clear">表を空にする</button>
+      </div>
+      <p class="note" id="example-note" hidden>例の記録が入っています（架空の 2 社）。「表を空にする」を押してから、自分の記録を入れてください。</p>
+      <p class="note" id="undo-note" hidden><span id="undo-text"></span> <button type="button" id="b-undo">元に戻す</button></p>
+      <details class="fold-in" id="more-ops"><summary>ほかの一括操作</summary>
+      <div class="bar">
         <button type="button" id="b-csvin">CSV を読み込む</button>
         <button type="button" id="b-forget">保存した記録を消す</button>
         <input type="file" id="csvfile" accept=".csv,text/csv" hidden aria-label="書き出した CSV を選ぶ">
       </div>
-      <p class="note" id="example-note" hidden>例の記録が入っています（架空の 2 社）。「表を空にする」を押してから、自分の記録を入れてください。</p>
-      <p class="note" id="undo-note" hidden><span id="undo-text"></span> <button type="button" id="b-undo">元に戻す</button></p>
       <div class="bar" id="bulk">
         <label>相手<select id="bulk-partner" aria-label="まとめて変える相手"></select></label>
         <button type="button" id="b-fault-yes">この相手の行を全部「荷主等の都合: はい」にする</button>
         <button type="button" id="b-fault-no">この相手の行を全部「荷主等の都合: いいえ」にする</button>
         <button type="button" id="b-fill-partner">空いた相手の欄を上の行と同じにする</button>
         <button type="button" id="b-fill-class">空いた車種の欄を上の行と同じにする</button>
-        <small id="bulk-msg"></small>
       </div>
+      </details>
+      <small id="bulk-msg" aria-live="polite"></small>
       <p class="note" id="broken-note" hidden>保存した記録が読めませんでした（消していません）。このページで記録を入れ直すと、読めなかった保存の内容はこのブラウザの別の場所に移してから、新しい記録を保存します。</p>
       <p class="keep" id="keep">記録はこのブラウザの中にだけ保存されます。別の PC には移りません<span id="keep-msg"></span></p>
       <div class="tw"><table class="in" aria-label="荷待ち・荷役の記録の表"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
@@ -500,7 +514,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 /*__WAITING_CALC__*/
 const TARIFF = /*__TARIFF__*/null;
 const VECTORS = /*__VECTORS__*/null;
-const { HEADER_ALIASES, headerKey, COLUMNS, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, monthLabel, truncWarn, BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE,
+const { HEADER_ALIASES, headerKey, COLUMNS, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, hotspotNoteCell, monthLabel, truncWarn, BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE,
   CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, PM_PARTNER_SCREEN_NOTE, ASK_PARTNER, PROVISIONAL_PARTNER, MEMO_NO_PARTNER } = WaitingShared;
 const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Artifact 用の版（印刷と CSV の保存は使えないので、文と CSV をコピーする）
 
@@ -562,6 +576,7 @@ const fromReception = (name) => { const a = partnerRows(name).filter((r) => r.ea
 const earlyWord = (name) => (fromReception(name) ? '早い時刻の受付' : '早着の疑い');
 const earlyRule = (name) => (fromReception(name) ? EARLY_RULE_RECEPTION : EARLY_RULE);
 const DEFAULT_CLASS = '中型', DEFAULT_METHOD = '手積み';   // 車種・荷役の方法が空欄の行を計算する既定（画面に出して、まとめて選び直せる）
+const FAULT_DEFAULT_SHORT = '荷主の都合の欄が無いので、全部「はい」にしました。';
 const FAULT_DEFAULT_DOC = (n) => `貼り付けた記録に荷主等の都合の欄が無かったため、${n} 行すべてを荷主等の都合の待機（はい）として計算しています。`;
 const ASK_PARTNER_TEXT = '貼った荷主の名前を、運送を頼んできた会社として読みました。荷物の受け取り先と違うときは表で直してください。';
 const DEFAULT_FAULT_NOTE = '荷主の都合で待ったかの列が無いので、全部「はい」で計算しました。違う行は表で「いいえ」にしてください。';
@@ -709,10 +724,13 @@ function updateNotesSum() {
   if (!s || !f) return;
   const n = [...f.querySelectorAll('#paste-note span, #errs > div, #defaults-box > *, #ask-box > *')].filter((e) => e.textContent.trim()).length;
   const failed = f.querySelectorAll('#errs > div').length > 0 || [...f.querySelectorAll('#paste-note span')].some((e) => /読めません|読めなかった|読まなかった|入れていません/.test(e.textContent));
+  f.hidden = !n;   // 何も無いときは、中身の無い折りたたみを出さない
   s.textContent = n ? `${failed ? '読めなかった所' : '読み取りの注意'}（${n} 件）` : '読めなかった所はありません';
   if (document.body.classList.contains('g-step') && S.gTouched && n) f.open = true;
 }
-const askHtml = () => (S.askPartner ? `<div class="note" id="ask-partner">${esc(ASK_PARTNER_TEXT)} <button type="button" id="b-ask-ok">この相手のままにする</button></div>` : '');
+// 確認の帯がメールの上に出るとき（運送会社の画面で荷主がいるとき）は、押すボタンもその帯の中に置く。左の欄には文だけ残す（2026-11-08 の最終評価 W2-08）
+const askInDoc = () => S.mode !== 'shipper' && !!(S.res && S.res.by_partner && S.res.by_partner.length);
+const askHtml = () => (S.askPartner ? `<div class="note" id="ask-partner">${esc(ASK_PARTNER_TEXT)}${askInDoc() ? '' : ' <button type="button" id="b-ask-ok">この相手のままにする</button>'}</div>` : '');
 // 空欄の車種（荷役の方法）をまとめて埋める。対象は、いま既定で計算している行（空欄のままの行）だけ
 function bulkFillDefault(key, val) {
   if (!val) return;
@@ -737,7 +755,7 @@ function errsHtml() {
   if (S.err) return `<div class="errs">${esc(S.err)}</div>`;
   const r = S.res;
   if (!r) return '';
-  const carrierOnly = (m) => S.mode === 'shipper' && m.includes('荷役をした人が分からない');   // 運送会社の書面向けの断り（SPEC §46）
+  const carrierOnly = (m) => m.includes('荷役をした人が分からない');   // 運送会社の画面では上の帯に同じ断りがあるので左の欄では繰り返さない。荷主の画面には出さない（SPEC §46、2026-11-08 の最終評価 W2-06）
   // 行ごとの注記は、同じ文を 1 つにまとめる。4 行以上ある文は「N 行」と書いた 1 行にして、行の一覧は開いて見る（受付記録を貼ると 50 行の同じ文が並ぶため）
   const groups = new Map();
   for (const x of r.rows) {
@@ -795,12 +813,12 @@ const handlerUnknown = (p) => unknownHandlerCount(p) > 0 && !partnerRows(p.partn
 function faultDefaultHtml() {
   const n = S.res ? faultDefRows(S.res.rows).length : 0;
   if (!n || S.mode === 'shipper') return '';
-  return `<div class="note" id="fault-box"><b>${esc(FAULT_DEFAULT_DOC(n))}</b> メールには「記録のすべての待ちを数えています」と書いています。荷主等の都合でない待ち（渋滞など）の行は、表で「いいえ」にすると、数字とメールに反映されます。</div>`;
+  return `<div class="note" id="fault-box"><b>${esc(FAULT_DEFAULT_SHORT)}</b> <details class="fold-in"><summary>くわしく</summary>${esc(FAULT_DEFAULT_DOC(n))} メールには「記録のすべての待ちを数えています」と書いています。荷主等の都合でない待ち（渋滞など）の行は、表で「いいえ」にすると、数字とメールに反映されます。</details></div>`;
 }
 function handlerUnknownHtml() {
   const n = S.res ? S.res.rows.filter((r) => r.handler === UNKNOWN_HANDLER).length : 0;
   if (!n || S.mode === 'shipper') return '';
-  return `<div class="note" id="handler-box"><b>荷役をした人が分からない ${n} 行は、荷役の時間を数えていません。この行の積込料・取卸料は不明です（0 円として扱っていません）。</b> メールには運転者の荷役の合計を書いていません。
+  return `<div class="note" id="handler-box"><b>荷役をした人が分からない ${n} 行は、荷役を数えていません。</b> <details class="fold-in"><summary>くわしく</summary>この行の積込料・取卸料は不明です（0 円として扱っていません）。メールには運転者の荷役の合計を書いていません。</details>
     <label>荷役をした人<select id="bulk-handler" aria-label="荷役をした人をまとめて入れる"><option value="運転者">運転者</option><option value="荷主側">荷主側</option></select></label>
     <button type="button" id="b-handler-fill">荷役をした人をまとめて入れる</button></div>`;
 }
@@ -895,9 +913,15 @@ const consultSpots = (name) => reportSpots(name).filter((h) => h.wait_minutes > 
 const consultNote = (name) => (consultSpots(name).some((h) => h.designated_count * 2 < h.count && h.avg_minutes >= 30) ? '上の時間帯には、指定の到着時刻のない回が多く含まれます。' : '');
 function consultSentences(name) {
   return consultSpots(name).map((h) =>
-    `${placeLead(h, allPlaceless(name))}${h.band}に到着した${h.count}回の荷待ち（到着から荷役開始まで）が、平均${h.avg_minutes}分、最長${h.max_minutes}分でした。` +
+    `${placeLead(h, allPlaceless(name))}${h.band}に到着した${h.count}回の荷待ち（到着から荷役開始まで）が、平均${h.avg_minutes}分、最長${h.max_minutes}分でした。${spotBasis(name)}` +
     (h.count < 3 ? '回数が少ないため、参考としてご覧ください。' : ''));
 }
+// 平均・最長の数え方。report_wait_min は、到着か指定の時刻の遅い方から荷役開始まで。荷主等の都合かどうかに関わらず、全部の回を数える（受付の時刻は使わない）
+// 2026-11-08 の最終評価に合わせて、実際の数え方をそのまま書く
+const spotBasis = (name) => {
+  const rs = partnerRows(name), a = rs.some((r) => r.appointed), f = rs.some((r) => !r.shipper_fault);
+  return (a ? '指定の到着時刻がある回は、その時刻から数えています。' : '') + (f ? '荷主等の都合によらない回も含めた、全部の回の数字です。' : '');
+};
 const topSpot = (name) => { const h = reportSpots(name).find((x) => x.wait_minutes > 0); return h && h.count >= 3 && h.avg_minutes >= 30 ? h : null; };
 
 // 記録の表。HTML もコピーする文も、この形（列の見出し・行・注記・合計）から作る
@@ -919,7 +943,7 @@ function recModel(p) {
     const arriveNotes = [r.early_arrival === 'assumed' && r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）の回です。' : '',
       r.early_arrival === 'designated' ? `指定の到着時刻（${r.appointed}）より前に到着しています。` : ''].filter(Boolean);
     const waitNotes = [r.handler === '荷主側' && r.wait_min > 0 && r.end ? '貴社側で荷役をしていただいた時間も、待ち時間に含めています。' : '',
-      r.post_wait_min > 0 ? `荷役のあとの待ち${r.post_wait_min}分も、待ち時間に含めています。` : '', r.wait_base_min > 0 ? `指定の到着時刻（${r.appointed}）から数えた時間です。` : '', r.shipper_fault ? '' : '荷主等の都合によらない待ちとして記録しています。'].filter(Boolean);
+      r.post_wait_min > 0 ? `荷役のあとの待ち${r.post_wait_min}分も、待ち時間に含めています。` : '', r.wait_base_min > 0 && r.reception_wait_min === undefined ? `指定の到着時刻（${r.appointed}）から数えた時間です。` : '', r.shipper_fault ? '' : '荷主等の都合によらない待ちとして記録しています。'].filter(Boolean);
     const sideNote = r.side_work ? [`${r.side_work}${r.side_min ? `（${r.side_min}分）` : ''}の作業も行いましたが、参考額には含めていません。`] : [];
     const cells = [{ t: jdate(r.date, !oneYear), cls: 'nw' }];
     if (hasVeh) cells.push({ t: dash(r.vehicle_no), cls: 'nw' });
@@ -967,7 +991,7 @@ function mailModel(p) {
   const paras = [
     `荷待ちの時間についてご相談したく、ご連絡いたしました。${period}${p.date_from === p.date_to ? 'に' : 'の間に'}ご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。${waitFromJa(p)}から荷役が始まるまで${shipperHandled(p) ? '（貴社側で荷役をしていただいた回は、荷役が終わるまで）' : ''}にお待ちした時間は、合計で${hmj(wait)}でした${basisJa}。` +
       (over1h > 0 ? `そのうち、1時間以上お待ちした回が${over1h}回ありました。` : ''),
-    (spot ? `とくに${noPlace(spot.place) ? '' : `${placeJa(spot.place)}では、`}${spot.band}に到着した${spot.count}回の待ち時間（到着から荷役開始まで）が、平均${spot.avg_minutes}分、最長${spot.max_minutes}分でした。` : '') +
+    (spot ? `とくに${noPlace(spot.place) ? '' : `${placeJa(spot.place)}では、`}${spot.band}に到着した${spot.count}回の待ち時間（到着から荷役開始まで）が、平均${spot.avg_minutes}分、最長${spot.max_minutes}分でした。${spotBasis(p.partner)}` : '') +
       'ドライバーの拘束時間には荷待ちの時間も含まれます。2024年4月から時間外労働の上限規制が始まり、拘束時間の基準（改善基準告示）も改正されたため、荷待ちが長いと、その日のほかの運行にも影響が出ます。',
     '荷待ちを減らす方法を、貴社のご事情をうかがいながら、一緒に考えさせていただければと思っております。一度、短いお打ち合わせのお時間をいただけないでしょうか。到着時刻の調整や受付の予約、荷役の分担などについてご相談できればと考えております。',
   ];
@@ -1187,11 +1211,11 @@ function heatHtml(p) {
   for (let hr = 0; hr <= 23; hr++) { const v = by[hr] || 0; cells.push(`<span class="${v ? '' : 'z'}" style="--v:${(0.3 + 0.7 * v / max).toFixed(2)};--h:${v ? Math.max(8, Math.round(v / max * 100)) : 0}%" title="${hr} 時台に着いた回の待ち ${v} 分"></span>`); axis.push(`<span>${hr % 3 === 0 ? hr : ''}</span>`); }
   return `<div class="heat-card" id="heat"><h3>何時に着いた回で待っているか<span class="small">　色が濃く高いほど待ち時間の合計が長い</span></h3><div class="heat" role="img" aria-label="到着の時間帯ごとの待ち時間の合計">${cells.join('')}</div><div class="heat-ax" aria-hidden="true">${axis.join('')}</div><div class="heat-legend" aria-hidden="true"><span>到着の時刻（時）</span><span class="lg"><span>少ない</span><i class="heat-scale"></i><span>多い（最大 ${max} 分）</span></span></div></div>`;
 }
-const HOT_DEF = '平均の荷待ち・最長は、到着から荷役開始までの分です（指定の到着時刻があって早く着いた回は、その時刻から）。荷主に送るメールと同じ数え方です。';
+const HOT_DEF = '平均の荷待ち・最長は、到着から荷役開始までの分です（指定の到着時刻があって早く着いた回は、その時刻から）。受付の時刻は使わず、荷主等の都合によらない回も含めた全部の回を数えています。メール本文の「とくに〜では」と同じ数え方です。';
 const hotspotsHtml = (r) => {
   const total = r.rows.reduce((a, x) => a + (x.reception_wait_min !== undefined ? x.reception_wait_min : x.wait_min), 0);
   const top = reportHotspots().filter((h) => h.wait_minutes > 0).slice(0, 5);   // メールと同じ数え方（到着か指定の時刻から荷役開始まで）。荷主側の荷役の時間は入らない
-  const tb = top.map((h) => `<tr><td class="c1">${esc(h.partner)}</td><td class="c1">${esc(h.place)}</td><td class="c1">${esc(h.band)}</td><td class="num" data-l="回数">${h.count}</td><td class="num" data-l="平均の荷待ち">${h.avg_minutes} 分</td><td class="num" data-l="最長">${h.max_minutes} 分</td><td class="num" data-l="1 時間以上">${h.over_1h_count}</td><td class="num" data-l="参考額（円）">${n0(h.amount)}</td><td class="small c3">${hotspotNotes({ ...h, shipper_handling_count: 0 }, false).map((x) => `（${esc(x)}）`).join('')}</td></tr>`).join('');
+  const tb = top.map((h) => `<tr><td class="c1">${esc(h.partner)}</td><td class="c1">${esc(h.place)}</td><td class="c1">${esc(h.band)}</td><td class="num" data-l="回数">${h.count}</td><td class="num" data-l="平均の荷待ち">${h.avg_minutes} 分</td><td class="num" data-l="最長">${h.max_minutes} 分</td><td class="num" data-l="1 時間以上">${h.over_1h_count}</td><td class="num" data-l="参考額（円）">${n0(h.amount)}</td><td class="small c3">${hotspotNoteCell({ ...h, shipper_handling_count: 0 }, esc)}</td></tr>`).join('');
   const pm = r.by_place_month.map((m) => `<tr><td class="c1">${esc(m.place)}</td><td class="c1">${esc(monthLabel(m.month))}</td><td class="num" data-l="回数">${m.count}</td><td class="num" data-l="平均（分）">${m.avg_minutes}</td><td class="num" data-l="1 時間以上">${m.over_1h_count}</td></tr>`).join('');
   // SPEC §29.2: 荷主等の都合が はい の行で report_wait_min が 30 分未満の行が 0 件で、はい の行が 5 行以上のとき、強めの表示
   const trunc = truncWarn(r.rows);
@@ -1234,7 +1258,7 @@ function renderResult() {
       <li><b>待ちと荷役で 2 時間以上</b>: 待機と運転者の荷役の合計が 2 時間以上だった回数です。</li></ul></details>
     ${hotspotsHtml(r)}`;
   $('#draft-area').innerHTML = `<h2>荷主に出す相談のメール（下書き）<img class="ill ill-64" src="@@ILL:document:128@@" alt="" width="64" height="64"></h2>
-    ${S.askPartner ? `<div class="errs ask" id="ask-doc"><b>相手の会社名を確かめてください。</b> 合っていれば「この相手のままにする」を押します。</div>` : ''}
+    ${S.askPartner ? `<div class="errs ask" id="ask-doc"><b>相手の会社名を確かめてください。</b> 合っていれば押します。 <button type="button" id="b-ask-ok">この相手のままにする</button></div>` : ''}
     ${mainWait(p) <= 0 ? '<p class="note" id="no-wait-note">荷主の都合で待った時間がないので、相談のメールは作りません。</p>' : `${docBar()}
     ${earlyN ? `<p class="note" id="early-note">社内向けの注意: 指定の到着時刻がなく、早く着いた可能性のある回が ${earlyN} 回あります。この点はメールにも印刷する書面にも書いていません。${esc(earlySentence(p))}</p>` : ''}
     <p class="small doc-hint" id="doc-hint">メールの黄色の部分（会社名・担当者名・電話番号・メールアドレス）は、そのまま書き換えられます。書き換えた内容はコピーする文にも入ります。</p>
@@ -1256,6 +1280,8 @@ function setMode(mode, rerender, persist) {   // persist=false: 貼り付けの�
   if (!S.noStore && persist !== false) { try { localStorage.setItem(MODE_KEY, mode); } catch (e) { /* 使えなくても、このページを開いている間は切り替わる */ } }
   const b = $('#b-mode');
   if (b) { b.textContent = mode === 'shipper' ? '運送会社の画面に戻す' : '荷主の画面にする'; b.setAttribute('aria-pressed', mode === 'shipper' ? 'true' : 'false'); }
+  const mt = $('#mode-now-t'), mb = $('#b-mode-top');   // 見出しの下に、いまの画面と切り替えを常に出す（2026-11-08 の最終評価 W-03）
+  if (mt && mb) { mt.textContent = mode === 'shipper' ? '荷主の画面です。' : '運送会社の画面です。'; mb.textContent = mode === 'shipper' ? '運送会社の画面に戻す' : '荷主の画面にする'; }
   const n = $('#mode-note');
   if (n) {
     n.hidden = mode !== 'shipper' && !S.modeAuto;
@@ -1264,6 +1290,9 @@ function setMode(mode, rerender, persist) {   // persist=false: 貼り付けの�
       : (S.modeAuto ? '運送会社の表として読みました。運送会社の画面にしています。' : '');
   }
   document.body.classList.toggle('shipper-mode', mode === 'shipper');
+  // 荷主の画面では、運送会社あての見出しのままにしない（2026-11-08 の最終評価 W2-04）。入力を始める画面（#g=）は applyGuided が見出しを決める
+  const h1 = $('#h1');
+  if (h1 && !guidedState()) { if (!h1.dataset.orig) h1.dataset.orig = h1.textContent; h1.textContent = mode === 'shipper' ? '受付簿から、待ちの多い施設と時間帯を見る' : h1.dataset.orig; }
   if (rerender !== false) renderResult();
 }
 const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
@@ -1706,7 +1735,7 @@ function keepMsg(t) { const el = $('#keep-msg'); if (el) el.textContent = t ? `�
 // 黄色の欄（会社名など）や【】が空のまま残っているとき、1 回目は知らせるだけにして、続けるなら同じボタンをもう一度押してもらう
 const BLANK_RE = /（(?:会社名|担当者名|電話番号|メールアドレス|部署・担当者名|荷主の会社名|運送会社の担当者名|運送会社の名称|荷主の名称・担当者名|荷主の名称)）|【[^】\n]*】/g;
 function blankWarn(text, what) {
-  const left = [...new Set(String(text).match(BLANK_RE) || [])];
+  const left = [...new Set((String(text).match(BLANK_RE) || []).map((x) => (x === '（部署・担当者名）' ? '（担当者名）' : x)))];   // 署名の「部署・担当者名」は担当者名の欄と同じ値なので 1 つにする
   if (!left.length) { S.blankWarned = false; return false; }
   if (S.blankWarned === what) { S.blankWarned = false; return false; }
   S.blankWarned = what;
@@ -1767,13 +1796,20 @@ function pasteIn(choice) {
   else if (!pf.shipper_log && S.mode === 'shipper' && (pf.carrier_table || pf.memo_read)) { S.modeAuto = true; setMode('carrier', false); }
   $('#paste-msg').textContent = `${m.added} 行を足しました` + (m.merged ? `。同じ回の ${m.merged} 行は足さずに、空いた欄だけ埋めました${m.conflicts ? `（うち ${m.conflicts} 行は値が違うので、表の値を残しています）` : ''}` : '') +
     (keep.length ? `。これまでの記録 ${keep.length} 行は消えていません` : '') + (skipped ? `。同じ記録 ${skipped} 行は足していません` : '');
-  $('#paste-note').innerHTML = (faultDef ? [DEFAULT_FAULT_NOTE, ...pf.notes] : pf.notes).map((x) => `<span>${esc(x)}</span>`).join('<br>');
+  $('#paste-note').innerHTML = (faultDef && S.mode === 'shipper' ? [DEFAULT_FAULT_NOTE, ...pf.notes] : pf.notes).map((x) => `<span>${esc(x)}</span>`).join('<br>');
   const keyOf = (r) => WaitingShared.rowKey(r, S.year);
   S.memoRead = pf.memo_read ? pf.memo_read.map((x, k) => ({ ...x, i: keyOf(incoming[k]) ? S.rows.findIndex((r) => keyOf(r) === keyOf(incoming[k])) : -1 })) : null;
   S.gTouched = true;
   renderTable();
   $('#memo-read').innerHTML = memoReadHtml();
   doCalc();
+  excludedNote($('#paste-msg'));
+}
+
+// 計算から外れた行の数を、足した行数のあとに出す（2026-11-08 の最終評価 W-02）
+function excludedNote(el) {
+  const n = S.res ? new Set(S.res.errors.map((e) => e.row)).size : 0;
+  if (el && n) el.textContent += `。うち ${n} 行は読めないところがあり、計算から外しています（下の「読めなかった行」を見てください）`;
 }
 
 // CSV の行を表の後ろに足す。既にある行と全部の欄が同じ行があれば、足す前に聞く
@@ -1787,7 +1823,7 @@ function csvApply(inp, msgEl, choice) {
   S.rows = m.rows;
   if (!S.rows.length) S.rows = [blankRow(), blankRow(), blankRow()];
   msgEl.textContent = `CSV の ${m.added} 行を表の後ろに足しました` + (m.merged ? `。同じ行を ${m.merged} 行まとめました` : '') + (skipped ? `。同じ記録 ${skipped} 行は足していません` : '');
-  renderTable(); doCalc();
+  renderTable(); doCalc(); excludedNote(msgEl);
 }
 function csvIn(file) {
   const fr = new FileReader();
@@ -1933,7 +1969,7 @@ function init() {
       } else { disarmExample(); putExample(); }
     }
     else if (t.id === 'b-undo') undoRestore();
-    else if (t.id === 'b-mode') { S.modeAuto = false; setMode(S.mode === 'shipper' ? 'carrier' : 'shipper', true); }
+    else if (t.id === 'b-mode' || t.id === 'b-mode-top') { S.modeAuto = false; setMode(S.mode === 'shipper' ? 'carrier' : 'shipper', true); }
     else if (t.id === 'b-cross-ex') putCrossExample();
     else if (t.id === 'b-cross') { S.carrierText = $('#cross-ta').value; S.crossOn = true; renderResult(); }
     else if (t.id === 'b-copynotice') copyNotice();

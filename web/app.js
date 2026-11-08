@@ -683,7 +683,7 @@ function charterOnlyNote(cards) {
 function renderCards(cards) {
   const max = Math.max(0, ...cards.map((c) => c.amount || 0));
   const exNote = typeof Work !== 'undefined' && Work.isExample && Work.isExample() ? '<p class="cards-note ex-note" role="note"><b>例の荷物（架空）で計算しています。</b>自分の荷物に変えてください（左の「荷物」）。</p>' : '';
-  $('#cards').innerHTML = exNote + (typeof CompareChart !== 'undefined' ? CompareChart.html(cards, S.pickLabel, document.body.classList.contains('guided')) : '') + '<p class="cards-note">金額は税抜です。引き受けてもらえるかは見積で確かめてください。</p>' + charterOnlyNote(cards) + '<details class="cards-more"><summary>送り方ごとの金額の出どころ</summary>' + cards.map((c, n) => {
+  $('#cards').innerHTML = exNote + (typeof CompareChart !== 'undefined' ? CompareChart.html(cards, S.pickLabel, document.body.classList.contains('guided')) : '') + charterOnlyNote(cards) + '<details class="cards-more"><summary>送り方ごとの金額の出どころ</summary>' + cards.map((c, n) => {
     const amt = c.amount !== null && c.amount !== undefined
       ? `<div class="amt"><b class="num" data-to="${c.amount}">${fmt(c.amount)}</b><span>円（税抜${c.est ? '・試算' : ''}${c.sample ? '・架空の表の例' : ''}）</span>` +
         (c.low && c.high ? `<span class="range num">${fmt(c.low)}〜${fmt(c.high)} 円の幅</span>` : '') + '</div>' +
@@ -1500,7 +1500,7 @@ function setupMarketNow(noN) {
         const fl = V.Find.state, hasTrip = (r) => !fl.loaded || V.Find.hasReturn({ from: P[r.fi], to: P[r.ti] });
         if (!fl.loaded && !sync.loading && st.rows[0]) { sync.loading = true; V.Find.checkFit({ from: P[st.rows[0].fi], to: P[st.rows[0].ti] }).then(() => sync()); }
         const rec = fl.loaded ? st.rows.slice(0, 5).findIndex(hasTrip) : -1;
-        q('#mg-rows').innerHTML = st.rows.slice(0, 5).map((r, i) => `<li><button type="button" class="mg-row" data-k="${escapeHtml(r.k)}" aria-pressed="${r.k === sk}"><span class="mg-no num" aria-hidden="true">${i + 1}</span><span class="mg-pair">${escapeHtml(P[r.ti])} → ${escapeHtml(P[r.fi])}</span><span class="num mg-short">足りない荷 ${Math.round(r.short).toLocaleString('ja-JP')} t</span>${fl.loaded ? `<small class="mg-tag${i === rec ? ' rec' : ''}">${hasTrip(r) ? (i === rec ? 'おすすめ・例の便あり' : '例の便あり') : '例の便なし'}</small>` : ''}</button></li>`).join('');
+        q('#mg-rows').innerHTML = st.rows.slice(0, 5).map((r, i) => `<li><button type="button" class="mg-row" data-k="${escapeHtml(r.k)}" aria-pressed="${r.k === sk}"><span class="mg-no num" aria-hidden="true">${i + 1}</span><span class="mg-pair">${escapeHtml(P[r.ti])} → ${escapeHtml(P[r.fi])}</span><span class="num mg-short">足りない荷 ${Math.round(r.short).toLocaleString('ja-JP')} t</span>${fl.loaded ? `<small class="mg-tag${i === rec ? ' rec' : ''}">${hasTrip(r) ? (V.Find.fitState({ from: P[r.fi], to: P[r.ti] }) === false ? '例の便は埋まっています' : i === rec ? 'おすすめ・例の便あり' : '例の便あり') : '例の便なし'}</small>` : ''}</button></li>`).join('');
         const sr = st.rows.find((r) => r.k === sk), n0 = (v) => Math.round(v).toLocaleString('ja-JP');
         q('#mg-sel').textContent = sr ? `${P[sr.ti]}から${P[sr.fi]}へ帰る荷は ${n0(sr.back)} t で、行きの ${n0(sr.go)} t より少なくなっています。` : '上の一覧から 1 つ選んでください。';
       }
@@ -1511,12 +1511,12 @@ function setupMarketNow(noN) {
       if (has && fit === null) V.Find.checkFit(pn).then(() => sync());
       const noFit = has && fit === false;
       const noAnswer = has && (!V.Find.hasReturn(pn) || noFit);   // 選んだ区間の帰りの向きに合う架空の便が 1 つも無いときは、行き先が空の結果になるので主ボタンを出さない
-      if (noAnswer) { const sl = q('#mg-sel'); if (sl) sl.textContent += noFit ? ' この向きの例の便には、例の荷物が載りません。別の向きを選ぶか、ボタンで空きを探してください。' : ' この向きの例の便は、まだありません。別の向きを選ぶか、ボタンで空きを探してください。'; }
+      if (noAnswer) { const sl = q('#mg-sel'); if (sl) sl.textContent += noFit ? ' この向きの便は埋まっています。別の向きを選んでください。' : ' この向きの例の便は、まだありません。別の向きを選ぶか、ボタンで空きを探してください。'; }
       if (nx) { nx.hidden = !has; nx.disabled = !has; /* 区間を選ぶまでは、押せない主ボタンを出さない。例の便が無い区間でも、次の行き先として空きを探すを出す */ const t = has ? (noAnswer ? 'この向きで空きを探す' : 'この向きで帰り便を探す') : '向きを選ぶ'; if (nx.dataset.t !== t) { nx.dataset.t = t; nx.innerHTML = has ? `${t}<small class="mg-badge">架空のデモ</small>` : t; } }
     } catch (e) { /* 区間が読めていないとき */ }
     q('#m-now-cond').textContent = `${pressed('#m-mode')}／${(() => { const s = pressed('#m-scope'); return /（推定）$/.test(s) ? s.replace(/（推定）$/, 'ごと（推定）') : `${s}ごと`; })()}／上位 ${txt('#m-n-out')}／${txt('#m-km-out')}`;
     let r = null; try { r = V.Market.pairNames(); } catch (e) { r = null; }
-    q('#m-now-sel').textContent = r ? `選んだ向き: ${r.from} → ${r.to}` : '地図の矢印を押すと、その向きの数字がここに出ます。';
+    { const ns = q('#m-now-sel'); ns.textContent = r ? `選んだ向き: ${r.from} → ${r.to}` : ''; ns.hidden = !r; }   // 向きを選ぶまでは何も出さない（2026-11-08 の最終評価に合わせて）
     const pair = b.classList.contains('m-has-pair');
     if (pair && !hadPair && !ro) q('#m-rfold').click();   // 区間を選んだら、その説明が見えるように右の欄を開く
     hadPair = pair;

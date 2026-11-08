@@ -205,7 +205,7 @@ def test_driver_page_in_phone_width_makes_a_line_the_waiting_page_reads_directly
         page.js("document.querySelector('#b-paste').click()")
         page.wait(lambda: page.js("!!document.querySelector('#wait-doc table.rec')"), 30, "書面")
         got = page.js("""({rows: document.querySelectorAll('#tbody tr').length, errs: document.querySelector('#errs').textContent,
-                          ask: !!document.querySelector('#ask-box #b-ask-ok'), note: document.querySelector('#paste-note').textContent})""")
+                          ask: !!document.querySelector('#ask-doc #b-ask-ok'), note: document.querySelector('#paste-note').textContent})""")   # 2026-11-08 の最終評価に合わせて: 確認のボタンはメールの上の帯（#ask-doc）に置く
     assert got["rows"] == 2 and got["errs"] == "" and got["ask"] and "荷待ち記録" in got["note"]
 
 

@@ -744,6 +744,11 @@ def _num(v: Any) -> Decimal | None:
     return parse_number_text(v)
 
 
+# 事前計算の出発地から、これより遠い発地は代用しない（km）。FAR_NOTE_KM より遠い代用には「目安」と注記する
+FAR_ORIGIN_KM = 400
+FAR_NOTE_KM = 150
+
+
 def trip_road_km(trip: dict[str, Any]) -> tuple[Decimal, str | None]:
     """便の発地 → 着地の道路距離。荷を積む区間の距離は road_km を使う（SPEC §21.7）。"""
     return road_km(str(trip["origin_code"]), str(trip["dest_code"]))
@@ -760,7 +765,13 @@ def road_km(oc: str, dc: str) -> tuple[Decimal, str | None]:
             raise ValueError(f"発地 {oc} の位置が分かりません")
         a = pts[oc]
         used = min(geo.ORIGINS, key=lambda c: geo.haversine_km(a["lon"], a["lat"], pts[c]["lon"], pts[c]["lat"]))
+        gap = geo.haversine_km(a["lon"], a["lat"], pts[used]["lon"], pts[used]["lat"])
+        if gap > FAR_ORIGIN_KM:
+            # 2026-11-08 の最終評価に合わせて: 青森など遠い発地を宇都宮の表で代用すると別の区間の値になる。出さない
+            raise ValueError(f"{a['name']}は距離を事前計算した関東の出発地から約 {round(gap):,} km 離れているため、この便の参考額は出せません")
         note = f"距離は最寄りの出発地（{pts[used]['name']}）の値で代用"
+        if gap > FAR_NOTE_KM:
+            note += f"（{a['name']}から約 {round(gap):,} km 離れているため目安）"
         oc = used
     info = geo.drive_info(oc, dc)
     if info is None or info["no_route"] or info["ferry"] or info.get("km") is None:

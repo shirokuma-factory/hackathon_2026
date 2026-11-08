@@ -520,7 +520,9 @@
       else { c.textContent = (r.ratio >= 1.005 ? '+' : r.ratio <= 0.995 ? '−' : '±') + Math.abs((r.ratio - 1) * 100).toFixed(0) + '%'; c.className = 'c ' + (r.ratio >= 1.05 ? 'up' : r.ratio <= 0.95 ? 'dn' : ''); }
       el.classList.toggle('sel', r.pref === S.prefSel);
     });
-    $('#rank-hint').textContent = `${C.fmtHour(S.data.hours[Math.round(S.T)])}の 1 地点あたりの大型車（台/時）です。左の番号はこの時間の順位で、行は ${C.fmtHour(S.data.hours[S.rankSortedAt])} の順のまま動きません。「並べ替え」で今の時間の順に直せます。右端の列は${mode === 'week' ? '先週の同じ時刻との差' : '1 時間前との差'}です。行を指すと地図の県が光ります。`;
+    // 2026-11-08 の最終評価に合わせて: 順位の説明は 1 行にし、並べ替えの説明は「並べ替え」ボタンのツールチップへ移した
+    $('#rank-hint').textContent = `台/時。右端は${mode === 'week' ? '先週の同じ時刻' : '1 時間前'}との差。`;
+    $('#rank-sort').title = `左の番号は ${C.fmtHour(S.data.hours[Math.round(S.T)])} の順位です。行は ${C.fmtHour(S.data.hours[S.rankSortedAt])} の順のまま動きません。押すと今の時間の順に並べ直します。行を指すと地図の県が光ります。`;
   }
   function setPrefHover(name) { S.prefHover = name; for (const [k, el] of S.rankEls) el.classList.toggle('hl', k === name); S.dirty = true; }
   function selectPref(name) {
@@ -560,7 +562,7 @@
     document.querySelectorAll('.stage').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.stage === S.stage)));
     const fcMap = { api: 'all', fetch: 'observed', missing: 'missing', agg: 'agg', map: 'comparable' };
     S.focus = S.stage ? fcMap[S.stage] : null;
-    $('#stage-note').innerHTML = S.stage ? STAGE_NOTE[S.stage](S.pipe) : '各段をクリックすると、その段に関わる地点が地図で光ります。';
+    $('#stage-note').innerHTML = S.stage ? STAGE_NOTE[S.stage](S.pipe) : '各段を押すと、地図で光ります。';
     $('#stage-note').classList.toggle('idle', !S.stage);
     if (S.stage === 'api') startPulse(S.pts, [92, 200, 255], 26, 1800, false);
     else if (S.stage === 'missing') startPulse(S.pts.filter((p) => C.valueAt(p.series, S.T) == null), [255, 255, 255], 22, 1600, false);
@@ -657,7 +659,7 @@
     const st = $('#poll-st');
     if (stat) {
       /* 写し: 自動更新も「今すぐ確認」もしない。取得の時刻を 1 行で書く */
-      $('#fresh').innerHTML = `このページのデータは <span class="nw">${ymdhm(d.fetched_at)}</span> 取得の写しです。<br><span class="nw">観測は ${C.fmtHour(d.latest_hour_code)}</span>の分で、リアルタイムではありません。`;
+      $('#fresh').innerHTML = `<span class="nw">${C.fmtHour(d.latest_hour_code)}</span>の写し（<span class="nw">${ymdhm(d.fetched_at)} 取得</span>。リアルタイムではありません）`;   // 2026-11-08 の最終評価に合わせて短くした
       st.textContent = ''; st.className = 'st'; bar.style.width = '0';
       $('#poll').hidden = true; btn.hidden = true;
       return;

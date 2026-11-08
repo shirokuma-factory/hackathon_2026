@@ -77,7 +77,9 @@ a { color: var(--accent); }
 .k i.ring { border: 2px solid #c3cbd9; }
 .k i.flat { background: rgba(176, 188, 206, 0.45); border: 1px solid rgba(255,255,255,.35); }
 #legend .fb { margin-top: 5px; color: var(--warn); }
-#legend .toggle { display: none; }
+#legend .toggle { display: inline; border: 0; background: transparent; color: var(--accent); font-size: 11.5px; padding: 0 0 0 6px; cursor: pointer; } /* 2026-11-08 の最終評価に合わせて: 凡例の説明は広い画面でも「詳しく」の中へ */
+#legend .collapsible { display: none; }
+#legend.open .collapsible { display: block; }
 
 /* ---- 時間の操作 ---- */
 .dock { position: absolute; left: var(--gap); right: calc(var(--gap) * 2 + var(--side-w)); bottom: 30px; z-index: 6; padding: 8px 14px; }
@@ -169,7 +171,7 @@ a { color: var(--accent); }
   .top { order: 1; margin: 6px 8px 0; padding: 5px 12px; }
   .top .back { display: block; font-size: 11px; margin: 0 0 1px; }
   .top h1 { font-size: 15px; display: inline; }
-  .top .fresh { display: inline; margin: 0 0 0 8px; font-size: 11px; }
+  .top .fresh { display: block; margin: 0; font-size: 11px; }
   .top .fresh br { display: none; }
   .top .poll { margin-top: 1px; font-size: 11px; }
   .top .poll .bar, .top .poll button { display: none; }
@@ -236,3 +238,9 @@ a { color: var(--accent); }
 .k i.line.glow { background: #fff; box-shadow: 0 0 6px #fff; height: 2px; }
 .fresh .nw { white-space: nowrap; }
 .poll[hidden], .poll button[hidden] { display: none !important; }
+/* 2026-11-08 の最終評価に合わせて: 下のカードを開いている間は、再生の行（dock）を画面の下に固定し、カードをその上に出す。カードが再生の行を覆わない */
+@media (max-width: 800px) {
+  body:has(.side.open) .dock { position: fixed; left: 8px; right: 8px; bottom: 0; margin: 0; z-index: 31; background: var(--solid); border-radius: 12px 12px 0 0; }
+  body:has(.side.open) .dock .credit { display: none; }
+  body:has(.side.open) .side.open { bottom: var(--dock-open-h, 146px); height: min(48dvh, 400px); }
+}

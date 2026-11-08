@@ -455,7 +455,8 @@ def test_ui_confirm_decisions_recompute_the_numbers_and_can_be_undone(app, tmp_p
     _to_sample(page)
     # サンプルでは数字は固定で、そのことをカードに書く
     page.js("Own.setTab('confirm')")
-    assert "サンプルの数字は元の記録から作った固定の値です" in page.js("document.querySelector('#own-body').innerText")
+    # 2026-11-08 の最終評価に合わせて: 説明は閉じた「理由を見る」の中にあるので、見えない文字も含む textContent で確かめる
+    assert "サンプルの数字は元の記録から作った固定の値です" in page.js("document.querySelector('#own-body').textContent")
 
 
 def test_ui_unreadable_file_only_keeps_the_previous_display(app, tmp_path):

@@ -93,8 +93,8 @@ def test_g143_3_7_chart_sentence_ratio_and_ship_row():
         assert "このデモの航路の表に入っていません。船会社に見積を頼んでください。" in none_html and "つながる航路がありません" not in none_html
         assert 'value="船"' in none_html
         ask = h(ship_ask)
-        assert "つながる航路がありません" not in ask and "日数と額は見積で確認" in ask   # 鉄道・船は額を出さない（v5.0: 公表の運賃表を持たない）
-        assert "金額は見積で確かめてください" in ask   # 文言の直し 2026-11-07。2026-11-08 の直しに合わせて「確かめてください」
+        assert "つながる航路がありません" not in ask and "額は見積で確認" in ask and 'data-l="日数">見積で確認' in ask   # 2026-11-08 の最終評価に合わせて、額と日数を別々に「見積で確認」と出す。 鉄道・船は額を出さない（v5.0: 公表の運賃表を持たない）
+        assert "金額は見積で確かめてください" not in ask and "なし（つながる路線がありません）" not in ask  # 2026-11-08 の最終評価に合わせて、船の行は「額は見積で確認」だけを出し、経路なしの文は出さない   # 文言の直し 2026-11-07。2026-11-08 の直しに合わせて「確かめてください」
         assert not page.js("window.__errs.length") and not page.js("window.__con.length"), page.js("window.__con")
 
 
@@ -131,7 +131,7 @@ def test_g143_11_13_market_summary_and_entry_button_at_1920():
         _watch(page)
         open_("#v=market&p=27-12")
         t = page.js("document.querySelector('#m-summary .sum-gap').textContent")
-        assert "営業用の計" in t and "38.97%" in t and "営業用普通車だけの値" in t   # 日本語の直し 2026-11-08
+        assert "営業用の計" in t and "38.97%" in t and "営業用普通車だけの値" in t   # 日本語の直し 2026-11-08。2026-11-08 の最終評価に合わせて出典を折りたたみへ
         r = page.js("(function(){const b=document.querySelector('#m-pair [data-act=clo]');"
                     "const m=b.querySelector('.mp-go-main').getBoundingClientRect(),s=b.querySelector('.mp-go-sub').getBoundingClientRect();"
                     "return [m.height,s.height,b.scrollWidth,b.clientWidth]})()")

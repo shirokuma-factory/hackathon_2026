@@ -53,10 +53,12 @@ def normalize_plate(s: Any) -> str | None:
     m = _PLATE22.search(t)
     if m:
         return m.group(1) + m.group(2)
-    return None
+    # 2026-11-08 の最終評価に合わせて: 「宮城 100 あ 21」「宮城 100 あ 1-21」のように、かなの後ろが 1〜3 桁の車番も読む（4 桁にゼロを足す）
+    f = _PLATE_FULL.search(t)
+    return re.sub(r"\D", "", f.group(4)).zfill(4) if f else None
 
 
-_PLATE_FULL = re.compile(r"([ぁ-んァ-ヶ一-鿿々]{1,4})\s*([0-9]{2,3})\s*([ぁ-んァ-ヶ])\s*[・\-‐]?\s*([0-9]{4}|[0-9]{2}\s*[-‐‑–−ー・]\s*[0-9]{2})")
+_PLATE_FULL = re.compile(r"([ぁ-んァ-ヶ一-鿿々]{1,4})\s*([0-9]{2,3})\s*([ぁ-んァ-ヶ])\s*[・\-‐]?\s*([0-9]{1,2}\s*[-‐‑–−ー・]\s*[0-9]{1,2}|[0-9]{1,4})")
 
 
 HALL_WARD_NOTE = "市役所のある区に置きました（区が分かれば直せます）"
@@ -95,7 +97,7 @@ def plate_identity(s: Any) -> tuple[str | None, str | None]:
     if num is None:
         return None, None
     m = _PLATE_FULL.search(unicodedata.normalize("NFKC", str(s)))
-    if m and re.sub(r"\D", "", m.group(4)) == num:
+    if m and re.sub(r"\D", "", m.group(4)).zfill(4) == num:
         return num, f"{m.group(1)}{m.group(2)}{m.group(3)}{num}"
     return num, None
 

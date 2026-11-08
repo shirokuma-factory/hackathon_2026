@@ -67,6 +67,16 @@ window.addEventListener('error', function (e) {
     window.__errs.push('resource failed: ' + (t.src || t.href));
   }
 }, true);
+// 2026-11-08 の最終評価に合わせて: 自社の運行の右の欄は、式・用語・費用の入力と売上の内訳を閉じた「詳しく」に入れた。
+// 入力欄を押す試験のために、その「詳しく」は作られるたびに 1 回だけ開く（閉じた状態の表示は test_v56_own_final_fix.py で確かめる）
+document.addEventListener('DOMContentLoaded', function () {
+  new MutationObserver(function () {
+    ['own-fold', 'own-rev-d'].forEach(function (id) {
+      var e = document.getElementById(id);
+      if (e && !e.open && !e.dataset.autoOpened) { e.dataset.autoOpened = '1'; e.open = true; }
+    });
+  }).observe(document.documentElement, { childList: true, subtree: true });
+});
 """
 
 _EDGE_LOCK = threading.RLock()  # Edge は同時に 1 つだけ（負荷で時間切れになるので並列に起動しない）

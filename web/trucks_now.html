@@ -17,7 +17,7 @@
   <header class="top glass">
     <p class="back"><a href="./#v=market">地図の画面に戻る</a></p>
     <h1>いまの大型車</h1>
-    <p class="purpose">大型車がいま多く走る道路と時間帯を見ます。帰りの便が荷を見つけやすい区間を探す参考で、空きや荷の有無そのものは分かりません。</p>
+    <p class="purpose">大型車が多く走る道路と時間帯を見ます。空きや荷の有無は分かりません。</p>
     <p class="fresh" id="fresh">読み込み中です</p>
     <div class="poll" id="poll">
       <span class="bar" aria-hidden="true"><i id="poll-bar"></i></span>
@@ -38,7 +38,7 @@
       <span class="arr" aria-hidden="true"></span>
       <button type="button" class="stage" data-stage="map" aria-pressed="false"><span class="lb">地図</span><span class="vl" id="s-map">-</span><span class="sb" id="s-map2">&nbsp;</span></button>
     </div>
-    <p class="stage-note idle" id="stage-note" aria-live="polite">各段をクリックすると、その段に関わる地点が地図で光ります。</p>
+    <p class="stage-note idle" id="stage-note" aria-live="polite">各段を押すと、地図で光ります。</p>
   </nav>
 
   <div class="mapwrap">
@@ -48,10 +48,11 @@
       <div class="sec">
         <h2>道路の色<button type="button" class="toggle" id="lg-toggle" aria-expanded="false">詳しく</button></h2>
         <div class="bins" id="lg-bins"></div>
-        <div class="basis">色は、その地点の直近 24 時間でいちばん多い時を 100% とした割合です。速度を表すものではありません。</div>
+        <div class="basis">色は、直近 24 時間の最大に対する割合です。</div>
       </div>
       <div class="collapsible">
         <div class="sec">
+          <div class="k"><span>色は速度を表すものではありません。</span></div>
           <div class="k"><i class="line glow"></i><span>白く光って見える所は、流れの帯が重なった所です（台数が多い区間。色の意味はありません）</span></div>
           <div class="k"><i class="line"></i><span>流れの帯は大型車の台数に比例し、混むほどゆっくり流れます（見せ方で、速度ではありません）。道路の左右 2 本は上り・下りで、それぞれの台数で数と色が変わります。</span></div>
           <div class="k"><i class="line grey"></i><span>観測点の間は、同じ道路の上で 2 つの観測点の値を距離に応じて混ぜて色を付けます。最後の観測点の先は 25 km まで延ばし、15 km を超えた区間は細く薄く描きます。灰青の細い線は観測点につながらない道路（データなし。0 台ではありません）。</span></div>

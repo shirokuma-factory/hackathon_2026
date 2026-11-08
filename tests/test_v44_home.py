@@ -268,10 +268,10 @@ def test_shipper_result_order_collapsed_details_and_request_text():
             assert not r["amt"].startswith("0円") and r["amt"] != "", r
             assert r["days"] != "", r
         # 額の無い手段は 0 円にせず「要見積」か対象外の印にする
-        # 鉄道・船・飛行機の行を足したので、鉄道は「日数と額は見積で確認」も許す
+        # 鉄道・船・飛行機の行を足したので、鉄道は「日数と額は見積で確認」も許す。2026-11-08 の最終評価に合わせて「額は見積で確認」も許す
         for r in rows:
             if "円" not in r["amt"]:
-                assert r["amt"] in ("要見積", "—", "日数と額は見積で確認", "航路の表に入っていません") or r["amt"].startswith("なし"), r
+                assert r["amt"] in ("要見積", "—", "日数と額は見積で確認", "額は見積で確認", "航路の表に入っていません") or r["amt"].startswith("なし"), r
         # 経路の説明・内訳は閉じている
         assert page.js("document.getElementById('rt-details').open") is False
         assert page.js("document.querySelector('#cards .cards-more').open") is False

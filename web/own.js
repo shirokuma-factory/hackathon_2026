@@ -444,8 +444,9 @@ const Own = (() => {
   }
   // 最低限の列は own_calc.js の判定から: 配車表の縦の形は 日付・車番・発地か着地、横の形は 車番と 10/1 のような日付の見出し。デジタコは 開始と終了の日時を含む 3 列以上、または 日付と実車・空車の距離
   function formatGuideHtml() {
-    return `<div class="o-fmt" id="own-fmt"><p class="o-hint">読めるのは、配車表・デジタコ・運行日報の CSV です。Excel のファイルは「CSV として保存」してください。文字コードは UTF-8 でも Shift_JIS でも読めます。</p>
-      <p class="o-hint">最低限ほしい列は、配車表なら「日付・車番・発地か着地」（日付が横に並ぶ表なら「車番」と 10/1 のような日付の見出し）、デジタコなら「開始と終了の日時を含む 3 列以上」か「日付と実車・空車の距離」です。着時刻・重さがあれば使います。</p>
+    // 2026-11-08 の最終評価に合わせて: 文字コードと Excel の注意は置き場の枠に 1 回だけ書き、列の説明は閉じた「詳しく」に入れる
+    return `<div class="o-fmt" id="own-fmt"><details class="o-fmt-d"><summary>読める CSV の形</summary><p class="o-hint">読めるのは、配車表・デジタコ・運行日報の CSV です。文字コードは UTF-8 でも Shift_JIS でも読めます。</p>
+      <p class="o-hint">最低限ほしい列は、配車表なら「日付・車番・発地か着地」（日付が横に並ぶ表なら「車番」と 10/1 のような日付の見出し）、デジタコなら「開始と終了の日時を含む 3 列以上」か「日付と実車・空車の距離」です。着時刻・重さがあれば使います。</p></details>
       <button type="button" class="btn-link" data-act="sample-csv">見本の CSV を保存</button></div>`;
   }
 
@@ -694,7 +695,7 @@ const Own = (() => {
     }
     h += cmpBlock(false);
     if (all.length) h += `<div class="o-cmpbar"><button type="button" class="btn-link" data-act="month-clear">保存したデータをすべて消す（${all.length} 件）</button></div>`;
-    if (isImport() || all.length) h += '<p class="o-note">保存するのは、数字の要約・地名の対応・確認の決定・列の役割だけです。CSV の中身は保存しません。このブラウザの中だけにあり、上のボタンで消せます。</p>';
+    // 2026-11-08 の最終評価に合わせて: 「保存するのは…」の 2 文目は、取り込み欄の説明と重なるので削除
     return h ? `<div class="o-month" id="own-month"><div class="o-h">月ごとの保存</div>${h}</div>` : '';
   }
 
@@ -749,7 +750,7 @@ const Own = (() => {
     const g = d.columns.filter((c) => c.color === 'green').length, y = d.columns.filter((c) => c.color === 'yellow').length, r = d.columns.filter((c) => c.color === 'red').length;
     const un = unplacedHtml(d);
     return `<div class="o-drop" id="own-drop" tabindex="0" role="button" aria-label="自社のファイルを落とす欄（配車表・デジタコの CSV。ブラウザの外には送りません）">
-        <b>配車表・デジタコの CSV をここに置く</b><span>文字コードは UTF-8 でも Shift_JIS でも読めます。ファイルは外に送りません。</span><input id="own-file" type="file" accept=".csv,.txt,text/csv" multiple hidden></div>
+        <b>配車表・デジタコの CSV をここに置く</b><span>Excel は CSV で保存。文字コードは自動で判定。外には送りません。</span><input id="own-file" type="file" accept=".csv,.txt,text/csv" multiple hidden></div>
       ${formatGuideHtml()}<p class="o-drop-msg" id="own-drop-msg" ${O.dropMsg ? '' : 'hidden'}>${esc(O.dropMsg)}</p>${pendingYearHtml()}${pendingRolesHtml()}${yearHtml(d)}${monthPickHtml(d)}${noticesHtml(d)}${hiredHtml(d)}${haishaChoiceHtml(d)}${rolesHtml(d)}${monthHtml()}
       <table class="o-tbl"><thead><tr><th>ファイル</th><th>読めた行</th><th>確認待ち</th><th>読めない行</th></tr></thead><tbody>${rows}
         <tr class="o-paper"><td colspan="4">${esc(d.paper.text)}</td></tr></tbody></table>
@@ -833,7 +834,8 @@ const Own = (() => {
       return `<div class="o-card ${st ? 'done ' + st : ''}" data-id="${esc(c.id)}" data-key="${esc(key)}">
         <div class="o-ch"><i class="${dotCls(st ? 'green' : c.color)}"></i><b>${esc(c.kind === 'return' ? `車庫へ戻る区間 ${c.count != null ? c.count : ''} 件に空・実車の印がありません` : c.title)}</b><small>${esc(c.source)}</small></div>
         <div class="o-kv"><span>元の値</span><span>${esc(c.original)}</span></div>
-        <div class="o-kv"><span>提案</span><span>${esc(c.proposal)}</span></div>${c.reason_ja ? `<div class="o-kv"><span>理由</span><span>${esc(c.reason_ja)}</span></div>` : ''}${claude}${c.reason_ja ? '' : conf}
+        <div class="o-kv"><span>提案</span><span>${esc(c.proposal)}</span></div>
+        <details class="o-det o-why-d"><summary>理由を見る</summary>${c.reason_ja ? `<div class="o-kv"><span>理由</span><span>${esc(c.reason_ja)}</span></div>` : ''}${claude}${c.reason_ja ? '' : conf}</details>
         ${eff === common ? '' : `<div class="o-kv"><span>反映</span><span class="o-eff">${esc(eff)}</span></div>`}
         <div class="o-btns">${st ? `<span class="o-res">${label}${st === 'fix' && O.fixTxt[key] ? '：' + esc(O.fixTxt[key]) : ''}</span><button type="button" class="btn-link" data-act="undo">取り消す</button>`
           : (c.kind === 'return' ? '<button type="button" class="btn-sm" data-act="ru-empty">すべて空車にする</button><button type="button" class="btn-sm" data-act="ru-loaded">すべて実車にする</button><button type="button" class="btn-sm" data-act="ru-keep">不明のままにする</button>'
@@ -842,7 +844,8 @@ const Own = (() => {
         <div class="o-fix" ${O.open.has('fix' + key) && !st ? '' : 'hidden'}>${fixInputHtml(c)}<button type="button" class="btn-sm" data-act="fixok">反映</button></div>
       </div>`;
     }).join('');
-    return `<p class="o-sum">確認待ち <b class="num">${pend}</b> 件・確定 ${cnt.ok}・修正 ${cnt.fix}・読まない ${cnt.skip}<small>${isImport() ? '押した結果は計算に渡し、数字を計算し直します。確認の決定は、このブラウザに保存されます（「月ごとの保存」の欄で消せます）。' : '押した結果はこのページの中だけに残ります。'}</small></p>${common ? `<p class="o-hint" id="own-eff-common">${esc(common)}。</p>` : ''}${cards}`;
+    return `<p class="o-sum">確認待ち <b class="num">${pend}</b> 件・確定 ${cnt.ok}・修正 ${cnt.fix}・読まない ${cnt.skip}</p>
+      <details class="o-det o-eff-d"><summary>押すとどうなるか</summary><p class="o-hint">${isImport() ? '押した結果は計算に渡し、数字を計算し直します。確認の決定は、このブラウザに保存されます（「月ごとの保存」の欄で消せます）。' : '押した結果はこのページの中だけに残ります。'}</p>${common ? `<p class="o-hint" id="own-eff-common">${esc(common)}。</p>` : ''}</details>${cards}`;
   }
 
   // 求荷求車のサイトや LINE に貼れる文（空車の帰りの区間 = 発地 → 着地ごとに 1 つ。曜日・便数・車格・空きの重さ。連絡先は空欄）。全部を 1 つの欄に並べ、区間ごとのコピーも出す
@@ -865,8 +868,8 @@ const Own = (() => {
     const bestW = OwnMonth.bestWeekday ? OwnMonth.bestWeekday(OwnMonth.returnPairs(d)[0]) : null;
     const dayHint = bestW != null ? `日付は、空車が多い${WDJ[bestW]}曜の次の日（${+O.tmr.date.slice(5, 7)}/${+O.tmr.date.slice(8, 10)}）にしました。` : nw.basis ? `日付は、明日以降で、配車表で車が動いている曜日（${nw.open.map((w) => WDJ[w] + '曜').join('・')}）に当たる最初の日にしました${nw.skipped.length ? `（休みの曜日の ${nw.skipped.map((x) => `${+x.slice(5, 7)}/${+x.slice(8, 10)}`).join('・')} は飛ばしました）` : ''}。` : '';
     const t = O.tmr, inp = (id, k, type, ph, extra) => `<input id="own-tmr-${id}" class="ctl sm" type="${type}" value="${esc(t[k])}" ${ph ? `placeholder="${esc(ph)}"` : ''} ${extra || ''}>`;
-    return `<div class="o-tmr" id="own-tmr"><div class="o-h">明日の空車の掲示文を作る</div>
-      <p class="o-hint">次に車が動く日に空く帰りの便を、日付つきの 1 便ぶんの文にします。いちばん多い空車の帰りの区間から初期値を入れました。${esc(dayHint)}違うところは直してください。</p>
+    return `<div class="o-tmr" id="own-tmr"><div class="o-h">次の空車の掲示文を作る</div>
+      <p class="o-hint">空車の多い帰りの区間と日付を入れました。${esc(dayHint)}違えば直してください。</p>
       <div class="o-tmrg">
         <label>日付${inp('date', 'date', 'date', '', 'aria-label="出発の日付"')}</label>
         <label>積める時間（始まり）${inp('time', 'time', 'time', '', 'aria-label="積める時間の始まり"')}</label>
@@ -951,6 +954,7 @@ const Own = (() => {
       det.className = 'o-ndet'; det.innerHTML = '<summary>詳しく</summary>';
       const rest = [...document.querySelectorAll('#own-notes .f-n3')];
       n3.before(det); rest.forEach((x) => det.appendChild(x));
+      if (n2) det.appendChild(n2); // 2026-11-08 の最終評価に合わせて: 「CSV の中身は…」は常に出さず、詳しくの中へ
     }
     if (n3) n3.textContent = isImport() ? '列の対応づけは、列名の辞書と値の形だけで決めています。外には送りません。' : 'サンプルの列の対応づけは、用意した記録です。';
   }
@@ -1109,8 +1113,9 @@ const Own = (() => {
     const first = gs.slice(0, PAIR_SHOW), rest = gs.slice(PAIR_SHOW);
     const unkN = (d.counts && d.counts.unknown) || 0;
     const unkNote = unkN ? `<p class="o-hint o-unknote" id="own-unknote">「実車か空車か不明」は、実車か空車か分からない ${unkN} 本です。手順の画面の「空車 ○ / ○ 便」は、この便を除いて数えるので、便数がこの表より ${unkN} 本少なくなります。</p>` : '';
-    return `${baseNote(d, nm)}${unkNote}<table class="o-tab" aria-label="区間と曜日の表">${head}<tbody>${first.join('')}</tbody></table>
-      ${rest.length ? `<details class="o-more2 o-pairrest"><summary>ほかの区間 ${rest.length} 本</summary><table class="o-tab" aria-label="ほかの区間と曜日の表">${head}<tbody>${rest.join('')}</tbody></table></details>` : ''}${scopeNote(d, cs, nm)}`;
+    const notes = baseNote(d, nm) + unkNote + scopeNote(d, cs, nm); // 2026-11-08 の最終評価に合わせて: 表の説明は閉じた「詳しく」に入れる
+    return `${notes ? `<details class="o-more2 o-tnotes"><summary>表の見方</summary>${notes}</details>` : ''}<table class="o-tab" aria-label="区間と曜日の表">${head}<tbody>${first.join('')}</tbody></table>
+      ${rest.length ? `<details class="o-more2 o-pairrest"><summary>ほかの区間 ${rest.length} 本</summary><table class="o-tab" aria-label="ほかの区間と曜日の表">${head}<tbody>${rest.join('')}</tbody></table></details>` : ''}`;
   }
 
   // 表の「30 分以上の停車」は主な行き先だけ、費用の合計は全地点。数が違うときは、その違いを画面に書く
@@ -1165,11 +1170,12 @@ const Own = (() => {
     const r = OwnMonth.revenue(d);
     if (!r) return '';
     const sh = (id) => esc(((d.places[id] || {}).short) || ((d.places[id] || {}).label) || '?');
-    const head = `<div class="o-ch2">帰り荷 1 便の売上の目安<small>目安。この額を受け取れる保証ではありません</small></div>
-      <p class="o-std" id="own-rev-std"><b>${esc(STD_NOTE)}</b></p>
+    const head0 = `<div class="o-ch2">帰り荷 1 便の売上の目安<small>目安。この額を受け取れる保証ではありません</small></div>`;
+    const head1 = `<p class="o-std" id="own-rev-std"><b>${esc(STD_NOTE)}</b></p>
       <div class="o-cin o-rate"><label>自社の成約単価（入れなくてもよい）<span><input id="own-rate" class="ctl sm" type="text" inputmode="decimal" autocomplete="off" value="${esc(O.rate.value)}" placeholder="例 120" aria-label="自社の成約単価">
         <select id="own-rate-kind" class="ctl sm" aria-label="成約単価の単位"><option value="km" ${O.rate.kind === 'km' ? 'selected' : ''}>円/km</option><option value="trip" ${O.rate.kind === 'trip' ? 'selected' : ''}>円/便</option></select></span></label>
         <small class="o-hint">入れると、国の標準的運賃の額と並べて出します。</small></div><div id="own-rev-ownw">${ownRevHtml(d)}</div>`;
+    const head = head0 + head1;
     const skipped = [r.noClass && `車の種類が分からない帰り ${r.noClass} 便は数えていません`, r.noFare && `200 km 未満で表が無い帰り ${r.noFare} 便は数えていません`, r.noKm && `距離が分からない帰り ${r.noKm} 便は数えていません`].filter((x) => x);
     const skipP = (skipped.length ? `<p class="o-hint" id="own-rev-skip">${esc(skipped.join('。'))}。</p>` : '') + revScopeHtml(d);
     let body;
@@ -1186,7 +1192,10 @@ const Own = (() => {
     }).join('');
     const trips = r.perTrip.slice().sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0)).map((t) =>
       `<tr><td>${esc(md2(t.date))}</td><td>${esc(t.plate)}</td><td>${sh(t.frm)} → ${sh(t.to)}</td><td>${esc(t.cls)}</td><td class="num">${n1(t.km)}</td><td class="num">${yenS(t.amount)}</td><td class="o-formula">${esc(t.fare.formula)}</td></tr>`).join('');
-    body = `<div class="o-crow o-rev1"><span>1 便の売上の目安<small class="o-sub">便ごとに、その便の車の種類と km で計算</small></span><b class="num">${amt}</b>
+    // 2026-11-08 の最終評価に合わせて: 売上の目安の額だけを前に出し、注意・自社の単価・内訳・式は閉じた「詳しく」に入れる
+    body = `<div class="o-crow o-rev1"><span>1 便の売上の目安</span><b class="num">${amt}</b></div>
+      <details class="o-fold o-revd" id="own-rev-d" ${O.revOpen ? 'open' : ''}><summary>注意・自社の単価・内訳を見る</summary>${head1}
+      <div class="o-crow"><small class="o-sub">便ごとに、その便の車の種類と km で計算</small>
         <small class="o-formula">例: ${esc(md2(ex.date))} ${esc(ex.plate)}（${esc(ex.cls)}車・${sh(ex.frm)} → ${sh(ex.to)}・${n1(ex.km)} km）　${esc(ex.fare.formula)} = ${yenS(ex.amount)}（目安）</small></div>
       <table class="o-tbl o-revt"><thead><tr><th>区間</th><th>便数</th><th>1 便</th><th>小計</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="o-crow o-rev2"><span>車庫へ帰る便すべてに荷が付いたときの額（${r.counted} 便）</span><b class="num o-upper">${yenS(r.total)}</b>
@@ -1194,8 +1203,8 @@ const Own = (() => {
       <details class="o-more" id="own-rev-more"><summary>便ごとの額を見る</summary>
         <div class="o-tw2"><table class="o-tbl"><thead><tr><th>日</th><th>車番</th><th>区間</th><th>車格</th><th>km</th><th>目安</th><th>式</th></tr></thead><tbody>${trips}</tbody></table></div>
         <p class="o-note">標準的運賃（国土交通省 2024 年 3 月 22 日告示）の距離制の表。運賃の地域は、その便の発地の県で決めています（県が分からないか関東・近畿以外は関東の表）。国の通達では、車がいる営業所の地域の表を使うので、営業所が関東・近畿以外の会社では実際の額と違います。車の種類は 8 t 以上を 10 t 車、3 t 以下を 2 t 車、その間を 4 t 車としています。${esc(REV_GLOSS)}実際の運賃は荷主との相談で決まります。
-          上の「空車の費用」は、帰り荷を取っても減らない費用です。この売上の目安と引き算はしないでください。</p></details>`;
-    return `<div class="o-rev" id="own-rev">${head}${body}<p class="o-note">用語: 空車 km${OwnMonth.tipHtml('空車 km')}</p></div>`;
+          上の「空車の費用」は、帰り荷を取っても減らない費用です。この売上の目安と引き算はしないでください。</p></details></details>`;
+    return `<div class="o-rev" id="own-rev">${head0}${body}<p class="o-note">用語: 空車 km${OwnMonth.tipHtml('空車 km')}</p></div>`;
   }
 
   function renderRate() {
@@ -1272,8 +1281,10 @@ const Own = (() => {
     const raisedNote = mr ? `<span class="o-why" id="own-max-raised">配車表に ${(mr.to_kg / 1000).toFixed(1)} t の記録があったので、${esc(mr.cls)}の最大積載量の仮定を ${(mr.from_kg / 1000).toFixed(1)} t から ${(mr.to_kg / 1000).toFixed(1)} t に上げました（${mr.legs} 区間が元の仮定を超えていたため。外してはいません）。</span>` : '';
     const estWord = isImport() ? '直線距離 × 1.25 の推定' : 'OSRM（地図データから道路の距離を求める無料のソフト）の推定';
     const outside = d.counts.outside_pair || 0, sh = (id) => esc((d.places[id] || {}).short || '?');
-    const headHtml = `<header><div class="m-rh"><b>自社の運行 ${d.month_label ? esc(d.month_label) : d.mon + ' 月'}</b><span class="m-rsub">${esc(d.company.name)}・車両 ${d.vehicles.length} 台${periodNote(d)}</span><button type="button" class="btn-link o-toguide" data-act="to-guided">手順に沿って進める</button></div></header>`;
+    const headHtml = `<header><div class="m-rh"><b>自社の運行 <span class="o-nw">${d.month_label ? esc(d.month_label) : d.mon + ' 月'}</span></b><span class="m-rsub">${esc(d.company.name)}・車両 ${d.vehicles.length} 台${periodNote(d)}</span><button type="button" class="btn-primary o-toguide" data-act="to-guided">手順に沿って進める</button></div></header>`;
+    // 2026-11-08 の最終評価に合わせて: 右の欄は 3 つの率と帰り荷 1 便の売上の目安だけを前に出し、式・用語・注意・費用の入力は閉じた「詳しく」に入れる
     const restHtml = `${readq}<div class="o-tiles">${tiles}</div>
+      <details class="o-fold" id="own-fold" ${O.foldOpen ? 'open' : ''}><summary>式・用語・費用の入力を見る</summary>
       <details class="o-fm" id="own-fm"><summary>3 つの数字の式を見る</summary><ul>
         <li><b>実車率</b>　${esc(ar.formula)}</li><li><b>大型の積載率</b>　${esc(lr.formula)}</li><li><b>大型の積載効率</b>　${esc(le.formula)}</li></ul></details>
       <details class="o-fm o-gloss" id="own-gloss"><summary>用語の説明</summary><ul>${Object.entries(OwnMonth.GLOSS).map(([k, v]) => `<li><b>${esc(k)}</b>　${esc(v)}</li>`).join('')}</ul></details>
@@ -1288,7 +1299,7 @@ const Own = (() => {
         <div class="o-cin"><label>1 km あたりの費用<span><input id="own-perkm" class="ctl sm" type="text" inputmode="decimal" autocomplete="off" value="${esc(O.cost.perKm)}" placeholder="例 30" aria-label="1 km あたりの費用（円/km）"> 円/km</span></label>
           <label>時間あたりの費用<span><input id="own-perhour" class="ctl sm" type="text" inputmode="decimal" autocomplete="off" value="${esc(O.cost.perHour)}" placeholder="例 3000" aria-label="時間あたりの費用（円/時）"> 円/時</span></label></div>
         <div id="own-cost-out">${costOutHtml(d)}</div>
-        <p class="o-note">入れた単価で計算した目安です。</p></div>
+        <p class="o-note">入れた単価で計算した目安です。</p></div></details>
       ${revenueHtml(d)}
       <div class="o-tw" id="own-tw">${tableHtml(d)}</div>
       <div class="o-foot"><div class="o-copy"><button type="button" class="btn-sm" data-copy="csv">便ごとの空車・実車を CSV でコピー</button><button type="button" class="btn-sm" data-copy="text">数字と分かったことを文でコピー</button>
@@ -1457,14 +1468,15 @@ const Own = (() => {
   function waitInit() { if (!W.rows.length) W.rows = [blankRow(), blankRow(), blankRow()]; }
 
   // 例の記録（架空）は waiting.html と同じもの（web/waiting_calc.js）。参考額 46,780 円など、地図の画面の数字が単独ページの例と一致する（SPEC §30.4）
-  const exampleRows = () => WaitingShared.exampleRows(W.year).map((r) => ({ ...blankRow(), ...r, ...(r.place ? { place: plainFix(String(r.place)) } : {}) }));
+  const exampleRows = () => WaitingShared.exampleRows(W.year).map((r) => ({ ...blankRow(), ...r, ...(r.place ? { place: plainFix(String(r.place)) } : {}) }))
+    .map((r, i) => [r, i]).sort((a, b) => String(a[0].date).localeCompare(String(b[0].date)) || String(a[0].arrive || '').localeCompare(String(b[0].arrive || '')) || a[1] - b[1]).map((x) => x[0]);   // 日付、到着の順に並べる（2026-11-08 の最終評価に合わせて）
 
   function waitRowHtml(r, i) {
     const cells = W_COLS.map((c) => {
       const v = r[c.k] || '';
       if (c.sel) return `<td><select class="w-in${r._draft && !v ? ' w-need' : ''}" data-i="${i}" data-k="${c.k}" aria-label="${esc(c.t)}">${(c.sel.includes(v) || !v ? c.sel : [...c.sel, v]).map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(o) || '—'}</option>`).join('')}</select></td>`;
       const need = r._draft && (c.k === 'partner' || c.k === 'start');
-      return `<td><input class="w-in${need ? ' w-need' : ''}" type="text" data-i="${i}" data-k="${c.k}" value="${esc(v)}" placeholder="${esc(need ? (c.k === 'partner' ? '相手を入れてください' : '要入力') : c.ph || '')}" aria-label="${esc(c.t)}" autocomplete="off"></td>`;
+      return `<td><input class="w-in${need ? ' w-need' : ''}" type="text" data-i="${i}" data-k="${c.k}" value="${esc(v)}" placeholder="${esc(need ? (c.k === 'partner' ? '相手を入れてください' : '要入力') : (i === 0 ? c.ph : '') || '')}" aria-label="${esc(c.t)}" autocomplete="off"></td>`;
     }).join('');
     return `<tr data-i="${i}"${W.bad.has(i) ? ' class="bad"' : ''}><td class="w-n">${i + 1}</td>${cells}<td><button type="button" class="w-del" data-w="del" data-i="${i}" aria-label="${i + 1} 行目を消す">×</button></td></tr>`;
   }
@@ -1485,15 +1497,16 @@ const Own = (() => {
     const years = []; for (let y = 2024; y <= 2027; y++) years.push(y);
     const nd = OwnMonth.draftRows(O.data).length;
     const needP = W.rows.some((r) => r._draft && !String(r.partner || '').trim());
-    const draftBar = nd ? `<div class="w-bar w-draft"><button type="button" class="btn-primary sm" data-w="from-stops">デジタコの停車から下書きを入れる（30 分以上・${nd} 件）</button>
+    const blankTable = W.rows.every(isBlank);   // 空のときの主ボタンは「例を入れる」（2026-11-08 の最終評価 M-02）
+    const draftBar = nd ? `<div class="w-bar w-draft"><button type="button" class="${blankTable ? 'btn-sm' : 'btn-primary sm'}" data-w="from-stops">デジタコの停車から下書きを入れる<span style="white-space:nowrap">（30 分以上・${nd} 件）</span></button>
         ${needP ? '<label>契約の相手が空の行にまとめて入れる<input id="w-draft-partner" class="ctl sm" type="text" autocomplete="off" aria-label="契約の相手（下書きの行にまとめて入れる）"></label><button type="button" class="btn-sm" data-w="draft-partner">入れる</button>' : ''}
-        <small>日付・車番・場所・到着・出発は停車の記録から入れます。契約の相手、荷役開始、荷主の都合で待ったかは、停車の記録に無いので空欄です。相手を入れてください。</small></div>` : '';
+        <small>日付・車番・場所・到着・出発は停車の記録から入ります。契約の相手などは空欄なので入れてください。</small></div>` : '';
     return `<p class="w-lead">運送を頼まれた相手ごとに、荷待ち・荷役の記録を入れます。1 行 = 1 か所での 1 回の荷待ち・荷役です。</p>
-      <div class="w-bar"><label>年（M/D で入れた日付に使います）<select id="w-year" class="ctl sm">${years.map((y) => `<option value="${y}"${y === W.year ? ' selected' : ''}>${y} 年</option>`).join('')}</select></label>
-        <button type="button" class="btn-sm" data-w="example">例を入れる</button><button type="button" class="btn-sm" data-w="clear">表を空にする</button></div>${draftBar}
+      <div class="w-bar"><label>年（月/日で入れた日付に使います）<select id="w-year" class="ctl sm">${years.map((y) => `<option value="${y}"${y === W.year ? ' selected' : ''}>${y} 年</option>`).join('')}</select></label>
+        <button type="button" class="${blankTable ? 'btn-primary sm' : 'btn-sm'}" data-w="example">例を入れる</button><button type="button" class="btn-sm" data-w="clear">表を空にする</button></div>${draftBar}
       <div class="w-tw"><table class="w-tbl" aria-label="荷待ち・荷役の記録の表"><thead><tr><th>#</th>${W_COLS.map((c) => `<th style="min-width:${c.w}px">${esc(c.t)}</th>`).join('')}<th></th></tr></thead>
         <tbody id="w-tbody">${W.rows.map(waitRowHtml).join('')}</tbody></table></div>
-      <div class="w-bar"><button type="button" class="btn-sm" data-w="add">行を足す</button><small>時刻は HH:MM（日付をまたぐ時刻は翌日として扱います）。荷役終了は荷役をしたときに入れます。指定の到着時刻と附帯業務は、あるときだけ入れます。</small></div>
+      <div class="w-bar"><button type="button" class="btn-sm" data-w="add">行を足す</button><small>時刻は 9:30 のように入れます。</small></div>
       <div class="w-bar" id="w-bulk">
         <label>契約の相手<select id="w-bulk-partner" class="ctl sm" aria-label="まとめて変える相手">${bulkOptions()}</select></label>
         <button type="button" class="btn-sm" data-w="fault-yes">この相手の行をすべて「荷主等の都合」にする</button>
@@ -1504,7 +1517,7 @@ const Own = (() => {
       <p class="w-note" id="w-paste-note">${esc(W.pasteNote).replace(/\n/g, '<br>')}</p>
       <div id="w-errs-box">${waitErrsHtml()}</div>
       <details class="o-det" open><summary>Excel から貼り付ける</summary>
-        <p class="w-small">Excel の表をコピーして貼り付けます（タブ区切り）。1 行目が見出しなら、列の順は問わず見出しの名前で読みます。見出しが無いときだけ、列の順は上の表と同じにしてください。日付は 10月5日・R8.10.5・2026/10/5、時刻は 9:00:00・9時00分・0900、車種は 4t車・4トン・中型車、荷主等の都合は ○ / × でも読みます。</p>
+        <p class="w-small">Excel の表をコピーして貼ります。列の順は問わず見出しの名前で読みます（見出しが無いときは上の表の順）。</p>
         <textarea id="w-paste" class="w-paste" rows="3" placeholder="ここに貼り付け" aria-label="Excel から貼り付ける欄"></textarea>
         <div class="w-bar"><button type="button" class="btn-sm" data-w="paste">貼り付けた内容を表に入れる</button><span id="w-paste-msg" class="w-small">${esc(W.pasteMsg)}</span></div></details>`;
   }
@@ -1569,12 +1582,13 @@ const Own = (() => {
 
   function waitRightHtml() {
     const r = W.res;
-    const protect = `<div class="w-protect"><b>取引上の保護</b>${W_PROTECT.map((x) => `<p>${esc(x)}</p>`).join('')}</div>`;
-    const basis = `<div class="w-basis"><b>根拠</b><ul>${WaitingMap.basisItems(W_BASIS, r).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    const protect = `<div class="w-protect"><b>金額と記録の保存について</b>${W_PROTECT.map((x) => `<p>${esc(x)}</p>`).join('')}</div>`;
+    const bItems = WaitingMap.basisItems(W_BASIS, r);   // 2026-11-08 の最終評価に合わせて、根拠は閉じた折りたたみに入れる
+    const basis = `<details class="w-basis o-det"><summary>根拠（${bItems.length} 件）</summary><ul>${bItems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
     const pageLink = `<p class="w-small wm-link no-print"><a href="waiting.html" target="_blank" rel="noopener" id="wm-open">荷待ちの書面を別の画面で開く</a>　入れた記録は引き継がれません。</p>`;
     let mid;
     if (!r || !r.by_partner.length) {
-      mid = '<p class="w-empty">まだ計算できる記録がありません。左の表に記録を入れるか、「例を入れる」を押してください。</p>';
+      mid = '<div class="w-empty"><p>まだ計算できる記録がありません。左の表に記録を入れるか、例を入れて試せます。</p><div class="w-bar"><button type="button" class="btn-primary sm" data-w="example">例を入れる</button></div></div>';   // 開いた直後の右の欄に、例を入れるボタンを置く（2026-11-08 の最終評価に合わせて）
     } else {
       const sel = r.by_partner.some((p) => p.partner === W.partner) ? W.partner : r.by_partner[0].partner;
       W.partner = sel;
@@ -2030,7 +2044,7 @@ const Own = (() => {
 
   function bindRight() {
     const root = q('#own-right');
-    root.addEventListener('toggle', (e) => { if (e.target && e.target.id === 'own-adv') O.advOpen = e.target.open; }, true);
+    root.addEventListener('toggle', (e) => { if (e.target && e.target.id === 'own-adv') O.advOpen = e.target.open; if (e.target && e.target.id === 'own-fold') O.foldOpen = e.target.open; if (e.target && e.target.id === 'own-rev-d') O.revOpen = e.target.open; }, true);
     root.addEventListener('input', (e) => {
       const t = e.target;
       if (t.id === 'own-perkm') { O.cost.perKm = t.value; renderCost(); }
@@ -2271,7 +2285,7 @@ const Own = (() => {
       const r = Math.ceil(WaitingMap.maxRadius()), at = document.querySelector('.maplibregl-ctrl-attrib');
       // 出典の文字は狭い画面で折り返して高さが変わるので、測った位置と「下のパネルの上端 − 4 行ぶん」の小さいほうを使う
       const sh = document.querySelector('#own-sheet'), shTop = sh && sh.getBoundingClientRect().height ? sh.getBoundingClientRect().top : h * 0.56;
-      const edge = Math.min(shTop - 72, at && at.getBoundingClientRect().height ? at.getBoundingClientRect().top : h);
+      const edge = Math.min(Math.max(shTop, h * 0.34) - 72, at && at.getBoundingClientRect().height ? at.getBoundingClientRect().top : h);
       return { top: 60 + r, bottom: Math.round(h - edge + r + 8 + 26),  // 26 は点の下の場所の名前の高さ
          left: 24 + r, right: 24 + r };
     }

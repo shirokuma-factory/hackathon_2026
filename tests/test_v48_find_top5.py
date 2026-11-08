@@ -22,7 +22,7 @@ def test_reduced_example_is_wired_in_find_js_and_app_js():
     js = (ROOT / "web" / "find.js").read_text(encoding="utf-8")
     app = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
     assert "の荷物を ${ex.count} 個にしたもの" in js and "async function exampleSearch(" in js and "checkFit" in js
-    assert "V.Find.fitState(pn)" in app and "例の荷物が載りません" in app   # 文言の直し 2026-11-07
+    assert "V.Find.fitState(pn)" in app and "この向きの便は埋まっています" in app   # 文言の直し 2026-11-07。2026-11-08 の最終評価に合わせて
 
 
 NO_TRIP = (0, 3)  # 上位 5 の 1 位（東京都 → 兵庫県）と 4 位（愛媛県 → 兵庫県）。帰り便が兵庫県に着く便だけだった

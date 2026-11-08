@@ -130,7 +130,7 @@ function pillLabel(d) {
 const EXAMPLE_ITEMS = JSON.stringify([{ count: 10, length_cm: 50, width_cm: 30, height_cm: 20, weight_kg: 10 }]);
 function isExample() {
   const sh = confirmedShipment();
-  return !!sh && !W.edited && W.defaultApplied && JSON.stringify(sh.items.map((i) => ({ count: i.count, length_cm: i.length_cm, width_cm: i.width_cm, height_cm: i.height_cm, weight_kg: i.weight_kg }))) === EXAMPLE_ITEMS;
+  return !!sh && !W.exBroken && W.defaultApplied && JSON.stringify(sh.items.map((i) => ({ count: i.count, length_cm: i.length_cm, width_cm: i.width_cm, height_cm: i.height_cm, weight_kg: i.weight_kg }))) === EXAMPLE_ITEMS;
 }
 const EXAMPLE_WORD = '例の荷物（架空）。自分の荷物に変えてください';
 function renderCargoHead() {
@@ -158,8 +158,8 @@ const BOX_SIZES = [60, 80, 100, 120, 140, 160];   // 宅配サイズ（3 辺の�
 const boxDims = (size) => [Math.round(size * 0.5), Math.round(size * 0.3), Math.round(size * 0.2)];   // 3 辺の合計が size になる代表の箱（縦・横・高さ）
 const PALLET_STD = [110, 110, 120];   // 1100×1100mm のパレット。荷の高さ 120cm（パレット込み）は仮定
 const DEFAULTS = { sender_type: '法人', receiver_type: '法人', pickup: '集荷', delivery: '配達', destinations: 1 };
-const DEFAULTS_LINE = '初めの設定: 法人から法人へ・集荷して配達・届け先 1 か所。出荷日と希望着日は、下の欄でも見積依頼文の画面でも入れられます。';
-const DEFAULT_CARGO_LINE = ' 荷物の初めの値は段ボール 100 サイズ・10 kg・10 個です（仮の値。書き換えてください）。';
+const DEFAULTS_LINE = '初めは法人→法人・集荷・配達・届け先 1 か所です。';
+const DEFAULT_CARGO_LINE = '';   // 2026-11-08 の最終評価に合わせて: 入力欄が同じ値を示すので文は出さない
 function simpleDefault() {
   const d = blankShipment();
   d.items = [{ count: 10, length_cm: 50, width_cm: 30, height_cm: 20, weight_kg: 10 }];
@@ -474,6 +474,7 @@ async function confirmCargo() {
     const hadQuotes = W.C.quotes.length > 0;
     const r = await wapi('/api/confirm', { case: caseForApi(), shipment: W.draft, scenario_id: W.scenarioSel || null });
     W.C = r.case;
+    if (W.edited) W.exBroken = true;   // 確定したときに、例の荷物でなくなる
     W.lastConfirmedDraft = JSON.stringify(W.draft);
     afterCase(r.changed);
     if (r.changed) toastCompare(`荷物の条件を変えました。運賃を計算し直しています${hadQuotes ? '。前の見積回答は別に分けました' : ''}。`);
@@ -837,8 +838,14 @@ function stackHtml(e, scale) {
     return `<i class="seg-b" style="width:${w.toFixed(2)}%;background:${COST_COLOR[k]}" title="${label(k)} ${wyen(amts[k])}円（税抜）">${w >= 8 ? `<span>${label(k)}</span>` : ''}</i>`;
   }).join('');
   const unk = e.unknown_keys.length ? `<i class="seg-u" title="不明: ${e.unknown_keys.map(label).join('・')}"><span>不明</span></i>` : '';
-  if (isTotalOnly(e.quote)) return `<div class="stack"><i class="seg-b" style="width:${((e.total_ex_tax || e.partial_ex_tax || 0) / scale * 100).toFixed(2)}%;background:#8b95a5" title="内訳不明（合計のみ）"><span>内訳不明</span></i></div>`;
+  if (isTotalOnly(e.quote)) return `<div class="stack"><i class="seg-b" style="width:${((e.total_ex_tax || e.partial_ex_tax || 0) / scale * 100).toFixed(2)}%;background:#8b95a5" title="内訳不明（合計のみ）"></i></div>`;
   return `<div class="stack">${segs}${unk}</div>`;
+}
+// 2026-11-08 の最終評価に合わせて: 回答がすべて合計だけのときは「完全な回答」と言わず、合計で比べたと書く
+function cmpMessage(c, cur) {
+  const comp = cur.filter((e) => e.state === 'complete');
+  if (c.ranking_shown && comp.length && comp.every((e) => isTotalOnly(e.quote))) return `回答${comp.length}件を合計で比べました（税抜）`;
+  return c.message;
 }
 function renderCompare() {
   const c = W.cmp, v = curVer();
@@ -858,7 +865,7 @@ function renderCompare() {
         <div class="cmp-sub num">${done
           ? (c.ranking_shown ? (e.diff_from_lowest === 0 ? '最安' : `最安との差額 <b>+${wyen(e.diff_from_lowest)}円</b>`) : '比べる回答が 1 件だけです')
           : `不明: ${e.unknown_keys.map((k) => COSTS.find((x) => x[0] === k)[1]).join('・') || 'なし'}${e.reasons.length ? `（${wesc(e.reasons.join('、'))}）` : ''}`}
-          ${isTotalOnly(q) ? '<span class="incl">内訳は不明です。合計だけで順位に入ります</span>' : incl.length ? `<span class="incl">含む: ${incl.join('・')}</span>` : ''}</div>
+          ${isTotalOnly(q) ? '<span class="incl" title="内訳は不明です。合計だけで順位に入ります">内訳不明</span>' : incl.length ? `<span class="incl">含む: ${incl.join('・')}</span>` : ''}</div>
       </div></div>`;
   }).join('');
   const head = COSTS.map((x) => `<th>${x[1]}</th>`).join('');
@@ -870,10 +877,10 @@ function renderCompare() {
   const histHtml = hist.length ? `<details class="hist"><summary>条件を変える前の回答 ${hist.length} 件（比べません）</summary>${hist.map((e) =>
     `<div class="hist-row"><b>${wesc(e.quote.carrier)}${e.quote.is_demo ? '（架空）' : ''}</b><span>${wesc(e.reasons.join('、'))}</span></div>`).join('')}</details>` : '';
   return `<section class="sec">
-    <div class="sec-h"><h3>比較</h3><span class="hint">${wesc(c.message)}（${wesc(c.today)} 時点）</span></div>
+    <div class="sec-h"><h3>比較</h3><span class="hint">${wesc(cmpMessage(c, cur))}（${wesc(c.today)} 時点）</span></div>
     ${swatches()}
     <div class="cmp-list">${rows}</div>
-    <p class="hint">金額は税抜です。不明の項目がある回答は順位に入れません。</p>
+    <p class="hint">税抜。「不明」の項目がある回答は順位に入れません。${cur.some((e) => isTotalOnly(e.quote)) ? '「内訳不明」は合計だけの回答で、順位に入ります。' : ''}</p>
   </section>
   <section class="sec"><div class="sec-h"><h3>内訳の表</h3><span class="hint">税抜の円</span></div>
     <div class="tbl-wrap"><table class="tbl bd"><thead><tr><th>会社</th>${head}<th>合計</th></tr></thead><tbody>${body}</tbody></table></div>
@@ -903,7 +910,7 @@ function renderJudgment() {
   const sv = W.saved ? `<p class="saved num" role="status">保存しました: <b>${wesc(W.saved.name)}</b>（回答 ${W.saved.quotes} 件${W.saved.chosen ? `・選んだ回答 ${wesc(W.saved.chosen)}` : ''}・${wesc(W.saved.at)}）</p>` : '';
   return `<div class="notice" role="note">${wesc(c.notice)}</div>
   <section class="sec">
-    <div class="sec-h"><h3>選ぶ回答</h3><span class="hint">金額がそろった回答だけ選べます（合計だけの回答も選べます）</span></div>
+    <div class="sec-h"><h3>選ぶ回答</h3><span class="hint">合計が分かる回答から選べます</span></div>
     ${warn ? `<p class="miss">${wesc(warn)}</p>` : ''}
     <div class="opts">${opts.join('')}</div>
     <label class="blk"><span class="lbl">選んだ理由</span><textarea class="ctl ta" id="j-reason" rows="3" placeholder="例: 集荷から配達まで含み、総額が最も低いため">${wesc(W.C.reason)}</textarea></label>
@@ -948,7 +955,7 @@ async function loadCase(e) {
     let obj;
     try { obj = JSON.parse(await f.text()); } catch (x) { throw new Error('JSON として読めません。保存したファイルを選んでください'); }
     const res = await wapi('/api/load', obj);
-    W.C = res; W.edited = true;
+    W.C = res; W.edited = true; W.exBroken = true;
     const v = curVer();
     W.draft = v ? wclone(v.shipment) : blankShipment();
     W.scenarioSel = v && v.scenario && v.scenario.id ? v.scenario.id : '';

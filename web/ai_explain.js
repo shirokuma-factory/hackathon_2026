@@ -324,13 +324,14 @@
   function cargoHtml(st) {
     const dis = cg.phase === 'busy' ? ' disabled' : '';
     const parts = [`<details class="ai-cg" id="ai-cg-box"${cg.open ? ' open' : ''}><summary>文で書いて AI に表にしてもらう</summary>
-      <p class="small">荷物の内容を文で書くと、荷物の表の案を作ります。送るのはここに書いた文だけです。作った案は、押すまで表に入りません。お客さまの名前や住所など、個人の情報は書かないでください。</p>
+      <p class="small">個人の情報（お客さまの名前や住所）は書かないでください。</p>
+      <details class="ai-cg-more"><summary>送る内容と案の扱い</summary><p class="small">荷物の内容を文で書くと、荷物の表の案を作ります。送るのはここに書いた文だけです。作った案は、押すまで表に入りません。費用はドルで見ると 1 回の目安と最大が決まっていて、1 ドルの円換算は仮定です。同じ文は結果を再利用し、費用も回数もかかりません。Haiku 5.5 を 1 回呼びます。</p></details>
       <textarea class="ctl ai-cg-text" id="ai-cg-text" rows="3" maxlength="${CARGO_MAX}" placeholder="${esc(CG_EXAMPLE)}" aria-label="荷物の条件を書いた文"${dis}>${esc(cg.text)}</textarea>
       <div class="ai-cg-bar"><button type="button" class="btn-primary sm" data-cg="ask"${dis}>表にしてもらう</button><span class="small" id="ai-cg-count">${cg.text.length} / ${CARGO_MAX} 字</span></div>`];
     if (cg.err) parts.push(`<p class="errs" role="alert" id="ai-cg-err">${esc(cg.err)}</p>`);
     if (cg.phase === 'confirm') {
       const est = cargoEstimate(cg.pending, st), left = st && typeof st.remaining === 'number' ? st.remaining : null, out = left === 0;
-      const cost = est ? `<li>1 回の費用の目安: ${usd(est.typ)}（${yenText(est.typ * est.yen)}）。最大でも ${usd(est.max)}（${yenText(est.max * est.yen)}）。1 ドル ${est.yen} 円と仮定。Haiku 5.5 を 1 回呼びます。同じ文は結果を再利用し、費用も回数もかかりません</li>` : '';
+      const cost = est ? `<li title="${esc(`${usd(est.typ)}（最大 ${usd(est.max)}）。1 ドル ${est.yen} 円と仮定。同じ文は結果を再利用し、費用も回数もかかりません`)}">1 回 ${yenText(est.typ * est.yen)}（最大 ${yenText(est.max * est.yen)}）</li>` : '';   // 2026-11-08 の最終評価に合わせて: 費用の行は円だけ。ドル・仮定・再利用は title と折りたたみへ
       const lft = left !== null ? `<li class="ai-left">今日の残り ${left} 回${st.limits && st.limits.daily ? `（1 日 ${st.limits.daily} 回まで）` : ''}</li>` : '';
       parts.push(`<div class="ai-confirm" id="ai-cg-confirm"><b>この文を Anthropic の API に送ります</b>
         <pre class="ai-cg-sent" id="ai-cg-sent">${esc(cg.pending)}</pre>
@@ -371,6 +372,9 @@
         el.innerHTML = cargoHtml(st);
         const det = el.querySelector('#ai-cg-box');
         if (det) det.addEventListener('toggle', () => { cg.open = det.open; });
+        // 確認パネル（送る・やめる）が欄の下端で切れないよう、出したら見える位置まで動かす（2026-11-08 の最終評価に合わせて）
+        const cf = cg.phase === 'confirm' && el.querySelector('#ai-cg-confirm');
+        if (cf && cf.scrollIntoView) cf.scrollIntoView({ block: 'nearest' });
       };
       el.oninput = (ev) => {
         if (ev.target.id !== 'ai-cg-text') return;

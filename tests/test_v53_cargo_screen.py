@@ -102,7 +102,7 @@ def test_nothing_is_sent_before_send_and_cancel_sends_nothing(app):
     click(page, "[data-cg=ask]")
     assert "この文を Anthropic の API に送ります" in T(page, "#ai-cg-confirm")
     assert page.js("document.querySelector('#ai-cg-sent').textContent") == TEXT          # 送る文を、そのまま見せる
-    assert "今日の残り 87 回" in T(page, "#ai-cg-confirm") and "費用の目安" in T(page, "#ai-cg-confirm")
+    assert "今日の残り 87 回" in T(page, "#ai-cg-confirm") and "1 回 " in T(page, "#ai-cg-confirm") and "最大" in T(page, "#ai-cg-confirm")   # 2026-11-08 の最終評価に合わせて: 費用の行は円だけ（「費用の目安」の語は title へ）
     assert T(page, "#ai-cg-send") == "送る" and T(page, "#ai-cg-cancel") == "やめる"
     assert page.js("window.__cargoCalls.length") == 0
     click(page, "#ai-cg-cancel")

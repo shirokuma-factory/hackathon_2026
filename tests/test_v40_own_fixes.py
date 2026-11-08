@@ -408,7 +408,7 @@ def test_ui_unreadable_files_formula_text_and_stop_scope(app, tmp_path):
     # 表の見出しに地点を書き、合計との違いを 1 行出す
     heads = page.js("[...document.querySelectorAll('#own-tw th')].map(t => t.textContent)")
     assert "江東での 30 分以上の停車" in heads
-    scope = page.js("document.querySelector('#own-tw .o-scope').innerText")
+    scope = page.js("document.querySelector('#own-tw .o-scope').textContent")  # 2026-11-08 の最終評価に合わせて: 表の説明は閉じた「表の見方」に入れたので textContent で読む
     assert "主な行き先（江東）" in scope and "1 回" in scope and "2 回" in scope and "2.5 時間" in scope, scope
     _to_sample(page)
 

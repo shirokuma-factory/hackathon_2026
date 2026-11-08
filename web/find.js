@@ -317,8 +317,9 @@ const Find = (() => {
         F.markers.set(t.id, m);
       }
       const lv = level(t), r = F.role === 'shipper' ? F.results[t.id] : null;
-      m.el.textContent = `${t.id} 架空${r ? (r.ok ? ' ○' : ' ×') : ''}`;
-      m.el.setAttribute('aria-label', `${t.id} ${t.carrier_name}（架空の便）${r ? (r.ok ? '、載ります' : '、載りません') : ''}`);
+      const mhold = holdOf(t), mineHold = F.role === 'shipper' && mhold && (mhold.state === 'held' || mhold.state === 'accepted');  // 自分の仮予約がある便は「×」にせず「仮予約中」と出す
+      m.el.textContent = mineHold ? `${t.id} ${mhold.state === 'accepted' ? '承諾済み' : '仮予約中'}` : `${t.id} 架空${r ? (r.ok ? ' ○' : ' ×') : ''}`;
+      m.el.setAttribute('aria-label', `${t.id} ${t.carrier_name}（架空の便）${mineHold ? '、仮予約中' : r ? (r.ok ? '、載ります' : '、載りません') : ''}`);
       m.el.title = g.arc ? (t.registered ? ARC_NOTE_REG : ARC_NOTE_NODATA) : '';
       m.el.classList.toggle('dim', lv < 0.5);
       m.el.classList.toggle('on', t.id === F.sel);
@@ -395,6 +396,8 @@ const Find = (() => {
     const hs = F.holds.filter((h) => h.trip_id === t.id && F.mine.has(h.hold_id));
     return hs.length ? hs[hs.length - 1] : null;
   };
+  // 仮予約の呼び名。内部の番号（H1）は出さず「仮予約 1」にする（2026-11-08 の最終評価に合わせて）
+  const holdName = (h) => `仮予約 ${String(h.hold_id).replace(/^H/, '')}`;
   // 残り時間。1 時間以上は 時:分:秒
   const cdFmt = (ms) => {
     const s = Math.max(0, Math.ceil(ms / 1000)), z = (n) => String(n).padStart(2, '0');
@@ -433,19 +436,19 @@ const Find = (() => {
   function holdAreaHtml(t, r) {
     const h = holdOf(t);
     if (h && h.state === 'held') {
-      return `<div class="f-hold held"><div class="f-hold-row"><b title="承諾待ちの予約">仮予約中</b><span class="num">${esc(h.hold_id)}・${kg(h.weight_kg)} kg</span>` +
+      return `<div class="f-hold held"><div class="f-hold-row"><b title="承諾待ちの予約">仮予約中</b><span class="num">${esc(holdName(h))}・${kg(h.weight_kg)} kg</span>` +
         `<span class="f-cd num" data-exp="${esc(h.expires_at)}">残り ${cdText(h)}</span></div>` +
         `<div class="f-hold-msg">デモの時計で <b class="num">${md(h.expires_at)}</b> までに運送会社が承諾しないと、予約は取り消されます。</div>` +
         '<button type="button" class="btn-link" data-act="to-carrier">運送会社の画面に切り替えて承諾する</button></div>';
     }
     if (h && h.state === 'accepted') {
-      return `<div class="f-hold accepted"><div class="f-hold-row"><b>${F.confirmed.has(h.hold_id) ? '確定済み' : '承諾されました'}</b><span class="num">${esc(h.hold_id)}・${kg(h.weight_kg)} kg</span></div>` +
+      return `<div class="f-hold accepted"><div class="f-hold-row"><b>${F.confirmed.has(h.hold_id) ? '確定済み' : '承諾されました'}</b><span class="num">${esc(holdName(h))}・${kg(h.weight_kg)} kg</span></div>` +
         `<div class="f-hold-msg">${kg(h.weight_kg)} kg 分を押さえました。架空のデモなので、支払いや連絡はありません。</div>` +
         `<button type="button" class="btn-primary sm" data-act="contract" data-h="${esc(h.hold_id)}">運送契約の書面（下書き）を見る</button></div>`;
     }
     if (h && (h.state === 'expired' || h.state === 'declined')) {
       const why = h.state === 'declined' ? '運送会社が辞退しました。' : '締切を過ぎました。';
-      return `<div class="f-hold lost"><div class="f-hold-row"><b>${h.state === 'declined' ? '辞退されました' : '期限切れ'}</b><span class="num">${esc(h.hold_id)}</span></div>` +
+      return `<div class="f-hold lost"><div class="f-hold-row"><b>${h.state === 'declined' ? '辞退されました' : '期限切れ'}</b><span class="num">${esc(holdName(h))}</span></div>` +
         `<div class="f-hold-msg">${why}ほかの送り方でも見積を頼めます。</div>` +
         '<button type="button" class="btn-primary sm" data-act="to-compare">見積依頼文を開く</button>' +
         (r && r.ok ? `<button type="button" class="btn-link" data-act="hold" ${F.busy ? 'disabled' : ''}>もう一度仮予約する</button>` : '') + '</div>';
@@ -461,7 +464,12 @@ const Find = (() => {
     const mh = holdOf(t), mine = mh && (mh.state === 'held' || mh.state === 'accepted');  // 自分の仮予約がある便は、残りが減った照合の結果を出さない
     const chip = mine ? `<span class="chip ${mh.state === 'accepted' ? 'ok' : 'check'}">${mh.state === 'accepted' ? (F.confirmed.has(mh.hold_id) ? '確定済み' : '承諾済み') : '仮予約中'}</span>`
       : !r ? '<span class="chip na">確認中</span>' : ok ? '<span class="chip ok">○ 載ります</span>' : `<span class="chip no">${esc(noChip(r.reasons))}</span>`;
-    const reasons = r && !ok && !mine ? `<ul class="f-why">${r.reasons.map((x) => `<li>${esc(x).replace('RB', 'RB（ロールボックスパレット）')}</li>`).join('')}</ul>` : '';
+    // 合わない理由は 1 行目だけ出し、残りは「ほか n 件」の閉じた折りたたみに入れる（2026-11-08 の最終評価に合わせて）
+    const rli = (x) => `<li>${esc(x).replace('RB', 'RB（ロールボックスパレット）')}</li>`;
+    const reasons = r && !ok && !mine
+      ? `<ul class="f-why">${r.reasons.slice(0, 1).map(rli).join('')}</ul>` +
+        (r.reasons.length > 1 ? `<details class="f-why-more"><summary>ほか ${r.reasons.length - 1} 件</summary><ul class="f-why">${r.reasons.slice(1).map(rli).join('')}</ul></details>` : '')
+      : '';
     return `<article class="f-card${ok ? ' ok' : ''}${r && !ok ? ' ng' : ''}${mh ? ' hold-mine' : ''}${selCls}${scope ? '' : ' off'}" data-t="${t.id}" tabindex="0">` +
       `<div class="f-top"><span class="f-id">${t.id}</span><b class="f-veh">${esc(t.vehicle)}</b>${/増トン/.test(t.vehicle) && !document.body.classList.contains('guided') ? tipOnce('増トン') : ''}${chip}</div>` +
       `<div class="f-sub">${esc(t.carrier_name)}${scope ? '' : ' ・ <em>別の区間の便</em>'}</div>` +
@@ -477,11 +485,11 @@ const Find = (() => {
     const pending = hs.filter((h) => h.state === 'held');
     const done = hs.filter((h) => h.state !== 'held');
     const ed = F.edits[t.id];
-    const holds = pending.map((h) => `<div class="f-hrow"><div><b>${esc(h.hold_id)}</b> <span class="num">${kg(h.weight_kg)} kg</span>` +
+    const holds = pending.map((h) => `<div class="f-hrow"><div><b>${esc(holdName(h))}</b><span class="num">・${kg(h.weight_kg)} kg</span>` +
       `<span class="f-cd num" data-exp="${esc(h.expires_at)}">残り ${cdText(h)}</span><small class="f-hdl">締切 ${md(h.expires_at)}</small></div>` +
       `<div class="f-hbtn"><button type="button" class="btn-primary sm" data-act="accept" data-h="${esc(h.hold_id)}">承諾</button>` +
       `<button type="button" class="btn-ghost sm" data-act="decline" data-h="${esc(h.hold_id)}">辞退</button></div></div>`).join('');
-    const past = done.map((h) => `<div class="f-hpast"><span class="num">${esc(h.hold_id)}・${kg(h.weight_kg)} kg</span>${h.state === 'accepted'
+    const past = done.map((h) => `<div class="f-hpast"><span class="num">${esc(holdName(h))}・${kg(h.weight_kg)} kg</span>${h.state === 'accepted'
       ? `<button type="button" class="btn-link" data-act="contract" data-h="${esc(h.hold_id)}">${F.confirmed.has(h.hold_id) ? '書面（確定）' : '運送契約の書面（下書き）を見る'}</button>` : ''}<span class="chip ${h.state === 'accepted' ? 'ok' : 'na'}">${
       { accepted: F.confirmed.has(h.hold_id) ? '確定済み' : '承諾済み', declined: '辞退済み', expired: '期限切れ' }[h.state]}</span></div>`).join('');
     return `<article class="f-card carrier${t.id === F.sel ? ' sel' : ''}${t.carrier_id === F.carrier ? '' : ' off'}" data-t="${t.id}" tabindex="0">` +
@@ -656,6 +664,31 @@ const Find = (() => {
     if (b && !b.disabled) b.click();
   }
 
+  // 荷主の欄の上に、自分の仮予約の今の状態を 1 行で出す（辞退・期限切れも見える所に出す）。狭い画面では便の一覧へ移るボタンも置く（2026-11-08 の最終評価に合わせて）
+  function shipperStatus(okN) {
+    const host = q('#f-shipper');
+    if (!host) return;
+    let st = q('#f-status');
+    if (!st) { st = document.createElement('p'); st.id = 'f-status'; st.setAttribute('role', 'status'); host.insertBefore(st, host.firstChild); }
+    const mine = F.holds.filter((h) => F.mine.has(h.hold_id)), h = mine[mine.length - 1];
+    const tid = h ? ` ${esc(h.trip_id)}` : '';
+    const line = !h ? '' : h.state === 'held' ? `<b>仮予約中</b> 便${tid}・<span class="f-cd num" data-exp="${esc(h.expires_at)}">残り ${cdText(h)}</span>`
+      : h.state === 'accepted' ? `<b>${F.confirmed.has(h.hold_id) ? '確定済み' : '承諾されました'}</b> 便${tid}`
+      : h.state === 'declined' ? `<b>運送会社が辞退しました</b> 便${tid}。ほかの便を選べます。`
+      : `<b>期限切れです</b> 便${tid}。もう一度仮予約できます。`;
+    st.className = `f-status${h ? ' ' + h.state : ''}`;
+    st.innerHTML = line;
+    // 手順に沿う画面では、仮予約中・承諾済みは下の札が同じことを出しているので 1 行目を重ねて出さない（辞退・期限切れだけ出す）
+    st.hidden = !h || (document.body.classList.contains('guided') && (h.state === 'held' || h.state === 'accepted'));
+    let jb = q('#f-jump');
+    if (!jb) {
+      jb = document.createElement('button'); jb.type = 'button'; jb.id = 'f-jump'; jb.className = 'btn-primary sm f-jump';
+      jb.addEventListener('click', () => { const r = q('#find-right'); if (r) r.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+      host.insertBefore(jb, st.nextSibling);
+    }
+    jb.textContent = `載せられる便 ${okN} 件を見る・仮予約する`;
+  }
+
   function renderList() {
     const box = q('#f-list');
     if (!box) return;
@@ -672,6 +705,7 @@ const Find = (() => {
       const okN = ts.filter((t) => F.results[t.id] && F.results[t.id].ok).length;
       q('#f-rsub').textContent = `${ts.length} 便中 ${okN} 便が載ります`;
       q('#f-rtitle').textContent = '今の荷物を載せられる便';
+      shipperStatus(okN);
       html = (F.autoNote ? `<p class="f-autonote" role="status">${esc(F.autoNote)}</p>` : '') + zeroHtml() + html;
       html += ts.map((t) => shipperCard(t, c)).join('');
       if (F.pair && F.onlyPair && !ts.length) html += noPairHtml();
@@ -724,7 +758,7 @@ const Find = (() => {
     if (c) q('#f-cargo').innerHTML = `<span class="cg-name">${esc(c.label)}</span><span class="num">${c.n}個・${kg(c.w)} kg</span>`;
     let dn = q('#f-destnote');   // 届け先を選んでいないときは、仮の値であることを出す
     if (!dn) { dn = document.createElement('p'); dn.id = 'f-destnote'; dn.className = 'f-pickupline'; const fd = q('#f-dest-q'); if (fd && fd.closest('.field')) fd.closest('.field').insertAdjacentElement('afterend', dn); }
-    if (dn) { const unset = !F.destFromCompare && !F.pair && !bh() && !F.destPicked && F.dest; dn.textContent = unset ? `荷を降ろす場所を選んでいないため、仮に ${muniFull(F.dest)} を入れています。上の欄で選び直してください。` : ''; dn.hidden = !unset; }
+    if (dn) { const unset = !F.destFromCompare && !F.pair && !bh() && !F.destPicked && F.dest; dn.textContent = unset ? '仮の行き先です。上の欄で変えられます。' : ''; dn.hidden = !unset; }
     let pk = q('#f-pickup');   // 便のカードの距離の基準になる集荷地を、左の欄に出す
     if (!pk) { pk = document.createElement('p'); pk.id = 'f-pickup'; pk.className = 'f-pickupline'; const row = q('#f-cargo') && q('#f-cargo').closest('.f-row'); if (row) row.insertAdjacentElement('afterend', pk); }
     if (pk) { const oc = (bh() ? bh().origin_code : pickupOrigin()); pk.innerHTML = oc ? `集荷地: ${esc(muniFull(oc))}<span class="pk-src">（${bh() ? '場面で決まっている所' : F.pair ? '選んだ区間の帰り便の出発地' : '送り方を比べるで選んだ所'}）</span>` : ''; pk.hidden = !oc; }
@@ -834,7 +868,7 @@ const Find = (() => {
         `<div class="f-grid"><label><span class="lbl">発地の県</span><select id="f-dir-from" class="ctl sm">${opt(d.from)}</select></label>` +
         `<label><span class="lbl">着地の県</span><select id="f-dir-to" class="ctl sm">${opt(d.to)}</select></label></div>` +
         (d.from && d.to ? `<p class="f-hint">${esc(d.from)}→${esc(d.to)}の便: ${ts.length ? ts.map((t) => esc(t.id)).join('・') : 'まだありません'}（架空）。下の欄で、この向きの帰り便を 1 本登録できます。</p>` + regFormHtml()
-          : '<p class="f-hint">発地の県と着地の県を選ぶと、帰り便を登録する欄が開きます。</p>');
+          : '');
       scheduleRegPrice();
     }
   }
@@ -946,7 +980,7 @@ const Find = (() => {
     if (F.role !== 'carrier') { el.innerHTML = ''; F.fm.built = false; F.fm.key = ''; return; }
     if (!F.fm.built) {
       el.innerHTML = '<div class="m-h f-sub-h">値段の計算<span class="m-tag">運送会社向け</span></div>' +
-        `<p class="fm-line">${FORMULA_LINE}</p>` +
+        `<details class="f-fold"><summary>計算の式</summary><p class="fm-line">${FORMULA_LINE}</p></details>` +
         `<div class="f-grid3"><label><span class="lbl">基準積載率（%）${tip('基準積載率')}</span><input id="fm-rate" class="ctl sm num" type="number" min="10" max="100" step="5"></label>` +
         `<label><span class="lbl">リードタイムの割引${tip('リードタイムの割引')}</span><select id="fm-disc" class="ctl sm">${[0, 10, 20, 30, 40, 50].map((v) => `<option value="${v}">${v}%</option>`).join('')}</select></label>` +
         '<label><span class="lbl">地域の表</span><select id="fm-region" class="ctl sm"><option value="近畿">近畿運輸局</option><option value="関東">関東運輸局</option></select></label>' +
@@ -1008,6 +1042,8 @@ const Find = (() => {
   }
 
   function render() {
+    const sub = q('#find-view .fg-sub');   // 運送会社の画面では荷主向けの文を出さない（2026-11-08 の最終評価に合わせて）
+    if (sub) sub.textContent = F.role === 'carrier' ? '荷主からの仮予約を承諾するか決めます。' : '例の運送会社の便から、荷物が載る帰り便を探します。';
     demoClockLine();
     if (!F.loaded) { renderList(); return; }
     renderLeft();
@@ -1034,7 +1070,7 @@ const Find = (() => {
     const any = F.trips.some((t) => F.geo[t.id] && F.geo[t.id].arc), nt = q('#find-notes');
     let p = q('#f-arc');
     if (!any) { if (p) p.remove(); return; }
-    if (!p && nt) { p = document.createElement('p'); p.id = 'f-arc'; p.className = 'f-n3'; nt.insertBefore(p, nt.querySelector('.f-lg')); }
+    if (!p && nt) { p = document.createElement('p'); p.id = 'f-arc'; p.className = 'f-n3'; (nt.querySelector('.f-notes-more') || nt).appendChild(p); }
     if (p) p.textContent = '地図で直線で結んでいる便は、経路のデータが無い便と、登録した便です。';
   }
 
@@ -1275,7 +1311,7 @@ const Find = (() => {
     const hint = !d.ready && !carrierRole && byCarrier ? `<p class="fc-hint">「確定する」まであと ${byCarrier} つ。燃料サーチャージ・支払方法などは運送会社が選ぶ項目です。<button type="button" class="btn-link" data-act="ct-to-carrier">運送会社の画面に切り替えて選ぶ</button></p>` : '';
     const miss = d.missing.length ? `<p class="fc-missing">${d.missing.map((m) => `未記入: ${esc(m)}`).join('<br>')}</p>` : '<p class="fc-ready">必要な項目はすべて埋まっています。</p>';
     const done = F.confirmed.has(d.hold_id);
-    q('#fc-body').innerHTML = `<div class="fc-sub num">仮予約 ${esc(d.hold_id)}・便 ${esc(d.trip_id)}</div>${rows}${shForm}${miss}${hint}` +
+    q('#fc-body').innerHTML = `<div class="fc-sub num">${esc(holdName(d))}・便 ${esc(d.trip_id)}</div>${rows}${shForm}${miss}${hint}` +
       (done ? '<p class="fc-done">確定しました（架空のデモです。実際の契約は結ばれません）。</p>' : '');
     const b = q('#fc-confirm');
     b.disabled = !d.ready || done;

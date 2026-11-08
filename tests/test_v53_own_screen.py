@@ -109,10 +109,11 @@ def _shot(page, name, tmp_path, quality=70):
 def test_import_screen_shows_format_guidance_and_the_sample_csv_is_readable(app):
     page = app
     _to_sample(app)
+    page.js("document.querySelector('#own-fmt details').open = true")  # 2026-11-08 の最終評価に合わせて: 列の説明は閉じた「詳しく」に入れた
     g = T(page, "#own-fmt")
     for s in ("配車表・デジタコ・運行日報の CSV", "UTF-8", "Shift_JIS", "日付・車番・発地か着地", "開始と終了の日時", "見本の CSV を保存"):
         assert s in g, s
-    assert len([x for x in g.splitlines() if x.strip()]) == 3  # 短く: 2 段落の案内とボタン
+    assert len([x for x in g.splitlines() if x.strip()]) == 4  # 短く: 詳しくの見出し、2 段落の案内、ボタン
     csv = page.js("Own.sampleCsv()")
     assert csv.splitlines()[0] == "日付,車番,車種,発地,着地,着時刻,重さ,実空"
     page.js("document.querySelector('#own-fmt [data-act=sample-csv]').click()")

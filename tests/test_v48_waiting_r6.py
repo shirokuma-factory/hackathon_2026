@@ -111,7 +111,7 @@ def test_cross_amount_is_for_the_same_carrier_and_unknown_carrier_shows_no_own_a
 def test_repeated_row_notes_are_collapsed_to_one_summary_line():
     _edge_or_skip()
     import capture_web as cw
-    rows = "".join(f"2026/10/{1 + i % 28}\tA運輸\t江東区 第1倉庫\t{1000 + i}\t中型\t8:00\t9:00\t9:30\n" for i in range(12))
+    rows = "".join(f"2026/10/{1 + i % 28}\tA運輸\t江東区 第1倉庫\t{1000 + i}\t中型\t8:00頃\t9:00\t9:30\n" for i in range(12))
     text = "日付\t契約の相手\t場所\t車番\t車種\t到着\t荷役開始\t荷役終了\n" + rows
     with cw.edge_page(1280, 900) as page:
         page.goto(WAITING.as_uri() + "?x=notes48")
@@ -125,6 +125,7 @@ def test_repeated_row_notes_are_collapsed_to_one_summary_line():
           sum: [...document.querySelectorAll('details.note-group summary')].map((s) => s.textContent)})""")
     assert info["lines"] == 0, info
     assert info["groups"] >= 1 and any("12 行" in x for x in info["sum"]), info
+    # 2026-11-08 の最終評価に合わせて: 「荷役をした人が分からない」の注記は上の帯に一本化して左の欄から外したので、同じ文が 12 行に並ぶ例を「頃」の付いた到着の時刻に変えた（折りたたみの確認は同じ）
 
 
 def test_document_table_columns_do_not_break_per_character_at_1920():

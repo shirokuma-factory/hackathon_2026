@@ -65,7 +65,7 @@ def test_g141_12_days_text_wraps_and_is_not_clipped():
     css, js = read("compare.css"), read("compare_chart.js")
     row = re.search(r"\.cc-days \{[^}]*\}", css).group(0)
     assert "text-overflow" not in row and "white-space: normal" in row and "overflow: hidden" not in row
-    assert "までは翌日、それより遠いと翌々日" in js   # 文言の直し 2026-11-07
+    assert "翌日〜翌々日" in js   # 2026-11-08 の最終評価に合わせて（条件の全文はツールチップ）
 
 
 def test_g141_7_find_view_height_stops_above_the_notes():
@@ -147,7 +147,7 @@ def test_g141_10_12_capital_distance_matches_and_days_are_not_clipped():
         assert top and top == card, (top, card)
         clip = page.js("[...document.querySelectorAll('.cc-days')].some(e=>e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+2)")
         assert clip is False
-        assert "900 km までは翌日、それより遠いと翌々日" in page.js("document.querySelector('.cc').textContent")
+        assert "翌日〜翌々日" in page.js("document.querySelector('.cc').textContent")   # 2026-11-08 の最終評価に合わせて
         assert not page.js("window.__errs.length"), page.js("JSON.stringify(window.__errs)")
 
 

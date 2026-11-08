@@ -113,7 +113,7 @@ const Market = (() => {
     q('#m-tbody').innerHTML = M.rows.map((r, i) => {
       const P = M.d.prefs;
       return `<tr data-k="${r.k}" tabindex="0" class="${r.k === M.sel ? 'on' : ''}"><td class="c-rk num">${i + 1}</td>` +
-        `<td class="c-pair">${esc(P[r.fi])}<span class="ar">&rarr;</span>${esc(P[r.ti])}</td>` +
+        `<td class="c-pair">${esc(P[r.ti])}<span class="ar">&rarr;</span>${esc(P[r.fi])}</td>` +
         `<td class="num">${n0(r.go)}</td><td class="num">${n0(r.back)}</td><td class="num">${r.ratio.toFixed(3)}</td>` +
         `<td class="num"><b>${n0(r.short)}</b></td><td class="num">${n0(r.km)}</td></tr>`;
     }).join('') || '<tr><td colspan="7" class="empty">出せる向きがありません。距離の下限を小さくしてください。</td></tr>';
@@ -216,7 +216,7 @@ const Market = (() => {
     });
     M.flows = { items, base, routes, actBase, roadBase, unkBase, ports };
     const cnt = q('#m-count');
-    if (cnt && unkBase.length && !cnt.textContent.includes('細い点線')) cnt.textContent += ' 細い点線は、経路のデータが無い区間を結んだだけの線です（実際の経路ではありません）。';
+    if (cnt && unkBase.length && !cnt.textContent.includes('細い点線')) { cnt.textContent += ' 細い点線は経路が分からない区間です。'; cnt.title = '細い点線は、経路のデータが無い区間を結んだだけの線です（実際の経路ではありません）。'; }   // 長い説明はツールチップへ（2026-11-08 の最終評価に合わせて）
     M.endpointSet = new Set(M.rows.flatMap((r) => [r.fi, r.ti]));
     M.endpoints = [...M.endpointSet].map((i) => ({ p: M.d.cap[i], name: M.d.prefs[i] }));
   }
@@ -472,8 +472,9 @@ const Market = (() => {
     // 小さな島（伊豆・小笠原など）は柱になって見苦しいので、立ち上げるのは本土側の面だけにし、島は平らな層で描く
     const prefH = (i) => (i === undefined ? 0 : (selRow ? i === selRow.fi || i === selRow.ti : M.endpointSet.has(i)) ? 400 : 100);   // 立ち上げる県はどれも同じ低さ。高さは強調だけで、量ではない
     const sp = G ? prefSplit() : null;
-    const prefLayer = (id, data, ext) => new L.GeoJsonLayer({
-      id, data, pickable: Muni.prefFilled(), stroked: true, filled: Muni.prefFilled(), beforeId: firstLabelId,
+    // 塗らない状態（市区町村・集中度の塗り）から塗る状態へ戻すとき、同じ id のままだと塗りの色が戻らないため、状態ごとに別の層にする（2026-11-08 の最終評価に合わせて）
+    const prefLayer = (id0, data, ext) => new L.GeoJsonLayer({
+      id: Muni.prefFilled() ? id0 : `${id0}-nf`, data, pickable: Muni.prefFilled(), stroked: true, filled: Muni.prefFilled(), beforeId: firstLabelId,
       extruded: ext, ...(ext ? { getElevation: (f) => prefH(M.prefIdx.get(f.properties.n)), material: { ambient: 0.22, diffuse: 0.3, shininess: 8, specularColor: [30, 36, 48] } } : {}),
       getFillColor: (f) => {
         const i = M.prefIdx.get(f.properties.n);

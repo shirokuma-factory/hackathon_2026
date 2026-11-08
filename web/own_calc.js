@@ -124,21 +124,37 @@ const OwnCalc = (() => {
     const found = [...t.matchAll(PLATE4)];
     if (found.length) return found[found.length - 1][1];
     const m = PLATE22.exec(t);
-    return m ? m[1] + m[2] : null;
+    if (m) return m[1] + m[2];
+    // 2026-11-08 の最終評価に合わせて: 「宮城 100 あ 21」「宮城 100 あ 1-21」のように、分類番号とかなの後ろが 1〜3 桁の車番も読む（4 桁にゼロを足す）
+    const f = PLATE_FULL.exec(t);
+    return f ? f[4].replace(/\D/g, '').padStart(4, '0') : null;
   }
   // 車番の文字から [末尾 4 桁, 完全な書き方]。「品川 100 あ 1234」は ['1234', '品川100あ1234']、「4t-1234」「1234」は ['1234', null]（own.py の plate_identity と同じ）。
   // 完全な書き方が違う 2 台（品川100あ1234 と 練馬100い1234）を、末尾 4 桁だけで同じ車にしないために使う
-  const PLATE_FULL = /([ぁ-んァ-ヶ一-鿿々]{1,4})\s*([0-9]{2,3})\s*([ぁ-んァ-ヶ])\s*[・\-‐]?\s*([0-9]{4}|[0-9]{2}\s*[-‐‑–−ー・]\s*[0-9]{2})/;
+  const PLATE_FULL = /([ぁ-んァ-ヶ一-鿿々]{1,4})\s*([0-9]{2,3})\s*([ぁ-んァ-ヶ])\s*[・\-‐]?\s*([0-9]{1,2}\s*[-‐‑–−ー・]\s*[0-9]{1,2}|[0-9]{1,4})/;
   // 「1号車」「１１号車」「3号」「No.2」「7」→「1号車」「11号車」…。4 桁の登録番号が無い配車表で、車の名前として使う（own.py の gou_name と同じ）
   function gouName(s) {
     const m = /^(?:NO\.?\s*)?(\d{1,3})\s*(?:号車|号|番車|番|号機)?$/i.exec(nfkc(s == null ? '' : String(s)).trim());
     return m && +m[1] > 0 ? `${+m[1]}号車` : null;
   }
+  // 2026-11-08 の最終評価に合わせて: 読めなかった理由は、ファイルと理由が同じものを 1 回にまとめ、行を添える（「車番が読めません」を 3 回並べない）
+  function failedWhy(unreadable) {
+    const g = new Map();
+    for (const u of unreadable) {
+      const k = `${u.file}: ${u.reason}`;
+      if (!g.has(k)) g.set(k, []);
+      if (u.line != null) g.get(k).push(u.line);
+    }
+    return [...g].slice(0, 3).map(([k, lines]) => {
+      const ls = [...new Set(lines)].sort((a, b) => a - b);
+      return ls.length > 1 ? `${k}（${ls.slice(0, 4).join('・')}${ls.length > 4 ? ' など' : ''} 行目）` : ls.length === 1 ? `${k}（${ls[0]} 行目）` : k;
+    }).join('、');
+  }
   function plateIdentity(s) {
     const num = normalizePlate(s);
     if (num == null) return [null, null];
     const m = PLATE_FULL.exec(nfkc(s));
-    if (m && m[4].replace(/\D/g, '') === num) return [num, `${m[1]}${m[2]}${m[3]}${num}`];
+    if (m && m[4].replace(/\D/g, '').padStart(4, '0') === num) return [num, `${m[1]}${m[2]}${m[3]}${num}`];
     return [num, null];
   }
 
@@ -2887,7 +2903,7 @@ const OwnCalc = (() => {
       multi_month: monthsDetail.length > 1, month_label: monthLabel, months_detail: monthsDetail,
       files_used: filesUsed, file_order: files.map((f) => f.name),
       period: legs.length ? { from: legs.reduce((a, l) => (l.date < a ? l.date : a), legs[0].date), to: legs.reduce((a, l) => (l.date > a ? l.date : a), legs[0].date) } : null,
-      failed: legs.length ? null : '区間を 1 件も読めませんでした' + (unreadable.length ? '（' + unreadable.slice(0, 3).map((u) => `${u.file}: ${u.reason}`).join('、') + '）' : ''),
+      failed: legs.length ? null : '区間を 1 件も読めませんでした' + (unreadable.length ? '（' + failedWhy(unreadable) + '）' : ''),
       company: { name: co.name || '自社のファイル', city: co.city || '', code: co.code || '', vehicles: vehicles.length },
       places, base, dock, base_basis: baseBasis, max_load_raised: maxRaised,
       route: { path: o.routePath || null, osrm_km: null, note: o.routeNote || '' },

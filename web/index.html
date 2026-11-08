@@ -189,19 +189,19 @@
 <section id="m-summary" class="glass v-market sh-panel" aria-label="全国の数字">
   <div class="sum-gap" aria-label="どれだけ悪いかの物差し">
     <div class="sum-row"><b class="sum-k">積載効率</b>
-      <p>営業用トラック（営業用の計）<b class="num">38.97%</b>（2025 年度）。国の目標 <b class="num">44%</b>（2030 年度）と比べるのはこの値で、約 5 ポイント足りません。下の数字の <b class="num"><span id="sum-load-ref">39.08</span>%</b> は営業用普通車だけの値です。</p>
-      <small>出典: 自動車輸送統計年報 2025 年度 表 3-1（輸送トンキロ ÷ 能力トンキロ）、総合物流施策大綱（2026 年 3 月 31 日閣議決定）別表。大綱の 2024 年度の値 41.3% は表 3-1 の営業用の計と一致します</small></div>
+      <p>営業用の計 <b class="num">38.97%</b>（2025 年度）。国の目標 <b class="num">44%</b>（2030 年度）と比べるのはこの値で、約 5 ポイント足りません。</p>
+      <details class="sum-src-d"><summary>出典・下の数字との違い</summary><small>下の <b class="num"><span id="sum-load-ref">39.08</span>%</b> は営業用普通車だけの値です。上の営業用の計とは範囲が違います。自動車輸送統計年報 2025 年度 表 3-1（輸送トンキロ ÷ 能力トンキロ）、総合物流施策大綱（2026 年 3 月 31 日閣議決定）別表。大綱の 2024 年度の値 41.3% は表 3-1 の営業用の計と一致します</small></details></div>
     <div class="sum-row"><b class="sum-k">輸送能力</b>
-      <p>2030 年度には、トラックで運べる量が平均で <b class="num">約 7%</b>、最大で <b class="num">約 25%</b> 足りなくなるおそれがあります。</p>
-      <small>出典: 「2030年度に向けた総合物流施策大綱に関する検討会 提言」2026 年 3 月、52 頁（1.7 億〜7.2 億トン）</small></div>
+      <p>2030 年度に、運べる量が平均 <b class="num">約 7%</b>、最大 <b class="num">約 25%</b> 足りなくなるおそれがあります。</p>
+      <details class="sum-src-d"><summary>出典</summary><small>「2030年度に向けた総合物流施策大綱に関する検討会 提言」2026 年 3 月、52 頁（1.7 億〜7.2 億トン）</small></details></div>
   </div>
   <div class="sum-tiles">
   <div class="sum-tile" title="営業用普通車・2025 年度（自動車輸送統計年報）"><div class="sum-num num"><span id="sum-load"></span><small>%</small></div>
     <div class="sum-lbl"><span class="lb-full">積載効率（営業用の普通車）</span><span class="lb-short">積載効率（普通車）</span></div>
-    <div class="sum-src">営業用普通車・2025 年度（自動車輸送統計年報）</div></div>
+    <div class="sum-src">営業用普通車・2025 年度</div></div>
   <div class="sum-tile" title="営業用普通車・2025 年度（自動車輸送統計年報）。走った距離のうち荷を積んでいた割合"><div class="sum-num num"><span id="sum-rate"></span><small>%</small></div>
-    <div class="sum-lbl"><span class="lb-full">実車率（営業用普通車。走った距離のうち荷を積んでいた割合）</span><span class="lb-short">実車率</span></div>
-    <div class="sum-src">営業用普通車・2025 年度（自動車輸送統計年報）</div></div>
+    <div class="sum-lbl"><span class="lb-full">実車率（走った距離のうち荷を積んでいた割合）</span><span class="lb-short">実車率</span></div>
+    <div class="sum-src">営業用普通車・2025 年度</div></div>
   <div class="sum-tile" title="県をまたぐ荷で、逆向きに同じ量の荷が無い割合。営業用トラック"><div class="sum-num num"><span id="sum-share"></span><small>%</small></div>
     <div class="sum-lbl"><span class="lb-full">県をまたぐ荷で、逆向きに同じ量の荷が無い割合</span><span class="lb-short">逆向きに荷が無い割合</span></div>
     <div class="sum-src">営業用トラック</div></div>
@@ -211,7 +211,7 @@
 <div id="m-left" class="v-market sh-panel">
   <section id="m-guide" class="glass" aria-labelledby="mg-h">
     <h1 class="p-title" id="mg-h" tabindex="-1">全国の物流傾向</h1>
-    <p class="mg-sub">帰りが空きやすい向きの上位 5 つです。<span class="mg-sub-x">矢印は荷を送る向き（帰りが空く向き）で、数字はその向きに足りない荷の量です。</span></p>
+    <p class="mg-sub">帰りが空きやすい向きの上位 5 つです。<span class="mg-sub-x">矢印の向きに荷を探しています。数字は足りない荷の量です。</span></p>
     <ol class="mg-list" id="mg-rows" aria-label="帰りが空きやすい区間の上位 5（営業用トラック）"></ol>
     <p class="mg-sel" id="mg-sel" aria-live="polite">1 つ選ぶと、地図がその 2 県の間を拡大します。</p>
     <button type="button" class="btn-primary" id="mg-next" data-go-view="find">この向きで帰り便を探す<small class="mg-badge">架空のデモ</small></button>
@@ -251,8 +251,8 @@
       <input id="m-x" type="range" min="0" max="20" step="0.5" value="5"></label>
     <div class="calc-out"><span class="num" id="calc-from"></span><span class="calc-ar" aria-hidden="true">&rarr;</span><b class="num" id="calc-to"></b><span class="calc-d num" id="calc-d"></span></div>
     <div class="calc-lbl">営業用普通車の実車率（%）</div>
-    <p class="calc-who">X が動くのは、帰りが空く向きに荷を持つ荷主が帰り便を使い、運送会社が帰り便を登録したときです。このデモの便はすべて架空です。</p>
     <details class="calc-note"><summary>この計算の前提</summary>
+      <p class="calc-who">X が動くのは、帰りが空く向きに荷を持つ荷主が帰り便を使い、運送会社が帰り便を登録したときです。このデモの便はすべて架空です。</p>
       <p id="calc-formula"></p>
       <p>次の 5 つを仮定しています。どれも強い仮定です。(1) 効果はトンキロに比例する (2) 帰り便は今も走っている (3) ほかの便の走り方は変わらない (4) 全国の実車率で代用する (5) 道路距離は直線距離の一定倍とみなす</p></details>
     </div>
@@ -274,13 +274,13 @@
       <div class="mlg-sec" id="mlg-fac" hidden></div>
       <div class="mlg-sec" id="mlg-flow"><div class="mlg-t">動く線と乗り物<small>区間ごと</small></div>
         <div class="mlg-row"><svg class="mlg-ar" viewBox="0 0 60 14" aria-hidden="true"><path d="M2 7h40" stroke="#cfeaff" stroke-width="2" stroke-linecap="round"/><path d="M42 2l14 5-14 5z" fill="#eaf6ff"/></svg>
-          <span>向き = 荷が多い向き（乗り物の進む向き） ／ 太さ = 不足量 ／ 明るさ = 偏りの比が小さいほど明るい ／ 下の細い線の色 = 手段</span></div></div>
+          <span title="向き = 荷が多い向き（乗り物の進む向き） ／ 太さ = 不足量 ／ 明るさ = 偏りの比が小さいほど明るい ／ 下の細い線の色 = 手段">向き・太さ・明るさ・線の色の見方</span></div></div>
       <div class="mlg-sec" id="mlg-traf"><div class="mlg-t">交通の流れ<small>営業用トラックの量</small></div>
         <button type="button" id="traf-toggle" class="mlg-sw" role="switch" aria-checked="true" aria-label="交通の流れを表示する"><span class="mlg-sw-box" aria-hidden="true"></span><span>粒子の数と明るさ = 量が多いほど多く・明るい</span></button>
         <div class="mlg-note">道路の線をつないだ概算で、実際の便の位置ではありません。</div></div>
       <div class="mlg-sec" id="mlg-jartic"><div class="mlg-t"><span id="mlg-jartic-t">大型車の点</span><small>国の観測点（JARTIC）</small></div>
-        <div class="mlg-row"><i class="dot dot-up"></i><span>上りが多い</span><i class="dot dot-down"></i><span>下りが多い</span><span class="mlg-faint">色が濃いほど上りと下りの差が大きい所です。</span></div>
-        <div class="mlg-note">上り・下りは道路の決まりで、荷の行き帰りとは別です。</div></div>
+        <div class="mlg-row"><i class="dot dot-up"></i><span>上りが多い</span><i class="dot dot-down"></i><span>下りが多い</span><span class="mlg-faint" title="色が濃いほど上りと下りの差が大きい所です。">濃いほど差が大</span></div>
+        <div class="mlg-note" title="上り・下りは道路の決まりで、荷の行き帰りとは別です。">上り下りは荷の行き帰りと別</div></div>
       <div class="lg-hubs" hidden></div>
     </div>
     <div id="mlg-attr" aria-label="出典" hidden></div>
@@ -296,7 +296,7 @@
   <div id="m-muni" hidden></div>
   <div id="m-pair" hidden></div>
   <div id="m-table-wrap"><table id="m-table" aria-label="区間の一覧">
-    <thead><tr><th class="c-rk"></th><th class="c-pair">区間（荷が多い向き）</th><th>行き<small>t</small></th><th>帰り<small>t</small></th><th>偏りの比</th><th>不足量<small>t</small></th><th>直線<small>km</small></th></tr></thead>
+    <thead><tr><th class="c-rk"></th><th class="c-pair" title="荷が多い向きの逆。案内の一覧と同じ向きです">区間（帰りが空く向き）</th><th title="荷が多い向きの量">多い向き<small>t</small></th><th title="逆向き（帰りが空く向き）の量">逆向き<small>t</small></th><th>偏りの比</th><th>不足量<small>t</small></th><th>直線<small>km</small></th></tr></thead>
     <tbody id="m-tbody"></tbody></table></div>
 </aside>
 
@@ -363,8 +363,9 @@
 
 <section id="find-notes" class="glass v-find" aria-label="注意と凡例">
   <p class="f-n1" id="f-fiction">架空の運送会社と便です。</p>
-  <p class="f-n2" id="f-booking">積むかどうかは運送会社が決めます。大きさや重さが違うと断られます。</p>
-  <p class="f-n3">お金のやり取りやメールの送信はしません。料金は例の額（税抜）です。</p>
+  <details class="f-notes-more"><summary>注意を見る</summary>
+    <p class="f-n2" id="f-booking">積むかどうかは運送会社が決めます。大きさや重さが違うと断られます。</p>
+    <p class="f-n3">お金のやり取りやメールの送信はしません。料金は例の額（税抜）です。</p></details>
   <div class="f-lg"><span><i class="f-l-on"></i>荷に合う便</span><span><i class="f-l-off"></i>合わない便・別の区間</span>
     <span class="mlg-faint">細い線は帰りの空きやすさ</span></div>
   <div class="f-lg f-lg-modes"><span class="rt-legend rt-legend-row"></span></div>

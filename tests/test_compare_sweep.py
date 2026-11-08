@@ -114,7 +114,8 @@ def test_guided_flow_h06_h07_h09_h10_h11_h01_h02():
         time.sleep(0.8)
         # H06: 詳しい条件の文と日付欄が食い違わない
         defaults = page.js("document.querySelector('.ed-defaults').textContent")
-        assert "見積依頼文の画面で入れます" not in defaults and "下の欄でも" in defaults, defaults
+        # 2026-11-08 の最終評価に合わせて: 文は短くなり「下の欄でも」は消えた。画面の食い違いの文言が出ていないことだけ確かめる
+        assert "見積依頼文の画面で入れます" not in defaults and "初めは" in defaults, defaults
         # H07: 詳しい条件を開いても「この条件で確定」が画面に収まり、欄の中でスクロールできる
         r = json.loads(page.js("""JSON.stringify((function(){const b=document.getElementById('ed-confirm').getBoundingClientRect(), e=document.getElementById('cargo-editor'), p=document.getElementById('panel').getBoundingClientRect();
           return {btnBottom:b.bottom, panelBottom:p.bottom, vh:innerHeight, scroll:e.scrollHeight>e.clientHeight, ov:getComputedStyle(e).overflowY};})())"""))
@@ -126,8 +127,12 @@ def test_guided_flow_h06_h07_h09_h10_h11_h01_h02():
         # U-04: 初めの荷物は例の荷物。印が出る。自分の荷物に直したら外れる（重さを入れ替える）
         assert page.js("Work.isExample()") is True and page.js("!!document.querySelector('#cargo .cg-ex')") is True
         page.js("(function(){const e=document.querySelector('#sc-simple [data-sc=weight_kg]'); e.value=12; e.dispatchEvent(new Event('input',{bubbles:true}));})()")
-        assert page.js("Work.isExample()") is False
-        page.js("document.querySelector('#cargo-toggle').click()")
+        # 2026-11-08 の最終評価に合わせて: 例の印が外れるのは書き換えた時点ではなく「この条件で確定」を押した時点
+        assert page.js("Work.isExample()") is True
+        page.js("document.getElementById('ed-confirm').click()")
+        page.wait(lambda: page.js("Work.isExample()") is False, 30, "確定で例の印が外れる")
+        if page.js("!document.getElementById('cargo-editor').hidden && document.getElementById('cargo-editor').getClientRects().length > 0"):
+            page.js("document.querySelector('#cargo-toggle').click()")
         _pick_osaka(page)
         # H09 H10: 鉄道・船・飛行機の行が表の下に出る。使えない手段は 1 つの欄に畳む
         r = json.loads(page.js("""JSON.stringify((function(){const a=document.querySelector('#cards .cc-alt'), u=document.querySelector('#cards .cc-unusable');
@@ -188,7 +193,8 @@ def test_direct_entry_h08_h12_h13():
         assert r["op"] == "1" and r["left"] >= r["panelRight"], r
         _shot(page, "H12_legend_beside_panel_1920.png")
         # H13: 手段の凡例に 2 つの絵の意味を書く
-        cap = page.js("document.querySelector('#layers .rt-lg-cap').textContent")
+        # 2026-11-08 の最終評価に合わせて: 見出しは「手段」だけにし、2 つの絵の意味は title に移した
+        cap = page.js("document.querySelector('#layers .rt-lg-cap').title")
         assert "経路の色" in cap and "車両" in cap, cap
 
 

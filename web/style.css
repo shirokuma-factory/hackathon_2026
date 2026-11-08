@@ -1764,3 +1764,46 @@ body.view-home .home-terrain { display: block; position: fixed; left: 12px; bott
   html body #views button, html body #views .views-link { flex: 1 1 0; min-width: 0; white-space: normal; word-break: auto-phrase; overflow-wrap: anywhere; line-height: 1.15; font-size: 11px; padding: 0 2px; text-align: center; }
   html body #views button .demo-tag { font-size: 9px; }
 }
+
+/* 2026-11-08 の最終評価に合わせて: 出典の折りたたみ、390 幅のタブと札 */
+.sum-src-d { grid-column: 2; margin: 2px 0 0; }
+.sum-src-d summary { font-size: 11px; color: var(--muted); cursor: pointer; }
+.sum-src-d small { display: block; margin-top: 2px; }
+.sum-ref { font-size: 12px; color: var(--muted); cursor: help; }
+@media (max-width: 600px) {
+  /* 空きを探す: 下の板を送っても、荷物の札が地図の下に隠れないよう上に留める */
+  html body.sheet-mode #f-shipper > .f-row:first-child { position: sticky; top: 0; z-index: 3; background: var(--glass-solid); padding: 6px 0; margin-top: 0; box-shadow: 0 6px 8px -6px rgba(0, 0, 0, .6); }
+}
+@media (max-width: 420px) {
+  html body #views .views-link { font-size: 10.5px; }
+}
+
+/* 2026-11-08 の最終評価に合わせて: 荷主の仮予約の状態の行、狭い画面で便の一覧へ移るボタン、閉じた折りたたみ */
+.f-status { margin: 0 0 8px; padding: 7px 10px; border-radius: 8px; font-size: 12.5px; line-height: 1.5; background: rgba(255, 255, 255, .06); border-left: 3px solid var(--line-strong); }
+.f-status.declined, .f-status.expired { border-left-color: var(--warn); color: #e6d3a3; }
+.f-status.accepted { border-left-color: #4fd1a5; }
+.f-status.held { border-left-color: #6cb6ff; }
+.f-status .f-cd { margin-left: 2px; }
+#find-view .f-jump { display: none; width: 100%; margin: 0 0 8px; }
+@media (max-width: 600px) { body:not(.guided) #find-view .f-jump { display: block; } }
+.f-why-more, .f-fold { margin-top: 2px; }
+.f-why-more > summary, .f-fold > summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.f-notes-more > summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.f-notes-more p { margin: 4px 0 0; }
+/* 390 幅の最初の画面: 左下の地形の出典がカードの下端に重ならないように、出典を上の端へ移す（2026-11-08 の最終評価に合わせて） */
+@media (max-width: 600px) {
+  body.view-home #home { padding-top: 26svh; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  body.view-home #home .home-wrap { max-height: calc(100svh - 26svh - 32px); overflow: auto; }
+  body.view-home .home-terrain { top: calc(96px + env(safe-area-inset-top, 0px)); bottom: auto; }   /* 出典は上の端へ。カードは下から 16px のまま重ならない */
+}
+
+/* 2026-11-08 の最終評価に合わせて: 見出しの「2026 年 10 月」を途中で折り返さない */
+.o-nw { white-space: nowrap; }
+.o-why-d, .o-eff-d { margin: 2px 0; }
+.o-why-d > summary, .o-eff-d > summary { font-size: 12px; }
+/* 2026-11-08 の最終評価に合わせて: 自社の運行の広い画面でも、地図の出典（約 180 字）は「出典」ボタンに畳む */
+@media (min-width: 601px) {
+  body.view-own:not(.own-guided) .maplibregl-ctrl-attrib { display: none; }
+  body.view-own:not(.own-guided).attr-open .maplibregl-ctrl-attrib { display: block; }
+  body.view-own:not(.own-guided) #attr-toggle { display: block; position: fixed; left: 480px; bottom: 14px; z-index: 25; min-height: 28px; padding: 2px 12px; font: inherit; font-size: 13px; color: var(--text); background: var(--glass); border: 1px solid var(--line, rgba(255,255,255,.2)); border-radius: 8px; cursor: pointer; }
+}
