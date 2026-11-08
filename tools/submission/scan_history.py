@@ -29,12 +29,14 @@ if _priv:
 else:
     print("private_term の確認は飛ばした", private_terms.SKIP_NOTE)
 cre = {k: re.compile(v) for k, v in pats.items()}
-p = subprocess.run(["git","-C",repo,"log","--all","-p","--no-color","--no-ext-diff","--text","--format=@@C %H %ad","--date=short"],capture_output=True)
+p = subprocess.run(["git","-C",repo,"-c","core.quotepath=false","log","--all","-p","--no-color","--no-ext-diff","--text","--format=@@C %H %ad","--date=short"],capture_output=True)
 txt = p.stdout.decode("utf-8","replace")
 hits = collections.defaultdict(list); commit=None; fname=None
 for line in txt.splitlines():
     if line.startswith("@@C "): commit=line[4:16]; continue
+    if line.startswith('+++ "b/'): fname=line[7:].rstrip('"'); continue  # 引用符つき（空白などを含む名前）
     if line.startswith("+++ b/"): fname=line[6:]; continue
+    if line.startswith("+++ /dev/null"): fname=None; continue
     if not line.startswith("+") or line.startswith("+++"): continue
     for k, r in cre.items():
         if k == "phone_jp" and fname and fname.endswith((".geojson", ".json")):
@@ -45,7 +47,7 @@ summary = {}
 for k, v in hits.items():
     files = collections.Counter(f for _, f, _ in v)
     vals = collections.Counter(s for _, _, s in v)
-    summary[k] = {"count": len(v), "files": dict(files.most_common(12)), "values": dict(vals.most_common(8))}
+    summary[k] = {"count": len(v), "n_files": len(files), "files": dict(files.most_common(12)), "values": dict(vals.most_common(8))}
 # files ever added
 names = subprocess.run(["git","-C",repo,"log","--all","--diff-filter=A","--name-only","--format="],capture_output=True).stdout.decode("utf-8","replace").split("\n")
 sens = [n for n in set(names) if re.search(r"(^|/)\.env($|\.)|\.pem$|\.key$|\.p12$|id_rsa|credentials|service[-_]?account|\.sqlite$|\.db$", n, re.I)]
