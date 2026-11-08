@@ -41,7 +41,7 @@ for k,v in out.items():
     print("  models", v["models"]); print("  agents", v["agents"]); print("  skills", v["skills"]); print("  mcp", dict(mcp_srv))
     print("  top", {t:n for t,n in list(v["tools"].items())[:14] if not t.startswith("mcp__")})
 
-# 合計と、サブエージェントの応答のモデルごとの割合（CLAUDE_USAGE の「応答の 81% が Sonnet」の出典）
+# 合計と、サブエージェントの応答のモデルごとの割合（CLAUDE_USAGE の「応答のうち Sonnet の割合」の出典）
 tot = collections.Counter(); agents_tot = collections.Counter(); skills_tot = collections.Counter(); users_tot = 0; compacts_tot = 0
 for v in out.values():
     tot.update(v["tools"]); agents_tot.update(v["agents"]); skills_tot.update({k: n for k, n in v["skills"].items() if k})

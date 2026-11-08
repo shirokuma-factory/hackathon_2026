@@ -83,6 +83,8 @@ def main() -> None:
         label = d.lstrip("0").replace("-0", "/").replace("-", "/")
         if re.search(rf"^\| {label} \| \d+ \|", t, re.M):
             t = re.sub(rf"^(\| {label} \| )\d+( \|)", rf"\g<1>{n}\g<2>", t, flags=re.M)
+            if (d, n) == days[-1]:  # 最後の日（今日）の試験の欄は、いまの件数にそろえる
+                t = re.sub(rf"^(\| {label} \| \d+ \| )[\d,]+（集めた数） \|", rf"\g<1>{tests}（集めた数） |", t, flags=re.M)
         else:
             prev = list(re.finditer(r"^\| \d+/\d+ \| \d+ \| [^\n]*\|$", t, re.M))
             if prev:

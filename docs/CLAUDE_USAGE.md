@@ -13,9 +13,9 @@
 | サブエージェントの起動 | 298 回 | Agent の呼び出し |
 | サブエージェントの応答のうち Sonnet | 74%（Sonnet 24,365・Opus 8,691・Haiku 7） | サブエージェントの記録の model |
 | Workflow（複数の採点者を同時に動かす台本） | 11 回 | Workflow の呼び出し |
-| コミット | 311 | `git rev-list --count origin/claude/exciting-bell-uj2kvl` |
+| コミット | 312 | `git rev-list --count origin/claude/exciting-bell-uj2kvl` |
 | 自動試験 | 2,277 件 | `uv run pytest --collect-only -q` |
-| 採点・監査の記録 | 116 件 | `docs/reviews/*.md` |
+| 採点・監査の記録 | 117 件 | `docs/reviews/*.md` |
 | 一次資料の照合 | 111 件（不一致 0 件） | `docs/plan/2026-11-03_課題の出典.md` |
 
 ## Claude Code で可能になったこと
@@ -59,7 +59,7 @@
 | Blender | 3D モデル、ジオラマ、線画、役割カード | 9（MCP）。ほかに画面なしの Blender で台本を実行 | 形を見て直す往復を Claude が回すため |
 | Claude Browser（内蔵のブラウザ） | 画面の操作と確認、商標の検索、Cloud Shell の画面を読む | 372 | 試験で見つからない表示の問題を、自分の目で確かめるため |
 | Claude in Chrome | Suno での曲作り、素材のサイト、動画の確認、ストック映像のライセンスの確認、Cloud Shell | 189 | API の無いサービス（Suno）を操作するため |
-| Unity | 接続できなかった | 0 | — |
+| Unity | 接続できなかった（呼び出し 3 回、どれも失敗） | 3 | — |
 
 ## サブエージェントとスキル
 
@@ -82,7 +82,7 @@
 
 | いつ | 何をするか | 動いた範囲 |
 |---|---|---|
-| `git commit` のあと | `docs/DEVLOG.md` にコミットを追記 | 動いた。DEVLOG に 45 件（11/7〜11/8 の手元の PC のコミットを含む）。11/3 の時点では手元の PC で記録されず、「動いていない」と書いていたが、誤りだった。原因はフックの判定で、文字列 `git commit` を探していたため `git -c user.name=Claude … commit` の形を見落としていた（11/8 に直し、`tests/test_devlog_hook.py` を足した）。11/3 00:22 に、DEVLOG だけのコミットが繰り返し記録される不具合を直した（`1c24f0a`） |
+| `git commit` のあと | `docs/DEVLOG.md` にコミットを追記 | 動いた。ただし記録されたのはコミット 311 件のうち 66 件（11/8 07:35 の時点）。`git -c user.name=… commit` の形（11/7 夜から使った）を拾わず、マージと amend も拾わないため。`-c` の形は 11/8 に直した（`037ee54`）。11/3 の時点では手元の PC で記録されず、「動いていない」と書いていたが、誤りだった。原因はフックの判定で、文字列 `git commit` を探していたため `git -c user.name=Claude … commit` の形を見落としていた（11/8 に直し、`tests/test_devlog_hook.py` を足した）。11/3 00:22 に、DEVLOG だけのコミットが繰り返し記録される不具合を直した（`1c24f0a`） |
 | ComfyUI・Ollama の生成のあと | `docs/generation_log.jsonl` に 1 行追記 | 動いた。34 行（ComfyUI の生成の記録） |
 | ファイルを書く前 | `.env` などへの書き込みを止める | クラウドで確かめた（11/2） |
 
@@ -117,7 +117,7 @@
 
 ## 前から持っていた道具と、期間中に直した所
 
-最初のコミット `35e4866`（2026-11-03 00:11）の `.claude/`（サブエージェント 4 つ、スキル 2 つ、フック 3 つ）、`tools/local_ai_mcp/`、`scripts/` は、イベントの前から持っていた開発の道具です。アプリの機能ではありません。期間中に直した所は、DEVLOG のフックの修正（`1c24f0a`）、PR #1 から移した `guard_secrets`・`log_generation`・MCP のパスの修正と `rubric-loop` スキル（`0f5387f`）、試験の後片付け（Windows のジョブ）です。
+最初のコミット `35e4866`（2026-11-03 00:11）の `.claude/`（サブエージェント 4 つ、スキル 2 つ、フック 3 つ）、`tools/local_ai_mcp/`、`scripts/` は、イベントの前から持っていた開発の道具です。アプリの機能ではありません。期間中に直した所は、DEVLOG のフックの修正（`1c24f0a`）、PR #1 から移した `guard_secrets`・`log_generation`・MCP のパスの修正と `rubric-loop` スキル（`f11bed5`）、試験の後片付け（Windows のジョブ）、DEVLOG のフックが `git -c … commit` を拾うようにした修正（`037ee54`）です。
 
 ## 検証の道具
 

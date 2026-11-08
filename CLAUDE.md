@@ -32,7 +32,7 @@
 - MCP Blender（Blender 5.2 の拡張機能、127.0.0.1:9876）、DaVinci Resolve MCP（動画の編集）
 - サブエージェント（`.claude/agents/`）: `coder`（Sonnet）、`reviewer`（Opus）、`gen-reviewer`（Sonnet、生成物の目視確認）、`researcher`（Opus）
 - スキル（`.claude/skills/`）: `comfyui-run`（生成と証拠の残し方）、`route-verify`（モデルの振り分けと検証）、`rubric-loop`（採点基準を作り、新しい採点者で採点して直す反復）
-- フック（`.claude/settings.json`）: `git commit` の件名を DEVLOG に追記、生成のたびに `docs/generation_log.jsonl` に追記、`.env` への書き込みを止める。手元の Windows でも動いている（`docs/CLAUDE_USAGE.md` のフックの表）
+- フック（`.claude/settings.json`）: `git commit` の件名を DEVLOG に追記、生成のたびに `docs/generation_log.jsonl` に追記、`.env` への書き込みを止める。手元の Windows でも動いている。ただし `git -c … commit` の形と、マージ・amend は 11/8 まで拾えなかった（`docs/CLAUDE_USAGE.md` のフックの表）
 
 新しい Skill・MCP・サブエージェント・フックを足したら、同じコミットで `docs/CLAUDE_USAGE.md` に1行足す。
 

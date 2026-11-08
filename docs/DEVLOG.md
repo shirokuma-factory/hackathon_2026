@@ -486,3 +486,19 @@
 - r20〜r21（作成者の指示 11/8: 撮ったものが出力に入り意図どおりに動くかを毎回確かめる。話し終わる前に終わる映像、内容とナレーションのずれは強く禁止）: `tools/video/check_sync.py` を作った。書き出した動画の文字起こしと EDL から、声より先に終わる画面（E2）、描き終わる前に切れる図（E4）、文の途中で消える図・字幕（E5・E6）、余韻（E7）、黒（E8）を数える。r17 で既知の欠け（ロゴが途中で切れる、声より先に終わる）を拾い、r19 は 0 件。文字起こしが英字の語（BackFull）の始まりを 1〜2 秒早く付けるので、英字の語は終わりから付け直す。
 - アプリのセッションが地図の層のずれを直した（0c81241、画素比 2 で MapLibre と deck.gl の解像度比が食い違い、層が 1.33 倍に拡大していた）。地図の場面を撮り直した（rec20、W20_*）。帰りの曜日はアプリ側で土曜にそろった。
 - r21: check_sync の注意（E3）で、S2 の最初の切り替えが「帰り便を|探すと」の途中だったので、読点の間（144.5 秒）に合わせ、続きの画面を同じ所から始める（W20_P9b_L・W20_P10b_L）。r21 は誤り 0 件、注意 3 件（「Backfull」と言う瞬間の切り替えで、意図どおり）。179.6 秒、-14.6 LUFS。r20 の mp4 は書き出し後に assembly から消えていた（原因不明、点検の材料は残っている）。
+- 2026-11-08 07:47 `0e77273` Video r21: S2 cut on the pause, sync check handles English tokens
+- 2026-11-08 07:52 `789c5af` Waiting: body total equals the tile again; r4b fixes; label tests for both tariff sets
+- 2026-11-08 08:05 `eae4859` Own fleet: visual-debug fixes (稼働日, Japanese role names, 毎週 rule, T7 text, sample label)
+- 2026-11-08 08:06 `3766a0c` Rights: record the decision to leave the pre-rewrite commits as they are
+- 2026-11-08 08:15 `4e6cffd` Compare lite: r4c and visual-debug fixes
+- 2026-11-08 08:17 `040933b` Waiting and driver: visual-debug fixes
+- 2026-11-08 08:17 `44c64d9` Submission form: add demo video URL
+- 2026-11-08 08:17 `f433079` YouTube description draft: repo URL, credits as of r21
+- 2026-11-08 08:32 `36c90c5` Map, AI forms and narrow screens: visual-debug and live-run fixes
+- 2026-11-08 08:44 `47f1f21` AI forms: accurate removed-items list, stale cost table note, short JSON heading
+- 2026-11-08 08:59 `4238f10` Submission form: richer project overview (load factor, shipper cost pass-through, more features)
+- 2026-11-08 09:06 `5424eda` Submission form: overview leads with charts and national statistics
+- 2026-11-08 09:06 `a6a4226` Tests: follow today's intended changes (request signature, consult wording, mm guard, optional date fields)
+- 2026-11-08 09:07 `2318cc0` Refresh counts before redeploying
+
+- 訂正（2026-11-08）: DEVLOG のフックは手元の Windows でも動いていた（11/3 21:51 の「動いていない」は誤り）。記録されなかったのは `git -c user.name=… commit` の形とマージ・amend で、`-c` の形は 037ee54 で拾うようにした。記録は 311 件中 66 件（11/8 07:35 の時点）。
