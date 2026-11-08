@@ -4,6 +4,8 @@
 
 中小の運送会社と中小の荷主が、手元の記録だけで、荷待ちの相談・空いた帰りの提案・送り方の比べをするためのツールです。Built with Claude: Japan 2026 のテーマ 2「本来、誰にでも届くべきものを。」への提出作品です。
 
+<sub>言葉: **荷待ち**＝トラックが荷主の倉庫などに着いてから、荷を積み降ろしできるまで待たされる時間。**帰り便**＝荷を届けたあと、空のまま戻る車。**元請**＝荷主から仕事を受けて、実際に運ぶ会社に回す運送会社。**デジタコ**＝車の速度・距離・時刻を記録する機械（デジタルタコグラフ）。**標準的運賃**＝国土交通省が告示した、トラックの運賃と待機時間料の目安。</sub>
+
 **デモ動画（3 分）:** https://youtu.be/D59OlKkG7W8
 
 [![デモ動画（YouTube、3 分）](https://img.youtube.com/vi/D59OlKkG7W8/maxresdefault.jpg)](https://youtu.be/D59OlKkG7W8)
@@ -172,7 +174,7 @@ uv run pytest -n 8
 | `tools/serve_web.py` | 標準ライブラリだけの配信サーバーと API |
 | `web/` | 地図の画面（MapLibre + deck.gl）とファイル 1 枚のページ。`own_calc.js`・`waiting_calc.js` は Python と同じ結果になる JS（共通の試験表で確かめる） |
 | `data/` | 運賃・標準的運賃の表・場面・架空の便とサンプル（出典・確認日つき） |
-| `tests/` | 自動試験 2,277 件。GitHub Actions でも流す（`.github/workflows/test.yml`） |
+| `tests/` | 自動試験 2,277 件（手元の PC で全件を流した結果は [docs/reviews/2026-11-08_全件の試験.md](docs/reviews/2026-11-08_全件の試験.md)）。GitHub Actions でも push のたびに流す。ただし Actions の Linux には Edge が無いので、画面を開く試験は飛ばし、残りを流す（`.github/workflows/test.yml`） |
 
 ## もっと読む
 
