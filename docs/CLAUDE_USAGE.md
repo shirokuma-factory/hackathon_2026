@@ -13,9 +13,9 @@
 | サブエージェントの起動 | 298 回 | Agent の呼び出し |
 | サブエージェントの応答のうち Sonnet | 74%（Sonnet 24,365・Opus 8,691・Haiku 7） | サブエージェントの記録の model |
 | Workflow（複数の採点者を同時に動かす台本） | 11 回 | Workflow の呼び出し |
-| コミット | 312 | `git rev-list --count origin/claude/exciting-bell-uj2kvl` |
+| コミット | 314 | `git rev-list --count origin/claude/exciting-bell-uj2kvl` |
 | 自動試験 | 2,277 件 | `uv run pytest --collect-only -q` |
-| 採点・監査の記録 | 117 件 | `docs/reviews/*.md` |
+| 採点・監査の記録 | 119 件 | `docs/reviews/*.md` |
 | 一次資料の照合 | 111 件（不一致 0 件） | `docs/plan/2026-11-03_課題の出典.md` |
 
 ## Claude Code で可能になったこと
