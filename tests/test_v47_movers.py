@@ -36,3 +36,30 @@ def test_market_shows_moving_head(public_server):
         ids = _ids(page)
         assert "m-flow-core" in ids and "m-flow-head" in ids, ids
         assert page.js("window.__csp") == []
+
+
+MOVER_POS = """(()=>{const a=window.__app,o=a.overlay(),ls=[];const fl=(x)=>Array.isArray(x)?x.forEach(fl):x&&ls.push(x);fl((o.props||o._props).layers);
+const r={};for(const l of ls){const m=/^rt-veh-(truck|rail|ferry|air)(-3d)?$/.exec(l.id);if(m)r[m[1]]=(r[m[1]]||[]).concat(Array.from(l.props.data||[]).map(v=>[+v.p[0].toFixed(3),+v.p[1].toFixed(3)]));}
+return r;})()"""
+
+
+def test_guided_flow_vehicles_move_without_clicks(public_server):
+    """案内（荷主 → 比べる → 届け先を選ぶ）の流れで、再生ボタンを押さなくても乗り物の位置が時間で変わる。2026-11-08「飛行機・船・電車が動かない」の確認用。"""
+    with edge_page(1920, 1080, hooks=(RESOURCE_HOOK, CSP_HOOK)) as page:
+        page.goto(f"http://127.0.0.1:{public_server}/index.html")
+        page.wait(lambda: page.js("document.body.classList.contains('view-home') && !!document.querySelector('#role-shipper')"), 60, "最初の画面")
+        page.js("document.querySelector('#role-shipper').click()")
+        page.js("document.querySelector('#p-ship-compare').click()")
+        page.wait(lambda: page.js("!!window.__app && __app.S.view==='compare' && !!__app.S.idx"), 240, "比べる画面")
+        page.js("(()=>{const q=document.querySelector('#q');q.focus();q.value='福岡市中央区';q.dispatchEvent(new Event('input',{bubbles:true}));})()")
+        page.wait(lambda: page.js("!!document.querySelector('#suggest li[data-i]')"), 30, "候補")
+        page.js("document.querySelector('#suggest li[data-i]').dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}))")
+        page.wait(lambda: page.js("document.body.classList.contains('has-route')") and "air" in page.js(MOVER_POS), 60, "乗り物")
+        assert page.js("__app.S.playing") is False
+        a = page.js(MOVER_POS)
+        time.sleep(1.5)
+        b = page.js(MOVER_POS)
+        for m in ("truck", "rail", "ferry", "air"):
+            assert a.get(m) and b.get(m), (m, a, b)
+            assert a[m] != b[m], f"{m} の位置が 1.5 秒で変わっていません: {a[m]}"
+        assert page.js("window.__csp") == []
