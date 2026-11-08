@@ -486,7 +486,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
 const TARIFF = /*__TARIFF__*/null;
 const VECTORS = /*__VECTORS__*/null;
 const { HEADER_ALIASES, headerKey, COLUMNS, nz, norm, fmtTime, parsePasteFull, parsePaste, calc, aggregate, UNKNOWN_HANDLER, cmp, halfUp, pct, NO_PLACE, hotspots, byPlaceMonth, hotspotNotes, monthLabel, truncWarn, BASIS_FACTS, GMEN_QUOTE, PLACE_MONTH_LEAD, PM_DEF, TRUNC_LINE, TRUNC_WARN, MONTH_CLOSE,
-  CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, PM_PARTNER_SCREEN_NOTE, ASK_PARTNER, PROVISIONAL_PARTNER } = WaitingShared;
+  CONSULT_TITLE, CONSULT_CLOSE, PM_PARTNER_TITLE, PM_PARTNER_SCREEN_NOTE, ASK_PARTNER, PROVISIONAL_PARTNER, MEMO_NO_PARTNER } = WaitingShared;
 const ARTIFACT = /*__ARTIFACT__*/false;   // true のときは claude.ai の Artifact 用の版（印刷と CSV の保存は使えないので、文と CSV をコピーする）
 
 
@@ -759,7 +759,7 @@ function fillProvisional() {
   if (!v) { if (inp) inp.focus(); return; }
   endExampleAuto();
   let n = 0;
-  S.rows.forEach((r) => { if (!isBlank(r) && !String(r.partner || '').trim()) { r.partner = v; n += 1; } });
+  S.rows.forEach((r) => { if (!isBlank(r) && (!String(r.partner || '').trim() || nz(r.partner) === nz(MEMO_NO_PARTNER))) { r.partner = v; n += 1; } });
   $('#bulk-msg').textContent = n ? `契約の相手が空の ${n} 行を『${v}』にしました` : '';
   renderTable(); doCalc();
 }
@@ -862,15 +862,16 @@ const noPlace = (place) => place === NO_PLACE;
 const placeLead = (h, all) => (noPlace(h.place) ? (all ? '' : '場所の記載がない分のうち、') : `${placeJa(h.place)}では、`);
 const allPlaceless = (name) => !(S.res ? S.res.hotspots : []).some((h) => h.partner === name && !noPlace(h.place));
 // メールと別紙の「平均・最長」は、実際に待った分（report_wait_min: 到着か指定の時刻から荷役開始まで。荷主等の都合かどうかに関わらず）で数える。
-// 別紙の「場所ごと・月ごとの平均の荷待ち」の表と同じ数え方にそろえる（B3）。画面の偏りの表（hotspots そのもの）は変えない
-const reportSpots = (name) => {
-  const rows = partnerRows(name);
-  return (S.res ? S.res.hotspots : []).filter((h) => h.partner === name).map((h) => {
-    const rs = rows.filter((r) => (r.place || NO_PLACE) === h.place && `${parseInt(r.arrive.slice(0, 2), 10)}時台` === h.band);
+// 別紙の「場所ごと・月ごとの平均の荷待ち」の表と同じ数え方にそろえる（B3）。画面の偏りの表（待ち時間の長い場所と時間帯）も、同じ数え方（reportHotspots）で出す
+const reportHotspots = () => {
+  const all = S.res ? S.res.rows : [];
+  return (S.res ? S.res.hotspots : []).map((h) => {
+    const rs = all.filter((r) => r.partner === h.partner && (r.place || NO_PLACE) === h.place && `${parseInt(r.arrive.slice(0, 2), 10)}時台` === h.band);
     const w = rs.map((r) => r.report_wait_min), total = w.reduce((a, x) => a + x, 0), n = rs.length;
     return { ...h, shipper_handling_count: rs.filter((r) => r.handler === '荷主側' && r.end && r.wait_min > 0).length, count: n, wait_minutes: total, avg_minutes: n ? Math.floor((2 * total + n) / (2 * n)) : 0, max_minutes: n ? Math.max(...w) : 0, over_1h_count: w.filter((x) => x >= 60).length };
   }).sort((a, b) => b.wait_minutes - a.wait_minutes);
 };
+const reportSpots = (name) => reportHotspots().filter((h) => h.partner === name);
 // 場所・時間帯ごとの荷待ちの文（別紙の相談の節）。注記は括弧にせず、続く 1 文にする
 const consultSpots = (name) => reportSpots(name).filter((h) => h.wait_minutes > 0).slice(0, 3);
 // 「指定の到着時刻のない到着が多く含まれます。」は、どの文にも付けず、一覧の後ろに 1 回だけ書く
@@ -922,6 +923,9 @@ function mailPeriod(p) {
   return a === b ? jdate(a, withYear) : `${jdate(a, withYear)}〜${jdate(b, withYear)}`;
 }
 // 待ちを数え始める時刻の言い方。メールの文・画面の数字の注記が、実際の数え方（waiting_calc）と同じ言い方になるようにする
+// 「荷役開始まで」の言い方。荷主側が荷役をした回は、待ち時間に荷役の時間が入っている（wait_min）ので、その旨を書く
+const shipperHandled = (p) => partnerRows(p.partner).some((r) => r.handler === '荷主側' && r.end && r.wait_min > 0);
+const toStartJa = (p, who) => (shipperHandled(p) ? `荷役開始まで（${who}で荷役をした回は荷役の終了まで）` : '荷役開始まで');
 function waitFromJa(p) {
   if (hasRec(p)) return p.reception_count >= p.count ? '受付の時刻' : '受付の時刻（受付の時刻がない回は到着）';
   return partnerRows(p.partner).some((r) => r.appointed) ? '到着（指定の到着時刻がある回は、その時刻）' : '到着';
@@ -931,14 +935,14 @@ function mailModel(p) {
   const amt = mainAmt(p), wait = mainWait(p), spot = topSpot(p.partner);
   // 合計の数え方は 1 回だけ書く。荷主側の荷役の時間は表の待機の列に入っている。荷主等の都合でない待ちは、合計にも表にも入れていない
   const rowsP = partnerRows(p.partner);
-  const basisNotes = [rowsP.some((r) => r.handler === '荷主側' && r.end) ? '貴社側で荷役をしていただいた時間を含みます' : '', rowsP.some((r) => !r.shipper_fault) ? '荷主等の都合でない待ちは含めていません' : ''].filter(Boolean);
+  const basisNotes = [shipperHandled(p) ? '' : (rowsP.some((r) => r.handler === '荷主側' && r.end) ? '貴社側で荷役をしていただいた時間を含みます' : ''), rowsP.some((r) => !r.shipper_fault) ? '荷主等の都合でない待ちは含めていません' : ''].filter(Boolean);
   const basisJa = basisNotes.length ? `（${basisNotes.join('。')}）` : '';
   const prov = p.partner === PROVISIONAL_PARTNER;
   const name = prov ? '（荷主の会社名）' : String(partnerLabel(p.partner)).replace(/\s*(御中|様)\s*$/, '');
   const period = mailPeriod(p);
   const over1h = p.over_1h_count;
   const paras = [
-    `今回は、${period}${p.date_from === p.date_to ? 'に' : 'の間に'}ご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。${waitFromJa(p)}から荷役が始まるまでにお待ちした時間は、合計で${hmj(wait)}${basisJa}でした。` +
+    `今回は、${period}${p.date_from === p.date_to ? 'に' : 'の間に'}ご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。${waitFromJa(p)}から荷役が始まるまで${shipperHandled(p) ? '（貴社側で荷役をしていただいた回は、荷役が終わるまで）' : ''}にお待ちした時間は、合計で${hmj(wait)}${basisJa}でした。` +
       (over1h > 0 ? `そのうち、1時間以上お待ちした回が${over1h}回ありました。` : ''),
     (spot ? `とくに${noPlace(spot.place) ? '' : `${placeJa(spot.place)}では、`}${spot.band}に到着した${spot.count}回の待ち時間（到着から荷役開始まで）が、平均${spot.avg_minutes}分、最長${spot.max_minutes}分でした。` : '') +
       'ドライバーの拘束時間には荷待ちの時間も含まれます。2024年4月から時間外労働の上限規制が始まり、拘束時間の基準（改善基準告示）も改正されたため、荷待ちが長いと、その日のほかの運行にも影響が出ます。',
@@ -1134,7 +1138,7 @@ const processHtml = () => `<aside id="process" aria-label="相談の進め方"><
 // 数字のタイルと、到着の時間帯ごとの待ち時間の帯（選んだ相手の記録から。手元で数えるだけ）
 function statsHtml(p) {
   const w = mainWait(p), h = Math.floor(w / 60), m = w % 60;
-  return `<div class="stat-grid" id="stats"><div class="stat is-empty hero"><span class="stat-l">待ち時間の合計</span><span class="stat-n">${h}<span class="stat-u">時間</span>${m}<span class="stat-u">分</span></span><span class="stat-d">${esc(partnerLabel(p.partner))}。${esc(waitFromJa(p))}から荷役開始まで</span></div>` +
+  return `<div class="stat-grid" id="stats"><div class="stat is-empty hero"><span class="stat-l">待ち時間の合計</span><span class="stat-n">${h}<span class="stat-u">時間</span>${m}<span class="stat-u">分</span></span><span class="stat-d">${esc(partnerLabel(p.partner))}。${esc(waitFromJa(p))}から${esc(toStartJa(p, '荷主側'))}</span></div>` +
     `<div class="stat"><span class="stat-l">参考額（税抜）</span><span class="stat-n">${n0(mainAmt(p))}<span class="stat-u">円</span></span><span class="stat-d">${hasRec(p) ? '受付から数えた額' : '到着から数えた額'}</span></div>` +
     `<div class="stat"><span class="stat-l">記録の件数</span><span class="stat-n">${p.count}<span class="stat-u">件</span></span><span class="stat-d">1 時間以上の待ち ${p.over_1h_count} 件</span></div></div>`;
 }
@@ -1149,10 +1153,11 @@ function heatHtml(p) {
   for (let hr = 0; hr <= 23; hr++) { const v = by[hr] || 0; cells.push(`<span class="${v ? '' : 'z'}" style="--v:${(0.3 + 0.7 * v / max).toFixed(2)};--h:${v ? Math.max(8, Math.round(v / max * 100)) : 0}%" title="${hr} 時台に着いた回の待ち ${v} 分"></span>`); axis.push(`<span>${hr % 3 === 0 ? hr : ''}</span>`); }
   return `<div class="heat-card" id="heat"><h3>何時に着いた回で待っているか<span class="small">　色が濃く高いほど待ち時間の合計が長い</span></h3><div class="heat" role="img" aria-label="到着の時間帯ごとの待ち時間の合計">${cells.join('')}</div><div class="heat-ax" aria-hidden="true">${axis.join('')}</div><div class="heat-legend" aria-hidden="true"><span>到着の時刻（時）</span><span class="lg"><span>少ない</span><i class="heat-scale"></i><span>多い（最大 ${max} 分）</span></span></div></div>`;
 }
+const HOT_DEF = '平均の荷待ち・最長は、到着から荷役開始までの分です（指定の到着時刻があって早く着いた回は、その時刻から）。貴社の書面のメールと同じ数え方です。';
 const hotspotsHtml = (r) => {
   const total = r.rows.reduce((a, x) => a + (x.reception_wait_min !== undefined ? x.reception_wait_min : x.wait_min), 0);
-  const top = r.hotspots.filter((h) => h.wait_minutes > 0).slice(0, 5);
-  const tb = top.map((h) => `<tr><td class="c1">${esc(h.partner)}</td><td class="c1">${esc(h.place)}</td><td class="c1">${esc(h.band)}</td><td class="num" data-l="回数">${h.count}</td><td class="num" data-l="平均の荷待ち">${h.avg_minutes} 分</td><td class="num" data-l="最長">${h.max_minutes} 分</td><td class="num" data-l="1 時間以上">${h.over_1h_count}</td><td class="num" data-l="参考額（円）">${n0(h.amount)}</td><td class="small c3">${hotspotNotes(h, false).map((x) => `（${esc(x)}）`).join('')}</td></tr>`).join('');
+  const top = reportHotspots().filter((h) => h.wait_minutes > 0).slice(0, 5);   // メールと同じ数え方（到着か指定の時刻から荷役開始まで）。荷主側の荷役の時間は入らない
+  const tb = top.map((h) => `<tr><td class="c1">${esc(h.partner)}</td><td class="c1">${esc(h.place)}</td><td class="c1">${esc(h.band)}</td><td class="num" data-l="回数">${h.count}</td><td class="num" data-l="平均の荷待ち">${h.avg_minutes} 分</td><td class="num" data-l="最長">${h.max_minutes} 分</td><td class="num" data-l="1 時間以上">${h.over_1h_count}</td><td class="num" data-l="参考額（円）">${n0(h.amount)}</td><td class="small c3">${hotspotNotes({ ...h, shipper_handling_count: 0 }, false).map((x) => `（${esc(x)}）`).join('')}</td></tr>`).join('');
   const pm = r.by_place_month.map((m) => `<tr><td class="c1">${esc(m.place)}</td><td class="c1">${esc(monthLabel(m.month))}</td><td class="num" data-l="回数">${m.count}</td><td class="num" data-l="平均（分）">${m.avg_minutes}</td><td class="num" data-l="1 時間以上">${m.over_1h_count}</td></tr>`).join('');
   // SPEC §29.2: 荷主等の都合が はい の行で report_wait_min が 30 分未満の行が 0 件で、はい の行が 5 行以上のとき、強めの表示
   const trunc = truncWarn(r.rows);
@@ -1160,7 +1165,7 @@ const hotspotsHtml = (r) => {
     <p>この期間に荷主の都合で待った時間は、合計 ${hm(total)}です。</p>
     ${trunc ? `<p class="errs" id="trunc-warn"><b>${esc(TRUNC_WARN)}</b></p>` : ''}
     <p class="small" id="trunc-line">${esc(TRUNC_LINE)}</p>
-    ${top.length ? `<div class="scroll-x"><table class="par" id="hotspots"><thead><tr><th>契約の相手</th><th>場所</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>参考額（円）</th><th>メモ</th></tr></thead><tbody>${tb}</tbody></table></div>` : '<p class="empty">荷待ちのある組はありません。</p>'}
+    ${top.length ? `<p class="small" id="hot-def">${esc(HOT_DEF)}</p><div class="scroll-x"><table class="par" id="hotspots"><thead><tr><th>契約の相手</th><th>場所</th><th>到着の時間帯</th><th>回数</th><th>平均の荷待ち</th><th>最長</th><th>1 時間以上の回数</th><th>参考額（円）</th><th>メモ</th></tr></thead><tbody>${tb}</tbody></table></div>` : '<p class="empty">荷待ちのある組はありません。</p>'}
     <h3>場所ごと・月ごとの平均の荷待ち（分）</h3>
     <p>${esc(PLACE_MONTH_LEAD)}</p>
     <p class="small" id="pm-def">${esc(PM_DEF)}</p>

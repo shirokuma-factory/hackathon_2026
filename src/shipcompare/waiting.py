@@ -260,6 +260,8 @@ def _nz_lines(text: str) -> list[str]:
 
 # ---- 「荷待ち記録」で始まらないスマホのメモ（SPEC §43）。1 行 = 1 件: 「11/10 江東 着7:50 呼ばれ9:40 終わり10:30」
 MEMO_NO_PARTNER = "（相手未記入）"
+# 契約の相手が空の行を、画面で相手を入れてもらうまで仮の名前で計算する（defaults に provisional_partner を渡したときだけ。web/waiting_calc.js と同じ）
+PROVISIONAL_PARTNER = "（相手を入れてください）"
 MEMO_UNREADABLE = ("読める形ではありませんでした（{shown}）。次のどれかの形で貼ってください: Excel の表（1 行目が見出し、列はタブ区切り）、"
                    "ドライバーの 1 枚（driver.html）の文（荷待ち記録 11/10 …）、1 行 1 件のメモ（11/10 江東 着7:50 呼ばれ9:40 終わり10:30）")
 _MEMO_KEYS = {"到着": "arrive", "着": "arrive", "受付": "reception", "受": "reception", "呼ばれた": "call", "呼ばれ": "call", "呼び出し": "call", "呼出し": "call", "呼出": "call", "呼": "call",
@@ -567,7 +569,7 @@ def _reverse_msg(label: str, t: int, prev_label: str, pt: int, gap: int) -> str:
             "日付つきの時刻（10/5 09:00 のように）で入れるか、時刻を確かめてください")
 
 
-def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, Any], defaults: dict[str, str] | None = None) -> tuple[dict[str, Any] | None, list[str]]:
+def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, Any], defaults: dict[str, Any] | None = None) -> tuple[dict[str, Any] | None, list[str]]:
     """1 行を読んで計算する。読めなければ (None, 理由のリスト)。"""
     errs: list[str] = []
     g = {k: _norm(raw.get(k)) for k in COLUMNS}
@@ -597,7 +599,13 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
             errs.append(f"車種「{g['vehicle_class']}」を読めません（小型（2t）/ 中型（4t）/ 大型（10t）/ トレーラー）")
 
     partner = _nz(g["partner"])   # 全角・半角の違いで相手が分かれないようにそろえる
-    if not partner:
+    partner_provisional = False
+    if partner == _nz(MEMO_NO_PARTNER) and defaults.get("provisional_partner"):
+        partner = ""   # スマホのメモで相手が書かれていない行も、空と同じに扱う（web/waiting_calc.js と同じ）
+    if not partner and defaults.get("provisional_partner"):
+        partner = PROVISIONAL_PARTNER   # web/waiting_calc.js と同じ。相手の列が無い表も計算し、画面で相手を入れてもらう
+        partner_provisional = True
+    elif not partner:
         errs.append("契約の相手がありません")
 
     def need_time(key: str, label: str, required: bool) -> int | None:
@@ -901,6 +909,8 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
             out["reception_amount"] = o2["amount"]
     if used:
         out["defaults_used"] = used
+    if partner_provisional:
+        out["partner_provisional"] = True
     if row_notes:
         out["notes"] = row_notes
     return out, []
@@ -1045,6 +1055,8 @@ def calc(rows: list[Any], year: int | None = None, tariff: dict[str, Any] | None
             dfl["vehicle_class"] = defaults["vehicle_class"]
         if defaults.get("method") in t["handling"]:
             dfl["method"] = defaults["method"]
+        if defaults.get("provisional_partner"):
+            dfl["provisional_partner"] = True
     done: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
     years, next_rows = infer_years(rows, year)

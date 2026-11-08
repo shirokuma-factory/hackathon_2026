@@ -577,6 +577,7 @@ const WaitingShared = (() => {
     }
     let partner = nz(g.partner);   // 全角・半角の違いで相手が分かれないようにそろえる
     let partnerProvisional = false;
+    if (partner === nz(MEMO_NO_PARTNER) && defaults.provisional_partner) partner = '';   // スマホのメモで相手が書かれていない行も、空と同じに扱う
     if (!partner && defaults.provisional_partner) { partner = PROVISIONAL_PARTNER; partnerProvisional = true; }   // 荷待ちの記録のページだけ。相手の列が無い表も計算し、画面で相手を入れてもらう
     else if (!partner) errs.push('契約の相手がありません');
 

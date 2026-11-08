@@ -72,7 +72,7 @@ def test_consult_lines_do_not_claim_shipper_side_handling_and_body_names_its_bas
         consult = t.split("参考：荷待ちを減らすためのご相談")[1].split("場所ごと・月ごとの")[0]
         assert "貴社側で荷役をしていただいた時間も含まれています" not in consult
         first = t.split("\n\n")[2]
-        assert "合計で11時間22分（貴社側で荷役をしていただいた時間を含みます）でした" in first
+        assert "（貴社側で荷役をしていただいた回は、荷役が終わるまで）にお待ちした時間は、合計で11時間22分でした" in first   # 重ねて書かない 2026-11-08
 
 
 MIXED = ("日付\t車番\t到着\t荷役開始\t荷役終了\t荷主等の都合\n"
