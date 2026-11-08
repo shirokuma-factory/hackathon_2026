@@ -539,3 +539,4 @@
 - 2026-11-08 16:39 `e116376` Japanese wording sweep and full-suite fixes after the public review
 - 2026-11-08 16:40 `ea9bd06` Refresh counts (344 commits, 2,393 tests)
 - 2026-11-08 18:00 `5d704e5` Record final validator run on ea9bd06 (90/100, D1 open)
+- 2026-11-08 18:49 `496d107` Final screen review r1-r2 fixes: less text, inputs that work, layout
