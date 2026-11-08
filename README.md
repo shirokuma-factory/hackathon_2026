@@ -6,7 +6,7 @@
 
 <sub>言葉: **荷待ち**＝トラックが荷主の倉庫などに着いてから、荷を積み降ろしできるまで待たされる時間。**帰り便**＝荷を届けたあと、空のまま戻る車。**元請**＝荷主から仕事を受けて、実際に運ぶ会社に回す運送会社。**デジタコ**＝車の速度・距離・時刻を記録する機械（デジタルタコグラフ）。**標準的運賃**＝国土交通省が告示した、トラックの運賃と待機時間料の目安。</sub>
 
-**デモ動画（3 分）:** https://youtu.be/D59OlKkG7W8
+**デモ動画（3 分）:** https://youtu.be/D59OlKkG7W8 ／ **English version (2 min 47 s):** https://youtu.be/c88XitOUpBc
 
 [![デモ動画（YouTube、3 分）](https://img.youtube.com/vi/D59OlKkG7W8/maxresdefault.jpg)](https://youtu.be/D59OlKkG7W8)
 
