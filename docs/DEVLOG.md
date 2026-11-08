@@ -536,3 +536,4 @@
 - 2026-11-08 13:55 `2efda57` Validator: remap plan-08 checks to current tests, add README run and order headings
 - 2026-11-08 14:08 `c73206d` Public-site sweep fixes: map compare, find, input guards (P0s and P1s)
 - 2026-11-08 15:16 `3e9225c` Bound shipment input in parse_shipment (security audit medium)
+- 2026-11-08 16:39 `e116376` Japanese wording sweep and full-suite fixes after the public review
