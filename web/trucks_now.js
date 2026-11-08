@@ -94,6 +94,7 @@
   /* 道路のファイルを現在の観測点に結びつける（観測点の並びが変わっても使えるよう、キーで引き直す） */
   function resolveRoads() {
     const R = S.roads;
+    S.ptKind = null;
     if (!R) return;
     R.pieces.forEach((pc) => {
       pc.wi = pc.w.map(([ki, wt]) => [S.keyIndex.has(R.keys[ki]) ? S.keyIndex.get(R.keys[ki]) : -1, wt]).filter((x) => x[0] >= 0);
@@ -385,6 +386,18 @@
     return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path class="ln" d="${path}"/>${miss}${wk}${cur}</svg>`;
   }
 
+  /* 地点の名前。ファイルに路線名・地名は無いので、県名と、結びついた道路の種類（国道・高速道路）で呼ぶ。API の番号は題にしない */
+  function pointTitle(p) {
+    if (!S.ptKind && S.roads) {
+      const cnt = new Map();
+      S.roads.pieces.forEach((pc) => { if (!pc.wi || !pc.wi.length) return; const best = pc.wi.reduce((a, b) => (b[1] > a[1] ? b : a)); const c = cnt.get(best[0]) || [0, 0]; c[pc.k === 2 ? 1 : 0]++; cnt.set(best[0], c); });
+      S.ptKind = cnt;
+    }
+    const i = S.keyIndex ? S.keyIndex.get(p._k) : undefined, c = S.ptKind && i != null ? S.ptKind.get(i) : null;
+    const kind = c ? (c[1] > c[0] ? '高速道路' : '国道') : '';
+    return `${p.pref || '県は不明'}の観測点${kind ? `（${kind}沿い）` : ''}`;
+  }
+
   function cardHtml(p, full) {
     const T = S.T, v = C.valueAt(p.series, T), idx = Math.round(T);
     const max = Math.max(10, ...p.series.filter((x) => x != null), p.week_ago || 0);
@@ -397,7 +410,7 @@
       : `<div class="big">${f(v)}<small>台/時 大型車${Math.abs(T - idx) > 0.001 ? '（間を補った値）' : ''}</small></div>`;
     const refLabel = eff === 'week' ? `先週の同じ時刻（${lastHour}の 7 日前）` : '1 時間前';
     const refTxt = ref == null ? (v == null ? '—' : '値なし') : `${f(ref)} 台/時（${ref === 0 ? '0 台のため比は出しません' : '×' + (v / ref).toFixed(2)}）`;
-    let h = `<div class="ch"><b>地点 ${esc(p.id)}</b><span class="tag">${esc(p.type)}</span><span style="color:var(--muted)">${esc(p.pref || '県は不明')}</span>${full ? '<button type="button" class="x" id="pin-x" aria-label="カードを閉じる">閉じる</button>' : ''}</div>`;
+    let h = `<div class="ch"><b>${esc(pointTitle(p))}</b><span class="tag">${esc(p.type)}</span>${full ? '<button type="button" class="x" id="pin-x" aria-label="カードを閉じる">閉じる</button>' : ''}</div>`;
     h += big + cardSpark(p, T, max);
     const rm = C.refMax(p.series), si = v == null || rm == null ? null : v / rm;
     h += `<table><tr><td>この地点の 24 時間の最大との比</td><td>${si == null ? '—' : Math.round(si * 100) + '%（24時間の最大 ' + f(rm) + '）'}</td></tr><tr><td>${refLabel}</td><td>${refTxt}</td></tr>`;
@@ -414,11 +427,7 @@
     }
     h += '</table>';
     if (full) {
-      h += `<div class="src"><b style="color:var(--muted);font-weight:500">この数字の元の項目</b>
-        <div>折れ線の各時間 = <code>上り・大型交通量</code> + <code>下り・大型交通量</code>（どちらかが空なら欠測）</div>
-        <div>小型車 = <code>上り・小型交通量</code> + <code>下り・小型交通量</code></div>
-        <div>先週 = 同じ 2 項目の 7 日前の同じ時間帯。地点 = <code>常時観測点コード</code> ${esc(p.id)}（${p.type === 'CCTV' ? 'CCTV トラカン' : '常設'}）</div>
-        <div>ファイルには、24 時間の大型車の台数（いま ${idx + 1} 番目）、先週の同じ時刻、上り、下り、小型車の台数を持っています</div></div>`;
+      h += `<div class="src">観測点コード ${esc(p.id)}（${p.type === 'CCTV' ? 'CCTV トラカン' : '常設'}）。数字の元の項目は、下の「出典と注意」にあります。</div>`;
     }
     return h;
   }
@@ -444,7 +453,7 @@
   function tipHtml(p) {
     const T = S.T, v = C.valueAt(p.series, T), max = Math.max(10, ...p.series.filter((x) => x != null), p.week_ago || 0);
     const rm = C.refMax(p.series), si = v == null || rm == null ? null : v / rm;
-    const head = `<div class="ch"><b>地点 ${esc(p.id)}</b><span class="tag">${esc(p.type)}</span><span style="color:var(--muted)">${esc(p.pref || '県は不明')}</span></div>`;
+    const head = `<div class="ch"><b>${esc(pointTitle(p))}</b><span class="tag">${esc(p.type)}</span></div>`;
     const big = v == null ? '<div class="big miss">欠測<small>この時間は値がありません</small></div>' : `<div class="big">${f(v)}<small>台/時 大型車</small></div>`;
     return head + big + cardSpark(p, T, max) + `<div style="color:var(--muted);font-size:11px;margin-top:4px">24 時間の最大との比 ${si == null ? '—' : Math.round(si * 100) + '%'}。クリックで詳しく見られます</div>`;
   }
@@ -491,14 +500,19 @@
     S.rankSortedAt = T == null ? NH - 1 : Math.round(T);
     S.lastRankSig = '';
     if (S.rankEls.size) { S.rankOrder.forEach((n, i) => { const el = S.rankEls.get(n); if (el) { el.style.transform = `translateY(${i * ROW_H}px)`; el.querySelector('.n').textContent = i + 1; } }); }
+    if (S.rankEls.size) updateRank();
   }
   function updateRank() {
     const { mode, rows } = C.rankPrefs(S.data, S.T);
     const max = Math.max(1, ...rows.map((r) => r.v || 0));
     if (!S.rankOrder || S.rankOrder.length !== rows.length) sortRank();
+    const rankNo = new Map(); let ordinal = 0;   // 表示中の時間での順位（欠測は付けない）。行の並びは固定のまま、番号は今の時間の値で付け直す
+    rows.forEach((r) => { if (r.v != null) rankNo.set(r.pref, ++ordinal); });
+    $('#rank-diff-h').textContent = mode === 'week' ? '先週比' : '1 時間前比';
     rows.forEach((r) => {
       const el = S.rankEls.get(r.pref);
       if (!el) return;
+      el.querySelector('.n').textContent = rankNo.has(r.pref) ? rankNo.get(r.pref) : '—';
       el.querySelector('.bar i').style.width = r.v == null ? '0%' : (r.v / max) * 100 + '%';
       el.querySelector('.v').textContent = r.v == null ? '欠測' : f(r.v, 1);
       const c = el.querySelector('.c');
@@ -506,7 +520,7 @@
       else { c.textContent = (r.ratio >= 1.005 ? '+' : r.ratio <= 0.995 ? '−' : '±') + Math.abs((r.ratio - 1) * 100).toFixed(0) + '%'; c.className = 'c ' + (r.ratio >= 1.05 ? 'up' : r.ratio <= 0.95 ? 'dn' : ''); }
       el.classList.toggle('sel', r.pref === S.prefSel);
     });
-    $('#rank-hint').textContent = `${C.fmtHour(S.data.hours[Math.round(S.T)])}の 1 地点あたり大型車（台/時）。並びは ${C.fmtHour(S.data.hours[S.rankSortedAt])} の値の順で固定です（「並べ替え」で今の時間の順に直せます）。右の数字は${mode === 'week' ? '先週の同じ時刻との差' : '1 時間前との差'}。行を指すと地図の県が光ります。`;
+    $('#rank-hint').textContent = `${C.fmtHour(S.data.hours[Math.round(S.T)])}の 1 地点あたり大型車（台/時）。左の番号は、この時間の順位です。行の並びは ${C.fmtHour(S.data.hours[S.rankSortedAt])} の値の順で動かさないので、番号が前後することがあります（「並べ替え」で今の時間の順に直せます）。右端の列は${mode === 'week' ? '先週の同じ時刻との差' : '1 時間前との差'}です。行を指すと地図の県が光ります。`;
   }
   function setPrefHover(name) { S.prefHover = name; for (const [k, el] of S.rankEls) el.classList.toggle('hl', k === name); S.dirty = true; }
   function selectPref(name) {
@@ -630,19 +644,34 @@
 
   /* ---------------- 自動で読み直す ---------------- */
   function pollEnabled() { return /^https?:$/.test(location.protocol); }
+  /* サーバーがデータを更新していない（公開版のように、配信のときに取り込んだ写し）かどうか。
+     JSON に "static": true があればそれに従い、無ければ取得から 3 時間以上たっていれば写しとみなす（取得の繰り返しが止まっている） */
+  const STATIC_AGE_MIN = 180;
+  function isStatic(d) { return !!d && (d.static === true || (d.static == null && (Date.now() - Date.parse(d.fetched_at)) / 60000 > STATIC_AGE_MIN)); }
+  function ymdhm(iso) { const s = String(iso); return `${s.slice(0, 4)}/${s.slice(5, 7)}/${s.slice(8, 10)} ${s.slice(11, 16)}`; }
   function updateFresh() {
     const d = S.data; if (!d) return;
-    const age = C.ageText(d.fetched_at, Date.now()), old = Date.now() - Date.parse(d.fetched_at) > 90 * 60000 || C.delayMin(d.latest_hour_code, new Date().toISOString()) > 4 * 60;
-    $('#fresh').innerHTML = `<b>${C.fmtHour(d.latest_hour_code)}</b>の観測（取得は ${C.hhmm(d.fetched_at)}、${C.delayText(d.latest_hour_code, d.fetched_at)}）<br><span class="nw">取得 ${C.mdhm(d.fetched_at)}</span>　<span class="age${old ? ' old' : ''}">${age}${old ? '　古いデータです' : ''}</span>`;
+    const stat = isStatic(d), btn = $('#poll-now'), bar = $('#poll-bar');
     $('#credit').textContent = d.attribution.processed;
+    $('#credit-svc').textContent = d.attribution.service;   // 利用規約 5 条 1 項の文は、畳まない場所に常に出す
     const st = $('#poll-st');
-    if (!pollEnabled()) { st.textContent = 'ファイルで開いているため自動更新しません'; st.className = 'st'; $('#poll-bar').style.width = '0'; return; }
+    if (stat) {
+      /* 写し: 自動更新も「今すぐ確認」もしない。取得の時刻を 1 行で書く */
+      $('#fresh').innerHTML = `このページのデータは <span class="nw">${ymdhm(d.fetched_at)}</span> 取得の写しです。<br><span class="nw">観測は ${C.fmtHour(d.latest_hour_code)}</span>の分で、リアルタイムではありません。`;
+      st.textContent = ''; st.className = 'st'; bar.style.width = '0';
+      $('#poll').hidden = true; btn.hidden = true;
+      return;
+    }
+    $('#poll').hidden = false; btn.hidden = false;
+    const age = C.ageText(d.fetched_at, Date.now()), old = Date.now() - Date.parse(d.fetched_at) > 90 * 60000;
+    $('#fresh').innerHTML = `<b>${C.fmtHour(d.latest_hour_code)}</b>の観測<br><span class="nw">取得 ${C.mdhm(d.fetched_at)}</span>　<span class="age${old ? ' old' : ''}">${age}${old ? '　古いデータです' : ''}</span>`;
+    if (!pollEnabled()) { st.textContent = 'ファイルで開いているため自動更新しません'; st.className = 'st'; bar.style.width = '0'; return; }
     const left = Math.max(0, Math.ceil((S.nextPollAt - Date.now()) / 1000));
     const at = S.checkedAt ? S.checkedAt.toTimeString().slice(0, 8) : '';
     const res = S.checkState === 'ng' ? '確認できませんでした' : S.checkState === 'new' ? '新しいデータに差し替えました' : S.checkState === 'same' ? '変更なし' : '';
     st.className = 'st ' + (S.checkState === 'ng' ? 'ng' : 'ok');
     st.textContent = `${at ? `${at} に確認（${res}）　` : ''}次の確認まで ${left} 秒`;
-    $('#poll-bar').style.width = (100 * (1 - left / S.pollSec)) + '%';
+    bar.style.width = (100 * (1 - left / S.pollSec)) + '%';
   }
   async function check() {
     S.checkedAt = new Date(); S.checks++;
@@ -664,7 +693,7 @@
     if (nowS === S.lastSecond) return;
     S.lastSecond = nowS;
     if (!S.data) return;
-    if (S.polling && !document.hidden && Date.now() >= S.nextPollAt) check();
+    if (S.polling && !isStatic(S.data) && !document.hidden && Date.now() >= S.nextPollAt) check();
     updateFresh();
   }
 
@@ -798,6 +827,6 @@
   }
 
   window.__trucks = S; // 確認と試験用
-  S.api = { check, applyData, setT, setPlaying, pickStage, selectPref, cardHtml, tipHtml, placeTip, hideTip, compute, updatePipeline };
+  S.api = { check, applyData, setT, setPlaying, pickStage, selectPref, cardHtml, tipHtml, placeTip, hideTip, compute, updatePipeline, refresh: updateFresh, isStatic };
   main();
 })();

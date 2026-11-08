@@ -156,7 +156,7 @@ def test_g91_selftest_and_s6_in_headless_edge():
     assert not got["home"] and "126,060" in got["k4"]
     assert "合計: 4 個" in got["sum"] and "400" in got["sum"]
     q = got["quote"]
-    assert "240×60×200cm、140kg を 2 個" in q and "東京都" in q and "大阪府" in q and "492km" in q and "法人" in q and "4 日" in q
+    assert "240×60×200cm、140kg を 2 個" in q and "東京都" in q and "大阪府" in q and "492km" in q and "法人" in q and "4 日" not in q  # 選ばれていない日の幅は依頼文に入れない（H05）
     assert "円" not in q  # 値段は約束しない
 
 

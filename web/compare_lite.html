@@ -330,7 +330,17 @@ table.res td:nth-child(2) { grid-area: badge; }
 table.res td:nth-child(3) { grid-area: body; min-width: 0; }
 .amount { font-size: var(--fs-1); color: var(--muted); font-weight: 500; margin-top: 4px; }
 .amount .yen { display: inline-block; font-size: var(--fs-4); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; margin: 0 2px; }
-table.res tbody tr:first-child .amount .yen { color: var(--accent); }
+/* 狭い画面では、順位の表を 1 行 1 枚のカードにする（列が狭くて 1 文字ずつ折り返すのを防ぐ） */
+@media (max-width: 600px) {
+  #cmp-rank, #cmp-rank tbody, #cmp-rank tr, #cmp-rank td { display: block; width: 100%; }
+  #cmp-rank thead { display: none; }
+  #cmp-rank tr { padding: 10px 12px; margin: 0 0 8px; border: 1px solid var(--line-soft); border-radius: var(--r-m); background: var(--card-2); }
+  #cmp-rank td { border: 0; padding: 2px 0; display: grid; grid-template-columns: 7em minmax(0, 1fr); gap: 8px; text-align: left; white-space: normal; }
+  #cmp-rank td::before { content: attr(data-l); color: var(--muted); font-size: var(--fs-1); font-weight: 500; }
+  #cmp-rank td.num { text-align: left; }
+}
+table.res tbody tr[data-top] .amount .yen { color: var(--accent); }
+html .badge.ng { text-decoration: none; font-weight: 700; }
 .noamt { margin-top: 4px; font-weight: 700; font-size: var(--fs-1); color: var(--chk); }
 ul.rs { margin: 4px 0 0; padding-left: 18px; font-size: var(--fs-1); color: var(--muted); }
 ul.rs li { margin: 2px 0; }
@@ -408,7 +418,7 @@ ol.bars li .chip { min-height: 22px; padding: 0 8px; font-size: 12px; }
   #copybar > .small { order: 2; }
   table.res tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
   table.res tr { margin: 0; padding: 32px; align-content: start; background: var(--card); box-shadow: var(--elev-1); border-radius: var(--r-l); }
-  table.res tbody tr:first-child { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--elev-1); }
+  table.res tbody tr[data-top] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--elev-1); }
   table.res td.nm { font-size: var(--fs-3); }
   .amount .yen { font-size: var(--fs-5); }
   .asks { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-top: 32px; }
@@ -464,7 +474,7 @@ ol.bars li .chip { min-height: 22px; padding: 0 8px; font-size: 12px; }
       </div>
       <details class="fold" id="more-d"><summary>距離・届け先・日数・フォークリフト</summary>
       <div class="grid2">
-        <label class="f">集荷先から届け先までの道路の距離（km）<input type="number" id="km" min="0" step="1" placeholder="例 492"><span class="small" id="km-note" role="status"></span></label>
+        <label class="f"><span id="km-label">集荷先から届け先までの道路の距離（km）</span><input type="number" id="km" min="0" step="1" placeholder="例 492"><span class="small" id="km-note" role="status"></span></label>
         <label class="f">届け先<select id="recv"><option value="business">法人・店舗・事業所</option><option value="person">個人宅</option></select></label>
         <label class="f">届くまで待てる日数<select id="flex"></select></label>
         <label class="f">集荷先のフォークリフト（またはパワーゲート）<select id="fk-from"><option value="unknown">分からない</option><option value="yes">ある</option><option value="no">ない</option></select></label>
@@ -861,6 +871,12 @@ function publicTakuhai(pieces, from, to) {
 }
 const rangeText = (x) => (x.low != null && x.low !== x.amount ? `${fmt(x.low)}〜${fmt(x.amount)} 円` : yen(x.amount));
 
+// 待てる日数。未選択（空）は null（本人が選んでいない条件は、判定にも依頼文にも入れない）
+function flexOf(inp) { return inp && inp.flex !== '' && inp.flex != null && Number.isFinite(Number(inp.flex)) ? Number(inp.flex) : null; }
+// 海を渡る区間の船（フェリー・RORO 船）。額は出さない。窓口の一覧は無いので、次にすることを書く
+function evalShip(inp) {
+  return opt('ship', '船（フェリー・RORO）', 'check', [`${inp.from}から${inp.to}へは海を渡ります。船（フェリーか RORO 船）の見積が要ります。次にすること: 集荷先の近くの運送会社か海運会社に「船を使って届けたい」と伝え、上の見積依頼文を渡して見積を頼んでください。`]);
+}
 function evalHome(pieces, t, flex, inp) {
   // 地図の画面の照合（/api/b/match）と同じ規則で、デモの便 T7 の「空き」に載るかを見る（車の大きさではなく、重さの余りと床の空き）
   const H = HOME_TRIP, name = '帰り便（空いた帰りのトラックに載せる）';
@@ -868,7 +884,7 @@ function evalHome(pieces, t, flex, inp) {
   // デモの便 T7 は決まった区間（出発地の県から着地の県）を走る。別の区間の荷には使えない
   const tf = PREFS[Number(H.origin_code.slice(0, 2)) - 1], tt = PREFS[Number(H.dest_code.slice(0, 2)) - 1];
   if (inp && ((inp.from && inp.from !== tf) || (inp.to && inp.to !== tt))) bad.push(`デモの帰り便 T7 は${tf}の集荷から${tt}あての便です。この区間（${inp.from || '集荷未選択'}→${inp.to || '届け先未選択'}）には走らないので使えません。`);
-  if (flex < RULES.homeFlexDays) bad.push(`待てる日数が ${flex} 日です。帰り便は 3 日以上待てると見つかりやすくなります。`);
+  if (flex != null && flex < RULES.homeFlexDays) bad.push(`待てる日数が ${flex} 日です。帰り便は 3 日以上待てると見つかりやすくなります。`);
   const heaviest = Math.max(...pieces.map((p) => p.kg));
   if (heaviest > H.max_piece_kg) bad.push(`1 個の重さ ${fx(heaviest)}kg がデモの便の上限 ${fmt(H.max_piece_kg)}kg を超える（${exc(heaviest, H.max_piece_kg, 'kg')}）`);
   const limitH = H.clear_height_mm - 50;
@@ -879,7 +895,7 @@ function evalHome(pieces, t, flex, inp) {
   if (t.nano > slackN) bad.push(`合計 ${fx(Number(t.nano) / 1e9)}kg がデモの便の重さの余り ${fmt(H.weight_slack_kg)}kg を超える（${excD(Number(t.nano - slackN) / 1e9, 'kg')}）`);
   if (t.floorU > freeU) bad.push(`床 ${fx(Number(t.floorU) / 1e10)}m² がデモの便の床の空き ${fx(H.floor_free_m2)}m² を超える（${excD(Number(t.floorU - freeU) / 1e10, 'm²')}）`);
   if (bad.length) return opt('home', name, 'ng', bad);
-  return opt('home', name, 'check', ['日の幅があり、デモの帰り便の空き（重さの余り ' + fmt(H.weight_slack_kg) + 'kg・床 ' + H.floor_free_m2.toFixed(1) + 'm²）に収まる荷です。受け取り場所などは、地図の画面の『空きを探す・つなぐ』で調べられます（デモ）'], { home: true });
+  return opt('home', name, 'check', [(flex == null ? '待てる日数は未選択ですが、' : '日の幅があり、') + 'デモの帰り便の空き（重さの余り ' + fmt(H.weight_slack_kg) + 'kg・床 ' + H.floor_free_m2.toFixed(1) + 'm²）に収まる荷です。受け取り場所などは、地図の画面の『空きを探す・つなぐ』で調べられます（デモ）'], { home: true });
 }
 
 const kmOf = (inp) => { const v = inp && inp.km != null && String(inp.km).trim() !== '' ? readNum(inp.km) : null; return v === null ? NaN : v; };
@@ -891,7 +907,7 @@ function evaluate(inp) {
   if (kmRaw !== '' && readNum(kmRaw) <= 0) return { errs: ['道路の距離は 0 km より大きい数で入れてください（0 や負の数では額を出せません）'], options: [], totals: null, pieces };
   const t = totals(pieces), km = kmOf(inp);
   const options = [evalTakuhai(pieces), evalKazai(pieces, inp.recv), evalAkabane(t, pieces, inp), evalKei(pieces, t, inp), evalJitbox(pieces, t, inp.recv), evalRosen(t, inp.recv, palletHandling(pieces, inp)),
-    evalKashikiri('2t', pieces, t, inp.from, km, inp), evalKashikiri('4t', pieces, t, inp.from, km, inp), ...(t.kg > RULES.t4.payloadKg ? [evalKashikiri('10t', pieces, t, inp.from, km, inp)] : []), evalHome(pieces, t, Number(inp.flex) || 0, inp)];   // 10t は 4t ウイングの積載（約 2,700kg）を超える荷のときだけ並べる（小さな荷に大型の行を出さない）
+    evalKashikiri('2t', pieces, t, inp.from, km, inp), evalKashikiri('4t', pieces, t, inp.from, km, inp), ...(t.kg > RULES.t4.payloadKg ? [evalKashikiri('10t', pieces, t, inp.from, km, inp)] : []), evalHome(pieces, t, flexOf(inp), inp), ...(seaCross(inp.from, inp.to) ? [evalShip(inp)] : [])];   // 10t は 4t ウイングの積載（約 2,700kg）を超える荷のときだけ並べる（小さな荷に大型の行を出さない）
   const tk = options[0];
   if (tk.status === 'ok') { const pub = publicTakuhai(pieces, inp.from, inp.to); if (pub) tk.pub = pub; }
   return { errs: [], options, totals: t, pieces };
@@ -1200,7 +1216,7 @@ function cmpHtml(res, Cs, inp) {
     const pubLine = pubx ? `<p class="pub-line" id="pub-range"><b>架空の宅配の表からの例（実在の運賃ではありません。自社の契約運賃を入れてください）:</b> 宅配は およそ ${rangeText(pubx)}（税抜）。安いほうは営業所に持ち込む額、高いほうは集荷の額です。</p>` : '';
     return `<div class="cmp" id="cmp"><h3>どれがいちばん安いか</h3><p class="head">${pubx ? '契約単価での比べはまだできません。宅配だけ、架空の宅配の表からの例の幅を出しています（実在の運賃ではありません）。' : 'まだ比べられません。宅配・路線便の額は、公開の料金表がなく、自社の契約単価か各社の見積がないと分かりません。'}</p>${pubLine}<p class="small">「自社の契約単価」を入れると、安い順に並べます。${ch.length ? '貸切の額は国の標準的運賃の目安（実際は会社ごとに違う）で、表の中に出ています。' : ''}</p>${tkc}</div>`;
   }
-  const rows = priced.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(nm(x))}</td><td class="num">${rangeText(x)}</td><td>${esc(x.src)}${x.note ? `<div class="small">${esc(x.note)}</div>` : ''}</td><td><span class="badge ${x.o.status}">${LABEL[x.o.status]}</span></td></tr>`).join('');
+  const rows = priced.map((x, i) => `<tr><td class="rk" data-l="順">${i + 1}</td><td class="rn" data-l="送り方">${esc(nm(x))}</td><td class="num" data-l="額（税抜）">${rangeText(x)}</td><td class="rs2" data-l="金額の出どころ">${esc(x.src)}${x.note ? `<div class="small">${esc(x.note)}</div>` : ''}</td><td class="rb" data-l="使えるか"><span class="badge ${x.o.status}">${LABEL[x.o.status]}</span></td></tr>`).join('');
   let head;
   if (!priced.length) head = '額が出せた送り方がありません。単価の未入力の欄を確かめてください。';
   else {
@@ -1221,7 +1237,7 @@ function cmpHtml(res, Cs, inp) {
     const cheaper = priced.find((y) => y.id !== x.id && y.contract && y.amount < x.amount);
     lines.push(`${x.o.name.slice(0, 2)}の貸切は、この荷には過大です${cheaper ? `。「${nm(cheaper)}」の ${yen(cheaper.amount)} に対し、貸切の目安は ${yen(x.amount)} です` : ''}。`);
   }
-  return `<div class="cmp" id="cmp"><h3>どれがいちばん安いか</h3><p class="head">${esc(head)}</p>${priced.length ? `<div class="scroll-x"><table class="cmpt"><thead><tr><th>順</th><th>送り方</th><th>額（税抜）</th><th>金額の出どころ</th><th>使えるか</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}${sideBySide(per, byId)}${lines.map((l) => `<p>${esc(l)}</p>`).join('')}${none.length ? `<p class="small">額を出せなかった送り方: ${esc(none.join('、'))}</p>` : ''}<p class="small">貸切は国の標準的運賃の目安（実際は会社ごとに違う）、宅配・路線便は入れた契約単価から出した額です。高速代・待機料・燃料割増・集荷料などは含みません。最後は各社の見積で確かめてください。</p></div>`;
+  return `<div class="cmp" id="cmp"><h3>どれがいちばん安いか</h3><p class="head">${esc(head)}</p>${priced.length ? `<div class="scroll-x"><table class="cmpt" id="cmp-rank"><thead><tr><th>順</th><th>送り方</th><th>額（税抜）</th><th>金額の出どころ</th><th>使えるか</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}${sideBySide(per, byId)}${lines.map((l) => `<p>${esc(l)}</p>`).join('')}${none.length ? `<p class="small">額を出せなかった送り方: ${esc(none.join('、'))}</p>` : ''}<p class="small">貸切は国の標準的運賃の目安（実際は会社ごとに違う）、宅配・路線便は入れた契約単価から出した額です。高速代・待機料・燃料割増・集荷料などは含みません。最後は各社の見積で確かめてください。</p></div>`;
 }
 
 function quoteText(inp, res) {
@@ -1232,12 +1248,13 @@ function quoteText(inp, res) {
   lines.push('', '【区間】');
   lines.push(`・集荷: ${inp.from || '（都道府県を書き入れてください）'}`);
   lines.push(`・届け先: ${inp.to || '（都道府県を書き入れてください）'}（${inp.recv === 'person' ? '個人宅' : '法人・店舗・事業所'}）`);
-  if (kmOf(inp) > 0) lines.push(`・道路の距離: およそ ${f1(kmOf(inp))}km`);
+  if (kmOf(inp) > 0) lines.push(seaCross(inp.from, inp.to) ? `・経路の距離（海を含む）: およそ ${f1(kmOf(inp))}km（県庁所在地の間の目安。海の区間は船になります）` : `・道路の距離: およそ ${f1(kmOf(inp))}km`);
   const FK = { yes: 'フォークリフト・パワーゲートあり', no: 'フォークリフト・パワーゲートなし', unknown: 'フォークリフトの有無は確認中' };
   lines.push(`・荷役: 集荷先は${FK[inp.fkFrom] || FK.unknown}、届け先は${FK[inp.fkTo] || FK.unknown}`);
   lines.push('', '【日程】');
   if (inp.pickup) lines.push(`・集荷の希望の時刻: ${inp.pickup} ごろ`);
-  lines.push(Number(inp.flex) > 0 ? `・日の幅があります（${inp.flex} 日の間で届けばよい）。希望の日（　月　日）` : '・日の幅はありません。希望の日（　月　日）');
+  const fx0 = flexOf(inp);
+  lines.push(fx0 == null ? '・希望の日（　月　日）' : fx0 > 0 ? `・日の幅があります（${fx0} 日の間で届けばよい）。希望の日（　月　日）` : '・日の幅はありません。希望の日（　月　日）');
   lines.push('', '【お願い】', '・上の条件で受けられるかどうかと、料金の見積をお知らせください。', '・荷降ろし・車上渡しなどの作業の有無、必要な作業員の数もあわせて教えてください。', '・集荷先・届け先の住所、時間帯は、あらためてお伝えします。');
   return lines.join('\n');
 }
@@ -1437,6 +1454,7 @@ const NO_ESTIMATES = {
       : '架空の宅配の表からの例は、関東発・関西あて（滋賀・京都・大阪・兵庫・奈良・和歌山）の区間だけ持っています。この区間の額は、契約単価か各社の見積で確かめてください';
   },
   rosen: '目安の額は出せません。契約単価を入れると額が出ます。',
+  ship: '船賃は公開の料金表がなく、会社ごとの見積です。',
   kei: '目安額は出せません（軽貨物マッチングは会員登録して見積もる形で、公開の料金表がないため）。見積依頼文を使ってください',
 };
 
@@ -1461,6 +1479,12 @@ const TERMS_HTML = '<p class="terms" id="terms"><b>言葉の説明:</b> 特別�
 // 安い順（額が出ているものを先、使えないものを最後）
 const optKey = (o) => (o.status === 'ng' ? 3e15 : o.amount != null ? o.amount : o.pub ? o.pub.low : 2e15);
 const sortedOptions = (list) => list.map((o, i) => [o, i]).sort((a, b) => optKey(a[0]) - optKey(b[0]) || a[1] - b[1]).map((x) => x[0]);
+// 結果の表の並び: 額が出ている送り方（額の比べと同じ並び）を先、額の無い送り方（△）、使えない送り方（×）の順。先頭の強調は額のある送り方だけ
+function resultOrder(res) {
+  const ids = rankRows(res).map((r) => r.id), rest = sortedOptions(res.options);
+  const priced = ids.map((id) => rest.find((o) => o.id === id)).filter(Boolean);
+  return { list: [...priced, ...rest.filter((o) => !priced.includes(o))], top: priced.length ? priced[0].id : null };
+}
 // 額の比べ（棒）と数字のタイル
 // 額の出る送り方を棒・タイル・見出しで同じ並び（optKey）にそろえる。架空の宅配の表の例の幅（pub）が先頭になることがある
 const priceRows = (res) => sortedOptions(res.options).filter((o) => o.status !== 'ng' && !o.partial && (o.amount != null || o.pub));
@@ -1495,7 +1519,7 @@ function setStepper(res) {
   const cur = !has ? 1 : !route ? 2 : 3;
   document.querySelectorAll('#stepper li').forEach((li) => { const n = Number(li.dataset.s); li.classList.toggle('is-done', n < cur); li.classList.toggle('is-current', n === cur); if (n === cur) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); });
 }
-function optRow(o, per, inp) {
+function optRow(o, per, inp, top) {
   const cas = per.filter((p) => p.has && p.am[o.id] && p.am[o.id].src === '契約単価' && p.am[o.id].amount != null);
   const contractAmt = cas.map((p) => `<div class="amount">契約単価${p.label ? `（${esc(p.label)}）` : ''}で およそ <b class="yen">${fmt(p.am[o.id].amount)} 円</b>（税抜）${p.am[o.id].note ? `<div class="small">${esc(p.am[o.id].note)}</div>` : ''}</div>`).join('');
   const pubAmt = o.pub && !cas.length ? `<div class="amount" id="pub-amount">架空の宅配の表からの例 およそ <b class="yen">${fmt(o.pub.low)}〜${fmt(o.pub.high)} 円</b>（税抜）<div class="small">実在の会社の運賃ではない、説明のための値です。自社の契約運賃を入れてください。安いほうは営業所に持ち込む額、高いほうは集荷の額です。</div></div>` : '';
@@ -1506,7 +1530,7 @@ function optRow(o, per, inp) {
   const whyAm = o.id === 'rosen' ? per.filter((p) => p.has && p.am[o.id] && p.am[o.id].amount == null && p.am[o.id].why && !/^単価が未入力/.test(p.am[o.id].why)) : [];
   const noamt = whyAm.length && o.status !== 'ng' && o.amount == null && !cas.length ? `<div class="noamt">契約単価を入れても額は出せません: ${whyAm.map((p) => esc((p.label ? p.label + '・' : '') + p.am[o.id].why)).join('、')}。見積で確かめてください。</div>`
     : noText && o.status !== 'ng' && o.amount == null && !cas.length && !o.pub ? `<div class="noamt">見積が要ります: ${noText}</div>` : '';
-  return `<tr class="o-${o.status}" data-opt="${esc(o.id)}"><td class="nm">${esc(o.name)}</td><td><span class="badge ${o.status}">${LABEL[o.status]}</span></td><td>${amt}${noamt}${home}${askHtml(o)}</td></tr>`;
+  return `<tr class="o-${o.status}"${top ? ' data-top="1"' : ''} data-opt="${esc(o.id)}"><td class="nm">${esc(o.name)}</td><td><span class="badge ${o.status}">${LABEL[o.status]}</span></td><td>${amt}${noamt}${home}${askHtml(o)}</td></tr>`;
 }
 
 // 契約単価の欄の下に、断った値の理由と、貼り付けた表の読み取り結果を出す（荷物が空でも出す）
@@ -1541,6 +1565,7 @@ function render() {
   $('#cargo-line').textContent = res.totals ? `荷物 ${res.totals.count} 個・${f1(res.totals.kg)}kg` : '荷物が入っていません。';
   setStepper(res);
   S.ctx = null;
+  { const kl = $('#km-label'); if (kl) kl.textContent = seaCross($('#from').value, $('#to').value) ? '集荷先から届け先までの経路の距離（海を含む・km）' : '集荷先から届け先までの道路の距離（km）'; }
   if (res.totals) {   // 見出し・タイル・棒は、比べの表と同じ並び（契約単価を入れたときは契約単価が先）を使う
     const Cs0 = readContracts(), per0 = perContracts(res, Cs0, inp), byId0 = Object.fromEntries(res.options.map((o) => [o.id, o]));
     S.ctx = { res, has: per0.some((p) => p.has), priced: pricedOf(res, per0, byId0).priced };
@@ -1558,7 +1583,7 @@ function render() {
   } else {
     const t = res.totals, Cs = readContracts(), per = perContracts(res, Cs, inp);
     $('#sum').textContent = `荷物の合計: ${t.count} 個、${f1(t.kg)}kg、${f1(t.m3)}m³、床面 ${f1(t.floor)}m²、最長辺 ${t.longest}cm`;
-    $('#res').innerHTML = `<div class="scroll-x"><table class="res"><thead><tr><th>送り方</th><th>この荷物に使えるか</th><th>費用の目安（税抜）と理由</th></tr></thead><tbody>${sortedOptions(res.options).map((o) => optRow(o, per, inp)).join('')}</tbody></table></div>${res.options.some((o) => o.id === 'rosen' && o.status !== 'ng') ? TERMS_HTML : ''}${asksSection(res.options)}`;
+    $('#res').innerHTML = `<div class="scroll-x"><table class="res"><thead><tr><th>送り方</th><th>この荷物に使えるか</th><th>費用の目安（税抜）と理由</th></tr></thead><tbody>${(() => { const ro = resultOrder(res); return ro.list.map((o) => optRow(o, per, inp, o.id === ro.top)).join(''); })()}</tbody></table></div>${res.options.some((o) => o.id === 'rosen' && o.status !== 'ng') ? TERMS_HTML : ''}${asksSection(res.options)}`;
     $('#cmpbox').innerHTML = cmpHtml(res, Cs, inp);
     if (S.bestCalc && S.bestCalc.contract) $('#res-d').open = true;   // 契約単価を入れたときは、比べの文を最初から開く
     $('#quote').value = quoteText(inp, res);
@@ -1670,7 +1695,7 @@ function loadCargo() {
     if (d.to === '' || PREFS.includes(d.to)) $('#to').value = d.to;
     if (typeof d.km === 'string' && d.km.length < 12) $('#km').value = d.km;
     if (d.recv === 'business' || d.recv === 'person') $('#recv').value = d.recv;
-    if (FLEX_DAYS.map(String).includes(String(d.flex))) $('#flex').value = String(d.flex);
+    if (d.flex === '' || FLEX_DAYS.map(String).includes(String(d.flex))) $('#flex').value = String(d.flex);
     if (['yes', 'no', 'unknown'].includes(d.fkFrom)) $('#fk-from').value = d.fkFrom;
     if (['yes', 'no', 'unknown'].includes(d.fkTo)) $('#fk-to').value = d.fkTo;
     if (typeof d.pickup === 'string' && /^\d{2}:\d{2}$/.test(d.pickup)) $('#pickup-time').value = d.pickup;
@@ -1695,7 +1720,7 @@ function autoKm(keepValue) {
 
 function example() {
   S.rows = [{ n: 2, l: 240, w: 60, h: 200, kg: 140 }, { n: 2, l: 100, w: 60, h: 80, kg: 60 }];
-  $('#from').value = '東京都'; $('#to').value = '大阪府'; $('#km').value = '492'; S.kmAuto = true; autoKm(true); $('#recv').value = 'business'; $('#flex').value = '4';   // 例の距離は 492km のまま、自動の値として持つ（届け先を変えたら計算し直す）
+  $('#from').value = '東京都'; $('#to').value = '大阪府'; $('#km').value = '492'; S.kmAuto = true; autoKm(true); $('#recv').value = 'business'; $('#flex').value = '';   // 例の距離は 492km のまま、自動の値として持つ（届け先を変えたら計算し直す）
   S.rows.forEach((r) => { r.pk = 'box'; });
   renderRows(); render();
 }
@@ -1703,7 +1728,7 @@ function example() {
 function init() {
   $('#from').innerHTML = '<option value="">選んでください</option>' + PREFS.map((p) => `<option>${p}</option>`).join('');
   $('#to').innerHTML = '<option value="">選んでください</option>' + PREFS.map((p) => `<option>${p}</option>`).join('');
-  $('#flex').innerHTML = FLEX_DAYS.map((d) => `<option value="${d}">${d === 0 ? '待てない（決めた日に届ける）' : `${d} 日`}</option>`).join('');
+  $('#flex').innerHTML = '<option value="">選ばない（指定なし）</option>' + FLEX_DAYS.map((d) => `<option value="${d}">${d === 0 ? '待てない（決めた日に届ける）' : `${d} 日`}</option>`).join('');
   // 地図の画面へのリンク。Artifact の版は 1 枚のページなので、リンクではなく文だけにする（SPEC §30.4）
   $('#sources').innerHTML = `<details><summary>数字の出どころ</summary><ul>${SOURCES.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details><p class="small" id="maplink">${ARTIFACT ? '地図で送り方を比べる（地図の画面の「送り方を比べる」では、着地を選ぶと手段ごとの経路と額を見られます）' : '<a href="index.html">地図で送り方を比べる</a>'}</p>`;
   $('#c-tk').innerHTML = TK_SIZES.map((z) => `<label class="f">${z} サイズ（円）<input type="number" class="cin" id="c-t-${z}" min="0" step="any" placeholder="契約の単価"></label>`).join('');

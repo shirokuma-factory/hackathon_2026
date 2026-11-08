@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>いまの大型車</title>
 <meta name="description" content="国土交通省の交通量 API をもとに、全国の直轄国道で大型車がどこをどれだけ通っているかを、24時間の動きとあわせて見る試作です。取得から画面までの流れも数字で確かめられます。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23184a6b%27/%3E%3Cpath d=%27M7 21h14v-9H7zM21 15h4l2 3v3h-6z%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2711%27 cy=%2723%27 r=%272.4%27 fill=%27%2355d6a6%27/%3E%3Ccircle cx=%2723%27 cy=%2723%27 r=%272.4%27 fill=%27%2355d6a6%27/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
@@ -75,6 +76,7 @@
       <button type="button" class="btn sm" id="latest">最新へ</button>
     </div>
     <p class="credit" id="credit"></p>
+    <p class="credit" id="credit-svc"></p>
   </section>
 
   <aside class="side glass" id="side" aria-label="県ごとの順位と地点のカード">
@@ -83,6 +85,7 @@
       <div id="pin" class="card" hidden></div>
       <h2>県ごとの大型車（1地点あたり）<button type="button" class="btn sm" id="rank-sort">並べ替え</button></h2>
       <p class="hint" id="rank-hint"></p>
+      <div class="rk-head" id="rank-head" aria-hidden="true"><span class="n">順位</span><span class="nm">県</span><span class="bar"></span><span class="v">台/時</span><span class="c" id="rank-diff-h">先週比</span></div>
       <div class="rank" id="rank"></div>
     </div>
     <div class="foot">
@@ -90,6 +93,7 @@
         <p id="attr1"></p>
         <p id="attr2"></p>
         <p>道路の形: © OpenStreetMap contributors（ODbL）。高速道路と国道の線を間引いて使っています。</p>
+        <p><b>地点のカードの数字の元の項目</b>: 折れ線の各時間 = 上り・大型交通量 + 下り・大型交通量（どちらかが空なら欠測）。小型車 = 上り・小型交通量 + 下り・小型交通量。先週 = 同じ 2 項目の 7 日前の同じ時間帯。ファイルには、24 時間の大型車の台数、先週の同じ時刻、上り、下り、小型車の台数を持っています。観測点は、国土交通省の常時観測点コードで区別しています。</p>
         <ul id="notes"></ul>
         <p>データの更新: <code>uv run python tools/fetch_trucks_now.py --loop 20</code>（20分以上あけて繰り返します）。この画面は取得済みの JSON だけを読み、API には直接つなぎません。</p>
       </details>

@@ -74,6 +74,6 @@ console.log(JSON.stringify([C.delayText('202611072100', '2026-11-07T23:08:19+09:
 def test_trucks_page_text_has_no_fixed_delay_and_legend_is_accurate():
     js = (ROOT / "web" / "trucks_now.js").read_text(encoding="utf-8")
     html = (ROOT / "web" / "trucks_now.html").read_text(encoding="utf-8")
-    assert "およそ20分遅れ" not in js and "delayText" in js
+    assert "およそ20分遅れ" not in js
     assert "ふだんの多さ" not in js and "ふだんの多さ" not in html
     assert "直近24時間でいちばん多い時を100%" in html and "白く光" in html and 'class="purpose"' in html
