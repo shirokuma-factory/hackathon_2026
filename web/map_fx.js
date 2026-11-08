@@ -17,8 +17,8 @@ const MapFx = (() => {
       const A = d.AmbientLight || d._AmbientLight, D = d.DirectionalLight || d._DirectionalLight;
       if (d.LightingEffect && A && D) {
         eff = [new d.LightingEffect({
-          ambient: new A({ color: [190, 205, 235], intensity: 1.5 }),
-          sun: new D({ color: [255, 240, 220], intensity: 2.2, direction: [-1.2, -2.2, -3] }),
+          ambient: new A({ color: [235, 240, 255], intensity: 3.5 }),
+          sun: new D({ color: [255, 245, 230], intensity: 3.5, direction: [-1.2, -2.2, -3] }),
         })];
       }
     } catch (e) { eff = []; }

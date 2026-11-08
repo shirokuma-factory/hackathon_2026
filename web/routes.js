@@ -552,11 +552,13 @@ const Rt = (() => {
     });
   }
 
+  // 3D の乗り物に掛ける色。モデルの素材は灰色・白系で地図になじむので、経路の線と同じ手段の色（少し明るく）を掛けて目立たせる
+  const tint3d = (m) => { const c = col(m); return [c[0] + (255 - c[0]) * 0.3, c[1] + (255 - c[1]) * 0.3, c[2] + (255 - c[2]) * 0.3].map(Math.round); };
   // 乗り物の層。ズームが小さいときは 2D アイコン、大きいときは 3D モデル、間は交差（models3d.js の LOD）
   function vehLayers(id, data, mode, size, zoom, extra = {}, k = 1) {
     const out = [], mx = M3D.mixFor(mode, zoom);
     if (mx < 0.999) out.push(iconLayer(id, mx > 0.001 ? data.map((d) => ({ ...d, a: (d.a ?? 1) * (1 - mx) })) : data, mode, size, extra));
-    const l3 = M3D.vehicles(id + '-3d', mode, data, zoom, { k });
+    const l3 = M3D.vehicles(id + '-3d', mode, data, zoom, { k, color: tint3d(mode) });
     if (l3) out.push(l3);
     return out;
   }
@@ -643,6 +645,14 @@ const Rt = (() => {
       }
       // 乗り物が 1 台も見えない間も、経路のある手段の層は消さない。消すたびに層が作り直され、アイコン画像の読み込み中に捨てられると
       // WebGL の INVALID_OPERATION の警告が出る（SPEC §33 #5）。データが空の層は描かないだけで、費用はほとんど無い
+      // 案内の表示は 3D だけで出すので、細長い船・電車も見落とさないよう、手段の色の輪を下に敷く
+      if (data.length && MapFx.guided3d()) {
+        out.push(new L.ScatterplotLayer({
+          id: 'rt-vhalo-' + m, data, getPosition: (d) => d.p, radiusUnits: 'pixels', getRadius: 15, filled: true, stroked: true,
+          getFillColor: (d) => withA(col(m), 70 * (d.a ?? 1)), getLineColor: (d) => withA(lightCol(m), 230 * (d.a ?? 1)), lineWidthUnits: 'pixels', getLineWidth: 1.6,
+          parameters: { depthCompare: 'always' }, updateTriggers: { getFillColor: [F], getLineColor: [F] },
+        }));
+      }
       if (data.length || (cur.sets[m] && cur.sets[m].ok)) out.push(...vehLayers('rt-veh-' + m, data, m, (F === m ? 1.12 : 1) * SIZE[m], zoom, { updateTriggers: { getSize: [F] } }, F === m ? 1.12 : 1));
     }
     if (lead) {

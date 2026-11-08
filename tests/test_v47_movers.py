@@ -63,3 +63,30 @@ def test_guided_flow_vehicles_move_without_clicks(public_server):
             assert a.get(m) and b.get(m), (m, a, b)
             assert a[m] != b[m], f"{m} の位置が 1.5 秒で変わっていません: {a[m]}"
         assert page.js("window.__csp") == []
+
+
+TINT = """(()=>{const o=__app.overlay(),ls=[];const fl=(x)=>Array.isArray(x)?x.forEach(fl):x&&ls.push(x);fl((o.props||o._props).layers);
+const r={};for(const l of ls){const m=/^rt-veh-(truck|rail|ferry|air)(-3d)?$/.exec(l.id);if(!m||!/-3d$/.test(l.id))continue;const d=Array.from(l.props.data||[]);
+const full=d.find(v=>(v.a??1)>=0.99)||d[0];r[m[1]]={op:l.props.opacity,col:full&&typeof l.props.getColor==='function'?l.props.getColor(full):null,ss:l.props.sizeScale};}
+return r;})()"""
+
+
+def test_guided_vehicle_layers_opaque_and_tinted(public_server):
+    """案内の流れでは 3D の乗り物は濃さ 0.9 以上で、手段の色の掛け色（白ではない）が付く。灰色の素材が地図になじんで「薄くて見えない」と言われた件（2026-11-08）。"""
+    with edge_page(1920, 1080, hooks=(RESOURCE_HOOK, CSP_HOOK)) as page:
+        page.goto(f"http://127.0.0.1:{public_server}/index.html")
+        page.wait(lambda: page.js("document.body.classList.contains('view-home') && !!document.querySelector('#role-shipper')"), 60, "最初の画面")
+        page.js("document.querySelector('#role-shipper').click()")
+        page.js("document.querySelector('#p-ship-compare').click()")
+        page.wait(lambda: page.js("!!window.__app && __app.S.view==='compare' && !!__app.S.idx"), 240, "比べる画面")
+        page.js("(()=>{const q=document.querySelector('#q');q.focus();q.value='福岡市中央区';q.dispatchEvent(new Event('input',{bubbles:true}));})()")
+        page.wait(lambda: page.js("!!document.querySelector('#suggest li[data-i]')"), 30, "候補")
+        page.js("document.querySelector('#suggest li[data-i]').dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}))")
+        page.wait(lambda: "rt-veh-air-3d" in _ids(page), 90, "3D の乗り物")
+        assert page.js("document.body.classList.contains('guided')")
+        t = page.js(TINT)
+        assert t, t
+        for m, v in t.items():
+            assert v["op"] >= 0.9, (m, v)
+            c = v["col"]
+            assert c and (c[0], c[1], c[2]) != (255, 255, 255), (m, v)
