@@ -277,7 +277,8 @@ def test_compare_step2_preselects_cheapest_and_step3_shows_needed_inputs(w, h):
         assert m3["chars"] <= BUDGETS[w] and m3["primary"] <= 1 and m3["controls"] <= 8, m3
         # 日付を入れて作り直すと、未入力の欄が消える
         page.js("""(function(){const a=document.querySelector('[data-need=ship_date]'), b=document.querySelector('[data-need=desired_date]'); a.value='2026-12-01'; b.value='2026-12-03'; a.dispatchEvent(new Event('change',{bubbles:true})); b.dispatchEvent(new Event('change',{bubbles:true}));})()""")
-        page.wait(lambda: page.js("!document.querySelector('.w-need')"), 30, "必須項目が埋まる")
+        # 2026-11-08 の直しに合わせて: 日付が入ると必須の欄は消え、任意の日付欄（w-need w-dates）が同じ場所に出る。必須の欄だけが無くなったことを見る
+        page.wait(lambda: page.js("!document.querySelector('.w-need:not(.w-dates)') && !!document.querySelector('.w-dates [data-opt-date=ship_date]')"), 30, "必須項目が埋まる")
 
 
 # ---------------------------------------------------------------- 最初の画面

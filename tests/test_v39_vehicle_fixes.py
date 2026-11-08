@@ -88,7 +88,8 @@ CARGOS = [  # (個数, 縦, 横, 高さ cm, 1個の kg)
 
 def test_f3_compare_lite_home_matches_api_match_on_t7_space():
     t = trips_by_id()["T7"]
-    rows = [dict(n=c[0], l=c[1], w=c[2], h=c[3], kg=c[4]) for c in CARGOS]
+    # 2026-11-08 の直しに合わせて: 密度の低い大きな荷（700×100×100cm・10kg など）は mm の取り違えの疑いで、cm のまま計算すると確認するまで止まる。cmOk で「cm のまま」を選んだ状態にする
+    rows = [dict(n=c[0], l=c[1], w=c[2], h=c[3], kg=c[4], cmOk=True) for c in CARGOS]
     with edge_page(1200, 800, webgl=False) as page:
         page.goto(PAGE.as_uri() + "?example=1")
         page.wait(lambda: page.js("!!document.querySelector('table.res')"), 30, "判定")

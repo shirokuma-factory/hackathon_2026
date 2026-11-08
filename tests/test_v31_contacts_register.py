@@ -223,7 +223,8 @@ def test_g141_16_api_passes_place(srv):
 def test_g141_16_work_js_sends_place():
     js = (WEB / "work.js").read_text(encoding="utf-8")
     assert "place: W.place" in js or "{ place: W.place }" in js
-    assert "W.place = " in js and "W.place, pickedMode()]" in js  # 版の署名にも入れる（比べる方法の選択も署名に加わった）
+    # 2026-11-08 の直しに合わせて: 版の署名の末尾は pickedMode() から pickedFull() に変わった（比べる方法の選択の全体）。W.place の代入と送信は残っている
+    assert "W.place = " in js and "W.place, pickedFull()]" in js  # 版の署名にも入れる（比べる方法の選択も署名に加わった）
 
 
 def test_g141_17_published_sources_have_no_repo_file_names():
