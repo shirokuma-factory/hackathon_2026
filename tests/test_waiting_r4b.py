@@ -33,7 +33,7 @@ def test_python_line_history_keeps_hand_typed_memo_lines():
     from shipcompare import waiting
     d = waiting.parse_paste_detail(LINE_PASTE)
     assert len(d["rows"]) == 2 and {r.get("place") for r in d["rows"]} == {"江東区 地点07", "船橋DC"}
-    assert any("手書きのメモの行も読みました" in n for n in d["notes"])
+    assert any("で始まらないメモの行も読みました" in n for n in d["notes"])
 
 
 def test_python_line_history_lists_unreadable_memo_lines():
@@ -58,7 +58,7 @@ def test_page_parsers_match_python_for_r4b_cases():
         r = page.js("(function(){ const a = WaitingShared.parsePasteFull(" + json.dumps(LINE_PASTE, ensure_ascii=False) + "); "
                     "const b = WaitingShared.parsePasteFull(" + json.dumps(HEADERLESS, ensure_ascii=False) + "); "
                     "return {n: a.rows.length, notes: a.notes, hint: b.notes}; })()")
-        assert r["n"] == 2 and any("手書きのメモの行も読みました" in n for n in r["notes"])
+        assert r["n"] == 2 and any("で始まらないメモの行も読みました" in n for n in r["notes"])
         assert HINT in "".join(r["hint"])
 
 
@@ -89,4 +89,4 @@ def test_body_says_not_shippers_fault_waits_are_excluded_and_matches_tile():
         _paste(page, MIXED)
         r = _check_totals(page)
         t = page.js("draftText(S.res.by_partner[0])")
-        assert f"合計で{r['body']}（荷主等の都合でない待ちは含めていません）でした" in t
+        assert f"合計で{r['body']}でした（荷主等の都合でない待ちは含めていません）" in t

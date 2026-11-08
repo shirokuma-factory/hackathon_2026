@@ -52,7 +52,8 @@ const Own = (() => {
     };
     walk(sample);
     for (const x of subs) x.p.pseudo = x.nm;
-    plainFix = fix;
+    // 荷待ちの例の場所は、地図の点にするため市区町村名で始まる必要がある。地名が市区町村名の前半（江東 → 江東区）のときは、市区町村名のほうに直す
+    plainFix = (str) => { let t = str; for (const x of subs) { if (x.rxMuni) t = t.replace(x.rxMuni, x.p.muni && x.p.muni !== x.nm && String(x.p.muni).startsWith(x.nm) ? x.p.muni : x.full); t = t.replace(x.rx, x.nm); } return t; };
     return sample;
   }
   let plainFix = (t) => t; // 荷待ちの例の「江東区 地点07」にも使う
@@ -397,7 +398,7 @@ const Own = (() => {
     const why = yc.source === 'weekday' ? '見出しの曜日に合う年が複数あります' : yc.source === 'mismatch' ? '見出しの曜日がどの年にも合いません' : '見出しに曜日がありません';
     const opts = yc.candidates.map((y) => `<option value="${y}" ${y === d.year ? 'selected' : ''}>${y} 年</option>`).join('');
     return `<div class="o-year"><label>配車表の年 <select id="own-year" class="ctl sm" aria-label="配車表の年">${opts}</select></label>
-      <small>${why}。いまは ${d.year} 年として計算しています。違うときは選び直してください（今日の日付では決めていません）。</small></div>`;
+      <small>${why}。いまは ${d.year} 年として計算しています。違うときは選び直してください。</small></div>`;
   }
 
   // 合う年が複数あって、まだ計算していない配車表。選ぶまで計算しない（いちばん新しい年を黙って使わない）
@@ -408,7 +409,7 @@ const Own = (() => {
     return `<div class="o-year o-pend" role="alert"><b>配車表の年を選んでください。選ぶまで計算しません</b>
       <label>配車表の年 <select id="own-year-pick" class="ctl sm" aria-label="配車表の年を選ぶ">${opts}</select></label>
       <button type="button" class="btn-link" data-act="year-cancel">このファイルを読むのをやめる</button>
-      <small>見出しの曜日に合う年が複数あります（${p.candidates.map((y) => y + ' 年').join('・')}）。年を黙って決めないため、選んでもらいます（今日の日付では決めていません）。</small></div>`;
+      <small>見出しの曜日に合う年が複数あります（${p.candidates.map((y) => y + ' 年').join('・')}）。どの年かを選んでください。</small></div>`;
   }
 
   // 列の役割の日本語の名前。英語の役割名は出さない
@@ -531,14 +532,14 @@ const Own = (() => {
       <td class="num">${Math.round(x.shape.fill * 100)}%</td><td class="num">${x.shape.distinct}</td>${same ? '' : `<td>${esc(optsOf(x))}</td>`}</tr>`).join('');
     const st = c.st, est = st && AiExplain.ownEstimate ? AiExplain.ownEstimate(c.payload, st) : null;
     const left = st && typeof st.remaining === 'number' ? st.remaining : null, out = left === 0;
-    const costLine = est ? `<p class="o-hint" id="own-ai-cost">1 回の費用の目安: ${est.usdText}（${est.yenText}。1 ドル ${est.yen} 円と仮定。Haiku 5.5 を 1 回呼びます）。同じ内容は結果を再利用し、費用も回数もかかりません</p>` : '';
+    const costLine = est ? `<p class="o-hint" id="own-ai-cost">1 回の費用の目安: ${est.usdText}（${est.yenText}。1 ドル ${est.yen} 円と仮定。Haiku 5.5 を 1 回呼びます）。同じ内容をもう一度送るときは前の結果を使うので、費用はかからず、回数にも数えません。</p>` : '';
     const leftLine = left !== null ? `<p class="o-hint ai-left" id="own-ai-left">今日の残り ${left} 回${st.limits && st.limits.daily ? `（1 日 ${st.limits.daily} 回まで）` : ''}</p>` : '';
-    return `<div class="o-aiconf" role="group" aria-label="AI に送る内容の確認"><b>この内容を Anthropic の API に送ります</b>
+    return `<div class="o-aiconf" role="group" aria-label="AI に送る内容の確認"><b>この内容を Anthropic（Claude の提供元）のサーバーに送ります</b>
       <div class="o-aibar">${out ? '' : '<button type="button" class="primary" data-act="ai-cols-send">送る</button>'}<button type="button" data-act="ai-cols-cancel">やめる</button></div>
       ${out ? '<p class="errs">今日の上限に達しました。明日また使えます。列の役割は手で選んでください。</p>' : ''}${costLine}${leftLine}
       <div class="o-aiscroll"><table class="o-tbl"><thead><tr><th>列の見出し</th><th>値の形（割合）</th><th>入力あり</th><th>種類の数</th>${same ? '' : '<th>選べる役割</th>'}</tr></thead><tbody>${rows}</tbody></table></div>
       ${same ? `<p class="o-hint">選べる役割（全列共通）: ${esc(optsOf(cols[0]))}</p>` : ''}
-      <p class="o-hint">値そのものは送りません（車番・運転者・地点名・金額は出ません）。見出しも、列名の辞書にあるものと一般的な語だけを送り、それ以外は「列 N」にしています。形の割合は、読み込んだ全行からこのブラウザの中で数えています。送るのは表だけで、AI の案を決めるのはあなたです。</p></div>`;
+      <p class="o-hint">値そのものは送りません（車番・運転者・地点名・金額は出ません）。見出しも、列名の辞書にあるものと一般的な語だけを送り、それ以外は「列 N」にしています。形の割合は、読み込んだ全行からこのブラウザの中で数えています。送るのは表だけで、AI の案を使うかどうかは、あなたが決めます。</p></div>`;
   }
   // 区間を 1 件も読めないファイルに、まだ足りない列の役割。見出しの辞書・選んだ役割・AI の案から数える（1 行 = 1 便の形で要る日付と、発地か着地）
   function missingRoles(p) {
@@ -609,7 +610,7 @@ const Own = (() => {
         A.sugg[key] = { role, confidence: s.confidence, reason: s.reason_ja }; n++;
       }
       c.keys.forEach((k) => { if (!A.sugg[k]) A.none[k] = true; });   // AI が案を付けなかった（または選べない役割だった）列
-      A.busy = false; A.msg = n ? `AI の案が ${n} 列に付きました。内容を確かめて、決めてください（決めるまで計算は変わりません）` : 'AI は役割を決められませんでした。手で選んでください';
+      A.busy = false; A.msg = n ? `AI の案が ${n} 列に付きました。内容を確かめて、使う案を選んでください（選ぶまで計算は変わりません）` : 'AI は役割を決められませんでした。手で選んでください';
       renderLeft();
     }).catch((e) => { A.busy = false; A.msg = e.message || 'AI に整理してもらえませんでした。手で選んでください'; renderLeft(); });
   }
@@ -647,7 +648,7 @@ const Own = (() => {
     const p = O.pendingRoles;
     if (!p) return '';
     return `<div class="o-roles o-pend" id="own-roles-pend" role="alert"><div class="o-h">この列の中身を選んでください（${p.need.length} 本）。選ぶまで計算しません</div>
-      <p class="o-hint">列の名前だけでは役割を決められなかったためです。下の列の役割を選ぶと、読み直します。選んだ役割は、見出しの形が同じファイルを次に落としたときも使います（このブラウザの中だけに覚えます）。</p>
+      <p class="o-hint">列の名前だけでは役割を決められませんでした。下の列の役割を選ぶと、読み直します。選んだ役割は、見出しの形が同じファイルを次に落としたときも使います（このブラウザの中だけに覚えます）。</p>
       ${aiBoxHtml(p.need)}${rolesRows(p.need, p.roles)}<button type="button" class="btn-link" data-act="roles-cancel">このファイルを読むのをやめる</button></div>`;
   }
 
@@ -671,7 +672,7 @@ const Own = (() => {
     if (!pr) return '';
     const rows = OwnMonth.compareRows(pr[0], pr[1]).map((r) => `<tr><th>${esc(r.name)}</th><td class="num">${esc(r.a)}</td><td class="num">${esc(r.b)}</td><td class="num o-df">${esc(r.diff)}</td></tr>`).join('');
     return `${print ? '<h3>前の月と並べる</h3>' : ''}<table class="o-cmp" aria-label="前の月との比べ"><thead><tr><th></th><th>${esc(pr[0].label)}</th><th>${esc(pr[1].label)}</th><th>差</th></tr></thead><tbody>${rows}</tbody></table>
-      <p class="o-hint">差は引き算だけです。良くなったか悪くなったかは、月の仕事の量や行き先で変わるので、決めていません。</p>`;
+      <p class="o-hint">差は、今月の値から前の月の値を引いたものです。良し悪しは仕事の量や行き先で変わるので、判定していません。</p>`;
   }
   function monthHtml() {
     const all = OwnMonth.list();
@@ -741,14 +742,14 @@ const Own = (() => {
     const cols = d.columns.map((c) => {
       const lab = colLabel(c), pr = c.shape_ratio == null ? '' : pc(c.shape_ratio);
       const why = c.reason_ja || (c.dict_hit ? `列名から「${lab}」と判断しました。値の形は ${pr} 合っています` : lab ? `列名からは分からず、値の形から「${lab}」らしいと見ています（${pr} 合っています）` : '列名からも値の形からも、役割を決められませんでした');
-      const verdict = { green: '合っているはず', yellow: '確認してください', red: '決められません' }[c.color] || '';
+      const verdict = { green: '合っている見込み', yellow: '確認してください', red: '決められません' }[c.color] || '';
       return `<div class="o-col" title="${esc(c.formula)}"><span class="o-cn"><b>${esc(c.column)}</b><small>${esc(c.source)}</small></span>
         <span class="o-cd">${esc(lab || '—')}</span><span class="o-cs">${esc(why)}</span><span class="o-cc"><i class="${dotCls(c.color)}"></i><span>${verdict}</span></span></div>`;
     }).join('');
     const g = d.columns.filter((c) => c.color === 'green').length, y = d.columns.filter((c) => c.color === 'yellow').length, r = d.columns.filter((c) => c.color === 'red').length;
     const un = unplacedHtml(d);
     return `<div class="o-drop" id="own-drop" tabindex="0" role="button" aria-label="自社のファイルを落とす欄（配車表・デジタコの CSV。ブラウザの外には送りません）">
-        <b>配車表・デジタコの CSV をここに置く</b><span>文字コードはどちらでも読めます。ファイルは外に送りません。</span><input id="own-file" type="file" accept=".csv,.txt,text/csv" multiple hidden></div>
+        <b>配車表・デジタコの CSV をここに置く</b><span>文字コードは UTF-8 でも Shift_JIS でも読めます。ファイルは外に送りません。</span><input id="own-file" type="file" accept=".csv,.txt,text/csv" multiple hidden></div>
       ${formatGuideHtml()}<p class="o-drop-msg" id="own-drop-msg" ${O.dropMsg ? '' : 'hidden'}>${esc(O.dropMsg)}</p>${pendingYearHtml()}${pendingRolesHtml()}${yearHtml(d)}${monthPickHtml(d)}${noticesHtml(d)}${hiredHtml(d)}${haishaChoiceHtml(d)}${rolesHtml(d)}${monthHtml()}
       <table class="o-tbl"><thead><tr><th>ファイル</th><th>読めた行</th><th>確認待ち</th><th>読めない行</th></tr></thead><tbody>${rows}
         <tr class="o-paper"><td colspan="4">${esc(d.paper.text)}</td></tr></tbody></table>
@@ -756,13 +757,13 @@ const Own = (() => {
       <details class="o-det o-unr" ${d.unreadable.length && d.unreadable.length <= 3 && isImport() ? 'open' : ''}><summary>読めない ${d.unreadable.length} 行${isImport() ? '' : '（サンプルにわざと入れた行です）'}</summary>
       <table class="o-tbl o-un"><tbody>${unread || '<tr><td class="o-hint">読めない行はありません</td></tr>'}</tbody></table></details>${un}
       <details class="o-det"><summary>どの列を何と読んだか（緑 ${g}・黄 ${y}・赤 ${r}）</summary>
-        <p class="o-claude ${d.claude.present || isImport() ? '' : 'none'}">${isImport() ? '列の対応づけは、列名の辞書と値の形だけで決めています（外には送っていません）' : esc(d.claude.label)}${d.claude.present || isImport() ? '' : '（開発のときに作る記録の欄は空です。どのくらい確かかは辞書の一致と値の形だけで計算しています）'}</p>
+        <p class="o-claude ${d.claude.present || isImport() ? '' : 'none'}">${isImport() ? '列の対応づけは、列名の辞書と値の形だけで決めています（外には送っていません）' : esc(d.claude.label)}${d.claude.present || isImport() ? '' : '（AI は使っていません。確かさは、列名の辞書との一致と値の形から計算しています）'}</p>
         <div class="o-cols">${cols}</div></details>`;
   }
 
   // 「修正」「読まない」を押したとき、計算に何が起きるか（カードに書く）
   function effectText(c) {
-    if (!isImport()) return 'サンプルの数字は元の記録から作った固定の値です。自社のファイルを落とすと、修正・読まないが計算に反映されます';
+    if (!isImport()) return 'サンプルの数字は元の記録から作った固定の値です。自社のファイルを落とすと、「修正」「読まない」を押した結果が計算に入ります';
     if (c.effect === 'kpi') return '押すと、この項目を変えて実車率などを計算し直します';
     if (c.effect === 'display') return '押すと、区間の時刻の表示だけが変わります。実車率などの数字は変わりません';
     return '計算は変わりません（印を付けるだけです）';
@@ -815,7 +816,7 @@ const Own = (() => {
       <div class="o-mp" ${O.open.has('mp' + key) ? '' : 'hidden'}><label>最大積載量 <input class="ctl sm" type="number" min="0.5" max="40" step="0.5" inputmode="decimal" placeholder="例 13" aria-label="最大積載量（トン）"> t</label>
         <button type="button" class="btn-sm" data-act="mp-plate" data-plate="${esc(m.plate)}">この車だけ</button><button type="button" class="btn-sm" data-act="mp-class" data-cls="${esc(m.cls || '')}" ${m.cls ? '' : 'disabled'}>${esc(m.cls || '車種不明')}の車すべて</button>
         ${mine || byCls ? `<button type="button" class="btn-link" data-act="mp-reset" data-plate="${esc(m.plate)}" data-cls="${esc(m.cls || '')}">元に戻す</button>` : ''}
-        <small>車検証の最大積載量を入れます。このブラウザに覚えるので、次に読み込んでも戻りません。変えると計算し直します。</small></div></div>`;
+        <small>車検証の最大積載量を入れます。このブラウザに保存するので、次に読み込んだときもこの値を使います。変えると計算し直します。</small></div></div>`;
   }
 
   function confirmHtml() {
@@ -835,7 +836,7 @@ const Own = (() => {
         <div class="o-kv"><span>提案</span><span>${esc(c.proposal)}</span></div>${c.reason_ja ? `<div class="o-kv"><span>理由</span><span>${esc(c.reason_ja)}</span></div>` : ''}${claude}${c.reason_ja ? '' : conf}
         ${eff === common ? '' : `<div class="o-kv"><span>反映</span><span class="o-eff">${esc(eff)}</span></div>`}
         <div class="o-btns">${st ? `<span class="o-res">${label}${st === 'fix' && O.fixTxt[key] ? '：' + esc(O.fixTxt[key]) : ''}</span><button type="button" class="btn-link" data-act="undo">取り消す</button>`
-          : (c.kind === 'return' ? '<button type="button" class="btn-sm" data-act="ru-empty">全部 空車にする</button><button type="button" class="btn-sm" data-act="ru-loaded">全部 実車</button><button type="button" class="btn-sm" data-act="ru-keep">不明のまま</button>'
+          : (c.kind === 'return' ? '<button type="button" class="btn-sm" data-act="ru-empty">すべて空車にする</button><button type="button" class="btn-sm" data-act="ru-loaded">すべて実車にする</button><button type="button" class="btn-sm" data-act="ru-keep">不明のままにする</button>'
             : '<button type="button" class="btn-sm" data-act="ok">確定</button><button type="button" class="btn-sm" data-act="fix">修正</button><button type="button" class="btn-sm" data-act="skip">読まない</button>')}</div>
         ${maxPayloadHtml(c, key)}
         <div class="o-fix" ${O.open.has('fix' + key) && !st ? '' : 'hidden'}>${fixInputHtml(c)}<button type="button" class="btn-sm" data-act="fixok">反映</button></div>
@@ -852,7 +853,7 @@ const Own = (() => {
     return `<div class="o-board"><p class="o-hint">${items.length > 1 ? `空車の帰りの区間 ${items.length} 本ぶんの文を、区間ごとに分けて作りました。` : ''}掲示には区間ごとに 1 件ずつ貼ります。</p>
       <textarea id="own-board-ta" class="o-ta" rows="${Math.min(22, 9 + 9 * Math.max(0, items.length - 1))}" readonly aria-label="求荷求車に貼る文">${esc(O.board.text)}</textarea>
       <div class="o-btns"><button type="button" class="btn-primary sm" data-act="board-copy">${items.length > 1 ? '全部をコピー' : 'コピー'}</button>${items.length > 1 ? items.map((it, k) => `<button type="button" class="btn-sm" data-act="board-copy-one" data-i="${k}">${esc(it.label)}だけコピー</button>`).join('') : ''}<span class="o-copy-msg" id="own-board-msg" role="status">${esc(O.board.msg || '')}</span></div>
-      <p class="o-note">会社名・電話番号は入っていません。貼る前に書き入れてください。運賃は書いていません。空車の情報を出して荷を探す掲示なので、見出しは【求荷】です。</p></div>`;
+      <p class="o-note">会社名・電話番号は入っていません。貼る前に書き入れてください。運賃は「ご相談ください」にしています。必要なら書き換えてください。空車の情報を出して荷を探す掲示なので、見出しは【求荷】です。</p></div>`;
   }
 
   // 明日の空きから 1 便ぶんの文を作る（配車担当の毎日の仕事用）。初期値は、いちばん多い空車の帰りの区間から取る
@@ -862,7 +863,7 @@ const Own = (() => {
     if (!O.tmr) O.tmr = { ...OwnMonth.boardDefaults(d), text: '', msg: '' };
     const nw = OwnMonth.nextWorkday(d), WDJ = '月火水木金土日';
     const bestW = OwnMonth.bestWeekday ? OwnMonth.bestWeekday(OwnMonth.returnPairs(d)[0]) : null;
-    const dayHint = bestW != null ? `日付は、空車が多い${WDJ[bestW]}曜の次の日（${+O.tmr.date.slice(5, 7)}/${+O.tmr.date.slice(8, 10)}）にしました。` : nw.basis ? `日付は、配車表で車が動いている曜日（${nw.open.map((w) => WDJ[w]).join('')}）の次の日にしました${nw.skipped.length ? `（休みの曜日の ${nw.skipped.map((x) => `${+x.slice(5, 7)}/${+x.slice(8, 10)}`).join('・')} は飛ばしました）` : ''}。` : '';
+    const dayHint = bestW != null ? `日付は、空車が多い${WDJ[bestW]}曜の次の日（${+O.tmr.date.slice(5, 7)}/${+O.tmr.date.slice(8, 10)}）にしました。` : nw.basis ? `日付は、明日以降で、配車表で車が動いている曜日（${nw.open.map((w) => WDJ[w] + '曜').join('・')}）に当たる最初の日にしました${nw.skipped.length ? `（休みの曜日の ${nw.skipped.map((x) => `${+x.slice(5, 7)}/${+x.slice(8, 10)}`).join('・')} は飛ばしました）` : ''}。` : '';
     const t = O.tmr, inp = (id, k, type, ph, extra) => `<input id="own-tmr-${id}" class="ctl sm" type="${type}" value="${esc(t[k])}" ${ph ? `placeholder="${esc(ph)}"` : ''} ${extra || ''}>`;
     return `<div class="o-tmr" id="own-tmr"><div class="o-h">明日の空車の掲示文を作る</div>
       <p class="o-hint">次に車が動く日に空く帰りの便を、日付つきの 1 便ぶんの文にします。いちばん多い空車の帰りの区間から初期値を入れました。${esc(dayHint)}違うところは直してください。</p>
@@ -951,7 +952,7 @@ const Own = (() => {
       const rest = [...document.querySelectorAll('#own-notes .f-n3')];
       n3.before(det); rest.forEach((x) => det.appendChild(x));
     }
-    if (n3) n3.textContent = isImport() ? '列の対応づけは、列名の辞書と値の形だけで決めています。外には送りません' : '列の対応づけの Claude の提案は、開発のときに作った記録です';
+    if (n3) n3.textContent = isImport() ? '列の対応づけは、列名の辞書と値の形だけで決めています。外には送りません。' : 'サンプルの列の対応づけは、用意した記録です。';
   }
 
   /* ------------------------------------------------------------ 右: 数字と表 */
@@ -961,7 +962,7 @@ const Own = (() => {
   const FEW = 5;
   // faint: 計算できた区間が少ない（30% 未満）、または読めた割合が低いときの理由の文。あれば数字を薄くして「参考」と書く
   function tile(label, val, sub, nat, tip, term, fml, cnt, alt, faint) {
-    const cntH = (cnt == null ? '' : `<div class="o-tc">${cnt} 区間から${cnt < FEW ? '<span class="o-few">件数が少ないので参考です</span>' : ''}</div>`) + (faint ? `<div class="o-tc o-faintnote"><span class="o-few">参考</span> ${esc(faint)}</div>` : '');
+    const cntH = (cnt == null ? '' : `<div class="o-tc">${cnt} 区間から計算${cnt < FEW ? '。<span class="o-few">件数が少ないので参考です</span>' : ''}</div>`) + (faint ? `<div class="o-tc o-faintnote"><span class="o-few">参考</span> ${esc(faint)}</div>` : '');
     const more = [alt ? `<div class="o-talt">${alt}</div>` : '', fml ? `<div class="o-tf">${esc(fml)}</div>` : '', nat ? `<div class="o-tn">${nat}</div>` : '', `<div class="o-ts">${sub}</div>`, `<div class="o-ts">${esc(tip)}</div>`].join('');
     return `<div class="o-tile${faint ? ' o-faint' : ''}" title="${esc(tip)}"><div class="o-tl">${label}${term ? OwnMonth.tipHtml(term) : ''}</div><div class="o-tv num">${val}</div>${cntH}
       <details class="o-tmore"><summary>詳しく</summary>${more}</details></div>`;
@@ -998,8 +999,8 @@ const Own = (() => {
   }
   function altText(a) {
     if (!a) return '';
-    if (a.mode === 'count') return `不明の区間を空とした場合 <b class="num">${pc(a.v, 1)}</b><small>（不明 ${a.unk} 区間には距離が無いので、km ではなく区間の数で数えています。不明を外すと ${pc(a.base, 1)}。読めない ${a.unread} 行は入れていません）</small>`;
-    return `${a.full ? '不明・読めない行を空とした場合' : '不明の区間を空とした場合'} <b class="num">${pc(a.v, 1)}</b><small>（不明 ${a.unk} 区間・読めない ${a.unread} 行。読めない行は距離が分からないので、この率には入れられません）</small>`;
+    if (a.mode === 'count') return `不明の区間を空車とした場合 <b class="num">${pc(a.v, 1)}</b><small>（不明 ${a.unk} 区間には距離が無いので、区間の数で数えています。読めない ${a.unread} 行は距離が分からないので入れていません）</small>`;
+    return `${a.full ? '不明の区間と読めない行を空車とした場合' : '不明の区間を空車とした場合'} <b class="num">${pc(a.v, 1)}</b><small>（不明 ${a.unk} 区間。読めない ${a.unread} 行は距離が分からないので入れていません）</small>`;
   }
 
   // 空車の印にならなかったが、セルに書かれていた語。その区間は、積地と降ろし地があるので実車として数えている。空車を意味する語なら、実車率が高く出ているので、利用者が気づけるように一覧にする
@@ -1007,7 +1008,7 @@ const Own = (() => {
     const ws = d.laden_words || [];
     if (!ws.length) return '';
     return `<details class="o-laden" id="own-laden"><summary>実車として数えた区間のセルに付いていた語 ${ws.length} 種類</summary>
-      <p class="o-hint">積地と降ろし地があるので実車として数えた区間のうち、重さ・時刻・空車の印のどれでもない語が付いていたものです。空車の意味の語があれば、列の役割の選択か、空車の印（空・回送・戻り空・荷なしなど）に書き換えて落とし直してください。</p>
+      <p class="o-hint">積地と降ろし地があるので実車として数えた区間のうち、重さ・時刻・空車の印のどれでもない語が付いていたものです。空車の意味の語があれば、列の役割を選び直すか、その語を空車の印（空・回送・戻り空・荷なしなど）に書き換えてから、ファイルを落とし直してください。</p>
       <ul class="o-lw">${ws.map((w) => `<li><b>${esc(w.word)}</b> ${w.count} 区間<small>例: ${esc(w.example)}</small></li>`).join('')}</ul></details>`;
   }
 
@@ -1056,7 +1057,7 @@ const Own = (() => {
   // 表の向きの言葉（行き（車庫から）・帰り（車庫へ））と、曜日の数え方の説明。推定した車庫と理由を表の上に出す
   function baseNote(d, nm) {
     if (!d.base) return '';
-    return `<p class="o-hint o-basenote" id="own-basenote">車庫は ${esc(nm(d.base))} と見ています${baseWhy(d, nm) ? `（${esc(baseWhy(d, nm))}）` : ''}。違うときは行きと帰りが逆になります。</p>`;
+    return `<p class="o-hint o-basenote" id="own-basenote">車庫を ${esc(nm(d.base))} としています${baseWhy(d, nm) ? `（${esc(baseWhy(d, nm))}）` : ''}。車庫が違うときは、行きと帰りが入れ替わって数えられます。</p>`;
   }
 
   // 区間（実際の発地 → 着地の組）× 曜日の表。見出しは組の名前（d.pair_table / d.pairs）。単価が入っているときだけ、費用の列を足す（空なら出さない。0 円にしない）
@@ -1066,7 +1067,7 @@ const Own = (() => {
     const cs = OwnCalc.costs(d, O.cost.perKm, O.cost.perHour), nm = (id) => (d.places[id] ? d.places[id].short : '?');
     const extra = (cs.perKm != null ? 1 : 0) + (cs.perHour != null ? 1 : 0);
     const dockLong = (wd) => d.stops.filter((s) => s.place === d.dock && s.minutes >= 30 && s.cycle_wd === wd).reduce((a, s) => a + s.minutes, 0);
-    const head = `<thead><tr><th title="行きの行は車庫を出た日の曜日、帰りの行は帰りの便が出た日の曜日で数えています（荷主への案内文と同じ数え方）">便が出た曜日</th><th>便数</th><th>空車</th><th title="実車か空車かが分からない便です。手順の画面の「空車 ○ / ○ 便」は、この列の便を除いて数えています（便数 − 不明）">うち行き先不明</th><th>空車の km</th><th>${esc(nm(d.dock))}での 30 分以上の停車</th>${cs.perKm != null ? '<th>空車の費用</th>' : ''}${cs.perHour != null ? '<th>停車の費用</th>' : ''}</tr></thead>`;
+    const head = `<thead><tr><th title="行きの行は車庫を出た日の曜日、帰りの行は帰りの便が出た日の曜日で数えています（荷主への案内文と同じ数え方）">便が出た曜日</th><th>便数</th><th>空車</th><th title="実車か空車かが分からない便です。手順の画面の「空車 ○ / ○ 便」は、この列の便を除いて数えています（便数 − 不明）">実車か空車か不明</th><th>空車の km</th><th>${esc(nm(d.dock))}での 30 分以上の停車</th>${cs.perKm != null ? '<th>空車の費用</th>' : ''}${cs.perHour != null ? '<th>停車の費用</th>' : ''}</tr></thead>`;
     const legById = new Map((d.legs || []).map((l) => [l.id, l]));
     // 帰りの向きは、行きが車庫を出た曜日ではなく、帰りの便自身が出た日の曜日で数え直す（荷主への案内文と同じ基準。便が出た日が分からないときは元の数え方のまま）
     const byReturnDay = (rs) => {
@@ -1097,17 +1098,17 @@ const Own = (() => {
       const body = rs.map((t) => {
         const hot = t.trips >= 4 && t.empty * 4 >= (t.trips - t.unknown) * 3 && (t.trips - t.unknown) >= 4;
         const ls = atDock ? (((stopsOf(t.wd) || {}).long_stops) == null ? '—' : stopsOf(t.wd).long_stops) : '—';
-        return `<tr class="${hot ? 'hot' : ''}"><td>${WD[t.wd]}曜発${hot ? '<small class="o-hotmark">空車が多い</small>' : ''}</td><td class="num" data-l="便数">${t.trips}</td><td class="num" data-l="空車">${t.empty}</td><td class="num" data-l="うち行き先不明">${t.unknown || 0}</td><td class="num" data-l="空車の km">${t.empty_km ? n1(t.empty_km) : '—'}</td><td class="num" data-l="30 分以上の停車">${ls}</td>${costCells(t.empty_km, atDock ? dockLong(t.wd) : 0)}</tr>`;
+        return `<tr class="${hot ? 'hot' : ''}"><td>${WD[t.wd]}曜発${hot ? '<small class="o-hotmark">空車が多い</small>' : ''}</td><td class="num" data-l="便数">${t.trips}</td><td class="num" data-l="空車">${t.empty}</td><td class="num" data-l="実車か空車か不明">${t.unknown || 0}</td><td class="num" data-l="空車の km">${t.empty_km ? n1(t.empty_km) : '—'}</td><td class="num" data-l="30 分以上の停車">${ls}</td>${costCells(t.empty_km, atDock ? dockLong(t.wd) : 0)}</tr>`;
       }).join('');
       const role = p.role === 'out' ? '行き（車庫から）' : p.role === 'back' ? '帰り（車庫へ）' : '';
       return `<tr class="grp"><td colspan="${6 + extra}">${esc(p.label)}${role ? `<small>主な往復の「${role}」の向き${p.role === 'back' ? '・帰りの便が出た曜日で数えています' : ''}</small>` : ''}</td></tr>${body}
-        <tr class="tot"><td>合計</td><td class="num" data-l="便数">${tot.trips}</td><td class="num" data-l="空車">${tot.empty}</td><td class="num" data-l="うち行き先不明">${tot.unk}</td><td class="num" data-l="空車の km">${tot.km ? n1(tot.km) : '—'}</td><td class="num" data-l="30 分以上の停車">${atDock ? tot.ls : '—'}</td>${costCells(tot.km, tot.lm)}</tr>`;
+        <tr class="tot"><td>合計</td><td class="num" data-l="便数">${tot.trips}</td><td class="num" data-l="空車">${tot.empty}</td><td class="num" data-l="実車か空車か不明">${tot.unk}</td><td class="num" data-l="空車の km">${tot.km ? n1(tot.km) : '—'}</td><td class="num" data-l="30 分以上の停車">${atDock ? tot.ls : '—'}</td>${costCells(tot.km, tot.lm)}</tr>`;
     };
     const gs = d.pairs.map(group).filter((x) => x);
     if (!gs.length) return '<p class="o-hint">区間の表を作れる便がありません。</p>';
     const first = gs.slice(0, PAIR_SHOW), rest = gs.slice(PAIR_SHOW);
     const unkN = (d.counts && d.counts.unknown) || 0;
-    const unkNote = unkN ? `<p class="o-hint o-unknote" id="own-unknote">「うち行き先不明」は、実車か空車か分からない便 ${unkN} 本です。手順の画面の「空車 ○ / ○ 便」は、この便を除いて数えるので、便数がこの表より ${unkN} 本少なくなります。</p>` : '';
+    const unkNote = unkN ? `<p class="o-hint o-unknote" id="own-unknote">「実車か空車か不明」は、実車か空車か分からない ${unkN} 本です。手順の画面の「空車 ○ / ○ 便」は、この便を除いて数えるので、便数がこの表より ${unkN} 本少なくなります。</p>` : '';
     return `${baseNote(d, nm)}${unkNote}<table class="o-tab" aria-label="区間と曜日の表">${head}<tbody>${first.join('')}</tbody></table>
       ${rest.length ? `<details class="o-more2 o-pairrest"><summary>ほかの区間 ${rest.length} 本</summary><table class="o-tab" aria-label="ほかの区間と曜日の表">${head}<tbody>${rest.join('')}</tbody></table></details>` : ''}${scopeNote(d, cs, nm)}`;
   }
@@ -1151,7 +1152,7 @@ const Own = (() => {
     const sh = (id) => esc(((d.places[id] || {}).short) || ((d.places[id] || {}).label) || '?');
     const rows = r.pairs.map((p) => `<tr><th>${sh(p.frm)} → ${sh(p.to)}</th><td class="num">${p.n}</td><td class="num">${yenS(p.subtotal)}</td></tr>`).join('');
     return `<div class="o-crow o-rev3" id="own-rev-own"><span>自社の成約単価（${n0(r.value)} ${r.unit}）で出した額<small class="o-sub">全部の帰りに荷が付いた場合の上限（車庫に向かう帰りだけ）・${r.counted} 便ぶん</small></span><b class="num">${yenS(r.total)}</b>
-        <small class="o-formula">${r.kind === 'km' ? '便ごとの km × ' : '1 便 × '}${n0(r.value)} ${r.unit} の合計${r.noKm ? `（距離が分からない ${r.noKm} 便は数えていません）` : ''}。入れた単価で計算した値で、取れる保証ではありません</small></div>
+        <small class="o-formula">${r.kind === 'km' ? '便ごとの km × ' : '1 便 × '}${n0(r.value)} ${r.unit} の合計${r.noKm ? `（距離が分からない ${r.noKm} 便は数えていません）` : ''}。入れた単価で計算した値で、この額を受け取れる保証ではありません。</small></div>
       <table class="o-tbl o-revt"><thead><tr><th>区間</th><th>便数</th><th>小計</th></tr></thead><tbody>${rows}</tbody></table>${revScopeHtml(d)}`;
   }
   // 売上の目安が数えた範囲。数えたのは車庫に向かう帰りの空車だけで、空車の費用（全部の空車で計算）とは範囲が違う。数えなかった空車の便数と km を書く
@@ -1164,9 +1165,9 @@ const Own = (() => {
     const r = OwnMonth.revenue(d);
     if (!r) return '';
     const sh = (id) => esc(((d.places[id] || {}).short) || ((d.places[id] || {}).label) || '?');
-    const head = `<div class="o-ch2">帰り荷 1 便の売上の目安<small>目安。取れる保証ではありません</small></div>
+    const head = `<div class="o-ch2">帰り荷 1 便の売上の目安<small>目安。この額を受け取れる保証ではありません</small></div>
       <p class="o-std" id="own-rev-std"><b>${esc(STD_NOTE)}</b></p>
-      <div class="o-cin o-rate"><label>自社の運賃の単価（入れなくてもよい）<span><input id="own-rate" class="ctl sm" type="text" inputmode="decimal" autocomplete="off" value="${esc(O.rate.value)}" placeholder="例 120" aria-label="自社の成約単価">
+      <div class="o-cin o-rate"><label>自社の成約単価（入れなくてもよい）<span><input id="own-rate" class="ctl sm" type="text" inputmode="decimal" autocomplete="off" value="${esc(O.rate.value)}" placeholder="例 120" aria-label="自社の成約単価">
         <select id="own-rate-kind" class="ctl sm" aria-label="成約単価の単位"><option value="km" ${O.rate.kind === 'km' ? 'selected' : ''}>円/km</option><option value="trip" ${O.rate.kind === 'trip' ? 'selected' : ''}>円/便</option></select></span></label>
         <small class="o-hint">入れると、国の標準的運賃の額と並べて出します。</small></div><div id="own-rev-ownw">${ownRevHtml(d)}</div>`;
     const skipped = [r.noClass && `車の種類が分からない帰り ${r.noClass} 便は数えていません`, r.noFare && `200 km 未満で表が無い帰り ${r.noFare} 便は数えていません`, r.noKm && `距離が分からない帰り ${r.noKm} 便は数えていません`].filter((x) => x);
@@ -1192,7 +1193,7 @@ const Own = (() => {
         <small class="o-formula">全便に荷が付くことはまずありません。</small></div>${skipP}
       <details class="o-more" id="own-rev-more"><summary>便ごとの額を見る</summary>
         <div class="o-tw2"><table class="o-tbl"><thead><tr><th>日</th><th>車番</th><th>区間</th><th>車格</th><th>km</th><th>目安</th><th>式</th></tr></thead><tbody>${trips}</tbody></table></div>
-        <p class="o-note">標準的運賃（国土交通省 2024 年 3 月 22 日告示）の距離制の表。運賃の地域は、その便の発地の県で決めています（県が分からないか関東・近畿以外は関東の表）。国の通達では、車がいる営業所の地域の表を使うので、営業所が関東・近畿以外の会社では実際の額と違います。車の種類は 8 t 以上を 10t、3 t 以下を 2t、その間を 4t としています。${esc(REV_GLOSS)}実際の運賃は荷主との相談で決まります。
+        <p class="o-note">標準的運賃（国土交通省 2024 年 3 月 22 日告示）の距離制の表。運賃の地域は、その便の発地の県で決めています（県が分からないか関東・近畿以外は関東の表）。国の通達では、車がいる営業所の地域の表を使うので、営業所が関東・近畿以外の会社では実際の額と違います。車の種類は 8 t 以上を 10 t 車、3 t 以下を 2 t 車、その間を 4 t 車としています。${esc(REV_GLOSS)}実際の運賃は荷主との相談で決まります。
           上の「空車の費用」は、帰り荷を取っても減らない費用です。この売上の目安と引き算はしないでください。</p></details>`;
     return `<div class="o-rev" id="own-rev">${head}${body}<p class="o-note">用語: 空車 km${OwnMonth.tipHtml('空車 km')}</p></div>`;
   }
@@ -1228,8 +1229,8 @@ const Own = (() => {
     const tr = (a, b, t) => `<tr><th>${a}</th><td>${b}</td><td>${t || ''}</td></tr>`;
     const rev = OwnMonth.revenue(d), alt = altActual(d), own = OwnMonth.ownRevenue(d, O.rate);
     return `<h2>自社の運行 ${monthWord(d)}${isImport() ? '' : '（架空のサンプル）'}</h2>
-      <p>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}。この数字は取り込んだ記録から計算した目安です。法令で残す元の記録は別に保管してください。</p>
-      <table class="o-pt">${tr('実車率', pc(k.actual_rate.value, 1), `空車か実車か分かった区間 ${k.actual_rate.legs} / ${k.actual_rate.of}${k.actual_rate.value == null && k.actual_rate.legs ? '。距離が分からないので実車率は出せません' : k.actual_rate.legs_with_km != null && k.actual_rate.legs_with_km < k.actual_rate.legs ? `。距離が分かるのは ${k.actual_rate.legs_with_km} 区間で、率はその区間だけで計算しています` : ''}${k.actual_rate.legs < FEW ? '（参考。件数が少ない）' : ''}`)}${alt ? tr(alt.full ? '実車率（不明・読めない行を空とした場合）' : '実車率（不明の区間を空とした場合）', pc(alt.v, 1), `不明の区間 ${alt.unk}・読めない行 ${alt.unread} を空車とした値`) : ''}${tr('実車率に入れていないもの', `不明の区間 ${(d.counts && d.counts.unknown) || 0}・読めない行 ${(d.unreadable || []).length}`, '不明の区間は実車率の計算に入れていません。読めない行は取り込めていません')}${tr('大型の積載率', pc(k.load_rate.value, 1), '大型の最大積載量は登録が無いとき 10 t と仮定')}
+      <p>${esc(d.company.name)}・車両 ${d.vehicles.length} 台${esc(periodNote(d))}。この数字は取り込んだ記録から計算した目安です。法令で保存が決められている元の記録（運転日報や運行記録計の記録など）は、別に保管してください。</p>
+      <table class="o-pt">${tr('実車率', pc(k.actual_rate.value, 1), `空車か実車か分かった区間 ${k.actual_rate.legs} / ${k.actual_rate.of}${k.actual_rate.value == null && k.actual_rate.legs ? '。距離が分からないので実車率は出せません' : k.actual_rate.legs_with_km != null && k.actual_rate.legs_with_km < k.actual_rate.legs ? `。距離が分かるのは ${k.actual_rate.legs_with_km} 区間で、率はその区間だけで計算しています` : ''}${k.actual_rate.legs < FEW ? '（参考。件数が少ない）' : ''}`)}${alt ? tr(alt.full ? '実車率（不明の区間と読めない行を空車とした場合）' : '実車率（不明の区間を空車とした場合）', pc(alt.v, 1), `不明の区間 ${alt.unk}・読めない行 ${alt.unread} を空車とした値`) : ''}${tr('実車率に入れていないもの', `不明の区間 ${(d.counts && d.counts.unknown) || 0}・読めない行 ${(d.unreadable || []).length}`, '不明の区間は実車率の計算に入れていません。読めない行は取り込めていません')}${tr('大型の積載率', pc(k.load_rate.value, 1), '大型の最大積載量は登録が無いとき 10 t と仮定')}
         ${tr('大型の積載効率', pc(k.load_efficiency.value, 1), '大型の積載率 × 大型の実車率')}${tr('空車 km', sm.empty_km || !d.legs.some((l) => l.kind === 'empty') ? `${n1(sm.empty_km)} km` : '距離が分からない', '')}${tr('荷待ち（30 分以上の停車）', c.waitMissing ? '記録なし' : `${c.longCount} 回・${n1(sm.wait_min / 60)} 時間`, c.waitMissing ? 'デジタコを入れていないので、停車は数えていません' : '')}
         ${rev && rev.total ? tr('帰り荷の売上の目安（全部の帰りに荷が付いた場合の上限）', yenS(rev.total), `空車の帰り ${rev.counted} 便の合計。1 便 ${rev.min === rev.max ? yenS(rev.min) : `${yenS(rev.min)}〜${yenS(rev.max)}`}（標準的運賃、便ごとの車の種類と km、目安）。${STD_NOTE}`) : ''}${own ? tr(`帰り荷の売上（自社の成約単価 ${n0(own.value)} ${own.unit} で出した上限）`, yenS(own.total), `空車の帰り ${own.counted} 便ぶん。入れた単価で計算した値`) : ''}</table>
       ${cmp}
@@ -1268,7 +1269,7 @@ const Own = (() => {
     const readq = rq.low ? `<p class="o-readq" id="own-readq" role="status"><b>読めた割合 ${pc(rq.share)}</b>（${rq.total} 件のうち ${rq.known} 件。読めない行・セル ${rq.unread} 件、実車か空車か不明の区間 ${rq.unk} 件）。下の実車率は、読めなかった分を含まない参考の値です${rq.lo != null ? '。幅は、不明を空車とした場合から、不明を外した場合までです' : ''}。</p>` : '';
     const assumed = isImport() && d.vehicles.some((v) => v.max_load_assumed);
     const mr = d.max_load_raised, largeShown = O.largeT || (mr ? mr.to_kg / 1000 : 10);
-    const raisedNote = mr ? `<span class="o-why" id="own-max-raised">配車表に ${(mr.to_kg / 1000).toFixed(1)}t の記録があったので、${esc(mr.cls)}の最大積載量の仮定を ${(mr.from_kg / 1000).toFixed(1)}t から ${(mr.to_kg / 1000).toFixed(1)}t に上げました（${mr.legs} 区間が元の仮定を超えていたため。外してはいません）。</span>` : '';
+    const raisedNote = mr ? `<span class="o-why" id="own-max-raised">配車表に ${(mr.to_kg / 1000).toFixed(1)} t の記録があったので、${esc(mr.cls)}の最大積載量の仮定を ${(mr.from_kg / 1000).toFixed(1)} t から ${(mr.to_kg / 1000).toFixed(1)} t に上げました（${mr.legs} 区間が元の仮定を超えていたため。外してはいません）。</span>` : '';
     const estWord = isImport() ? '直線距離 × 1.25 の推定' : 'OSRM（地図データから道路の距離を求める無料のソフト）の推定';
     const outside = d.counts.outside_pair || 0, sh = (id) => esc((d.places[id] || {}).short || '?');
     const headHtml = `<header><div class="m-rh"><b>自社の運行 ${d.month_label ? esc(d.month_label) : d.mon + ' 月'}</b><span class="m-rsub">${esc(d.company.name)}・車両 ${d.vehicles.length} 台${periodNote(d)}</span><button type="button" class="btn-link o-toguide" data-act="to-guided">手順に沿って進める</button></div></header>`;
@@ -1282,7 +1283,7 @@ const Own = (() => {
       ${ladenHtml(d)}
       <details class="o-more" id="own-more"><summary>距離と最大積載量の決め方</summary>
         <p class="o-unk">距離は元の記録のメーター、無いときは ${estWord}です。${outside ? `主な往復（${sh(d.base)} と ${sh(d.dock)}）に入らない区間 ${outside} 区間は、下の表に入れていません（実車率には入れています）。` : ''}
-        ${assumed ? `<span class="o-why">この ${largeShown} t は、車検証の最大積載量が分からないときの仮定です。比べる画面の 10 t ウイングの 13,500 kg は、公表されている 1 車種の荷室の例の最大積載量で、この会社の車の値とは別です。車ごとの値は、確認のカードの「この車の最大積載量を変える」で入れられます。</span>` : ''}</p>${exampleNote(d)}</details>
+        ${assumed ? `<span class="o-why">この ${largeShown} t は、車検証の最大積載量が分からないときの仮定です。比べる画面の 10 t ウイングの 13,500 kg は、メーカーが公表している 1 車種の例の最大積載量で、この会社の車の値とは別です。車ごとの値は、確認のカードの「この車の最大積載量を変える」で入れられます。</span>` : ''}</p>${exampleNote(d)}</details>
       <div class="o-cost"><div class="o-ch2">空車と停車の費用<small>単価を入れると出ます</small></div>
         <div class="o-cin"><label>1 km あたりの費用<span><input id="own-perkm" class="ctl sm" type="text" inputmode="decimal" autocomplete="off" value="${esc(O.cost.perKm)}" placeholder="例 30" aria-label="1 km あたりの費用（円/km）"> 円/km</span></label>
           <label>時間あたりの費用<span><input id="own-perhour" class="ctl sm" type="text" inputmode="decimal" autocomplete="off" value="${esc(O.cost.perHour)}" placeholder="例 3000" aria-label="時間あたりの費用（円/時）"> 円/時</span></label></div>
@@ -1397,9 +1398,9 @@ const Own = (() => {
   const W_BASIS = [
     W_BASIS_QUOTE,
     '書面交付の法定事項に、荷役作業・荷役以外の作業と対価が入ります（改正法 Q&A 問2-2・2-3）。',
-    '標準運送約款 第 34 条（標準貨物自動車運送約款）: 「到着後、荷送人又は荷受人の責により待機した時間」について待機時間料を収受できます。荷役のあとの待ち（書類待ちなど）がこれに当たるかは、契約の相手と確かめてください。既定では数えず、行ごとに「荷役のあとの待ちを荷主等の都合として数える」を はい にした行だけ、出発 − 荷役終了 を待機に足します（30 分の差し引きは 1 か所ごとに 1 回、2 時間の境は待機の始まりから）。',
+    '標準運送約款 第 34 条（標準貨物自動車運送約款）: 「到着後、荷送人又は荷受人の責により待機した時間」について待機時間料を収受できます。荷役のあとの待ち（書類待ちなど）がこれに当たるかは、契約の相手と確かめてください。既定では数えず、行ごとに「荷役のあとの待ちを荷主等の都合として数える」を「はい」にした行だけ、荷役終了から出発までの時間を待機に足します（30 分の差し引きは 1 か所ごとに 1 回、2 時間の境は待機の始まりから）。',
     '取適法では、長時間の待機の費用を負担しないことが違反になり得ます（Q42・Q132。規模の基準に当たる場合）。',
-    'トラック・物流Gメンの情報提供の窓口があります（荷主には元請けを含みます）。',
+    'トラック・物流Gメンの情報提供の窓口があります（荷主には元請を含みます）。',
     '数え方は標準的運賃（2024 年 3 月 22 日告示）の別紙の表と、Q&A 集 Q29（到着時刻から数える。最初の 30 分を差し引く）です。積込料・取卸料の数え方は告示の文言からの読み取りで、Q&A の例で確かめたのは待機時間料だけです。',
   ];
   const W_PROCESS = [
@@ -1409,8 +1410,8 @@ const Own = (() => {
     'トラック・物流Gメンの窓口: https://truck-logistics-gmen.mlit.go.jp/s/',
     '指定の到着時刻より早く着いたときは、指定の時刻から待機を数えています（控えめな扱い）。附帯業務は記録して一覧に出しますが、告示で実費として収受とされているため、参考額は付けていません。',
   ];
-  const W_DEFAULT_FAULT_NOTE = '荷主等の都合の欄が無いので『はい』として計算しました。違う行は『いいえ』に変えてください';
-  const W_POST_WAIT_NOTE = '「荷役のあとの待ちを荷主等の都合として数える」を はい にした行は、出発 − 荷役終了 も待機の分に足しています。標準運送約款 第 34 条の「到着後、荷送人又は荷受人の責により待機した時間」に当たるかは、契約の相手と確かめてください。';
+  const W_DEFAULT_FAULT_NOTE = '荷主等の都合の欄が無いので「はい」として計算しました。違う行は「いいえ」に変えてください。';
+  const W_POST_WAIT_NOTE = '「荷役のあとの待ちを荷主等の都合として数える」を「はい」にした行は、荷役終了から出発までの時間も待機の分に足しています。標準運送約款 第 34 条の「到着後、荷送人又は荷受人の責により待機した時間」に当たるかは、契約の相手と確かめてください。';
   const blankRow = () => Object.fromEntries(W_COLS.map((c) => [c.k, '']));
   const isBlank = (r) => W_COLS.every((c) => !String(r[c.k] || '').trim());
   const hm = (m) => (m ? `${Math.floor(m / 60)} 時間 ${m % 60} 分` : '0 分');
@@ -1437,7 +1438,7 @@ const Own = (() => {
     const sel = q('#w-bulk-partner'), who = sel ? sel.value : '';
     let n = 0;
     W.rows.forEach((r) => { if (!isBlank(r) && (!who || nzp(r.partner) === who)) { r.shipper_fault = val; n += 1; } });
-    W.bulkMsg = n ? `${n} 行を『${val}』にしました` : '対象の行がありません';
+    W.bulkMsg = n ? `${n} 行を「${val}」にしました` : '対象の行がありません';
     renderLeft(); waitCalc();
   }
 
@@ -1494,9 +1495,9 @@ const Own = (() => {
         <tbody id="w-tbody">${W.rows.map(waitRowHtml).join('')}</tbody></table></div>
       <div class="w-bar"><button type="button" class="btn-sm" data-w="add">行を足す</button><small>時刻は HH:MM（日付をまたぐ時刻は翌日として扱います）。荷役終了は荷役をしたときに入れます。指定の到着時刻と附帯業務は、あるときだけ入れます。</small></div>
       <div class="w-bar" id="w-bulk">
-        <label>相手<select id="w-bulk-partner" class="ctl sm" aria-label="まとめて変える相手">${bulkOptions()}</select></label>
-        <button type="button" class="btn-sm" data-w="fault-yes">この相手の行をすべて荷主等の都合にする</button>
-        <button type="button" class="btn-sm" data-w="fault-no">この相手の行をすべて荷主等の都合でないにする</button>
+        <label>契約の相手<select id="w-bulk-partner" class="ctl sm" aria-label="まとめて変える相手">${bulkOptions()}</select></label>
+        <button type="button" class="btn-sm" data-w="fault-yes">この相手の行をすべて「荷主等の都合」にする</button>
+        <button type="button" class="btn-sm" data-w="fault-no">この相手の行をすべて「荷主等の都合ではない」にする</button>
         <button type="button" class="btn-sm" data-w="fill-partner">契約の相手を下の行に埋める</button>
         <button type="button" class="btn-sm" data-w="fill-class">車種を下の行に埋める</button>
         <small id="w-bulk-msg">${esc(W.bulkMsg)}</small></div>
@@ -1518,7 +1519,7 @@ const Own = (() => {
       <td class="num">${r.wait_min}${r.handler === '荷主側' && r.wait_min > 0 && r.end ? '<small>荷主側の荷役を待機に含む</small>' : ''}${r.post_wait_min > 0 ? `<small>荷役のあとの待ち ${r.post_wait_min} 分を含む</small>` : ''}${r.wait_base_min > 0 ? `<small>（指定 ${esc(r.appointed)} から）</small>` : ''}</td><td class="num">${r.handling_min}</td><td>${esc(r.side_work)}${r.side_min ? ` ${r.side_min} 分` : ''}</td><td class="num">${n0(r.amount)}</td></tr>`).join('');
     const rate = classes.map((c) => `<tr><td>${esc(t.class_labels[c] || c)}</td><td class="num">${n0(t.waiting.normal[c])}</td><td class="num">${n0(t.waiting.over_2h[c])}</td>${methods.map((m) => `<td class="num">${n0(t.handling[m].normal[c])} / ${n0(t.handling[m].over_2h[c])}</td>`).join('')}</tr>`).join('');
     return `<h3>荷待ち・荷役に関する協議のお願い（下書き）</h3>
-      <dl class="w-dl"><dt>相手</dt><dd>${esc(p.partner)} 御中</dd><dt>期間</dt><dd>${esc(p.date_from)} 〜 ${esc(p.date_to)}（${p.count} 回）</dd>
+      <dl class="w-dl"><dt>宛先</dt><dd>${esc(p.partner)} 御中</dd><dt>期間</dt><dd>${esc(p.date_from)} 〜 ${esc(p.date_to)}（${p.count} 回）</dd>
         <dt>差出人</dt><dd>（運送会社の名称・担当者を書き入れてください）</dd></dl>
       <h4>記録の一覧</h4>
       <div class="w-recw"><table class="w-rec"><thead><tr><th>日付</th><th>車番</th><th>車種</th><th>場所</th><th>到着</th><th>荷役開始</th><th>荷役終了</th><th>荷役をした人</th><th>待機（分）</th><th>荷役（分）</th><th>附帯業務（記録のみ）</th><th>参考額（円）</th></tr></thead><tbody>${rec}</tbody></table></div>
@@ -1533,7 +1534,7 @@ const Own = (() => {
       <ul class="w-list"><li>待機時間料: 荷主等の都合による待機について、到着（指定の到着時刻があるときは、その時刻）から ${t.free_minutes} 分を超えた時間に、${t.unit_minutes} 分までごとに上の単価（到着から 2 時間を超える部分は 2 時間超の単価）。</li>
         <li>積込料・取卸料: 運転者が荷役をしたとき、荷役の時間に ${t.unit_minutes} 分までごとに上の単価（手積み / フォークリフト等で別）。</li>
         <li>荷主等の都合でない待機（予期せぬ渋滞など）は対象にしません。</li></ul>
-      <p class="w-sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるようご相談します。下記の荷待ち・荷役について、標準的運賃の表に当てた参考額は計 ${n0(p.amount)} 円（税抜）です。</p>`;
+      <p class="w-sentence">上記の荷待ち・荷役について、標準的運賃の表で計算した参考額は計 ${n0(p.amount)} 円（税抜）です。今後も荷待ちが生じる場合に備え、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけるよう、ご相談させてください。</p>`;
   }
 
   const processHtml = () => `<aside class="w-process no-print" aria-label="協議の進め方"><b>協議の進め方</b><ul>${W_PROCESS.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></aside>`;
@@ -1568,9 +1569,9 @@ const Own = (() => {
 
   function waitRightHtml() {
     const r = W.res;
-    const protect = `<div class="w-protect"><b>守る線</b>${W_PROTECT.map((x) => `<p>${esc(x)}</p>`).join('')}</div>`;
+    const protect = `<div class="w-protect"><b>取引上の保護</b>${W_PROTECT.map((x) => `<p>${esc(x)}</p>`).join('')}</div>`;
     const basis = `<div class="w-basis"><b>根拠</b><ul>${WaitingMap.basisItems(W_BASIS, r).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
-    const pageLink = `<p class="w-small wm-link no-print"><a href="waiting.html" target="_blank" rel="noopener" id="wm-open">荷待ちの書面を別の画面で開く</a>　別の画面で開きます。入れた記録は引き継がれません。</p>`;
+    const pageLink = `<p class="w-small wm-link no-print"><a href="waiting.html" target="_blank" rel="noopener" id="wm-open">荷待ちの書面を別の画面で開く</a>　入れた記録は引き継がれません。</p>`;
     let mid;
     if (!r || !r.by_partner.length) {
       mid = '<p class="w-empty">まだ計算できる記録がありません。左の表に記録を入れるか、「例を入れる」を押してください。</p>';
@@ -1751,7 +1752,7 @@ const Own = (() => {
         const step = 5, sm = pts.filter((_, i) => i % step === 0);
         if ((pts.length - 1) % step) sm.push(pts[pts.length - 1]);
         path = [[a.lon, a.lat], ...sm.map((p) => [Math.round(p[0] * 1e4) / 1e4, Math.round(p[1] * 1e4) / 1e4]), [b.lon, b.lat]];
-        note = '道路の形は 都道府県間のトラックの経路（OSRM は道路の経路を求める無料のソフト、OpenStreetMap は地図データ）。両端は地点に延ばしています';
+        note = '道路の形は、OSRM（道路の経路を求める無料のソフト）と OpenStreetMap（地図データ）で求めた都道府県間のトラックの経路です。両端は地点まで延ばしています。';
       }
     } catch (e) { console.warn(e); }
     d.route = { path, osrm_km: null, note };
@@ -2107,7 +2108,7 @@ const Own = (() => {
     }
     Find.openCarrier(b.pref, a.pref); // 荷が多い向き（着地→発地）の逆、つまり帰りの向きで登録の欄を開く
     const tm = draftTimes(leg), r = Find.state.reg;
-    if (!r) return '帰りの向きで登録の欄を開きました。登録の欄がまだ開けていないので、発地・着地・出発は自分で入れてください。';
+    if (!r) return '帰りの向きで登録の欄を開こうとしましたが、まだ開いていません。発地・着地・出発は登録の欄で入れてください。';
     if (a.code) r.o = a.code;
     if (b.code) { r.d = b.code; r.drops = `${b.pref}${b.muni}`; }
     r.dep = tm.dep; r.arr = tm.arr;

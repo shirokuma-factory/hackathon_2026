@@ -14,14 +14,14 @@ def test_draft_when_required_missing():
     d = build_request(s)
     assert d.status == STATUS_DRAFT
     assert "出荷日" in d.missing_required and "希望着日" in d.missing_required
-    assert "出荷日（必須）" in d.text
+    assert "まだ決まっていない項目" in d.text and "  - 出荷日"+chr(10) in d.text and "（必須）" not in d.text   # 日本語の直し 2026-11-08
 
 
 def test_ready_when_complete():
     d = build_request(make_shipment())
     assert d.status == STATUS_READY and d.missing_required == []
     assert "フォークリフトの有無" in d.missing_optional
-    for word in ("合計重量", "合計容積", "計算重量", "受託できるか", "燃料", "高速", "税区分", "有効期限", "積付け"):
+    for word in ("合計重量", "合計容積", "計算重量", "お引き受けいただけるか", "燃料", "高速", "税抜か税込か", "有効期限", "積付け", "お世話になっております", "よろしくお願いいたします", "（荷主の会社名）"):
         assert word in d.text
 
 

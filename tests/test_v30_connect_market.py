@@ -39,7 +39,7 @@ def test_g130_summary_has_numbers_and_sources():
     summary = html[html.index('id="m-summary"'):html.index("</section>", html.index('id="m-summary"'))]
     assert "38.97%" in summary and "44%" in summary and "約 25%" in summary and "34.1%" not in summary   # 最新の見通しに 2026-11-07
     assert "2025 年度" in summary and "44%</b>（2030 年度）" in summary and "2028 年度" not in summary   # 大綱の目標の年に 2026-11-08
-    assert "約 5 ポイント足りない" in summary
+    assert "約 5 ポイント足りません" in summary   # 日本語の直し 2026-11-08
     for src in ("自動車輸送統計年報 2025 年度 表 3-1", "総合物流施策大綱（2026 年 3 月 31 日閣議決定）別表", "41.3%",
                 "総合物流施策大綱に関する検討会 提言", "2026 年 3 月", "52 頁"):
         assert src in summary, src
@@ -97,7 +97,7 @@ def test_g131_some_scenario_fits_a_trip_in_the_return_direction():
 
 def test_g131_ui_parts_exist():
     mk, fd, html = read("market.js"), read("find.js"), read("index.html")
-    assert "この向きの帰り便を探す" in mk and "この向きの帰り便を載せる" in mk   # 文言の直し 2026-11-07
+    assert "この向きの帰り便を探す" in mk and "この向きの帰り便を登録する" in mk   # 文言の直し 2026-11-07
     assert 'data-act="carrier"' in mk and "Find.openCarrier(pairNames())" in mk
     for text in ("この荷物に載せられる便はありません", "載る荷物の例で試す", "ほかの送り方で見積を頼む", "載らない理由"):   # 文言の直し 2026-11-07
         assert text in fd, text

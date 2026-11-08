@@ -14,11 +14,11 @@ const OwnMonth = (() => {
 
   const GLOSS = {
     '実車率': '荷を積んで走った割合',
-    '積載率': '積んだ重さの割合',
+    '積載率': '最大積載量に対する、積んだ重さの割合',
     '積載効率': '積載率×実車率',
     '空車 km': '荷なしで走った距離',
-    '1口': '空きを売る単位',
-    '基準積載率': '運賃を割る積み具合',
+    '1口': '荷台の空きを分けて売るときの 1 単位',
+    '基準積載率': '1 口の運賃を出すとき、1 台の運賃を割る積載率',
   };
 
   // 用語のあとに付ける「?」。押す・Enter・フォーカスで開く。マウスを乗せても開く（CSS）
@@ -252,11 +252,11 @@ const OwnMonth = (() => {
     const dep = (leg.dep || '').slice(11, 16);
     const wd = payload && payload.wd != null ? payload.wd : leg.cycle_wd;
     const day = wd == null ? '（曜日を入れてください）' : `毎週${WDN[wd]}曜`;
-    const basis = payload && payload.trips ? `（${payload.month} 月は${payload.weekday}曜に出た帰り ${payload.trips} 便のうち ${payload.empty} 便が空）` : '';
+    const basis = payload && payload.trips ? `（${payload.month} 月は${payload.weekday}曜に出た帰り ${payload.trips} 便のうち ${payload.empty} 便が空車）` : '';
     const cls = v ? `${v.cls || '大型'}${CLASS_OF[v.cls] ? `（${CLASS_OF[v.cls]}車）` : ''}` : '（車格を入れてください）';
-    const kg = v && v.max_load_kg ? `最大 ${tonsText(v.max_load_kg)} t${v.max_load_assumed ? '（仮定）' : ''}まで` : '（空きの重さを入れてください）';
+    const kg = v && v.max_load_kg ? `最大 ${tonsText(v.max_load_kg)} t${v.max_load_assumed ? '（車検証の値に直してください）' : ''}まで` : '（空きの重さを入れてください）';
     return [BOARD_HEAD, `発地: ${place(a)}`, `着地: ${place(b)}`, `曜日・時刻: ${day}${dep ? ` ${dep} ごろ出発` : ''}${basis}`,
-      `車格: ${cls}`, `空き: ${kg}（積む荷の大きさや形は、ご相談で決めます）`, ...BOARD_TAIL].join('\n');
+      `車格: ${cls}`, `空き: ${kg}`, '荷の大きさ・形: ご相談ください', ...BOARD_TAIL].join('\n');
   }
 
   // 「毎週○曜」と書くのは、その月に同じ曜日が 3 回以上あるときだけ。月に 1〜2 回の曜日は約束にならないので、日付を並べる
@@ -277,11 +277,10 @@ const OwnMonth = (() => {
     const rest = (p.dates || []).filter((iso) => !weekly.includes(wdOf(iso)));
     const shown = rest.slice(0, 6).map(dateWd).join('・') + (rest.length > 6 ? `・ほか ${rest.length - 6} 日` : '');
     const w = weekly.length ? `毎週${weekly.map((x) => WDN[x] + '曜').join('・')}` : '';
-    const o = other.length ? `これまでの記録では${other.map((x) => WDN[x] + '曜').join('・')}の帰りに空きがありました${shown ? `（${shown}）` : ''}` : '';
     if (w) return w; // 規則に合う曜日があるときは、その曜日だけを書く。ほかの曜日を並べると毎日に読めるので、掲示には入れない
-    // 規則に合う曜日が無いときだけ、記録にあったことを書く
-    if (o) return o;
+    // 規則に合う曜日が無いときは、記録にあった日付だけを書く（曜日の並びは毎日に読めるので書かない。実績は「実績:」の別の行にある）
     if (shown) return shown;
+    if (other.length) return other.map((x) => WDN[x] + '曜').join('・');
     return '（曜日を入れてください）';
   }
 
@@ -356,12 +355,12 @@ const OwnMonth = (() => {
   // f: { date: 'YYYY-MM-DD', frm, to, cls, kg（t）, time }。足りない欄は「（○○を入れてください）」と書く
   function boardOne(f) {
     const ok = /^\d{4}-\d{2}-\d{2}$/.test(f.date || '');
-    const when = f.time ? (f.timeTo ? ` ${f.time}〜${f.timeTo} の間に積めます（出発）` : ` ${f.time} ごろ出発`) : '';
+    const when = f.time ? (f.timeTo ? ` 積み込み ${f.time}〜${f.timeTo}（積み込み後に出発）` : ` ${f.time} ごろ出発`) : '';
     const day = ok ? `${dateWd(f.date)}${when}` : '（日付を入れてください）';
     const kgv = Number(String(f.kg || '').normalize('NFKC').replace(/[^\d.]/g, ''));
     const bed = String(f.bed || '').trim(), size = String(f.size || '').trim();
-    return [BOARD_HEAD, `発地: ${f.frm || '（発地を入れてください）'}`, `着地: ${f.to || '（着地を入れてください）'}`, `日時: ${day}`,
-      `車格: ${f.cls || '（車格を入れてください）'}${f.cls ? '車' : ''}`, ...(bed || size ? [`荷台: ${bed || '（形を入れてください）'}${size ? `（内寸 ${size}）` : ''}`] : []), `空き: ${kgv > 0 ? `最大 ${tonsText(kgv * 1000)} t まで` : '（空きの重さを入れてください）'}（積む荷の大きさや形は、ご相談で決めます）`, ...BOARD_TAIL].join('\n');
+    return [BOARD_HEAD, `発地: ${f.frm || '（発地を入れてください）'}`, `着地: ${f.to || '（着地を入れてください）'}`, `曜日・時刻: ${day}`,
+      `車格: ${f.cls || '（車格を入れてください）'}${f.cls ? '車' : ''}`, ...(bed || size ? [`荷台: ${bed || '（形を入れてください）'}${size ? `（内寸 ${size}）` : ''}`] : []), `空き: ${kgv > 0 ? `最大 ${tonsText(kgv * 1000)} t まで（車検証の値に直してください）` : '（空きの重さを入れてください）'}`, '荷の大きさ・形: ご相談ください', ...BOARD_TAIL].join('\n');
   }
 
   // 空車の帰りの区間（発地 → 着地）ごとに 1 つずつ、求荷求車に貼る文を作る。[{ key, frm, to, label, n, text }]
@@ -380,7 +379,7 @@ const OwnMonth = (() => {
       const depMap = sumBy(p.wdDep || {}, p.dep), plateMap = sumBy(p.wdPlates || {}, p.plates);
       const dep = Object.keys(depMap).sort((x, y) => depMap[y] - depMap[x] || (x < y ? -1 : 1))[0];
       const mon = d.mon ? `${d.mon} 月は` : '';
-      const basis = `（${mon}この区間の帰りの空車 ${nShown} 便${wdCount ? `。${wdCount}` : ''}）`;
+      const basis = `実績: ${mon}この区間の帰りが空車で ${nShown} 便${wdCount ? `（${wdCount}）` : ''}`;
       // 車の種類ごとに、便数と最大積載量（登録があればその値、無ければ種類の呼び名の重さ）
       const g = {};
       for (const [plate, n] of Object.entries(plateMap)) {
@@ -394,10 +393,10 @@ const OwnMonth = (() => {
       const gs = Object.values(g).sort((x, y) => y.n - x.n), multi = gs.length > 1;
       const clsLine = gs.length ? gs.map((e) => `${e.tc ? `${e.tc}車${e.raw && e.raw !== e.tc ? `（${e.raw}）` : ''}` : (e.raw && e.raw !== '不明' ? e.raw : '（車格を入れてください）')}${multi ? ` ${e.n} 便` : ''}`).join(' / ') : '（車格を入れてください）';
       const kgLine = gs.some((e) => e.kg)
-        ? gs.map((e) => `${multi ? `${e.tc || e.raw}車 ` : ''}${e.kg ? `最大 ${tonsText(e.kg)} t まで${e.assumed ? '（仮定）' : e.nominal ? '（車種から推定。車検証の値に直してください）' : ''}` : '（空きの重さを入れてください）'}`).join(' / ')
+        ? gs.map((e) => `${multi ? (e.tc ? `${e.tc}車 ` : e.raw && e.raw !== '不明' ? `${e.raw}車 ` : '（車格を入れてください） ') : ''}${e.kg ? `最大 ${tonsText(e.kg)} t まで${e.assumed ? '（車検証の値に直してください）' : e.nominal ? '（車種から推定。車検証の値に直してください）' : ''}` : '（空きの重さを入れてください）'}`).join(' / ')
         : '（空きの重さを入れてください）';
-      const text = [BOARD_HEAD, `発地: ${place(a)}`, `着地: ${place(b)}`, `曜日・時刻: ${day}${dep ? ` ${dep} ごろ出発` : ''}${basis}`,
-        `車格: ${clsLine}`, `空き: ${kgLine}（積む荷の大きさや形は、ご相談で決めます）`, ...BOARD_TAIL].join('\n');
+      const text = [BOARD_HEAD, `発地: ${place(a)}`, `着地: ${place(b)}`, `曜日・時刻: ${day}${dep ? ` ${dep} ごろ出発` : ''}`, basis,
+        `車格: ${clsLine}`, `空き: ${kgLine}`, '荷の大きさ・形: ご相談ください', ...BOARD_TAIL].join('\n');
       out.push({ key: `${p.frm}|${p.to}`, frm: p.frm, to: p.to, label: `${shortName(a)} → ${shortName(b)}`, n: p.n, text });
     }
     return out;

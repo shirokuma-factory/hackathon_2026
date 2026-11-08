@@ -522,3 +522,17 @@
 - 2026-11-08 12:31 `0cb08bd` Refresh counts after the final redeploy
 - 2026-11-08 12:32 `97dde6f` Test: vehicles move in the guided compare flow without clicks
 - 2026-11-08 作成者が提出した（「多少問題あるけど submit した」）。日本語版 r21 系と英語版 en1c まで。残りの指摘（声で言う Opus・Sonnet・Haiku の役割分担とアプリの既定の食い違い、英語版の新しい採点者による採点）は未対応。
+- 2026-11-08 12:35 `b3847dd` README: link the English demo video
+- 2026-11-08 12:41 `d28b0f1` Compare: tint and light the 3D vehicles so planes, ships and trains stand out
+- 2026-11-08 12:54 `c1af204` Trucks now: refresh the JARTIC counts (were 14 hours old)
+- 2026-11-08 13:01 `2061f61` Final check: add plus points the README was missing; tidy stray files
+- 2026-11-08 13:03 `69d721f` README: skills used and how each was put to work; fix mermaid diagrams
+- 2026-11-08 13:06 `9b4e59c` Fix final-check findings: first-commit contents, test count once, compare example, SPEC scope, rights rows
+- 2026-11-08 13:07 `a75cc1b` Add the final security audit record (high 0, medium 1, low 4)
+- 2026-11-08 13:13 `f81db03` Compare lite and trucks now: public-sweep fixes; API terms sentence always visible
+- 2026-11-08 13:17 `236168f` Waiting and driver: public-sweep fixes (shipper comparison amount P0, reply text, scope labels, phone table)
+- 2026-11-08 13:31 `0909ee8` Own fleet: public-sweep fixes (alternative rate P0, 有/無 marks P0, clarity, offer text)
+- 2026-11-08 13:31 `824d1cf` Waiting shipper comparison: own amount only from the reception log (P0 cluster)
+- 2026-11-08 13:55 `2efda57` Validator: remap plan-08 checks to current tests, add README run and order headings
+- 2026-11-08 14:08 `c73206d` Public-site sweep fixes: map compare, find, input guards (P0s and P1s)
+- 2026-11-08 15:16 `3e9225c` Bound shipment input in parse_shipment (security audit medium)

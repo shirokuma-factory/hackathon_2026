@@ -94,11 +94,11 @@ def test_g137_map_wait_tab_sends_nothing_to_the_waiting_api_and_numbers_match_g1
         page.wait(lambda: page.js("document.querySelectorAll('#placemonth tbody tr').length") == 3, 20, "例の表")
         amounts = page.js("[...document.querySelectorAll('table.w-par:not(.wm-card) tbody tr')].map(tr => tr.children[4].textContent.replace(/,/g, '')).join(',')")
         assert sum(int(x) for x in amounts.split(",")) == 46_780
-        row = page.js("[...document.querySelectorAll('#hotspots tbody tr')].map(tr => tr.textContent.replace(/\\s+/g, ' ')).find(t => t.includes('江東区 地点07') && t.includes('8時台'))")
+        row = page.js("[...document.querySelectorAll('#hotspots tbody tr')].map(tr => tr.textContent.replace(/\\s+/g, ' ')).find(t => t.includes('架空 元請A物流江東区8時台'))")
         assert row and "98 分" in row
         pm = page.js("[...document.querySelectorAll('#placemonth tbody tr')].map(tr => [tr.children[0].textContent, tr.children[3].textContent.replace(/[^0-9]/g, '')])")
         table = {k: v for k, v in pm}
-        assert table == {"江東区 地点07": "58", "市川市 地点03": "60", "川崎市 地点12": "32"}
+        assert table == {"江東区": "58", "市川市 地点03": "60", "川崎市 地点12": "32"}
         # #6: 点の中の平均は、場所ごと・月ごとの表と同じ数字。凡例に同じ数え方だと書いてある
         pts = page.js("[...document.querySelectorAll('.wm-pt')].map(e => [e.dataset.place, e.querySelector('.wm-n').textContent])")
         assert {k: v for k, v in pts} == table

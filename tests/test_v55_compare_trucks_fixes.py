@@ -76,4 +76,4 @@ def test_trucks_page_text_has_no_fixed_delay_and_legend_is_accurate():
     html = (ROOT / "web" / "trucks_now.html").read_text(encoding="utf-8")
     assert "およそ20分遅れ" not in js
     assert "ふだんの多さ" not in js and "ふだんの多さ" not in html
-    assert "直近24時間でいちばん多い時を100%" in html and "白く光" in html and 'class="purpose"' in html
+    assert "直近 24 時間でいちばん多い時を 100%" in html and "白く光" in html and 'class="purpose"' in html   # 日本語の直し 2026-11-08: 数字と単位の空白

@@ -265,9 +265,14 @@ def test_next_workday_skips_the_closed_weekday(calc):
 
 
 def test_board_default_date_is_the_next_workday(calc):
+    # 2026-11-08 の直しに合わせて: 空車の帰りが多い曜日があれば、明日以降のその曜日が初期値。無いときだけ次の稼働日。
+    # 今日の日付に頼らず、固定の日付（2026-11-07 の昼）を渡して、同じ規則で期待値を出す
     d = json.loads((ROOT / "web" / "data" / "own_sample.json").read_text(encoding="utf-8"))
-    nw = calc.js(f"OwnMonth.nextWorkday({J(d)}, new Date(2026, 10, 7, 12, 0))")
-    assert calc.js(f"OwnMonth.boardDefaults({J(d)}, new Date(2026, 10, 7, 12, 0))")["date"] == nw["iso"]
+    now = "new Date(2026, 10, 7, 12, 0)"
+    want = calc.js(f"(function(){{ const d = {J(d)}; const now = {now}; const b = OwnMonth.bestWeekday(OwnMonth.returnPairs(d)[0]); "
+                   "return b != null ? OwnMonth.nextOnWeekday(b, now) : OwnMonth.nextWorkday(d, now).iso; })()")
+    assert calc.js(f"OwnMonth.boardDefaults({J(d)}, {now})")["date"] == want
+    assert want >= "2026-11-08"
 
 
 def test_saving_the_same_month_again_keeps_one_entry(calc):
@@ -320,4 +325,4 @@ def test_guided_labels_do_not_wrap_the_other_weekdays_label():
 def test_lite_and_app_use_the_same_table_words():
     for p in (ROOT / "web" / "own.js", ROOT / "tools" / "own_page_template.html"):
         t = p.read_text(encoding="utf-8")
-        assert "車庫から" in t and "車庫へ" in t and "車庫は " in t, p.name
+        assert "車庫から" in t and "車庫へ" in t and "車庫を " in t, p.name   # 日本語の直し 2026-11-08: 「車庫は…と見ています」を「車庫を…としています」に

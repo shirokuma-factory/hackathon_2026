@@ -1794,8 +1794,8 @@ const OwnCalc = (() => {
         if (mergedDone.has(pk)) continue;
         mergedDone.add(pk);
         const lb2 = `${short(fr)} → ${short(to)}`, word2 = { back: '帰り', out: '行き', pair: '区間' }[d];
-        const wds = allWds.map((w) => WEEKDAYS[w]).join('・');
-        add(1, `${lb2}の${word2}は、${allLegs.length} 便がすべて空でした（${wds}曜のどの曜日も空で、曜日による違いはありません。実車か空車かが分かった便だけ）。`,
+        const wds = allWds.map((w) => WEEKDAYS[w] + '曜').join('・');
+        add(1, `${lb2}の${word2}は、${allLegs.length} 便がすべて空でした（${wds}のどれも空で、曜日による違いはありません。実車か空車かが分かった便だけで数えています）。`,
           [{ k: lb2, v: `${allLegs.length} 便中 ${allLegs.length} 便が空` }, { k: '空だった曜日', v: `${wds}（どの曜日も空）` }],
           { label: '帰り便の下書きにする', action: 'draft_backhaul', payload: { dir: d, wd, weekday: WEEKDAYS[wd], trips: allLegs.length, empty: allLegs.length, night: false, month: data.month, frm: fr, to, frm_label: short(fr), to_label: short(to), label: lb2, all_weekdays: true, weekdays: allWds.map((w) => WEEKDAYS[w]) } },
           allLegs.slice().sort((a2, b2) => cmp(a2.date, b2.date)).map(evLeg), { back: '毎回の帰りが空（曜日の違いなし）', out: '毎回の行きが空（曜日の違いなし）', pair: '毎回空の区間（曜日の違いなし）' }[d]);
@@ -1807,9 +1807,9 @@ const OwnCalc = (() => {
       const night = ls.every((l) => /^\d+$/.test((l.cycle_dep || '').slice(11, 13)) && +l.cycle_dep.slice(11, 13) >= 18);
       const when = `${WEEKDAYS[wd]}曜` + (night ? 'の夜' : '');
       const who = `${when}に出た `; // 帰りも、帰りの便自身が出た日（行きを出た日ではない）
-      const body = e === n && d === 'back' ? `${n} 便の帰りがすべて空でした` : e === n ? `${n} 便がすべて空でした` : `${n} 便のうち ${e} 便が空でした`;
+      const body = e === n && d === 'back' ? `${n} 便がすべて空でした` : e === n ? `${n} 便がすべて空でした` : `${n} 便のうち ${e} 便が空でした`;
       const lb = `${short(fr)} → ${short(to)}`, word = { back: '帰り', out: '行き', pair: '区間' }[d];
-      const tail1 = others.length ? `ほかの曜日の同じ向きは ${others.length} 便中 ${oe} 便が空です（実車か空車かが分かった便だけ）。` : 'ほかの曜日の同じ向きの便は、実車か空車かが分かった中にはありません。';
+      const tail1 = others.length ? `${oe === 0 ? `ほかの曜日の同じ向きの ${others.length} 便は、空車がありませんでした（実車か空車かが分かった便だけ）。` : `ほかの曜日の同じ向きは ${others.length} 便中 ${oe} 便が空です（実車か空車かが分かった便だけ）。`}` : 'ほかの曜日の同じ向きの便は、実車か空車かが分かった中にはありません。';
       const text = `${lb}の${word}は、${who}${body}。${tail1}`;
       add(1, text, [{ k: `${WEEKDAYS[wd]}曜発の${lb}`, v: `${n} 便中 ${e} 便が空` }, { k: 'ほかの曜日', v: `${others.length} 便中 ${oe} 便が空` }],
         { label: '帰り便の下書きにする', action: 'draft_backhaul', payload: { dir: d, wd, weekday: WEEKDAYS[wd], trips: n, empty: e, night, month: data.month, frm: fr, to, frm_label: short(fr), to_label: short(to), label: lb } },
@@ -1832,7 +1832,7 @@ const OwnCalc = (() => {
       }
       const meter = legs.some((l) => (l.sources || {}).km === 'デジタコ'); // デジタコを入れていないときは、メーターと書かない
       const kmN = empties.filter((l) => l.km).length, kmMiss = empties.length - kmN; // 距離が分からない便は、km の合計に入れない（0 km として足さない）
-      const kmSrc = `距離は${meter ? `デジタコのメーターと${data.est_label && data.est_label !== '推定' ? ' ' + data.est_label : '推定'}` : (data.est_label || '推定')}`;
+      const kmSrc = `距離は${meter ? `デジタコのメーターの値と、${data.est_label && data.est_label !== '推定' ? data.est_label : '推定'}` : (data.est_label || '推定')}`;
       const kmHead = !kmN ? `空で走った区間は ${empties.length} 便でした（距離が分からないので、km は出していません）。`
         : kmMiss ? `空で走った区間は ${empties.length} 便、距離の分かる ${kmN} 便で約 ${commas(km)} km でした（${kmSrc}）。距離が分からない ${kmMiss} 便は km に入れていません。`
         : `空で走った区間は ${empties.length} 便・約 ${commas(km)} km でした（${kmSrc}）。`;
@@ -1870,7 +1870,7 @@ const OwnCalc = (() => {
         ? `うち 14 時間を超えた日は ${over14.length} 日で、同じ運転者で週 ${Math.max(...bad.map((v) => v.length))} 回の週が ${bad.length} つあります（目安は週 ${R4_WEEK_GUIDE} 回まで）。`
         : over14.length ? `うち 14 時間を超えた日は ${over14.length} 日です。` : '';
       const tail15 = !over15.length ? '15 時間を超えた日はありません。' : `15 時間を超えた日が ${over15.length} 日あります。`;
-      add(4, `原則の 13 時間を超えた日が ${over13.length} 日ありました。${tail}${tail15}デジタコの記録から数えた目安で、始業・終業とは同じではありません。`,
+      add(4, `拘束時間が原則の 13 時間を超えた日が ${over13.length} 日ありました。${tail}${tail15}デジタコの記録から数えた目安で、始業・終業の記録とは一致しないことがあります。`,
         [{ k: '13 時間超', v: `${over13.length} 日` }, { k: '14 時間超', v: `${over14.length} 日` }, { k: '15 時間超', v: `${over15.length} 日` }],
         { label: 'その日の運行の一覧を開く', action: 'show_evidence', payload: {} },
         over13.slice().sort((a, b) => cmp(a.start, b.start)).map((s) => ({
@@ -1892,7 +1892,7 @@ const OwnCalc = (() => {
       const g5 = new Map();
       for (const v of flagged) { if (!g5.has(v.cls)) g5.set(v.cls, []); g5.get(v.cls).push(v); }
       const parts = [...g5.entries()].map(([c, vs]) => `${c} の ${vs.length} 台`).join('、');
-      add(5, `${parts}は、車両総重量 8t 以上か最大積載量 5t 以上として登録されています。積載の状況の記録の対象で、積んだ重さの記録がありません。車検証を確かめてください。`,
+      add(5, `${parts}は、車両総重量 8t 以上か最大積載量 5t 以上として登録されています。積載状況の記録が必要な車ですが、積んだ重さの記録がありません。車検証を確かめてください。`,
         [{ k: '対象で重さが空の車', v: `${flagged.length} 台` }],
         { label: '車両の設定を開く', action: 'show_evidence', payload: {} },
         flagged.map((v) => ({ id: `V${v.plate}`, label: `車番 ${v.plate}（${v.cls}）`, file: '車両の設定', where: '車両', text: `車両総重量 ${commas(v.gvw_kg)} kg、最大積載量 ${commas(v.max_load_kg)} kg、運行記録計 ${v.tachograph_label}` })));
@@ -2030,7 +2030,7 @@ const OwnCalc = (() => {
     return t;
   }
 
-  const TACHO_LABEL = { digital: 'デジタコ（CSV を読む）', analog: 'デジタコのファイルがありません（読みません）' };
+  const TACHO_LABEL = { digital: 'デジタコ（CSV を読む）', analog: 'アナログのタコグラフ（ファイルは読みません）' };
 
   /* ------------------------------------------------------------ 組み立て */
 
@@ -2404,7 +2404,7 @@ const OwnCalc = (() => {
       for (const rr of p.restraints) restraintRows.push({ ...rr, file: p.file });
       for (const x of p.runs) {
         dseq++; x.id = `D${pad(dseq, 3)}`;
-        x.ref = { file: p.file, where: `${x.line} 行目`, text: x.summary ? `日ごとの集計 ${x.jk === 1 ? '実車' : '空車'} ${pyFloat(x.km)} km` : `走行 ${x.start.slice(11, 16)}〜${x.end.slice(11, 16)} ${x.km == null ? 'None' : pyFloat(x.km)} km` };
+        x.ref = { file: p.file, where: `${x.line} 行目`, text: x.summary ? `日ごとの集計 ${x.jk === 1 ? '実車' : '空車'} ${pyFloat(x.km)} km` : `走行 ${x.start.slice(11, 16)}〜${x.end.slice(11, 16)}${x.km == null ? '（距離の記録なし）' : ` ${pyFloat(x.km)} km`}` };
         (x.summary ? summaryRuns : runs).push(x);
       }
       for (const x of p.stops) { sseq++; x.id = `S${pad(sseq, 3)}`; x.ref = { file: p.file, where: `${x.line} 行目`, text: `停車 ${x.start.slice(11, 16)}〜${x.end.slice(11, 16)}（${x.minutes} 分）` }; stops.push(x); }
@@ -2697,7 +2697,7 @@ const OwnCalc = (() => {
       const ex = endsMissing.slice(0, 3).map((l) => `${md(l.date)} 車番 ${l.plate} 「${l.ref ? l.ref.text : ''}」`).join('、');
       confirm.push({
         id: '', key: DEST_KEY, effect: 'kpi', kind: 'dest', source: '配車表', title: `降ろし地か積地が書かれていない区間 ${endsMissing.length} 件が、実車か空車か分かりません`,
-        original: `配車表のセルで、矢印の前か後ろの地名が無い区間が ${endsMissing.length} 件あります（${ex}${endsMissing.length > 3 ? ' ほか' : ''}）。矢印の後ろの「4.6t」は重さとして読み、地名にはしていません`,
+        original: `配車表のセルで、矢印の前か後ろの地名が無い区間が ${endsMissing.length} 件あります（${ex}${endsMissing.length > 3 ? ' ほか' : ''}）。矢印の後ろの重さ（「4.6t」のような書き方）は重さとして読み、地名にはしていません`,
         proposal: '荷を積んで行ったか分からないので、実車率には入れない（元の配車表に降ろし地を書き足すと、実車として数えます）', confidence: null, color: 'yellow',
         formula: '積地と降ろし地の両方がある区間だけを実車として数えます。片方が無い区間は、空の印が無ければ不明にします', claude: null, legs: endsMissing.map((l) => l.id), count: endsMissing.length,
       });
@@ -3061,21 +3061,21 @@ const OwnCalc = (() => {
   function summaryText(d, c) {
     const k = d.kpis, p = (v, n = 1) => (v == null ? '計算できません' : (v * 100).toFixed(n) + '%');
     const L = [];
-    L.push(`自社の運行の分析（${d.fiction ? '架空の会社のサンプル' : d.company.name}、${d.year} 年 ${d.mon} 月）`);
-    L.push(`区間 ${d.counts.legs} 件（実車 ${d.counts.loaded}、空車 ${d.counts.empty}、不明 ${d.counts.unknown}）`);
-    L.push(`実車率 ${p(k.actual_rate.value)}（判定できた区間 ${k.actual_rate.legs} / ${k.actual_rate.of}）。全国は ${d.national.actual_rate_pct}%（営業用普通車）`);
-    L.push(`大型の積載率 ${p(k.load_rate.value)}（計算できた区間 ${k.load_rate.legs}）`);
-    L.push(`大型の積載効率 ${p(k.load_efficiency.value)}（大型の積載率 × 大型の実車率）。全国は ${d.national.load_efficiency_pct}% ですが、トンキロの比で式が違います`);
-    L.push(c.waitMissing ? `空車で走った距離 ${commas1(c.emptyKm)} km（停車の記録はデジタコにだけあります。デジタコを入れていないので、30 分以上の停車は数えていません）`
-      : `空車で走った距離 ${commas1(c.emptyKm)} km、30 分以上の停車 ${c.longCount} 回・${fix(c.longMin / 60, 1)} 時間`);
-    if (c.empty) L.push(`空車の費用の目安 ${commas(c.empty.yen)} 円（${c.empty.formula}）`);
-    if (c.wait) L.push(`停車の費用の目安 ${commas(c.wait.yen)} 円（${c.wait.formula}）`);
-    if (c.empty || c.wait) L.push('単価は入力した値で、削減額の約束ではありません。');
+    L.push(`自社の運行の分析（${d.fiction ? '架空の会社のサンプル' : d.company.name}、${d.month_label || `${d.year} 年 ${d.mon} 月`}）`);
+    L.push(`区間 ${d.counts.legs} 件（実車 ${d.counts.loaded}、空車 ${d.counts.empty}、不明 ${d.counts.unknown}）。`);
+    L.push(`実車率 ${p(k.actual_rate.value)}（判定できた区間 ${k.actual_rate.legs} / ${k.actual_rate.of}）。全国は ${d.national.actual_rate_pct}%（営業用普通車）。`);
+    L.push(`大型の積載率 ${p(k.load_rate.value)}（計算できた区間 ${k.load_rate.legs}）。`);
+    L.push(`大型の積載効率 ${p(k.load_efficiency.value)}（大型の積載率 × 大型の実車率）。全国の ${d.national.load_efficiency_pct}% はトンキロの比で、式が違うため比べられません。`);
+    L.push(c.waitMissing ? `空車で走った距離 ${commas1(c.emptyKm)} km（停車の記録はデジタコにだけあります。デジタコを入れていないので、30 分以上の停車は数えていません）。`
+      : `空車で走った距離 ${commas1(c.emptyKm)} km、30 分以上の停車 ${c.longCount} 回・${fix(c.longMin / 60, 1)} 時間。`);
+    if (c.empty) L.push(`空車の費用の目安 ${commas(c.empty.yen)} 円（${c.empty.formula}）。`);
+    if (c.wait) L.push(`停車の費用の目安 ${commas(c.wait.yen)} 円（${c.wait.formula}）。`);
+    if (c.empty || c.wait) L.push('費用の目安は入力した単価で計算した値で、減らせる額を示すものではありません。');
     L.push('');
     L.push(d.insights.length ? '気づき' : '気づきはありません。');
     d.insights.forEach((i, n) => L.push(`${n + 1}. ${i.text}`));
     L.push('');
-    L.push('この数字は、取り込んだ記録から計算した目安です。法令で残す元の記録は別に保管してください。');
+    L.push('この数字は、取り込んだ記録から計算した目安です。法令で保存が決められている元の記録（運転日報や運行記録計の記録など）は、別に保管してください。');
     return L.join('\n');
   }
 

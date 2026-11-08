@@ -356,7 +356,7 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
   #wait-doc table.rec:not(.rate) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   #wait-doc table.rec:not(.rate) tr { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 7px 4px; border-bottom: 1px solid var(--paper-line); }
   #wait-doc table.rec:not(.rate) td { display: block; border: 0; padding: 0; text-align: left; }
-  #wait-doc table.rec:not(.rate) td[data-l]::before { content: attr(data-l) " "; color: var(--paper-muted, #666); font-size: 11px; font-weight: 400; }
+  #wait-doc table.rec:not(.rate) td[data-l]::before { content: attr(data-l) " "; color: var(--paper-muted); font-size: 11px; font-weight: 400; }
   #wait-doc table.rec:not(.rate) tfoot tr { border-top: 1px solid var(--paper-text); }
   #wait-doc table.rec:not(.rate) tfoot td.l-sum { flex: 0 0 100%; text-align: left; }
 }
@@ -443,17 +443,17 @@ aside#process { flex: 0 0 270px; border: 1px solid var(--line-soft); border-radi
         <button type="button" id="b-forget">保存した記録を消す</button>
         <input type="file" id="csvfile" accept=".csv,text/csv" hidden aria-label="書き出した CSV を選ぶ">
       </div>
-      <p class="note" id="example-note" hidden>例の記録が入っています（架空の元請A物流）。『表を空にする』で自分の記録に入れ替えてください</p>
+      <p class="note" id="example-note" hidden>例の記録が入っています（架空の 2 社）。「表を空にする」を押してから、自分の記録を入れてください。</p>
       <p class="note" id="undo-note" hidden><span id="undo-text"></span> <button type="button" id="b-undo">元に戻す</button></p>
       <div class="bar" id="bulk">
         <label>相手<select id="bulk-partner" aria-label="まとめて変える相手"></select></label>
-        <button type="button" id="b-fault-yes">この相手の行を全部「荷主の都合」にする</button>
-        <button type="button" id="b-fault-no">この相手の行を全部「荷主の都合ではない」にする</button>
+        <button type="button" id="b-fault-yes">この相手の行を全部「荷主等の都合: はい」にする</button>
+        <button type="button" id="b-fault-no">この相手の行を全部「荷主等の都合: いいえ」にする</button>
         <button type="button" id="b-fill-partner">空いた相手の欄を上の行と同じにする</button>
         <button type="button" id="b-fill-class">空いた車種の欄を上の行と同じにする</button>
         <small id="bulk-msg"></small>
       </div>
-      <p class="note" id="broken-note" hidden>保存した記録が読めませんでした（消していません）。このページで記録を入れ直すと、読めなかった保存の内容はこのブラウザの別の保存場所（waiting_page_rows_v1_broken）に移してから、新しい記録を保存します。</p>
+      <p class="note" id="broken-note" hidden>保存した記録が読めませんでした（消していません）。このページで記録を入れ直すと、読めなかった保存の内容はこのブラウザの別の場所に移してから、新しい記録を保存します。</p>
       <p class="keep" id="keep">記録はこのブラウザの中にだけ保存されます。別の PC には移りません<span id="keep-msg"></span></p>
       <div class="tw"><table class="in" aria-label="荷待ち・荷役の記録の表"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
       <div class="bar"><button type="button" id="b-add">行を足す</button><small>時刻は 9:30 のように入れます。夜中をまたぐと翌日として数えます。</small></div>
@@ -524,7 +524,7 @@ const TERMS = [
   ['附帯業務', '荷物を運ぶ以外にドライバーがした作業（検品、仕分け、ラベル貼りなど）です。告示では実費として別に収受するとされ、この参考額には入れていません。'],
 ];
 const PROTECT = [
-  '参考額は告示の表に当てた計算です。請求するか、いくらにするかは運送会社が決めます。法的な判断は弁護士・運輸支局などに確かめてください',
+  '参考額は、告示の表に当てはめて計算した額です。請求するか、いくらにするかは運送会社が決めます。法的な判断は弁護士・運輸支局などに確かめてください',
   '入れた記録はこの PC の中だけで計算し、外に送りません',
 ];
 // 取適法の初出の説明（正式名と、ひとことの説明）。根拠の欄と協議の進め方の欄のそれぞれの初出で使う
@@ -533,9 +533,9 @@ const BASIS_QUOTE = '貸切運賃料金適用方（参考例）第 21 項（Q&A 
 const BASIS = [
   BASIS_QUOTE,
   '書面交付の法定事項に、荷役作業・附帯業務の内容と対価が入ります（改正法 Q&A 問2-2・2-3）。',
-  '標準運送約款 第 34 条（標準貨物自動車運送約款）: 「到着後、荷送人又は荷受人の責により待機した時間」について待機時間料を収受できます。荷役のあとの待ち（書類待ちなど）がこれに当たるかは、契約の相手と確かめてください。既定では数えず、行ごとに「荷役のあとの待ちを荷主等の都合として数える」を はい にした行だけ、出発 − 荷役終了 を待機に足します（30 分の差し引きは 1 か所ごとに 1 回、2 時間の境は待機の始まりから）。',
+  '標準運送約款 第 34 条（標準貨物自動車運送約款）: 「到着後、荷送人又は荷受人の責により待機した時間」について待機時間料を収受できます。荷役のあとの待ち（書類待ちなど）がこれに当たるかは、契約の相手と確かめてください。既定では数えず、行ごとに「荷役のあとの待ちを荷主等の都合として数える」を「はい」にした行だけ、荷役終了から出発までの時間を待機に足します（30 分の差し引きは 1 か所ごとに 1 回、2 時間の境は待機の始まりから）。',
   `${TEKIHO}取適法では、長時間の待機の費用を負担しないことが違反になり得ます（Q42・Q132。規模の基準に当たる場合）。`,
-  'トラック・物流Gメンの情報提供の窓口があります（荷主には元請けを含みます）。',
+  'トラック・物流Gメンの情報提供の窓口があります（荷主には元請を含みます）。',
   '数え方は標準的運賃（2024 年 3 月 22 日告示）の別紙の表と、Q&A 集 Q29（到着時刻から数える。最初の 30 分を差し引く）です。積込料・取卸料の数え方は告示の文言からの読み取りで、Q&A の例で確かめたのは待機時間料だけです。',
 ];
 // 書面に載せる、荷主が照らし合わせるページの URL。http(s) で開いているときだけ分かる。それ以外は書き入れる欄にする
@@ -544,11 +544,11 @@ function crossPageAddress() {
   return '（このページを開いている URL を書き入れてください。末尾に #g=shipper を付けると荷主向けの入口が開きます）';
 }
 const gmenBasis = () => WaitingShared.gmenBasis(S.res ? S.res.by_partner : []);
-const BASIS_ROWS = ['単価: 標準的運賃（2024 年告示）', '数え始め: 着いた時刻から', '差し引き: 最初の 30 分', '荷主側の荷役: 待機に含める', '出典の全文: docs/guide/画面の文言の補足.md'];
+const BASIS_ROWS = ['単価: 標準的運賃（2024 年告示）', '数え始め: 着いた時刻から', '差し引き: 最初の 30 分', '荷主側の荷役: 待機に含める'];
 const basisHtml = () => `<details id="basis-d"><summary>金額の決まり方</summary><ul>${BASIS_ROWS.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><details id="basis-full"><summary>出典の全文</summary><ul>${[...BASIS, BASIS_FACTS[0], gmenBasis(), BASIS_FACTS[1]].map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details></details>`;
 const PROCESS = [
   '次回からの契約の書面に、待機時間料と積込料・取卸料の欄を入れてもらうよう頼みます。過去分を求めるかどうかは、運送会社が決めます。',
-  '国交省のリーフレットは、記録を待機時間料などを収受する根拠にできると書いています。',
+  '国交省のリーフレットには、この記録が待機時間料などを収受する根拠になると書かれています。',
   TEKIHO + '取適法では、相手（元請など）が規模の基準（資本金か従業員数）に当たるとき、公正取引委員会・中小企業庁・国土交通大臣に知らせたことを理由にした取引の停止などの不利益な扱いが禁じられています（第 5 条第 1 項第 7 号）。相手が基準に当たらないときは使えません。トラック・物流Gメンの窓口への情報提供がこれに当たるかの公式の説明は確かめていません。',
   'トラック・物流Gメンの窓口: https://truck-logistics-gmen.mlit.go.jp/s/',
   '指定の到着時刻より早く着いたときは、指定の時刻から待機を数えています（控えめな扱い）。附帯業務は記録して一覧に出しますが、告示で実費として収受とされているため、参考額は付けていません。',
@@ -562,10 +562,12 @@ const fromReception = (name) => { const a = partnerRows(name).filter((r) => r.ea
 const earlyWord = (name) => (fromReception(name) ? '早い時刻の受付' : '早着の疑い');
 const earlyRule = (name) => (fromReception(name) ? EARLY_RULE_RECEPTION : EARLY_RULE);
 const DEFAULT_CLASS = '中型', DEFAULT_METHOD = '手積み';   // 車種・荷役の方法が空欄の行を計算する既定（画面に出して、まとめて選び直せる）
-const FAULT_DEFAULT_DOC = '荷主等の都合の欄が貼り付けの記録に無かったため、この表の行は荷主等の都合の待機として（はい）計算しています。';
+const FAULT_DEFAULT_DOC = (n) => `貼り付けた記録に荷主等の都合の欄が無かったため、${n} 行すべてを荷主等の都合の待機（はい）として計算しています。`;
 const ASK_PARTNER_TEXT = '貼った荷主の名前を、運送を頼んできた会社として読みました。荷物の受け取り先と違うときは表で直してください。';
 const DEFAULT_FAULT_NOTE = '荷主の都合で待ったかの列が無いので、全部「はい」で計算しました。違う行は表で「いいえ」にしてください。';
-const POST_WAIT_NOTE = '「荷役のあとの待ちを荷主等の都合として数える」を はい にした行は、出発 − 荷役終了 も待機の分に足しています。標準運送約款 第 34 条の「到着後、荷送人又は荷受人の責により待機した時間」に当たるかは、契約の相手と確かめてください。';
+const POST_WAIT_NOTE = '「荷役のあとの待ちを荷主等の都合として数える」を「はい」にした行は、荷役終了から出発までの時間も待機に足しています。標準運送約款 第 34 条の「到着後、荷送人又は荷受人の責により待機した時間」に当たるかは、契約の相手と確かめてください。';
+// 荷主に渡す書面用。運送会社向けの操作の説明は入れない
+const POST_WAIT_DOC = '荷役のあとの待ち（書類待ちなど）があった回は、荷役終了から出発までの時間も待機に含めています。標準貨物自動車運送約款 第 34 条の「到着後、荷送人又は荷受人の責により待機した時間」に当たると考えた回です。';
 
 /* ---------------------------------------------------------------- 自己確認（?selftest=1） */
 function deepEqual(a, b) {
@@ -683,7 +685,7 @@ function defaultsHtml(r) {
   const sel = (id, label, opts) => `<label>${label}<select id="${id}" aria-label="${label}"><option value="">選ぶ</option>${opts.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select></label>`;
   return `<div class="note" id="defaults-note">` +
     (nc ? `<div>車種が空欄の ${nc} 行は『${DEFAULT_CLASS}』の単価で計算しています。 ${sel('bulk-class-sel', '空欄の車種をまとめて選ぶ', ['小型', '中型', '大型', 'トレーラー'])}</div>` : '') +
-    (nm ? `<div>積み降ろしの方法が空欄の ${nm} 行は、${DEFAULT_METHOD}で計算しています。 ${sel('bulk-method-sel', '空欄の荷役の方法をまとめて選ぶ', ['手積み', 'フォークリフト等'])}</div>` : '') +
+    (nm ? `<div>荷役の方法が空欄の ${nm} 行は、「${DEFAULT_METHOD}」で計算しています。 ${sel('bulk-method-sel', '空欄の荷役の方法をまとめて選ぶ', ['手積み', 'フォークリフト等'])}</div>` : '') +
     '</div>';
 }
 // メモの貼り付けで読んだ相手・車番・車種・場所を行ごとに見せ、違うときはその場で直せるようにする（SPEC §46）
@@ -765,7 +767,7 @@ const provRows = () => (S.res ? S.res.rows.filter((r) => r.partner_provisional) 
 function provisionalHtml() {
   const n = provRows().length;
   if (!n || S.mode === 'shipper') return '';
-  return `<div class="note prov" id="prov-box"><b>契約の相手が空の ${n} 行は、仮の相手『${esc(PROVISIONAL_PARTNER)}』で計算しています。</b>
+  return `<div class="note prov" id="prov-box"><b>契約の相手が空の ${n} 行は、仮の相手「${esc(PROVISIONAL_PARTNER.replace(/^（|）$/g, ''))}」で計算しています。</b>
     <label>この記録の荷主（契約の相手）<input type="text" id="prov-name" autocomplete="off" placeholder="例 ○○商事" aria-label="この記録の荷主（契約の相手）"></label>
     <button type="button" id="b-prov-fill">全部の行に入れる</button></div>`;
 }
@@ -793,13 +795,13 @@ const handlerUnknown = (p) => unknownHandlerCount(p) > 0 && !partnerRows(p.partn
 function faultDefaultHtml() {
   const n = S.res ? faultDefRows(S.res.rows).length : 0;
   if (!n || S.mode === 'shipper') return '';
-  return `<div class="note" id="fault-box"><b>${esc(FAULT_DEFAULT_DOC)}（該当 ${n} 行）</b> メールには「記録のすべての待ちを数えています」と書いています。荷主等の都合でない待ち（渋滞など）の行は、表でその行を『いいえ』にすると、数字とメールが変わります。</div>`;
+  return `<div class="note" id="fault-box"><b>${esc(FAULT_DEFAULT_DOC(n))}</b> メールには「記録のすべての待ちを数えています」と書いています。荷主等の都合でない待ち（渋滞など）の行は、表で「いいえ」にすると、数字とメールに反映されます。</div>`;
 }
 function handlerUnknownHtml() {
   const n = S.res ? S.res.rows.filter((r) => r.handler === UNKNOWN_HANDLER).length : 0;
   if (!n || S.mode === 'shipper') return '';
-  return `<div class="note" id="handler-box"><b>荷役をした人が分からない ${n} 行は、荷役の時間を数えていません（積込料・取卸料は 0 円ではなく不明です）。</b> メールには運転者の荷役の合計を書いていません。
-    <label>荷役をした人をまとめて入れる<select id="bulk-handler" aria-label="荷役をした人をまとめて入れる"><option value="運転者">運転者</option><option value="荷主側">荷主側</option></select></label>
+  return `<div class="note" id="handler-box"><b>荷役をした人が分からない ${n} 行は、荷役の時間を数えていません。この行の積込料・取卸料は不明です（0 円として扱っていません）。</b> メールには運転者の荷役の合計を書いていません。
+    <label>荷役をした人<select id="bulk-handler" aria-label="荷役をした人をまとめて入れる"><option value="運転者">運転者</option><option value="荷主側">荷主側</option></select></label>
     <button type="button" id="b-handler-fill">荷役をした人をまとめて入れる</button></div>`;
 }
 function fillHandler() {
@@ -839,7 +841,7 @@ const mainWait = (p) => (hasRec(p) ? p.wait_minutes - p.reception_arrive_wait_mi
 // 受付の時刻が無く、早着の疑いになった回だけを別に数える。受付の時刻がある回は受付から数えているので、「除くと 0 円」にはしない
 const noRecEarly = (p) => (hasRec(p) ? { n: p.early_assumed_norec_count, wait: p.early_assumed_norec_wait_minutes, amt: p.early_assumed_norec_amount } : { n: p.early_assumed_count, wait: p.early_assumed_wait_minutes, amt: p.early_assumed_amount });
 const earlyShown = (p) => noRecEarly(p).n > 0;
-const receptionSentence = (p) => `受付の時刻がある ${p.reception_count} 回は、到着から数えると ${yen(p.reception_arrive_amount)}（待機 ${hm(p.reception_arrive_wait_minutes)}）、受付の時刻から数えると ${yen(p.reception_amount)}（待機 ${hm(p.reception_wait_minutes)}）です。この書面の参考額は、受付の時刻がある回は受付から、ほかの回は到着から数えています。受付の前に着いて待った時間は、受付からの数え方には入りません。`;
+const receptionSentence = (p) => `受付の時刻がある ${p.reception_count} 回は、到着から数えると ${yen(p.reception_arrive_amount)}（待機 ${hmj(p.reception_arrive_wait_minutes)}）、受付の時刻から数えると ${yen(p.reception_amount)}（待機 ${hmj(p.reception_wait_minutes)}）です。この書面の参考額は、受付の時刻がある回は受付から、ほかの回は到着から数えています。受付の前に着いて待った時間は、受付からの数え方には入りません。`;
 // 早着の疑いの回を除いた数字（全体と並べて出す）
 const earlySplit = (p) => { const e = noRecEarly(p); return { n: e.n, waitAll: mainWait(p), waitEx: mainWait(p) - e.wait, amtAll: mainAmt(p), amtEx: mainAmt(p) - e.amt, waitEarly: e.wait, amtEarly: e.amt }; };
 const earlySentence = (p) => { const e = earlySplit(p); return `全体 ${yen(e.amtAll)}（待機 ${hm(e.waitAll)}）。うち${earlyWord(p.partner)} ${e.n} 回（待機 ${hm(e.waitEarly)}、${yen(e.amtEarly)}）を除くと ${yen(e.amtEx)}（待機 ${hm(e.waitEx)}）です。`; };
@@ -854,7 +856,7 @@ const SIGN_PERSON_HINT = '（部署・担当者名）';   // 署名の欄に出�
 const senderVal = (k, hint) => SENDER[k] || hint || SENDER_HINT[k];
 const MAIL_SUBJECT = '荷待ち時間についてのご相談';
 const CLAUSE_TITLE = '参考：契約に入れていただきたい項目（案）';
-const CALC_TITLE = '参考：参考額の計算のしかた';
+const CALC_TITLE = '参考額の計算のしかた';
 const REF_TITLE = '添付・参考';
 const jdate = (iso, withYear = true) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? `${withYear ? m[1] + '年' : ''}${Number(m[2])}月${Number(m[3])}日` : String(iso || ''); };
 const jperiod = (a, b) => (a === b ? jdate(a) : `${jdate(a)}から${jdate(b, String(a).slice(0, 4) !== String(b).slice(0, 4))}まで`);
@@ -890,7 +892,7 @@ const reportSpots = (name) => reportHotspots().filter((h) => h.partner === name)
 // 場所・時間帯ごとの荷待ちの文（別紙の相談の節）。注記は括弧にせず、続く 1 文にする
 const consultSpots = (name) => reportSpots(name).filter((h) => h.wait_minutes > 0).slice(0, 3);
 // 「指定の到着時刻のない到着が多く含まれます。」は、どの文にも付けず、一覧の後ろに 1 回だけ書く
-const consultNote = (name) => (consultSpots(name).some((h) => h.designated_count * 2 < h.count && h.avg_minutes >= 30) ? '指定の到着時刻のない到着が多く含まれます。' : '');
+const consultNote = (name) => (consultSpots(name).some((h) => h.designated_count * 2 < h.count && h.avg_minutes >= 30) ? '上の時間帯には、指定の到着時刻のない回が多く含まれます。' : '');
 function consultSentences(name) {
   return consultSpots(name).map((h) =>
     `${placeLead(h, allPlaceless(name))}${h.band}に到着した${h.count}回の荷待ち（到着から荷役開始まで）が、平均${h.avg_minutes}分、最長${h.max_minutes}分でした。` +
@@ -915,9 +917,9 @@ function recModel(p) {
     const waitMin = r.reception_wait_min !== undefined ? r.reception_wait_min : r.wait_min;
     const amount = r.reception_amount !== undefined ? r.reception_amount : r.amount;
     const arriveNotes = [r.early_arrival === 'assumed' && r.arrive_from_reception ? '早い時刻の受付（指定の到着時刻なし）の回です。' : '',
-      r.early_arrival === 'designated' ? `指定の${r.appointed}より前に到着しています。` : ''].filter(Boolean);
+      r.early_arrival === 'designated' ? `指定の到着時刻（${r.appointed}）より前に到着しています。` : ''].filter(Boolean);
     const waitNotes = [r.handler === '荷主側' && r.wait_min > 0 && r.end ? '貴社側で荷役をしていただいた時間も、待ち時間に含めています。' : '',
-      r.post_wait_min > 0 ? `荷役のあとの待ち${r.post_wait_min}分も、待ち時間に含めています。` : '', r.wait_base_min > 0 ? `指定の${r.appointed}から数えた時間です。` : '', r.shipper_fault ? '' : '荷主等の都合によらない待ちとして記録しています。'].filter(Boolean);
+      r.post_wait_min > 0 ? `荷役のあとの待ち${r.post_wait_min}分も、待ち時間に含めています。` : '', r.wait_base_min > 0 ? `指定の到着時刻（${r.appointed}）から数えた時間です。` : '', r.shipper_fault ? '' : '荷主等の都合によらない待ちとして記録しています。'].filter(Boolean);
     const sideNote = r.side_work ? [`${r.side_work}${r.side_min ? `（${r.side_min}分）` : ''}の作業も行いましたが、参考額には含めていません。`] : [];
     const cells = [{ t: jdate(r.date, !oneYear), cls: 'nw' }];
     if (hasVeh) cells.push({ t: dash(r.vehicle_no), cls: 'nw' });
@@ -931,7 +933,7 @@ function recModel(p) {
     return cells;
   });
   const notes = noteList.map((e) => `${e.who.length <= 3 ? e.who.join('、') : `${e.who.slice(0, 2).join('、')}ほか ${e.who.length - 2} 回`}は、${e.text}`);
-  const tableNote = hasRecCol ? '「受付」の列に時刻がある回は、受付の時刻から数えると、表の待機と参考額になります。到着から数えた値ではありません。' : '';
+  const tableNote = hasRecCol ? '「受付」の列に時刻がある回の待機と参考額は、受付の時刻から数えています。' : '';
   const head = ['日付', ...(hasVeh ? ['車番'] : []), ...(hasPlace ? ['場所'] : []), '到着', ...(hasRecCol ? ['受付'] : []), '荷役開始', '荷役終了', '待機（分）', '荷役（分）', '参考額（円）'];
   return { head, body, notes, tableNote, lead: head.length - 3, total: [String(mainWait(p)), hu ? '—' : String(p.handling_minutes), n0(mainAmt(p))] };
 }
@@ -963,14 +965,14 @@ function mailModel(p) {
   const period = mailPeriod(p);
   const over1h = p.over_1h_count;
   const paras = [
-    `今回は、${period}${p.date_from === p.date_to ? 'に' : 'の間に'}ご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。${waitFromJa(p)}から荷役が始まるまで${shipperHandled(p) ? '（貴社側で荷役をしていただいた回は、荷役が終わるまで）' : ''}にお待ちした時間は、合計で${hmj(wait)}${basisJa}でした。` +
+    `荷待ちの時間についてご相談したく、ご連絡いたしました。${period}${p.date_from === p.date_to ? 'に' : 'の間に'}ご依頼いただいた${p.count}回の運行について、当社の記録を整理しました。${waitFromJa(p)}から荷役が始まるまで${shipperHandled(p) ? '（貴社側で荷役をしていただいた回は、荷役が終わるまで）' : ''}にお待ちした時間は、合計で${hmj(wait)}でした${basisJa}。` +
       (over1h > 0 ? `そのうち、1時間以上お待ちした回が${over1h}回ありました。` : ''),
     (spot ? `とくに${noPlace(spot.place) ? '' : `${placeJa(spot.place)}では、`}${spot.band}に到着した${spot.count}回の待ち時間（到着から荷役開始まで）が、平均${spot.avg_minutes}分、最長${spot.max_minutes}分でした。` : '') +
       'ドライバーの拘束時間には荷待ちの時間も含まれます。2024年4月から時間外労働の上限規制が始まり、拘束時間の基準（改善基準告示）も改正されたため、荷待ちが長いと、その日のほかの運行にも影響が出ます。',
     '荷待ちを減らす方法を、貴社のご事情をうかがいながら、一緒に考えさせていただければと思っております。一度、短いお打ち合わせのお時間をいただけないでしょうか。到着時刻の調整や受付の予約、荷役の分担などについてご相談できればと考えております。',
   ];
-  if (amt > 0) paras.push(`なお、${handlerUnknown(p) || !(p.handling_fee > 0) ? '荷待ち' : '荷待ちと荷役'}を国の標準的運賃に当てはめた参考額は、${n0(amt)}円（税抜）でした。請求書ではなく、荷待ちの大きさを共通の基準で見ていただくための目安です。計算のしかたは、このメールの末尾に載せています。`);
-  return { subject: `${MAIL_SUBJECT}（${period}）`, to: `${name} 物流ご担当者様`, name, prov, greet: 'いつもお世話になっております。', paras, lead: '記録の一覧を下に貼っておきます。', rec: recModel(p),
+  if (amt > 0) paras.push(`なお、${handlerUnknown(p) || !(p.handling_fee > 0) ? '荷待ち' : '荷待ちと荷役'}を国の標準的運賃に当てはめた参考額は、${n0(amt)}円（税抜）でした。この額は請求ではありません。荷待ちの長さを、国の共通の基準で金額にした目安です。計算のしかたは、このメールの末尾に載せています。`);
+  return { subject: `${MAIL_SUBJECT}（${period}）`, to: `${name} 物流ご担当者様`, name, prov, greet: 'いつもお世話になっております。', paras, lead: '記録の一覧を以下にお送りします。', rec: recModel(p),
     close: ['お忙しいところ恐れ入りますが、ご検討いただけますと幸いです。', 'よろしくお願いいたします。'] };
 }
 
@@ -978,10 +980,10 @@ function mailModel(p) {
 function calcModel(p) {
   const t = TARIFF;
   const hu = handlerUnknown(p);
-  const main = hasRec(p) ? '受付の時刻がある回は受付から数えた額です。内訳は本文の記録の表にあります。' : (hu ? `内訳は、待機時間料${n0(p.wait_fee)}円です。` : `内訳は、待機時間料${n0(p.wait_fee)}円、積込料・取卸料${n0(p.handling_fee)}円です。`);
+  const main = hasRec(p) ? '受付の時刻がある回は、受付の時刻から数えています。回ごとの額は本文の記録の表にあります。' : (hu ? `内訳は、待機時間料${n0(p.wait_fee)}円です。` : (p.handling_fee > 0 ? `内訳は、待機時間料${n0(p.wait_fee)}円、積込料・取卸料${n0(p.handling_fee)}円です。` : '内訳はすべて待機時間料です。'));
   return {
-    mainHead: '参考額の合計は', mainAmt: `${n0(mainAmt(p))}円`, mainTail: `（税抜）です。${main}待機は合計${hmj(mainWait(p))}${hu ? 'でした。荷役をした人の記録がないため、荷役の時間と積込料・取卸料は含めていません。' : `、運転者の荷役は合計${hmj(p.handling_minutes)}でした。`}${!hu && unknownHandlerCount(p) > 0 ? `荷役をした人が分からない${unknownHandlerCount(p)}回は、荷役の時間と積込料・取卸料に入れていません。` : ''}`,
-    calc: `計算は、国土交通省が告示した標準的運賃の別紙の表の単価に当てはめています。待機は、${hasRec(p) ? `${waitFromJa(p)}から` : '到着の時刻（指定の到着時刻があって実際の到着が早かったときは、指定の時刻）から'}数えます。最初の${t.free_minutes}分を除き、${t.unit_minutes}分までごとに通常の単価、${hasRec(p) ? '数え始めの時刻' : '到着'}から${t.threshold_minutes / 60}時間を超える部分は${t.unit_minutes}分までごとに2時間超の単価を使っています。${partnerRows(p.partner).some((r) => r.handler === '荷主側' && r.end) ? '貴社側で荷役をしていただいた時間も、待ち時間に含めています。' : ''}`,
+    mainHead: '参考額の合計は', mainAmt: `${n0(mainAmt(p))}円`, mainTail: `（税抜）です。${main}待機は合計${hmj(mainWait(p))}${hu ? 'でした。荷役をした人の記録がないため、荷役の時間と積込料・取卸料は含めていません。' : (p.handling_fee > 0 || p.handling_minutes > 0 ? `、運転者の荷役は合計${hmj(p.handling_minutes)}でした。` : 'でした。運転者による荷役はありませんでした。')}${!hu && unknownHandlerCount(p) > 0 ? `荷役をした人が分からない${unknownHandlerCount(p)}回は、荷役の時間と積込料・取卸料に入れていません。` : ''}`,
+    calc: `参考額は、国土交通省が告示した標準的運賃の別紙の表の単価に当てはめて計算しています。待機は、${hasRec(p) ? `${waitFromJa(p)}から` : '到着の時刻（指定の到着時刻があって実際の到着が早かったときは、指定の時刻）から'}数えます。最初の${t.free_minutes}分を除き、${t.unit_minutes}分までごとに通常の単価、${hasRec(p) ? '数え始めの時刻' : '到着'}から${t.threshold_minutes / 60}時間を超える部分は${t.unit_minutes}分までごとに2時間超の単価を使っています。${partnerRows(p.partner).some((r) => r.handler === '荷主側' && r.end) ? '貴社側で荷役をしていただいた時間も、待ち時間に含めています。' : ''}`,
     terms: '荷主等の都合とは、荷主や荷受人の責任で車が待たされたこと（準備が間に合わない、受付が始まらないなど）をいいます。' + (faultAssumed(p) ? '今回の記録には荷主等の都合かどうかの区別がないため、記録のすべての待ちを数えています。' : '渋滞や当社側の遅れによる待ちは含めていません。') + '附帯業務とは、荷物を運ぶ以外にドライバーが行った作業（検品、仕分け、ラベル貼りなど）で、告示では実費として別に収受するとされているため、参考額には入れていません。',
     source: `出典: 標準的運賃（${jdate(t.applies_from)}告示）の別紙の表。待機時間の数え方は国土交通省の Q&A 集 Q29、荷主側の荷役の時間を待機に含める扱いは貸切運賃料金適用方（参考例）第21項によります。${t.source_url}`,
   };
@@ -1020,12 +1022,11 @@ function draftHtml(p) {
     <p class="main-amt" id="doc-main">${esc(cm.mainHead)}<b class="big">${esc(cm.mainAmt)}</b>${esc(cm.mainTail)}</p>
     <p>${esc(cm.calc)}</p>
     <p id="doc-terms">${esc(cm.terms)}</p>
-    ${(hasRec(p) || earlyShown(p) || hasEarly(p)) ? `<details class="doc-alt" id="doc-alt"><summary>ほかの数え方の額（参考）</summary>
+    ${hasRec(p) ? `<details class="doc-alt" id="doc-alt"><summary>ほかの数え方の額（参考）</summary>
     ${hasRec(p) ? `<p id="doc-reception"><b>受付から数えた数字:</b> ${esc(receptionSentence(p))}</p>` : ''}
-    ${earlyShown(p) ? `<p id="doc-early"><b>${earlyWord(p.partner)}を分けた数字:</b> ${esc(earlySentence(p))}</p>` : ''}
-    ${hasEarly(p) ? `<p class="small">${esc(earlyRule(p.partner))}</p>` : ''}</details>` : ''}
+    </details>` : ''}
     ${docNotes(p).map((x) => `<p class="small doc-note"><b>${esc(x)}</b></p>`).join('')}
-    ${rows.some((r) => r.post_wait) ? `<p class="small">${esc(POST_WAIT_NOTE)}</p>` : ''}
+    ${rows.some((r) => r.post_wait) ? `<p class="small">${esc(POST_WAIT_DOC)}</p>` : ''}
     <div class="rec-w"><table class="rec rate"><thead><tr><th>使った車種の単価（税抜・円）</th><th class="num">待機時間料<small>${t.unit_minutes} 分までごと</small></th><th class="num">2 時間超</th>${methods.map((x) => `<th class="num">${esc(x)}の積込料・取卸料<small>通常 / 2 時間超</small></th>`).join('')}</tr></thead><tbody>${rate}</tbody></table></div>
     <p class="small">${esc(cm.source)}</p>
     ${cl.length ? `<h4>参考：${CONSULT_TITLE}</h4>
@@ -1039,8 +1040,8 @@ function draftHtml(p) {
     <p>${esc(MONTH_CLOSE)}</p>` : ''}
     <h4>${CLAUSE_TITLE}</h4>
     <ul class="list">${clauseList(t).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-    <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけないか、ご相談させてください。</p>
-    <p class="small" id="doc-cross-note">このメールを受け取った荷主の方は、記録の一覧の「日付・車番・到着・荷役開始」の列を、照らし合わせのページ（下のアドレス）を開き、「届いた書面を受付簿と見比べる（荷主の方）」を選んで自社の受付簿を貼ったあと、「運送会社から届いた書面と見比べる」の欄に貼ると、自社の受付記録と照らし合わせられます。<br><b>照らし合わせのページ:</b> <span id="doc-url">${esc(letterPageAddress())}</span></p>
+    <p class="sentence">荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いをご記載いただけないでしょうか。</p>
+    <p class="small" id="doc-cross-note">貴社の受付記録と照らし合わせていただく場合は、下のページを開いて「届いた書面を受付簿と見比べる（荷主の方）」を選び、貴社の受付簿を貼ってください。そのあと、上の記録の一覧（日付・車番・到着・荷役開始の列）を「運送会社から届いた書面と見比べる」の欄に貼ると、時刻の違う回が分かります。<br><b>照らし合わせのページ:</b> <span id="doc-url">${esc(letterPageAddress())}</span></p>
   </details>`;
   return kc(html);
 }
@@ -1067,7 +1068,7 @@ function mountAi(p) {
   // 使えないときは、理由（サーバーが返す文）を本文に出す。吹き出しだけだと、画面から読めない
   if (mounted && mounted.then) mounted.then((ok) => {
     const b = $('#ai-box'), why = b && b.title, off = b && b.querySelector('.ai-off');
-    if (!ok && why && off) off.textContent = /（費用の上限のため）[。\s]*$/.test(why) ? 'AI による言い換えは、この公開版では使えません。下書きは決まった文型で作っています。' : `説明文の自動作成: ${why.replace(/[。\s]+$/, '')}（今は型どおりの書面です）`;
+    if (!ok && why && off) off.textContent = /（費用の上限のため）[。\s]*$/.test(why) ? '説明文の自動作成は、この公開版では使えません。今は型どおりの書面です。' : `説明文の自動作成: ${why.replace(/[。\s]+$/, '')}。今は型どおりの書面です。`;
   });
   // サーバー（http）で開き、説明文の自動作成が使えるときだけ、上の説明の 2 文目を変える（ファイルで開いた版・Artifact の版は元のまま）
   const box = $('#ai-box'), priv = $('#hdr-priv');
@@ -1109,10 +1110,10 @@ function draftText(p) {
   if (hasRec(p)) L.push(`受付から数えた数字: ${receptionSentence(p)}`);
   // 早着の疑いの数字と定義は、画面の「社内向けの注意」にだけ出す。荷主に送る文には入れない（B7）
   docNotes(p).forEach((x) => L.push(x));
-  if (rows.some((r) => r.post_wait)) L.push(POST_WAIT_NOTE);
+  if (rows.some((r) => r.post_wait)) L.push(POST_WAIT_DOC);
   L.push('', '使った車種の単価（税抜・円）');
-  classes.forEach((c) => L.push(`${t.class_labels[c] || c}: 待機時間料 ${n0(t.waiting.normal[c])}（${t.unit_minutes} 分までごと）、2 時間超 ${n0(t.waiting.over_2h[c])}` +
-    methods.map((x) => `、${x}の積込料・取卸料 ${n0(t.handling[x].normal[c])} / 2 時間超 ${n0(t.handling[x].over_2h[c])}`).join('')));
+  classes.forEach((c) => L.push(`${t.class_labels[c] || c}: 待機時間料は ${t.unit_minutes} 分までごとに ${n0(t.waiting.normal[c])} 円（2 時間を超える部分は ${n0(t.waiting.over_2h[c])} 円）` +
+    methods.map((x) => `、${x}の積込料・取卸料は ${n0(t.handling[x].normal[c])} 円（2 時間を超える部分は ${n0(t.handling[x].over_2h[c])} 円）`).join('')));
   L.push(cm.source);
   const cl = consultSentences(p.partner);
   if (cl.length) {
@@ -1120,7 +1121,8 @@ function draftText(p) {
       ...monthTable(p.partner).map((x) => [...(allPlaceless(p.partner) ? [] : [noPlace(x.place) ? '場所の記載なし' : x.place]), monthLabel(x.month), x.count, x.avg_minutes, x.over_1h_count].join('\t')), MONTH_CLOSE);
   }
   L.push('', CLAUSE_TITLE, ...clauseList(t).map((x) => `・${x}`), '',
-    '荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いを記載いただけないか、ご相談させてください。', '',
+    '荷待ちが残る場合に備えて、次回からの契約の書面に、待機時間料と積込料・取卸料の扱いをご記載いただけないでしょうか。', '',
+    '貴社の受付記録と照らし合わせていただく場合は、次のページで「届いた書面を受付簿と見比べる（荷主の方）」を選び、受付簿と上の記録の一覧を貼ってください。',
     `照らし合わせのページ: ${letterPageAddress()}`);
   return kc(L.join('\n'));
 }
@@ -1163,7 +1165,7 @@ function statsHtml(p) {
   const w = mainWait(p), h = Math.floor(w / 60), m = w % 60;
   return `<div class="stat-grid" id="stats"><div class="stat is-empty hero"><span class="stat-l">待ち時間の合計</span><span class="stat-n">${h}<span class="stat-u">時間</span>${m}<span class="stat-u">分</span></span><span class="stat-d">${esc(partnerLabel(p.partner))}。${esc(waitFromJa(p))}から${esc(toStartJa(p, '荷主側'))}</span></div>` +
     `<div class="stat"><span class="stat-l">参考額（税抜）</span><span class="stat-n">${n0(mainAmt(p))}<span class="stat-u">円</span></span><span class="stat-d">${hasRec(p) ? '受付から数えた額' : '到着から数えた額'}</span></div>` +
-    `<div class="stat"><span class="stat-l">記録の件数</span><span class="stat-n">${p.count}<span class="stat-u">件</span></span><span class="stat-d">1 時間以上の待ち ${p.over_1h_count} 件</span></div></div>`;
+    `<div class="stat"><span class="stat-l">記録の回数</span><span class="stat-n">${p.count}<span class="stat-u">回</span></span><span class="stat-d">1 時間以上の待ち ${p.over_1h_count} 回</span></div></div>`;
 }
 // 荷主ごとの表の参考額につく説明は、セルに入れず、表の下に 1 回だけ書く
 function partnerNotes(r) {
@@ -1229,12 +1231,12 @@ function renderResult() {
     <details class="defs" id="head-defs"><summary>表の見出しの意味</summary><ul>
       <li><b>待機の合計</b>: 荷主側の荷役の時間を含む待機の分です。</li>
       <li><b>1 時間以上の荷待ち</b>: 待機（荷主側の荷役を含む）が 1 時間以上だった回数です。</li>
-      <li><b>2 時間以上の荷待ち・荷役</b>: 待機と運転者の荷役の合計が 2 時間以上だった回数です。</li></ul></details>
+      <li><b>待ちと荷役で 2 時間以上</b>: 待機と運転者の荷役の合計が 2 時間以上だった回数です。</li></ul></details>
     ${hotspotsHtml(r)}`;
   $('#draft-area').innerHTML = `<h2>荷主に出す相談のメール（下書き）<img class="ill ill-64" src="@@ILL:document:128@@" alt="" width="64" height="64"></h2>
     ${S.askPartner ? `<div class="errs ask" id="ask-doc"><b>相手の会社名を確かめてください。</b> 合っていれば「この相手のままにする」を押します。</div>` : ''}
     ${mainWait(p) <= 0 ? '<p class="note" id="no-wait-note">荷主の都合で待った時間がないので、相談のメールは作りません。</p>' : `${docBar()}
-    ${earlyN ? `<p class="note" id="early-note">社内向けの注意: 指定の到着時刻がなく、早く着いた可能性のある回が ${earlyN} 回あります。この点はメールには書いていません。</p>` : ''}
+    ${earlyN ? `<p class="note" id="early-note">社内向けの注意: 指定の到着時刻がなく、早く着いた可能性のある回が ${earlyN} 回あります。この点はメールにも印刷する書面にも書いていません。${esc(earlySentence(p))}</p>` : ''}
     <p class="small doc-hint" id="doc-hint">メールの黄色の部分（会社名・担当者名・電話番号・メールアドレス）は、そのまま書き換えられます。書き換えた内容はコピーする文にも入ります。</p>
     <div class="wrap"><article id="wait-doc">${draftHtml(p)}</article><div class="side-col">${processHtml()}${ARTIFACT ? '' : `<div id="ai-box" class="ai-box"><p class="small ai-off">${esc(AI_OFF_LINE)}</p></div>`}</div></div>`}`;
   mountAi(p);
@@ -1318,10 +1320,10 @@ function crossAmountHtml(c) {
     : (c.carriers.length > 1 ? `自社の受付記録の全部の運送会社（${c.carriers.length} 社、${c.shipper_n} 件。受付の時刻から数えた待機。車種は上の既定の単価）` : `自社の受付記録（${c.shipper_n} 件。受付の時刻から数えた待機。車種は上の既定の単価）`);
   const docLabel = c.doc_amount !== null ? `運送会社の書面（1 社分、${c.doc_n} 行）に書かれた額は <b>${yen(c.doc_amount)}</b>（${c.doc_manual ? '手で入れた額' : '書面の参考額の列の合計'}）` : `運送会社の書面（1 社分、${c.doc_n} 行）の時刻から数えた額は ${yen(c.carrier_amount)}（書面に書かれた額は読めなかったので、上の欄に入れると並べて見られます）`;
   const lead = c.doc_amount !== null ? '参考額の合計' : '参考額の合計の目安';
-  if (c.carrier_ambiguous) return `${lead}: ${docLabel}。自社の受付記録には運送会社が ${c.carriers.length} 社あり、書面の車番からどの会社の書面か決められなかったので、自社側の額は並べません。上の「自社の受付記録で照らす運送会社」で選ぶと、同じ会社どうしの額を並べます。`;
+  if (c.carrier_ambiguous) return `${lead}: ${docLabel}。自社の受付記録には運送会社が ${c.carriers.length} 社あり、書面の車番からどの会社の書面か決められなかったので、自社側の額は並べません。上の「見比べる運送会社」で選ぶと、同じ会社どうしの額を並べます。`;
   const rowsOf = (n, fee) => `${n} 行（待機時間料 ${yen(fee)}）`;
   const cmpLine = c.pair_n
-    ? `<br><b>同じ行どうしの比較</b>（組になった ${c.pair_n} 組。書面 ${c.pair_n} 行と自社 ${c.pair_n} 件。待機時間料だけ）: 書面の時刻から数えた額 <b>${yen(c.pair_carrier_fee)}</b>、自社の受付の時刻から数えた額 <b>${yen(c.pair_shipper_fee)}</b>、差 ${yen(Math.abs(c.pair_carrier_fee - c.pair_shipper_fee))}（${c.pair_carrier_fee > c.pair_shipper_fee ? '書面のほうが多い' : c.pair_carrier_fee < c.pair_shipper_fee ? '書面のほうが少ない' : '差なし'}）。${c.class_diff_n ? `組のうち ${c.class_diff_n} 組は車種が違う（書面と受付簿の車種、または受付簿に車種が無く上の既定の単価で数えた）ので、この差には車種の違いによる単価の差が入っています。` : ''}`
+    ? `<br><b>同じ行どうしの比較</b>（組になった ${c.pair_n} 組。書面 ${c.pair_n} 行と自社 ${c.pair_n} 件。待機時間料だけ）: 書面の時刻から数えた額 <b>${yen(c.pair_carrier_fee)}</b>、自社の受付の時刻から数えた額 <b>${yen(c.pair_shipper_fee)}</b>、${c.pair_carrier_fee === c.pair_shipper_fee ? '同じ額です' : `差 ${yen(Math.abs(c.pair_carrier_fee - c.pair_shipper_fee))}（${c.pair_carrier_fee > c.pair_shipper_fee ? '書面のほうが多い' : '書面のほうが少ない'}）`}。${c.class_diff_n ? `組のうち ${c.class_diff_n} 組は車種が違う（書面と受付簿の車種、または受付簿に車種が無く上の既定の単価で数えた）ので、この差には車種の違いによる単価の差が入っています。` : ''}`
     : '<br><b>同じ行どうしの比較</b>: 組になった行が無いので、額は並べません。';
   const rest = c.unpaired_carrier.length || c.unpaired_shipper.length
     ? `<br><b>組にならなかった行</b>（上の比較には入れていません）: 書面 ${rowsOf(c.unpaired_carrier.length, c.unpaired_carrier_fee)}、自社 ${rowsOf(c.unpaired_shipper.length, c.unpaired_shipper_fee)}。` : '';
@@ -1360,10 +1362,10 @@ function crossResultHtml() {
   const lim = c.limit;
   const miss = (arr, label) => (arr.length ? `<h3>${label}（${arr.length} 件）</h3><div class="scroll-x"><table class="par"><thead><tr><th>日付</th><th>車番</th><th>場所</th><th>到着</th><th>荷役開始</th></tr></thead><tbody>${arr.map((x) => `<tr><td>${esc(x.date)}</td><td>${esc(x.vehicle_no)}</td><td>${esc(x.place)}</td><td>${esc(x.arrive)}</td><td>${esc(x.start)}</td></tr>`).join('')}</tbody></table></div>` : '');
   return `<div id="cross-result">
-    <p><b>見比べた結果:</b> 同じ回と見られる ${c.pairs.length} 回のうち、時刻が ${lim} 分以上違うのは ${c.differ.length} 回です（到着・荷役開始・荷役終了のどれか、または待機の長さの差で数えます）。書面だけにある回 ${c.only_carrier.length}、受付簿だけにある回 ${c.only_shipper.length}${c.ambiguous.length ? `、どの回か決められない行 ${c.ambiguous.length} 件` : ''}。</p>
+    <p><b>見比べた結果:</b> 同じ回と見られる ${c.pairs.length} 回のうち、時刻が ${lim} 分以上違うのは ${c.differ.length} 回です（到着・荷役開始・荷役終了のどれか、または待機の長さの差で数えます）。書面だけにある回は ${c.only_carrier.length} 回、受付簿だけにある回は ${c.only_shipper.length} 回${c.ambiguous.length ? `、どの回か決められない行は ${c.ambiguous.length} 件` : ''}です。</p>
     <p class="small" id="cross-keys">見比べに使った項目: 車番 ${c.key_counts.vehicle} 回、場所と時刻 ${c.key_counts.place + c.key_counts.time} 回。${c.key_counts.vehicle === 0 && c.pairs.length ? '車番が無いので、場所と時刻で見比べました。' : ''}</p>
     <details id="cross-amount-d"${c.recalc ? '' : ' open'}><summary class="small">額の内訳（書面の額と自社の額の範囲）</summary><p id="cross-amount">${crossAmountHtml(c)}</p></details>
-    ${c.recalc ? `<div id="cross-recalc"><p><b>受付簿の時刻で数えた額:</b> 受付簿の時刻で数えると <b class="big">${yen(c.recalc.own)}</b> です（書面と受付簿の両方にある ${c.recalc.pair_n} 回だけ。書面の額を借りて数えた回はありません）。書面の時刻で数えると ${yen(c.recalc.carrier)} で、差は <b>${yen(Math.abs(c.recalc.diff))}</b>（${c.recalc.diff > 0 ? '書面のほうが多い' : c.recalc.diff < 0 ? '書面のほうが少ない' : '差なし'}）です。${c.recalc.class_part ? `この差のうち ${yen(Math.abs(c.recalc.class_part))} は時刻ではなく車種の違いによる単価の差です（書面と受付簿の車種、または受付簿に車種が無く上の既定の単価で数えた違い）。` : ''}${c.recalc.doc != null ? `書面に書かれた額（${yen(c.recalc.doc)}）は荷役の分などを含むことがあるので、この比べ方には使っていません。` : ''}${c.recalc.reverted ? `置き換えると時刻の順が合わなくなる ${c.recalc.reverted} 組は、書面の時刻のままです。` : ''}</p>
+    ${c.recalc ? `<div id="cross-recalc"><p><b>受付簿の時刻で数えた額:</b> <b class="big">${yen(c.recalc.own)}</b>です（書面と受付簿の両方にある ${c.recalc.pair_n} 回だけ。書面の額を借りて数えた回はありません）。書面の時刻で数えると ${yen(c.recalc.carrier)}です。${c.recalc.diff === 0 ? 'どちらも同じ額です。' : `差は <b>${yen(Math.abs(c.recalc.diff))}</b>（${c.recalc.diff > 0 ? '書面のほうが多い' : '書面のほうが少ない'}）です。`}${c.recalc.class_part ? `この差のうち ${yen(Math.abs(c.recalc.class_part))} は時刻ではなく車種の違いによる単価の差です（書面と受付簿の車種、または受付簿に車種が無く上の既定の単価で数えた違い）。` : ''}${c.recalc.doc != null ? `書面に書かれた額（${yen(c.recalc.doc)}）は荷役の分などを含むことがあるので、この比べ方には使っていません。` : ''}${c.recalc.reverted ? `置き換えると時刻の順が合わなくなる ${c.recalc.reverted} 組は、書面の時刻のままです。` : ''}</p>
       ${c.recalc.unrecorded.n ? `<p id="cross-unrecorded"><b>受付簿に無い回（${c.recalc.unrecorded.n} 回、書面の額 ${yen(c.recalc.unrecorded.amount)}）:</b> 当方の記録で確かめられないので、上の額には入れていません。</p>` : ''}
       ${c.recalc.undecided.n ? `<p id="cross-undecided"><b>どの回か決められない回（${c.recalc.undecided.n} 回、書面の額 ${yen(c.recalc.undecided.amount)}）:</b> 受付簿のどの回か決められないので、上の額には入れていません。</p>` : ''}
       <p class="small">国の標準的運賃の表で計算した目安です。</p>
@@ -1423,24 +1425,27 @@ function recalcOwn(inRows, cc) {
   return { n: Math.max(0, cc.differ.length - full.reverted), reverted: full.reverted, carrier, own, diff: carrier - own, time_part: carrier - ownTime, class_part: ownTime - own, pair_n: cc.pairs.length,
     unrecorded: { n: cc.only_carrier.length, amount: amt(cc.only_carrier), rows: cc.only_carrier }, undecided: { n: ambRows.length, amount: amt(ambRows), rows: ambRows } };
 }
+// 返信の文: 差の向きを言葉にする（arrive_diff・start_diff は 書面から見た当方の記録の差。正なら当方が遅い）
+const diffJa = (d) => (d === 0 ? '同じ' : `当方の記録が ${Math.abs(d)} 分${d > 0 ? '遅い' : '早い'}`);
+const waitDiffJa = (d) => (d === 0 ? '書面と当方の記録で同じ' : `当方の記録のほうが ${Math.abs(d)} 分${d > 0 ? '長い' : '短い'}`);
 function replyText(cc) {
   const r = cc.recalc, lim = cc.limit;
-  const L = ['（運送会社の担当者名）様', '', '荷待ち・荷役の書面をお送りいただき、ありがとうございます。当方の受付記録と照らし合わせました。', '',
+  const L = ['（運送会社の名称）', '（担当者名）様', '', 'いつもお世話になっております。（荷主の名称）の（担当者名）です。', '荷待ち・荷役の書面をお送りいただき、ありがとうございます。当方の受付記録と照らし合わせました。', '',
     `${cc.key_counts.place + cc.key_counts.time ? '同じ回と見られる' : '日付と車番が同じ'} ${cc.pairs.length} 回のうち、時刻が ${lim} 分以上違う回（到着・荷役開始・荷役終了のどれか、または待機の長さが違う回を含む）が ${cc.differ.length} 回ありました。`];
-  cc.differ.slice(0, 10).forEach((p) => L.push(`・${p.date} ${p.vehicle ? '車番 ' + p.vehicle : p.carrier.place}: 到着 書面 ${p.carrier.arrive} / 当方の受付 ${p.shipper.arrive}（差 ${signed(p.arrive_diff)} 分）、荷役開始 書面 ${p.carrier.start} / 当方の作業開始 ${p.shipper.start}（差 ${signed(p.start_diff)} 分）、待機の長さの差 ${signed(p.wait_diff)} 分`));
+  cc.differ.slice(0, 10).forEach((p) => L.push(`・${jdate(p.date)} ${p.vehicle ? '車番 ' + p.vehicle : p.carrier.place}: 到着は書面 ${p.carrier.arrive}、当方の受付 ${p.shipper.arrive}（${diffJa(p.arrive_diff)}）。荷役開始は書面 ${p.carrier.start}、当方の作業開始 ${p.shipper.start}（${diffJa(p.start_diff)}）。待機の長さは${waitDiffJa(p.wait_diff)}。`));
   if (cc.differ.length > 10) L.push(`・ほか ${cc.differ.length - 10} 組`);
   if (r) {
-    const gap = r.diff === 0 ? 'どちらも同じ額です' : `当方の額は書面より ${yen(Math.abs(r.diff))} ${r.diff > 0 ? '少なくなります' : '多くなります'}`;
-    L.push('', `【両方の記録で確かめられた ${r.pair_n != null ? r.pair_n : cc.pairs.length} 回】`, `書面の時刻で数えた参考額は ${yen(r.carrier)}、当方の受付の時刻で数え直した参考額は ${yen(r.own)}（税抜）です。${gap}。`);
+    const gap = r.diff === 0 ? 'どちらも同じ額です' : `当方の額は書面より ${yen(Math.abs(r.diff))}${r.diff > 0 ? '少なくなります' : '多くなります'}`;
+    L.push('', `【両方の記録で確かめられた ${r.pair_n != null ? r.pair_n : cc.pairs.length} 回】`, `参考額（税抜）は、書面の時刻で数えると ${yen(r.carrier)}、当方の受付の時刻で数え直すと ${yen(r.own)}です。${gap}。`);
     if (r.class_part) L.push(`この差のうち ${yen(Math.abs(r.class_part))} は、時刻ではなく車種の違いによる単価の差です。`);
     if (r.doc != null) L.push(`書面に書かれた額は ${yen(r.doc)} です。この額には荷役の分などが入っていることがあり、上の額とは範囲が違うため、差としては扱っていません。`);
-    L.push('どちらも標準的運賃の表に当てた参考額で、支払いをお約束するものではありません。');
+    L.push('いずれも標準的運賃の表に当てはめて計算した参考額で、支払いをお約束するものではありません。');
     const lst = (arr) => arr.slice(0, 5).map((x) => `${x.date} ${x.place || ''} ${x.arrive}`.replace(/\s+/g, ' ')).join('、') + (arr.length > 5 ? ` ほか ${arr.length - 5} 件` : '');
     const un = r.unrecorded || { n: 0 }, ud = r.undecided || { n: 0 };
     if (un.n) L.push('', `【当方の受付簿に無い回 ${un.n} 回（書面の額 ${yen(r.unrecorded.amount)}）】`, `${lst(r.unrecorded.rows)}。当方の記録で確かめられないので、上の額には入れていません。これらの回の時刻の記録（運転日報など）をお知らせください。`);
     if (ud.n) L.push('', `【どの回か決められない回 ${ud.n} 回（書面の額 ${yen(r.undecided.amount)}）】`, `${lst(r.undecided.rows)}。当方の記録に同じ時間帯の回が複数あり、どの回か決められないので、上の額には入れていません。車番をお知らせください。`);
   } else if (cc.only_carrier.length) L.push(`書面にあって当方の記録に無い行が ${cc.only_carrier.length} 件あります。`);
-  L.push('', '時刻が違う行について、貴社の記録（運転日報など）をご確認のうえ、ご連絡をお願いします。', '', '（荷主の名称・担当者名）');
+  L.push('', '時刻が違う回について、貴社の記録（運転日報など）をご確認のうえ、ご連絡いただけますと幸いです。', '', 'よろしくお願いいたします。', '', '（荷主の名称・担当者名）');
   return L.join('\n');
 }
 function copyReply() {
@@ -1699,14 +1704,14 @@ function disarmExample() { S.exArmed = false; clearTimeout(S.exArmTm); const b =
 function keepMsg(t) { const el = $('#keep-msg'); if (el) el.textContent = t ? `　${t}` : ''; }
 
 // 黄色の欄（会社名など）や【】が空のまま残っているとき、1 回目は知らせるだけにして、続けるなら同じボタンをもう一度押してもらう
-const BLANK_RE = /（(?:会社名|担当者名|電話番号|メールアドレス|部署・担当者名|荷主の会社名|運送会社の担当者名)）|【[^】\n]*】/g;
+const BLANK_RE = /（(?:会社名|担当者名|電話番号|メールアドレス|部署・担当者名|荷主の会社名|運送会社の担当者名|運送会社の名称|荷主の名称・担当者名|荷主の名称)）|【[^】\n]*】/g;
 function blankWarn(text, what) {
   const left = [...new Set(String(text).match(BLANK_RE) || [])];
   if (!left.length) { S.blankWarned = false; return false; }
   if (S.blankWarned === what) { S.blankWarned = false; return false; }
   S.blankWarned = what;
   const msg = $('#copymsg');
-  if (msg) msg.textContent = `${left.join('・')} が空のままです。黄色の欄に入れてください。このままで${what}するときは、もう一度押します。`;
+  if (msg) msg.textContent = `${left.map((x) => x.replace(/^[（【]|[）】]$/g, '')).join('・')}が空欄のままです。黄色の欄に入れてください。このままで${what}するときは、もう一度押します。`;
   return true;
 }
 // Artifact の版: クリックの中で navigator.clipboard.writeText を呼ぶ。断られたら、見える枠に文を出して選ぶ
@@ -1982,7 +1987,7 @@ function init() {
   setMode(S.noStore ? 'carrier' : modeLoad(), true);
   if (qs.get('example') === '1') {
     // 例を見るだけの開き方。保存した記録を上書きしないよう、自動で入れた例と同じ扱いにし、保存した記録があるときはこのタブでは保存しない
-    if (saved && saved.rows.some((r) => !isBlank(r))) { S.noStore = true; $('#example-note').textContent = '例の記録を見ています（架空の元請A物流）。保存した記録は消えていません。このタブでの変更は保存されません'; }
+    if (saved && saved.rows.some((r) => !isBlank(r))) { S.noStore = true; $('#example-note').textContent = '例の記録を見ています（架空の 2 社）。保存した記録は消えていません。このタブでの変更は保存されません。'; }
     S.exampleAuto = true; S.rows = exampleRows(); renderTable(); doCalc(); $('#example-note').hidden = false; keepMsg('');
   }
   else if (!S.noStore && !guidedState() && !(saved && saved.rows.some((r) => !isBlank(r)))) { S.exampleAuto = true; S.rows = exampleRows(); renderTable(); doCalc(); $('#example-note').hidden = false; }

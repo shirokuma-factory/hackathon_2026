@@ -208,7 +208,7 @@ function valueText(i) {
   if (S.layer === 'km') return `${od.km[i].toFixed(1)} km${ferry ? '（船を使う道かもしれません）' : ''}`;
   if (ferry) return FERRY_SHORT;
   if (S.layer === 'days') return `運転 ${od.days[i]}日`;
-  return od.fare[i] === null ? '200 km 未満か、重すぎて計算できません' : `約${fmt(od.fare[i])}円（${S.fareVehicleNote || '2t・税抜'}）`;
+  return od.fare[i] === null ? '200 km 未満か、重すぎて計算できません' : `約 ${fmt(od.fare[i])} 円（${S.fareVehicleNote || '2t・税抜'}）`;
 }
 
 // munis: 画面に入る分だけに絞った市区町村の地物、prefs: 同じく県境の輪（cull.js）の配列。画面が動いて余白を出るまでは同じ参照
@@ -626,7 +626,7 @@ function buildCards(i, est) {
     const notes = [].concat(r.notes, r.issues.map((x) => x.message).filter((x) => !r.notes.includes(x)));
     const days = r.transit ? (r.transit.published || m.key === 'jitbox' ? r.transit.display : r.transit.text) : null;
     if (r.amount === null || r.amount === undefined) {
-      cards.push({ label: m.label, model: cardModel(m.key, r), status: r.status, amount: null, none: r.reasons[0] || '運賃表なし・問い合わせ', days,
+      cards.push({ label: m.label, model: cardModel(m.key, r), status: r.status, amount: null, none: r.reasons[0] || '料金表がないため、各社に問い合わせてください。', days,
         tip: [...new Set(r.reasons.concat(notes))].join(' / '), src: srcOf(r) });
       continue;
     }
@@ -640,6 +640,7 @@ function buildCards(i, est) {
       if (o && est.route !== 'other' && o.amount !== r.amount) tip += `。実際の道のりの ${o.km} km で計算すると ${fmt(o.amount)} 円です`;
       if (g && g.days) dayText = `運転だけで ${g.days} 日（積み降ろしと荷待ちは別）`;
       if (g && g.origin_note) tip += `。${g.origin_note}`;
+      if (tip && !/[。]$/.test(tip)) tip += '。';
     }
     const isEst = ESTIMATE_GROUPS.includes(m.key);
     // 路線便の試算が出せる区間の限り（比べるページには額が無い理由）は、吹き出しだけでなくカードの本文に出す（SPEC §32 #5）
@@ -676,7 +677,7 @@ function charterOnlyNote(cards) {
   const pc = (v) => Math.max(1, Math.round(v * 100));
   const kgUse = kg / cls.kg, floorUse = floor / cls.floor, over = kgUse < 0.25 && floorUse < 0.25;
   return `<div class="cards-note charter-only${over ? ' excessive' : ''}" role="note"><b>${over ? 'この荷物に貸切は大きすぎます。' : '金額が出るのは貸切だけです。'}</b> ` +
-    `荷物は${priced[0].sub}の重さの ${pc(kgUse)}%、床の ${pc(floorUse)}% を使います。<br>宅配・路線便: 料金表なし</div>`;
+    `荷物は${priced[0].sub}の積める重さの ${pc(kgUse)}%、荷台の床の ${pc(floorUse)}% を使います。<br>宅配・路線便: 料金表なし</div>`;
 }
 
 function renderCards(cards) {
@@ -685,7 +686,7 @@ function renderCards(cards) {
   $('#cards').innerHTML = exNote + (typeof CompareChart !== 'undefined' ? CompareChart.html(cards, S.pickLabel, document.body.classList.contains('guided')) : '') + '<p class="cards-note">金額は税抜です。引き受けてもらえるかは見積で確かめてください。</p>' + charterOnlyNote(cards) + '<details class="cards-more"><summary>送り方ごとの金額の出どころ</summary>' + cards.map((c, n) => {
     const amt = c.amount !== null && c.amount !== undefined
       ? `<div class="amt"><b class="num" data-to="${c.amount}">${fmt(c.amount)}</b><span>円（税抜${c.est ? '・試算' : ''}${c.sample ? '・架空の表の例' : ''}）</span>` +
-        (c.low && c.high ? `<span class="range num">${fmt(c.low)}〜${fmt(c.high)}円の幅</span>` : '') + '</div>' +
+        (c.low && c.high ? `<span class="range num">${fmt(c.low)}〜${fmt(c.high)} 円の幅</span>` : '') + '</div>' +
         `<div class="bar"><i data-w="${Math.max(3, (c.amount / max) * 100).toFixed(1)}"></i></div>`
       : '';
     const meta = c.days ? `<div class="meta"><span>日数</span><span class="v" title="${escapeHtml(c.days)}">${escapeHtml(c.days)}</span></div>` : '';
@@ -807,7 +808,7 @@ async function refreshFareLayer() {
     od.cls.fare = r.cls;
     if (r.edges.length) od.edges.fare = r.edges;
     S.fareStamp[o] = stamp;
-    S.fareVehicleNote = r.total_kg === null ? '2t・税抜' : `合計${Math.round(r.total_kg)}kg が載るいちばん小さい車・税抜`;
+    S.fareVehicleNote = r.total_kg === null ? '2t・税抜' : `合計 ${Math.round(r.total_kg)} kg が載るいちばん小さい車・税抜`;
     if (o === S.origin) { S.version++; renderLegend(); }
   } catch (e) { toast('貸切の運賃の色を出せませんでした。'); }
 }
@@ -1092,7 +1093,7 @@ function syncGuideBar() {
   const lg = document.getElementById('g-legend'), st = document.getElementById('g-steps');
   if (lg) {
     const html = !g ? '' : S.view === 'compare'
-      ? `${b.contains('has-work') ? '' : `<span class="g-k">色は${LAYER_WORD[S.layer] || '道路距離'}（遠いほど明るい水色）</span>`}${(Rt.guideLegend && S.sel >= 0 ? Rt.guideLegend() : '')}<span class="g-k g-more">線と車の絵は道の目安で、実際の便ではありません。</span>`
+      ? `${b.contains('has-work') ? '' : `<span class="g-k">色は${LAYER_WORD[S.layer] || '道路距離'}（値が大きいほど明るい水色）</span>`}${(Rt.guideLegend && S.sel >= 0 ? Rt.guideLegend() : '')}<span class="g-k g-more">線と車の絵は道の目安で、実際の便ではありません。</span>`
       : (GUIDE_LEGEND[S.view] || '');
     if (lg.dataset.k !== html) { lg.dataset.k = html; lg.innerHTML = html; }
     lg.hidden = !html;
@@ -1488,8 +1489,8 @@ function setupMarketNow(noN) {
     const gNow = b.classList.contains('guided') && b.classList.contains('view-market');
     if (gNow !== lastG) { lastG = gNow; try { V.Market.syncMarkers(); } catch (e) { /* 地図が無いとき */ } }   // 案内の表示に入る・出るとき、上位 5 区間の番号を出し入れする
     const so = sheetOn() ? q('#m-summary').classList.contains('sh-on') : b.classList.contains('m-sum-open'), ro = !b.classList.contains('m-right-collapsed');
-    sum.setAttribute('aria-expanded', String(so)); sum.textContent = so ? '全国の指標を閉じる' : '全国の指標を見る';
-    rank.setAttribute('aria-expanded', String(ro)); rank.textContent = ro ? '区間の順位を閉じる' : '区間の順位を見る';
+    sum.setAttribute('aria-expanded', String(so)); sum.textContent = so ? '全国の積載効率と不足を閉じる' : '全国の積載効率と不足を見る';
+    rank.setAttribute('aria-expanded', String(ro)); rank.textContent = ro ? '帰りが空く向きの順位を閉じる' : '帰りが空く向きの順位を見る';
     try {   // 案内の表示: 帰りが空きやすい区間の上位 3 件（物流センサス）
       const st = V.Market.state, P = st.d && st.d.prefs;
       if (P) {
@@ -1511,9 +1512,9 @@ function setupMarketNow(noN) {
       const noFit = has && fit === false;
       const noAnswer = has && (!V.Find.hasReturn(pn) || noFit);   // 選んだ区間の帰りの向きに合う架空の便が 1 つも無いときは、行き先が空の結果になるので主ボタンを出さない
       if (noAnswer) { const sl = q('#mg-sel'); if (sl) sl.textContent += noFit ? ' この向きの例の便には、例の荷物が載りません。別の向きを選ぶか、ボタンで空きを探してください。' : ' この向きの例の便は、まだありません。別の向きを選ぶか、ボタンで空きを探してください。'; }
-      if (nx) { nx.hidden = !has; nx.disabled = !has; /* 区間を選ぶまでは、押せない主ボタンを出さない。例の便が無い区間でも、次の行き先として空きを探すを出す */ const t = has ? (noAnswer ? 'この区間で空きを探す' : 'この向きで帰り便を探す') : '向きを選ぶ'; if (nx.dataset.t !== t) { nx.dataset.t = t; nx.innerHTML = has ? `${t}<small class="mg-badge">架空のデモ</small>` : t; } }
+      if (nx) { nx.hidden = !has; nx.disabled = !has; /* 区間を選ぶまでは、押せない主ボタンを出さない。例の便が無い区間でも、次の行き先として空きを探すを出す */ const t = has ? (noAnswer ? 'この向きで空きを探す' : 'この向きで帰り便を探す') : '向きを選ぶ'; if (nx.dataset.t !== t) { nx.dataset.t = t; nx.innerHTML = has ? `${t}<small class="mg-badge">架空のデモ</small>` : t; } }
     } catch (e) { /* 区間が読めていないとき */ }
-    q('#m-now-cond').textContent = `${pressed('#m-mode')}／${pressed('#m-scope')}ごと／上位 ${txt('#m-n-out')}／${txt('#m-km-out')}`;
+    q('#m-now-cond').textContent = `${pressed('#m-mode')}／${(() => { const s = pressed('#m-scope'); return /（推定）$/.test(s) ? s.replace(/（推定）$/, 'ごと（推定）') : `${s}ごと`; })()}／上位 ${txt('#m-n-out')}／${txt('#m-km-out')}`;
     let r = null; try { r = V.Market.pairNames(); } catch (e) { r = null; }
     q('#m-now-sel').textContent = r ? `選んだ向き: ${r.from} → ${r.to}` : '地図の矢印を押すと、その向きの数字がここに出ます。';
     const pair = b.classList.contains('m-has-pair');
@@ -1648,7 +1649,7 @@ const HERO_CAPTIONS = {
   kanto: ['関東', '拠点で荷待ちが起きています'],
   kansai: ['関西 → 関東', '帰りは空車で戻っています'],
   kyushu: ['鹿児島 → 東京', '長距離の帰りは空車になりがちです'],
-  chihou: ['地方', '帰りの荷が少ない'],
+  chihou: ['地方', '帰りの荷が少なくなっています'],
   zenkoku: ['全国', '物流網と荷の流れ'],
 };
 const HeroCaptions = (function () {

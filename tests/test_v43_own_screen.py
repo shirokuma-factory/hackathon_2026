@@ -230,9 +230,9 @@ def test_big_numbers_show_counts_alt_rate_and_the_print_sheet_has_both(app, tmp_
     ar = page.js("Own.state.data.kpis.actual_rate.legs")
     assert tiles[0]["c"].startswith(f"{ar} 区間から"), tiles
     assert ar < 5 and "件数が少ないので参考です" in tiles[0]["c"], tiles  # 4 便の配車表では参考
-    assert "空とした場合" in tiles[0]["alt"] and "%" in tiles[0]["alt"], tiles
+    assert "空車とした場合" in tiles[0]["alt"] and "%" in tiles[0]["alt"], tiles
     sheet = page.js("document.querySelector('#own-printsheet').textContent")
-    assert "空とした場合" in sheet and "読めない行" in sheet and "不明の区間" in sheet and "参考" in sheet, sheet
+    assert "空車とした場合" in sheet and "読めない行" in sheet and "不明の区間" in sheet and "参考" in sheet, sheet
     # 件数の多い例のファイルでは「参考」を付けない
     _import(page, EX_FILES)
     c0 = page.js("document.querySelector('#own-right .o-tile .o-tc').innerText")

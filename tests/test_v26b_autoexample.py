@@ -25,7 +25,7 @@ FILES = {
     "cmp_local": ROOT / "web" / "compare_lite.html",
     "cmp_art": PUB / "compare_lite_artifact.html",
 }
-WAIT_NOTE = "例の記録が入っています（架空の元請A物流）。『表を空にする』で自分の記録に入れ替えてください"
+WAIT_NOTE = "例の記録が入っています（架空の 2 社）。「表を空にする」を押してから、自分の記録を入れてください。"   # 2026-11-08 の直しに合わせて
 CMP_NOTE = "例の荷物が入っています（架空）。表を空にして、自分の荷物を入れてください"
 
 

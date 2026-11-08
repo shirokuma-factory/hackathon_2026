@@ -288,8 +288,8 @@ def estimate_rosen(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
         "weight_kg": totals.weight_kg,
         "volume_m3": totals.volume_m3,
     }
-    row.notes.append("ほかに加算があります（集配距離の加算、地区割増、冬期割増などは入っていません）")
-    row.notes.append("路線便の試算は、区間の表を持つ区間に限ります（比べるページには額がありません）")
+    row.notes.append("この額には、集配距離の加算・地区割増・冬期割増などが入っていません")
+    row.notes.append("路線便の試算は、運賃表を持っている区間だけです。送り方を比べるページでは、路線便の額は出ません")
     row.issues.append(Issue(ISSUE_NOT_MODELED, "集配距離の加算、地区割増、冬期割増は計算に入れていません"))
 
     bands = tariff["weight_bands_kg"]
@@ -369,7 +369,7 @@ def _boxes_by_pieces(shipment: Shipment, box: dict[str, Any]) -> int:
 def estimate_jitbox(shipment: Shipment, totals: Totals, tariff: dict[str, Any],
                     manual: dict[str, int]) -> EstimateRow:
     row = EstimateRow("jitbox", row_label(JITBOX_LABEL, tariff), ST_OK, source=anon_source(tariff))
-    row.notes.append("区間の代表（東京→大阪府、東京→宮城、道央→東京）の運賃を使っています")
+    row.notes.append("区間を代表する組み合わせ（東京都から大阪府、東京都から宮城県、北海道の道央から東京都）の運賃を使っています")
 
     kinds = {shipment.sender_type, shipment.receiver_type}
     if "個人" in kinds:
@@ -619,7 +619,7 @@ def estimate_kashikiri(shipment: Shipment, totals: Totals, tariff: dict[str, Any
     for c in kashikiri_candidates(km, items, totals.weight_kg, tariff):
         cls, n = c["class"], c["vehicles"]
         mode = f"kashikiri_{cls}" if n == 1 else f"kashikiri_{cls}x{n}"
-        label = f"貸切 {cls}車（標準的な運賃）" if n == 1 else f"貸切 {cls}車 {n}台（標準的な運賃）"
+        label = f"貸切 {cls} 車（標準的な運賃）" if n == 1 else f"貸切 {cls} 車 {n} 台（標準的な運賃）"
         r = base_row(mode, label)
         r.detail = {"vehicle": cls, "max_kg": c["max_kg"], "steps": c["steps"], "steps_over_500": c["steps_over_500"],
                     "vehicles": n, "unit_amount": c["unit_amount"], "load_verdict": c["verdict"]}
@@ -627,7 +627,7 @@ def estimate_kashikiri(shipment: Shipment, totals: Totals, tariff: dict[str, Any
         r.detail["class_label"] = f"{cls} 車の区分（〜{c['max_kg']:,}kg）"
         r.notes.append(r.detail["class_label"] + "。実際の車の最大積載量は車によって違います")
         if n > 1:
-            r.notes.append(f"{cls} 車 {n} 台の目安です（1 台分 {c['unit_amount']:,}円 × {n}）。{c['reason']}")
+            r.notes.append(f"{cls} 車 {n} 台の目安です（1 台分 {c['unit_amount']:,} 円 × {n}）。{c['reason']}")
         if c["verdict"] == "×":
             r.status = ST_UNUSABLE
             r.reasons = [f"使えない（{c['reason']}）"]
@@ -720,7 +720,7 @@ def rebase_kashikiri_on_road_distance(shipment: Shipment, rows: list[EstimateRow
         a = assumed.get(r.detail.get("vehicle"))
         if (route is not None and route.km is not None and a is not None and a.amount is not None
                 and a.amount != r.amount and r.detail.get("vehicles", 1) == 1):
-            r.notes.append(f"デモ区間の想定距離 {route.km}km で計算すると {a.amount:,}円です。"
+            r.notes.append(f"デモ区間の想定距離 {route.km} km で計算すると {a.amount:,} 円です。"
                            f"この欄の額は地図の塗り分けと同じ道路距離 {km:g}km で計算しています")
     return sort_rows([r for r in rows if not r.mode.startswith("kashikiri")] + fresh)
 

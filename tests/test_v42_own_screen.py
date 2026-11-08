@@ -318,7 +318,7 @@ def test_right_panel_puts_notes_under_details_and_explains_jargon(app):
     assert "13,500 kg" in right and "仮定" in right and "77.6%" in right and "辰巳" in right, right
     assert "区分は、200 km を超えた分を" in right
     # 用語: ファイルを落とす欄の UTF-8 / Shift_JIS に一言の説明がある
-    assert "文字コードはどちらでも読めます" in page.js("document.querySelector('#own-drop').innerText")
+    assert "文字コードは UTF-8 でも Shift_JIS でも読めます" in page.js("document.querySelector('#own-drop').innerText")
     _to_sample(page)
     # 組み込みのサンプルの OSRM にも一言の説明がある
     page.js("Own.setTab('import')")
@@ -418,7 +418,7 @@ def test_return_unmarked_card_has_three_buttons_and_recomputes(app, tmp_path):
     sel = '#own-body .o-card[data-key="return-unmarked"]'
     assert page.js(f"!!document.querySelector('{sel}')"), "印の無い帰りの区間を含む配車表で、確認のカードが出ない"
     t = page.js(f"document.querySelector('{sel}').innerText")
-    assert "に空・実車の印がありません" in t and "全部 空" in t and "全部 実車" in t and "不明のまま" in t, t
+    assert "に空・実車の印がありません" in t and "すべて空車にする" in t and "すべて実車にする" in t and "不明のままにする" in t, t   # 日本語の直し 2026-11-08
     before = page.js("Own.state.data.kpis.actual_rate.value")
     page.js(f"document.querySelector('{sel} [data-act=ru-empty]').click()")
     page.wait(lambda: page.js("Own.state.data.legs.filter(l => l.kind === 'empty').length") >= 2, 30, "空に直して計算し直す")

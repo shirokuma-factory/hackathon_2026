@@ -158,7 +158,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 </head>
 <body>
 <div class="stage">
-<aside class="side-note"><span class="cap">ドライバーの方へ</span><img class="ill ill-256" src="@@ILL:phone_driver:256@@" alt="" width="256" height="256"><h2>着いたら押すだけで、荷待ちが残ります</h2><p>押した時刻はこの端末の中にだけ残ります。通信はしません。</p><p>記録は「LINE に貼る文」にして、事務所の荷待ちのページに貼ります。</p></aside>
+<aside class="side-note"><span class="cap">ドライバーの方へ</span><img class="ill ill-256" src="@@ILL:phone_driver:256@@" alt="" width="256" height="256"><h2>着いたら押すだけで、荷待ちの時刻が記録されます</h2><p>押した時刻はこの端末の中にだけ残ります。通信はしません。</p><p>記録は「LINE に貼る文」にして、事務所の荷待ちのページに貼ります。</p></aside>
 <div class="device"><div class="device-screen">
 <main>
 <header class="app-header">
@@ -203,18 +203,18 @@ dialog.sheet::backdrop { background: var(--scrim); }
   <p class="hint" id="older"></p>
 </details>
 
-<section class="card" aria-label="日報に写す表" id="report">
+<section class="card" aria-label="乗務記録（日報）に写す表" id="report">
   <div class="print-only print-head">
-    <h2>荷待ちの記録（乗務記録に添える表）</h2>
+    <h2>荷待ちの記録: 乗務記録（日報）に添える表</h2>
     <p>記録の日: <span id="ph-year"></span><b id="ph-day"></b>　車番: <b id="ph-vno"></b>　運転者名: <span class="fill"></span>　所属: <span class="fill"></span></p>
   </div>
-  <h2>日報に写す表（選んだ日）</h2>
-  <p class="sub hint">紙の運転日報の荷待ちの欄に書き写す順（着・荷役開始・荷役終了・出発）です。コピーして Excel や LINE に貼るか、印刷して日報に添えます。</p>
+  <h2>乗務記録（日報）に写す表（選んだ日）</h2>
+  <p class="sub hint">紙の乗務記録（日報）の荷待ちの欄に書き写す順（着・荷役開始・荷役終了・出発）です。コピーして Excel や LINE に貼るか、印刷して乗務記録（日報）に添えます。</p>
   <div class="scroll"><table id="sheet"><thead><tr><th>日付</th><th>場所</th><th>相手</th><th>着</th><th>荷役開始</th><th>荷役終了</th><th>出発</th><th>荷待ち（分）</th><th class="pc">荷主の確認（印）</th></tr></thead><tbody id="sheet-body"></tbody></table></div>
   <button type="button" class="wide" id="b-copysheet">日報の表をコピー</button>
   <button type="button" class="btn-ghost" id="b-printsheet">日報の表を印刷</button>
   <p class="msg" id="sheetmsg" role="status" style="order:0"></p>
-  <p class="print-only print-foot">スマホで押した時刻の一覧です。乗務記録に書き写すか、添えてください。荷主の確認の欄は、もらえたときに書いてもらいます。</p>
+  <p class="print-only print-foot">スマホで押した時刻の一覧です。乗務記録（日報）に書き写すか、この紙を添えてください。荷主の確認をもらえるときは、確認の欄に書いてもらいます。</p>
 </section>
 
 <section class="card" aria-label="事務の方へ" id="distribute"><details class="disc">
@@ -318,7 +318,7 @@ const dayList = () => {   // 今日、入力中の回の日、保存した順に
 const todays = () => S.recs.filter((r) => r.date === today());   // 今日の分（試験が使う）。画面は日を選んで見る
 const viewDay = () => S.day || defaultDay();
 const dayRecs = () => (viewDay() === ALL_DAYS ? S.recs.slice() : S.recs.filter((r) => r.date === viewDay()));
-const dayWord = (d) => (d === ALL_DAYS ? '全部の日' : d === today() ? `今日（${d}）` : d);
+const dayWord = (d) => (d === ALL_DAYS ? '全部の日' : d === today() ? `今日 ${d}` : d);
 const curInView = () => !!S.cur.arrive && (viewDay() === ALL_DAYS || S.cur.date.trim() === viewDay());
 const curRecord = () => ({ ...settings(), ...S.cur });
 

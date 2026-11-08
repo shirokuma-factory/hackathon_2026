@@ -311,7 +311,7 @@ def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf
     limit_h = _dec(trip["clear_height_mm"]) - HEIGHT_MARGIN_MM
     tallest = max(p.height_mm for p in shipment.pieces)
     if tallest > limit_h:
-        reasons.append(f"箱の高さ {_fmt(tallest)}mm が空きの高さ − 50mm（{_fmt(limit_h)}mm）を超えます")
+        reasons.append(f"箱の高さ {_fmt(tallest)}mm が、この便に積める高さ {_fmt(limit_h)}mm を超えます")
 
     # 底面（縦横どちら向きでも）
     fw, fd = (_dec(x) for x in trip["unit_footprint_mm"])
@@ -350,7 +350,7 @@ def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf
             km = geo.haversine_km(a["lon"], a["lat"], b["lon"], b["lat"])
             radius = _dec(trip["pickup_radius_km"] if trip.get("pickup_radius_km") is not None else DEFAULT_PICKUP_RADIUS_KM)
             if km > float(radius):
-                reasons.append(f"集荷の地点が便の空く地点から {km:.1f}km で、この便の上限 {_fmt(radius)}km を超えます")
+                reasons.append(f"集荷の地点が、便の空く地点から {km:.1f} km 離れていて、この便の範囲（{_fmt(radius)} km まで）を超えます")
 
     # 床の合計
     free_src = floor_m2 if floor_m2 is not None else _trip_floor(trip)
@@ -371,7 +371,7 @@ def match(shipment: BShipment, trip: dict[str, Any], slack_kg: Any = None, shelf
     # RB の中の上段
     if st == "inside_rb_upper":
         if not trip["rb_owner_consent"]:
-            reasons.append("RB の持ち主と主荷主の同意がない便です")
+            reasons.append("ロールボックス（RB）の持ち主と荷主の同意がない便です")
         per_rb = _dec(trip["max_upper_per_rb_kg"])
         if total > per_rb:
             reasons.append(f"1口の重さ {_fmt(total)}kg が RB 1台の上段の上限 {_fmt(per_rb)}kg を超えます")
@@ -687,10 +687,10 @@ def _contract_draft(h: _Hold, trip: dict[str, Any], carrier: dict[str, Any], fue
     drop_code = s.dest_code if s else trip["dest_code"]
     when = f"{hm(trip['depart_at'])} 発の便に積む"
     if s and s.window_from and s.window_to:
-        when += f"。届けばよい日: {_md(s.window_from)}〜{_md(s.window_to)}"
+        when += f"。到着の期間: {_md(s.window_from)}〜{_md(s.window_to)}"
     else:
         when += f"。便の終点の到着: {hm(trip['arrive_at'])} の予定"
-    transport = f"{muni_name(pick_code)} から {muni_name(drop_code)} まで。{when}。荷物: {cargo}。対価: {price}"
+    transport = f"{muni_name(pick_code)}から{muni_name(drop_code)}まで。{when}。荷物: {cargo}。対価: {price}"
     trip_line = (f"{muni_name(trip['origin_code'])} → {muni_name(trip['dest_code'])}"
                  f"（{hm(trip['depart_at'])} 発、{hm(trip['arrive_at'])} 着）")
     heavy = max((p.weight_kg for p in pieces), default=Decimal(0))
@@ -732,9 +732,9 @@ def _contract_draft(h: _Hold, trip: dict[str, Any], carrier: dict[str, Any], fue
 # ---------------------------------------------------------------- 帰り便の値段の式（SPEC §21.6）
 
 DEFAULT_BASE_LOAD_RATE = Decimal("0.7")
-FORMULA_NOTICE = ("標準的運賃（2024 年 3 月 22 日告示）の個建運賃とリードタイムの割引の考え方に当てた参考額です。"
-                  "値段は運送会社が決めます")
-FORMULA_TEXT = "個建運賃の参考額 = 距離制運賃 × max（重さの割合, 床の割合）÷ 基準積載率 ×（1 − リードタイムの割引）"
+FORMULA_NOTICE = ("国の標準的運賃（2024 年 3 月 22 日告示）の個建運賃（荷物 1 件ごとの運賃）と、リードタイム（注文から運ぶ日までの日数）による割引の考え方で計算した参考額です。"
+                  "値段は運送会社が決めます。")
+FORMULA_TEXT = "個建運賃の参考額 = 距離制運賃 ×（重さの割合と床の割合の大きいほう）÷ 基準積載率 ×（1 − リードタイムの割引）"
 MIN_FEE_NOTE = "最低保証料を下回るときは最低保証料"
 LEAD_DISCOUNTS = tuple(Decimal(i) / 10 for i in range(0, 6))  # 0〜50% を 10% 刻み
 
@@ -836,7 +836,7 @@ def per_unit_reference(trip: dict[str, Any], shipment: BShipment, base_load_rate
 
 MAX_REGISTERED = 10
 SELF_CARRIER_ID = "C9"
-SELF_CARRIER = {"id": SELF_CARRIER_ID, "name": "架空 自社", "note": "運送会社の役で登録した便の運送会社です（この来訪者の画面だけ）",
+SELF_CARRIER = {"id": SELF_CARRIER_ID, "name": "架空 自社", "note": "運送会社の役で登録した便の運送会社です（登録した人の画面にだけ出ます）",
                 "tariff_region": "関東"}
 def _register_vehicle(deck_id: str, label: str, clear_height_mm: int, max_piece_kg: int, weight_slack_kg: int) -> dict[str, Any]:
     """登録できる車の値。荷台の寸法・最大積載量・床の面積は data/vehicle_decks.json の公表例から作る（r1a F2。唯一の出どころ）。"""
@@ -901,7 +901,7 @@ def build_registered_trip(body: dict[str, Any], now: datetime | None = None) -> 
         raise ValueError("車種は " + "・".join(v["label"] for v in REGISTER_VEHICLES.values()) + " から選んでください")
     dep, arr = _local_dt(body.get("depart_at"), "出発日時"), _local_dt(body.get("arrive_at"), "到着日時")
     if now is not None and dep <= now:
-        raise ValueError(f"出発日時は盤の時計（{now.month}/{now.day} {now.hour:02d}:{now.minute:02d}）より後にしてください")
+        raise ValueError(f"出発日時はデモの時刻（{now.month}/{now.day} {now.hour:02d}:{now.minute:02d}）より後にしてください")
     if arr <= dep:
         raise ValueError("到着日時は出発日時より後にしてください")
     if arr - dep > timedelta(days=7):
@@ -915,7 +915,7 @@ def build_registered_trip(body: dict[str, Any], now: datetime | None = None) -> 
     vl, vw = (Decimal(str(x)) for x in veh["footprint_mm"])
     if not ((fw <= vl and fd <= vw) or (fd <= vl and fw <= vw)):
         raise ValueError(f"この車種の荷台は {veh['footprint_mm'][0]}×{veh['footprint_mm'][1]}mm・高さ {veh['clear_height_mm']}mm です。"
-                         f"1口の底面 {_fmt(fw)}×{_fmt(fd)}mm は収まりません")
+                         f"1 口の底面 {_fmt(fw)}×{_fmt(fd)}mm が収まりません")
     # r1b #4: 床の空きは、入れた値（床の空き m²）か、1口の底面 × 口の数（units、既定 1）。車の床全体は使わない
     if body.get("floor_free_m2") not in (None, ""):
         floor_free = _num_in(body.get("floor_free_m2"), "床の空き（m²）", 0.01, veh["floor_total_m2"])
@@ -927,7 +927,7 @@ def build_registered_trip(body: dict[str, Any], now: datetime | None = None) -> 
     height = _num_in(body.get("clear_height_mm"), "空きの高さ（mm）", 100, 4000)
     if height > Decimal(veh["clear_height_mm"]):
         raise ValueError(f"この車種の荷台は {veh['footprint_mm'][0]}×{veh['footprint_mm'][1]}mm・高さ {veh['clear_height_mm']}mm です。"
-                         f"空きの高さ {_fmt(height)}mm は超えています")
+                         f"空きの高さ {_fmt(height)}mm が荷台の高さを超えています")
     piece = _num_in(body.get("max_piece_kg"), "1個の重さの上限（kg）", 1, min(veh["max_piece_kg"], veh["max_load_kg"]))
     drops = body.get("drop_points")
     if not isinstance(drops, list) or not drops or len(drops) > 12:
@@ -955,7 +955,7 @@ def default_register_price(trip: dict[str, Any], cargo: BShipment) -> dict[str, 
         ref = per_unit_reference(trip, BShipment(cargo.pieces, trip["dest_code"], origin_code=trip["origin_code"]),
                                  DEFAULT_BASE_LOAD_RATE, 0, trip.get("tariff_region") or "関東", km=km, km_note=note)
     except ValueError as e:
-        return {"price_ex_tax_yen": None, "basis": f"値段の既定値を出せません（{e}）。値段を入れてください", "reference": None}
+        return {"price_ex_tax_yen": None, "basis": f"値段の既定値を出せません。{e}。値段を入れてください", "reference": None}
     price = int(round(ref["reference_yen"] / 100) * 100)  # 百円の単位に丸める（入力しやすくするため）
     return {"price_ex_tax_yen": price, "reference": ref,
             "basis": f"{REGISTER_PRICE_BASIS}。{ref['region']}運輸局 {ref['tariff_class']}、道路 {ref['km']:,.0f}km"

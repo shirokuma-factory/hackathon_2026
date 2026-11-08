@@ -115,7 +115,7 @@ def test_rosen_oversize_surcharge_boundaries():
 
 
 def test_rosen_not_modeled_note_present():
-    assert any("ほかに加算" in n for n in rosen(10).notes)
+    assert any("集配距離の加算・地区割増・冬期割増などが入っていません" in n for n in rosen(10).notes)   # 日本語の直し 2026-11-08
 
 
 def test_rosen_other_route_needs_input():

@@ -71,7 +71,7 @@ def test_pallet_280kg_is_not_ok_for_kei_and_takuhai():
         assert no["kei"] == "o-ng" and "届け先にフォークリフト・パワーゲートがない" in no["keiText"]
         yes = json.loads(page.js(PALLET % ("yes", "yes")))
         assert yes["kei"] != "o-ng" and yes["tk"] == "o-ng"
-        assert "パレット渡し" in yes["quote"] and "09:30" in yes["quote"] and "フォークリフト・パワーゲートあり" in yes["quote"]
+        assert "パレット渡し" in yes["quote"] and "09:30" in yes["quote"] and "フォークリフトかパワーゲート: 集荷先 あり、届け先 あり" in yes["quote"]
 
 
 def test_km_zero_and_negative_show_a_message():

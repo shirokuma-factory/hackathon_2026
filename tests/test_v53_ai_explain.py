@@ -632,8 +632,8 @@ def test_ui_button_only_when_available_and_progress_steps(monkeypatch):
             slow.set()
             page.wait(lambda: page.js("!!document.querySelector('.ai-result') && !document.querySelector('.ai-result').hidden"), 20, "結果")
             steps = page.js("document.querySelector('.ai-steps').textContent")
-            assert "Haiku 5.5 が記録を点検 → 完了（指摘 1 件）" in steps
-            assert "Haiku 5.5 が説明文を下書き" in steps and "数字を機械で照合 → 一致" in steps and "Opus" not in steps and "Sonnet" not in steps
+            assert "Haiku 5.5 が記録を点検: 完了（指摘 1 件）" in steps   # 2026-11-08 の直しに合わせて（矢印をコロンに）
+            assert "Haiku 5.5 が説明文を下書き" in steps and "数字の機械照合: 一致" in steps and "Opus" not in steps and "Sonnet" not in steps
             assert "トークン" in steps and "目安" in steps
             body = page.js("document.querySelector('.ai-result .ai-body').textContent")
             assert "一致" in body and "参考額は" in body and "説明文をコピー" in body and "荷役開始が早すぎます" in body
@@ -650,7 +650,7 @@ def test_ui_button_only_when_available_and_progress_steps(monkeypatch):
             page.js("new Promise(r => setTimeout(r, 1500))")
             assert page.js("!document.querySelector('[data-ai=ask]')")
             txt = page.js("document.querySelector('#ai-box').textContent.trim()")
-            assert txt.startswith("説明文の自動作成") and "サーバーで開いたときだけ" not in txt and "（今は型どおりの書面です）" in txt, txt
+            assert txt.startswith("説明文の自動作成") and "サーバーで開いたときだけ" not in txt and "今は型どおりの書面です" in txt, txt   # 2026-11-08 の直しに合わせて（括弧を外した）
             assert "API キーが設定されていません" in txt, txt   # 理由を本文に出す（吹き出しだけにしない）   # サーバーで開いているのに「サーバーで開いたときだけ」と出さない（2026-11-08）
     finally:
         slow.set()

@@ -472,11 +472,12 @@ def test_ui_draft_fills_the_register_from_the_imported_leg_and_only_the_sample_s
     assert page.js("new Date(Find.state.reg.dep).getDay()") == 5 and reg["dep"].endswith("T17:00")  # 10/2 は金曜（時刻が無いので 17:00）
     page.js("document.querySelector('#own-draft .od-close').click()")
     _to_sample(page)
-    # サンプルでは今までどおり T7 の説明
+    # 2026-11-08 の直しに合わせて: サンプルでも、地図の市区町村へ置けた帰りの区間があれば取り込みと同じに欄へ入れる（T7 の説明は出ない）
     page.js("Own.setTab('insight')")
     page.js("document.querySelector('#own-body .o-ins button[data-a=draft_backhaul]').click()")
     page.wait(lambda: not page.js("document.querySelector('#own-draft').hidden"), 20, "サンプルの下書き")
-    assert "T7" in page.js("document.querySelector('#own-draft .od-text').textContent")
+    sample_txt = page.js("document.querySelector('#own-draft .od-text').textContent")
+    assert "T7" not in sample_txt and "帰り（" in sample_txt and "登録の欄に発地・着地と" in sample_txt, sample_txt
     page.js("document.querySelector('#own-draft .od-close').click()")
     page.js("App.setView('own')")
 

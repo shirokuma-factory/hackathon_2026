@@ -39,7 +39,7 @@ async function wapi(path, body) {
   const opt = body === undefined ? { headers: { 'X-Demo-Session': DEMO_SESSION } }
     : { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Demo-Session': DEMO_SESSION }, body: JSON.stringify(body) };
   let r;
-  try { r = await fetch(path, opt); } catch (e) { throw new Error('サーバーに接続できません。tools/serve_web.py を起動してください'); }
+  try { r = await fetch(path, opt); } catch (e) { throw new Error('サーバーに接続できません。しばらくしてからページを開き直してください。'); }
   let j = null;
   try { j = await r.json(); } catch (e) { /* 本文なし */ }
   if (!r.ok) throw new Error(jaFields((j && j.error) || `通信に失敗しました（${r.status}）`));
@@ -139,7 +139,7 @@ function renderCargoHead() {
   const { n, kg } = cargoSummary(W.draft || v.shipment);
   const label = pillLabel(W.draft || v.shipment);
   const okSum = (W.draft || v.shipment).items.every((it) => Number.isInteger(it.count) && it.count >= 1 && typeof it.weight_kg === 'number' && it.weight_kg > 0);   // 0・マイナス・小数の個数のとき「-2個」と出さない
-  $w('#cargo').innerHTML = `<span class="cg-name">${wesc(label)}${isExample() ? '<small class="cg-ex">（例）</small>' : ''}</span><span class="num">${okSum ? `${n}個・${kg}kg` : '入力を確認'}</span>`;
+  $w('#cargo').innerHTML = `<span class="cg-name">${wesc(label)}${isExample() ? '<small class="cg-ex">（例）</small>' : ''}</span><span class="num">${okSum ? `${n} 個・${kg} kg` : '入力を確認'}</span>`;
   $w('#cargo').title = v.scenario ? `${v.scenario.name}（${v.scenario.label || '想定の荷主'}）${v.scenario.modified ? 'を元に変えた条件' : ''}` : '手入力の条件';
   $w('#cargo-ver').textContent = '';
 }
@@ -159,7 +159,7 @@ const boxDims = (size) => [Math.round(size * 0.5), Math.round(size * 0.3), Math.
 const PALLET_STD = [110, 110, 120];   // 1100×1100mm のパレット。荷の高さ 120cm（パレット込み）は仮定
 const DEFAULTS = { sender_type: '法人', receiver_type: '法人', pickup: '集荷', delivery: '配達', destinations: 1 };
 const DEFAULTS_LINE = '初めの設定: 法人から法人へ・集荷して配達・届け先 1 か所。出荷日と希望着日は、下の欄でも見積依頼文の画面でも入れられます。';
-const DEFAULT_CARGO_LINE = ' 荷物の初めの値は段ボール 100 サイズ・10kg・10 個です（仮の値。書き換えてください）。';
+const DEFAULT_CARGO_LINE = ' 荷物の初めの値は段ボール 100 サイズ・10 kg・10 個です（仮の値。書き換えてください）。';
 function simpleDefault() {
   const d = blankShipment();
   d.items = [{ count: 10, length_cm: 50, width_cm: 30, height_cm: 20, weight_kg: 10 }];
@@ -181,7 +181,7 @@ function simpleHtml() {
   const d = W.draft;
   if (d.items.length !== 1) {   // 例の荷が複数種類のとき: 4 項目で入れ直すか、詳しい条件で行ごとに直す
     const cs = cargoSummary(d), sc0 = W.scenarios.find((x) => x.id === W.scenarioSel);
-    return `<p class="sc-multi">${d.items.length} 種類の荷物（${cs.n}個・${cs.kg}kg）が入っています${sc0 ? `。例 ${wesc(sc0.id)}（架空の荷主）です` : ''}。</p>
+    return `<p class="sc-multi">${d.items.length} 種類の荷物（${cs.n} 個・${cs.kg} kg）が入っています${sc0 ? `。例 ${wesc(sc0.id)}（架空の荷主）です` : ''}。</p>
       <div><button type="button" class="btn-sm" id="sc-reset">荷物を 1 種類で入れ直す</button></div>
       <p class="sc-assume">行ごとに直すときは「詳しい条件」を開いてください。</p>`;
   }
@@ -284,7 +284,8 @@ function insertAiCargoRow(r) {
   const blank = (x) => ['count', 'length_cm', 'width_cm', 'height_cm', 'weight_kg'].every((k) => x[k] === null || x[k] === undefined || x[k] === '');
   // 荷物の表が、手を付けていない例の荷のままなら、例を消して AI の最初の行に置き換える（例の行を残さない）
   const sc = W.scenarios.find((x) => x.id === W.scenarioSel);
-  const isExample = !!sc && JSON.stringify(items) === JSON.stringify(sc.shipment.items);
+  const isExample = (!!sc && JSON.stringify(items) === JSON.stringify(sc.shipment.items))
+    || (JSON.stringify(items.map((i) => ({ count: i.count, length_cm: i.length_cm, width_cm: i.width_cm, height_cm: i.height_cm, weight_kg: i.weight_kg }))) === EXAMPLE_ITEMS);   // 初めの段ボール 100 サイズ・10 kg・10 個のままのときも、例の行として置き換える
   if (items.length === 1 && blank(items[0])) items[0] = it;
   else if (isExample) { W.draft.items = [it]; W.scenarioSel = ''; }   // 「例 S1（架空の荷主）の値が入っています」の注記も消える
   else items.push(it);
@@ -534,7 +535,7 @@ function setStep(n) {
   document.querySelectorAll('#w-steps button').forEach((b) => b.setAttribute('aria-selected', String(Number(b.dataset.step) === n)));
   $w('#w-prev').disabled = n === 1;
   $w('#w-next').hidden = n === 4;
-  $w('#w-next').textContent = ['', '次: 回答を入れる', '次: 比べる', '次: 選んで保存'][n] || '';
+  $w('#w-next').textContent = ['', '次: 回答を入れる', '次: 比較', '次: 選んで保存'][n] || '';
   $w('#w-body').scrollTop = 0;
   loadStep();
 }
@@ -582,7 +583,6 @@ function applyModeProblem(r, mode) {
   const msg = `${mode}はこの荷物では使えません（${why}）`;
   r.missing_required = r.missing_required.concat([msg]);
   r.status = '下書き';
-  r.text = String(r.text).replace('（依頼準備完了）', '（下書き）').replace(/\n\n■ 荷物/, `\n注意: ${msg}\n\n■ 荷物`);
 }
 // 荷物が例のまま（利用者が自分の荷物を入れていない）なら、依頼文を完了にしない
 function applyExample(r) {
@@ -590,7 +590,6 @@ function applyExample(r) {
   const msg = '荷物は例の荷物（架空）のままです。自分の荷物に変えてください';
   r.missing_required = r.missing_required.concat([msg]);
   r.status = '下書き';
-  r.text = String(r.text).replace('（依頼準備完了）', '（下書き）').replace(/\n\n■ 荷物/, `\n注意: ${msg}\n\n■ 荷物`);
 }
 // 印: 必須が全部そろったときだけ「できました」。足りないときは「あと N 項目」。任意の未入力の数も添える
 function reqChip(r) {
@@ -638,7 +637,7 @@ function renderRequest() {
       <div class="btn-row"><button type="button" class="btn-sm" id="req-dl">テキストで保存</button></div>
       <div class="sec-h"><h3>見積を頼む先</h3>${rows ? '<span class="hint">会社の五十音順（確認日つき）</span>' : ''}</div>
       ${table}${pointer}
-      <div class="w-steps-btns" role="group" aria-label="ほかの作業"><button type="button" class="btn-sm" data-goto="2">見積回答を入れる</button><button type="button" class="btn-sm" data-goto="3">比較する</button><button type="button" class="btn-sm" data-goto="4">選んで保存する</button></div>
+      <div class="w-steps-btns" role="group" aria-label="ほかの作業"><button type="button" class="btn-sm" data-goto="2">見積回答を入れる</button><button type="button" class="btn-sm" data-goto="3">比較</button><button type="button" class="btn-sm" data-goto="4">選んで保存する</button></div>
     </details>
   </section>`;
   }
@@ -744,7 +743,7 @@ function renderQuotes() {
       </div>
       <div class="qf-tax"><span class="lbl">税区分</span><div class="seg" role="group" data-tax>${['税抜', '税込'].map((t) => `<button type="button" data-tax="${t}" aria-pressed="${q.tax === t}">${t}</button>`).join('')}</div></div>
       <label class="qf-total"><span class="lbl">合計（円）。内訳が分からなければ合計だけ</span><input class="ctl sm num" type="number" min="1" step="100" inputmode="numeric" name="total" value="${wesc(q.total)}" placeholder="例: 120000"></label>
-      <div class="lbl cl-head">費用の内訳（任意）<span title="合計だけなら空のまま">（?）</span></div>
+      <div class="lbl cl-head">費用の内訳（任意）<span title="合計だけなら空のまま">?</span></div>
       <div class="cl-grid">${costRowsHtml()}</div>
       <div class="qf-foot"><label class="chk"><input type="checkbox" name="is_demo"${q.is_demo ? ' checked' : ''}> 架空の回答（デモ用）</label>
         <span class="qf-err" id="qf-err" role="alert">${wesc(q.error)}</span>
@@ -975,7 +974,7 @@ function bindWork() {
   });
 }
 
-// 案内の「送り方を比べる」は、例の荷ではなく 1 種類の簡単な荷（段ボール 100 サイズ・10kg・10 個）から始める。
+// 案内の「送り方を比べる」は、例の荷ではなく 1 種類の簡単な荷（段ボール 100 サイズ・10 kg・10 個）から始める。
 // 利用者が触る前で、いまの確定が例のままのときだけ、一度だけ入れ替えて自動で確定する（版の違いの警告を出さない）
 async function retryInitConfirm() {   // 起動時に確定できなかったときは、比べる画面に入ったときにもう一度試し、だめなら誤りを出す
   if (!W.initError || W.initRetrying) return;

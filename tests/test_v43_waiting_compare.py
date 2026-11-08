@@ -82,7 +82,7 @@ def test_phone_memo_without_the_label_is_read_and_unreadable_lines_are_explained
 
 def test_text_that_is_neither_a_table_nor_a_memo_says_what_shapes_are_read():
     d = waiting.parse_paste_detail("あいう\nえお\n")
-    assert d["rows"] == [] and len(d["notes"]) == 1 and "driver.html" in d["notes"][0] and "「あいう」" in d["notes"][0]
+    assert d["rows"] == [] and len(d["notes"]) == 1 and "ドライバー用のページ" in d["notes"][0] and "「あいう」" in d["notes"][0]
 
 
 def test_shipper_reception_headers_ukeke_nyujo_taijo_are_read():
@@ -116,7 +116,7 @@ def test_waiting_page_memo_paste_document_main_figure_and_pdf_table_cross_check(
         doc = got["doc"]
         assert "受付から数えた数字" in doc and "受付の時刻がある2回" in doc and "受付の時刻から数えると" in doc
         assert "を除くと 0 円" not in doc and "を除くと" not in doc
-        assert "参考額の合計" in doc and "受付の時刻がある回は受付から数えた額" in doc
+        assert "参考額の合計" in doc and "受付の時刻がある回は、受付の時刻から数えています" in doc
         # 荷主として使う: 受付記録を貼り、紙・PDF の表（空白で区切った列）を照合に貼る
         page.js("document.querySelector('#paste').value = " + json.dumps(
             "受付日\t運送会社\t施設\t車番\t受付時刻\t入場\n2026/10/5\tA運輸\t江東区\t1234\t7:50\t8:30\n2026/10/6\tA運輸\t江東区\t5678\t8:10\t9:00\n", ensure_ascii=False))

@@ -122,7 +122,7 @@ def test_guided_flow_h06_h07_h09_h10_h11_h01_h02():
         assert r["scroll"] is True and r["ov"] in ("auto", "scroll"), r
         _shot(page, "H07_detail_open_1920.png")
         # H08: 初めの荷物は 10 個・100kg
-        assert "10個・100kg" in page.js("document.getElementById('cargo').textContent")
+        assert "10 個・100 kg" in page.js("document.getElementById('cargo').textContent")
         # U-04: 初めの荷物は例の荷物。印が出る。自分の荷物に直したら外れる（重さを入れ替える）
         assert page.js("Work.isExample()") is True and page.js("!!document.querySelector('#cargo .cg-ex')") is True
         page.js("(function(){const e=document.querySelector('#sc-simple [data-sc=weight_kg]'); e.value=12; e.dispatchEvent(new Event('input',{bubbles:true}));})()")
@@ -174,7 +174,7 @@ def test_guided_flow_h06_h07_h09_h10_h11_h01_h02():
 def test_direct_entry_h08_h12_h13():
     with edge_page(1920, 1080) as page:
         _open(page, "#v=compare&o=13104&l=km&d=27128")
-        page.wait(lambda: "10個・100kg" in (page.js("document.getElementById('cargo').textContent") or ""), 90, "初めの荷物が案内と同じ")
+        page.wait(lambda: "10 個・100 kg" in (page.js("document.getElementById('cargo').textContent") or ""), 90, "初めの荷物が案内と同じ")
         page.wait(lambda: page.js("!!document.querySelector('#cards .cc-row')"), 90, "結果の表")
         time.sleep(1.0)
         # H09/H10: 直接表示でも同じ手段の行（鉄道・船・飛行機の欄、使えない手段の欄）
@@ -238,10 +238,10 @@ def test_p09_mode_problem_downgrades_the_request():
     src = _read("work.js")
     fn = re.search(r"function applyModeProblem\(r, mode\) \{.*?\n}\n", src, re.S).group(0)
     stub = "const W={hooks:{modeProblem:(m)=>m==='宅配'?'3 辺の合計が上限を超えます':''}};"
-    call = ("const mk=()=>({status:'依頼準備完了',missing_required:[],text:'【見積依頼（依頼準備完了）】\\n検討している送り方: 宅配\\n\\n■ 荷物\\n  1. x'});"
+    call = ("const mk=()=>({status:'依頼準備完了',missing_required:[],text:'【お見積りのお願い】\\n検討している送り方: 宅配\\n\\n■ 荷物\\n  1. x'});"
             "const a=mk(); applyModeProblem(a,'宅配'); const b=mk(); applyModeProblem(b,'貸切'); console.log(JSON.stringify([a,b]))")
     a, b = json.loads(_node(stub + fn + call))
-    assert a["status"] == "下書き" and "依頼準備完了" not in a["text"] and "使えません" in a["text"] and a["missing_required"], a
+    assert a["status"] == "下書き" and "依頼準備完了" not in a["text"] and "使えません" in a["missing_required"][0] and "注意" not in a["text"], a   # 日本語の直し 2026-11-08: 画面の注意は依頼文に入れない
     assert b["status"] == "依頼準備完了" and not b["missing_required"], b
 
 
@@ -257,13 +257,13 @@ def test_p08_p09_p10_p11_unconfirmed_pallet_cargo_flow():
         page.js("document.querySelector('[data-sc-size=std]').click()")
         page.js("(function(){const set=(k,v)=>{const e=document.querySelector('#sc-simple [data-sc='+k+']'); e.value=v; e.dispatchEvent(new Event('input',{bubbles:true}));}; set('weight_kg',300); set('count',2);})()")
         assert page.js("Work.isDirty()") is True
-        assert "2個・600kg" in page.js("document.getElementById('cargo').textContent")
+        assert "2 個・600 kg" in page.js("document.getElementById('cargo').textContent")
         page.js("document.querySelector('#cargo-toggle').click()")
         _pick_osaka(page)
         sh = json.loads(page.js("JSON.stringify(Work.confirmedShipment())"))
         assert sh["items"][0]["count"] == 2 and sh["items"][0]["length_cm"] == 110 and sh["items"][0]["weight_kg"] == 300, sh   # 結果は表示中の荷物で計算された
         assert page.js("Work.isDirty()") is False
-        assert "2個・600kg" in page.js("document.getElementById('cargo').textContent")
+        assert "2 個・600 kg" in page.js("document.getElementById('cargo').textContent")
         rows = page.js("[...document.querySelectorAll('#cards .cc-rows .cc-row')].map(r=>r.textContent).join('|')")
         assert "16,400" not in rows and "段ボール" not in rows, rows   # 前の荷物（宅配 16,400 円）の額が残らない
         un = page.js("(document.querySelector('#cards .cc-unusable summary')||{}).textContent || ''")
@@ -311,7 +311,7 @@ def test_u03_u04_guided_compare_shows_origin_link_and_example_cargo_notice():
         time.sleep(1.0)
         page.js("document.getElementById('req-more').click()")
         text = page.js("document.getElementById('req-text').textContent")
-        assert "例の荷物（架空）のまま" in text and "依頼準備完了" not in text, text
+        assert "例の荷物（架空）のまま" not in text and "依頼準備完了" not in text and "注意" not in text, text   # 日本語の直し 2026-11-08: 画面の注意は依頼文に入れない
         assert "できました" not in page.js("document.querySelector('.sec-h .chip').textContent")
         # 日付を入れても、例の荷物のままなら完了にならない
         page.js("""(function(){const a=document.querySelector('[data-need=ship_date]'), b=document.querySelector('[data-need=desired_date]'); a.value='2026-11-20'; b.value='2026-11-22'; a.dispatchEvent(new Event('change',{bubbles:true})); b.dispatchEvent(new Event('change',{bubbles:true}));})()""")

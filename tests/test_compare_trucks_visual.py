@@ -170,16 +170,16 @@ def test_x6_tip_stays_in_the_map_follows_time_and_hides_on_click():
         card = page.js("document.querySelector('#pin').innerText")
         assert "series" not in card and "week_ago" not in card and "JSON" not in card, card
         assert "21時台 の" not in card, card   # 選んだ時間と違う時間の上り・下りを並べない
-        assert "データなし" in card
+        assert "この時間の値はありません" in card   # 日本語の直し 2026-11-08
 
 
 def test_x6_card_shows_up_down_only_for_the_latest_hour():
     with edge_page(1920, 1080) as page:
         _open_trucks(page)
         html = page.js("(() => { const S = window.__trucks; const p = S.pts.find(q => q.up != null && q.down != null && q.series[23] != null); S.T = 23; return S.api.cardHtml(p, true); })()")
-        assert "上り / 下り" in html and "データなし" not in html and "series[" not in html
+        assert "上り / 下り" in html and "この時間の値はありません" not in html and "series[" not in html
         html4 = page.js("(() => { const S = window.__trucks; const p = S.pts.find(q => q.up != null && q.down != null && q.series[4] != null); S.T = 4; return S.api.cardHtml(p, true); })()")
-        assert "データなし" in html4 and "series[" not in html4
+        assert "この時間の値はありません" in html4 and "series[" not in html4
 
 
 def test_x6_tapping_a_point_on_a_phone_opens_the_card():

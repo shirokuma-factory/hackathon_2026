@@ -27,7 +27,7 @@ def test_sources_wire_the_fixes():
     app = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
     work = (ROOT / "web" / "work.js").read_text(encoding="utf-8")
     find = (ROOT / "web" / "find.js").read_text(encoding="utf-8")
-    assert "遠いほど明るい水色" in app and "濃いほど大きい" not in app
+    assert "値が大きいほど明るい水色" in app and "濃いほど大きい" not in app   # 2026-11-08 の直しに合わせて（「遠いほど」→「値が大きいほど」。層が運賃のときもあるため）
     assert "captions=1" in app
     assert "retryInitConfirm" in work and "W.initError" in work and "ownCargo" in work
     assert "Work.ownCargo()" in find
@@ -50,7 +50,7 @@ def test_compare_legend_matches_palette_and_no_captions_404():
     port = server_port("local")
     with edge_page(1920, 1080, hooks=(ERR_HOOK,)) as page:
         open_app(page, f"http://127.0.0.1:{port}/index.html#v=compare&g=1", ready_js=READY, wait_loading=False, start_timeout=180, tag="v53_legend")
-        page.wait(lambda: "遠いほど明るい" in page.js("document.getElementById('g-legend').textContent"), 30, "凡例")
+        page.wait(lambda: "値が大きいほど明るい" in page.js("document.getElementById('g-legend').textContent"), 30, "凡例")
         assert "濃いほど" not in page.js("document.getElementById('g-legend').textContent")
         assert page.js("performance.getEntriesByType('resource').filter(e=>e.name.indexOf('scenes.json')>=0).length") == 0
 

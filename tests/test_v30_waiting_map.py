@@ -93,12 +93,12 @@ def test_g132_map_tab_numbers_match_the_waiting_page_example_and_points_have_a_l
         # 参考額（相手ごとの合計の和）は 46,780 円
         amounts = page.js("[...document.querySelectorAll('table.w-par:not(.wm-card) tbody tr')].map(tr => tr.children[4].textContent.replace(/,/g, '')).join(',')")
         assert sum(int(x) for x in amounts.split(",")) == 46_780
-        # 江東区 地点07 の 8時台は平均 98 分（どこで・いつ待っているか）
-        row = page.js("[...document.querySelectorAll('#hotspots tbody tr')].map(tr => tr.textContent.replace(/\\s+/g, ' ')).find(t => t.includes('江東区 地点07') && t.includes('8時台'))")
-        assert row and "98 分" in row
+        # 2026-11-08 の直しに合わせて: 地図の画面では匿名の呼び名（地点07）が地名に置き換わる（own.js の plainPlaces。地図の点にするため市区町村名の江東区は残る）。江東区の 8時台は平均 98 分（どこで・いつ待っているか）
+        row = page.js("[...document.querySelectorAll('#hotspots tbody tr')].map(tr => tr.textContent.replace(/\\s+/g, ' ')).find(t => t.includes('架空 元請A物流江東区8時台'))")
+        assert row and "98 分" in row, page.js("[...document.querySelectorAll('#hotspots tbody tr')].map(tr => tr.textContent.replace(/\s+/g, ' ')).join(' | ')")
         # 場所ごと・月ごと: 58 / 60 / 32 分
         pm = page.js("[...document.querySelectorAll('#placemonth tbody tr')].map(tr => [tr.children[0].textContent, tr.children[3].textContent.replace(/[^0-9]/g, '')])")
-        assert {k: v for k, v in pm} == {"江東区 地点07": "58", "市川市 地点03": "60", "川崎市 地点12": "32"}
+        assert {k: v for k, v in pm} == {"江東区": "58", "市川市 地点03": "60", "川崎市 地点12": "32"}
         # 注記・打ち切りの文・ご相談の節
         assert page.js("!!document.querySelector('#trunc-line')") and page.js("!!document.querySelector('#pm-def')")
         assert "荷待ちを減らすためのご相談" in page.js("document.querySelector('#wait-doc').textContent")
@@ -108,7 +108,7 @@ def test_g132_map_tab_numbers_match_the_waiting_page_example_and_points_have_a_l
         assert page.js("document.querySelectorAll('.wm-lg-i').length") == 4
         assert not page.js("!!document.querySelector('#wm-unplaced')")
         # 点を押すと、その場所の時間帯ごとの行が出る
-        page.js("document.querySelector('.wm-pt[data-place=\"江東区 地点07\"]').click()")
+        page.js("document.querySelector('.wm-pt[data-place=\"江東区\"]').click()")
         page.wait(lambda: page.js("!!document.querySelector('#wm-detail-tab')"), 10, "場所の詳細")
         rows = page.js("[...document.querySelectorAll('#wm-detail-tab tbody tr')].map(tr => tr.children[1].textContent)")
         assert set(rows) == {"8時台", "9時台", "10時台"}

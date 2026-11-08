@@ -23,11 +23,11 @@ SHIPMENT = {"items": [{"count": 12, "length_cm": 50, "width_cm": 40, "height_cm"
 
 
 def test_request_text_includes_the_picked_mode():
-    for label, word in (("鉄道", "鉄道（コンテナ）"), ("飛行機", "飛行機（航空便）"), ("船", "船（フェリー）"), ("カゴ台車", "カゴ台車の貸切")):
+    for label, word in (("鉄道", "鉄道（コンテナ）"), ("飛行機", "飛行機（航空便）"), ("船", "船（フェリー）"), ("カゴ台車", "カゴ台車 1 本単位")):
         out = serve_web.api_request({"shipment": SHIPMENT, "mode": label})
         assert f"検討している送り方: {word}" in out["text"], out["text"]
     out = serve_web.api_request({"shipment": SHIPMENT, "mode": "鉄道"})
-    assert "公表の運賃表を持っていないため、額の目安は出していません" in out["text"]
+    assert "日数と運賃をお知らせください" in out["text"]
     assert "検討している送り方" not in serve_web.api_request({"shipment": SHIPMENT})["text"]
     with pytest.raises(serve_web.BadRequest):
         serve_web.api_request({"shipment": SHIPMENT, "mode": "ヘリコプター"})
@@ -58,16 +58,16 @@ def test_chart_renames_cage_row_explains_it_and_offers_rail_and_air():
         near = [_card("カゴ台車", 92000, note="4 本分（23,000 円 × 4）"), _card("貸切", 98000, sub="2t車"),
                 _card("鉄道", None, status="計算できない"), _card("船", None, status="計算できない", routeNone=False)]
         html = h(near)
-        assert "カゴ台車の貸切（1 本単位）" in html
+        assert "カゴ台車 1 本単位" in html
         assert "カゴ単位で払う便" in html   # 文言の直し 2026-11-07
         assert "4 本分（23,000 円 × 4）で、2t 車 1 台を貸し切るのに近い量です。" in html
         # 額の離れているときは理由の 1 行を出さない
         far = h([_card("カゴ台車", 20000, note="1 本分（20,000 円）"), _card("貸切", 98000, sub="2t車")])
         assert "近い量です" not in far and "cc-near" not in far
         # 鉄道・船・飛行機: 額は出さず、選べる。値は内部の名前のまま
-        for lab in ("鉄道（コンテナ貨物）。金額は見積で確かめます", "船（フェリー）。金額は見積で確かめます", "飛行機（航空便）。金額は見積で確かめます"):  # 文言の直し 2026-11-07
+        for lab in ("鉄道（コンテナ貨物）。金額は見積で確かめてください", "船（フェリー）。金額は見積で確かめてください", "飛行機（航空便）。金額は見積で確かめてください"):  # 文言の直し 2026-11-07
             assert lab in html, lab
-        assert html.count("金額は見積で確かめます。道は地図に出ます。") >= 3  # 文言の直し 2026-11-07
+        assert html.count("金額は見積で確かめてください。経路は地図に表示しています。") >= 3  # 文言の直し 2026-11-07
         assert html.count("日数と額は見積で確認") >= 3
         assert 'value="鉄道"' in html and 'value="飛行機"' in html and 'value="船"' in html
         assert not re.search(r"(?<![\d,])0円", html)   # 0 円と書かない
@@ -99,6 +99,6 @@ def test_cargo_editor_has_four_inputs_and_closed_details():
         dims = json.loads(page.js("JSON.stringify([...document.querySelectorAll('#cargo-editor .it-row[data-i=\"0\"] [data-k]')].map((e) => e.value))"))
         assert dims[1:4] == ["50", "30", "20"], dims
         page.js("document.querySelector('#ed-confirm').click()")
-        page.wait(lambda: json.loads(page.js("JSON.stringify(Work.confirmedShipment().items[0])"))["length_cm"] == 50, 60, "確定")
+        page.wait(lambda: json.loads(page.js("JSON.stringify(Work.confirmedShipment().items[0])"))["count"] == 4, 60, "確定")   # 2026-11-08 の直しに合わせて: 初めの荷が 50×30×20 なので、長さでは確定を待てない
         sh = json.loads(page.js("JSON.stringify(Work.confirmedShipment())"))
         assert sh["sender_type"] == "法人" and sh["receiver_type"] == "法人" and sh["items"][0]["count"] == 4, sh

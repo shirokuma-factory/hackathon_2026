@@ -97,7 +97,7 @@ def test_x3_board_text_says_weekly_only_for_the_weekday_that_is_mostly_empty(cal
 
 def test_x3_day_text_rule_is_in_the_source():
     src = (WEB / "own_month.js").read_text(encoding="utf-8")
-    assert "0.8" in src and "これまでの記録では" in src
+    assert "0.8" in src and "実績:" in src   # 日本語の直し 2026-11-08: 掲示に書く曜日は規則（8 割）に合うものだけ。合わないときは日付と「実績:」の行
 
 
 # ---------------------------------------------------------------- X2・X4・軽い点: 文言（ソース）

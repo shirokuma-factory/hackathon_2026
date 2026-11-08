@@ -136,7 +136,7 @@ def test_ai_button_needs_confirmation_and_sends_no_raw_values(app, tmp_path):
     page.js("document.querySelector('#own-aibox [data-act=ai-cols]').click()")
     time.sleep(0.5)
     conf = T(page, ".o-aiconf")
-    assert "この内容を Anthropic の API に送ります" in conf and "値そのものは送りません" in conf
+    assert "この内容を Anthropic（Claude の提供元）のサーバーに送ります" in conf and "値そのものは送りません" in conf
     assert page.js("!!document.querySelector('.o-aiconf [data-act=ai-cols-send]') && !!document.querySelector('.o-aiconf [data-act=ai-cols-cancel]')")
     assert "出庫" in conf and "実績値" in conf and "HH:MM の時刻" in conf
     for raw in ("鹿児島", "9001", "鹿屋", "江東", "681.9", "21:10"):

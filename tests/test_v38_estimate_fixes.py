@@ -77,10 +77,10 @@ def test_n1_pair_not_in_demo_keeps_table_route_for_osaka_and_miyagi_and_demo_pai
 def test_n1_demo_pair_puts_assumed_distance_amount_in_note(web):
     est = _est(web, [Item(3, 120, 50, 50, 40)], "13104", "04101")  # 想定 350km と道路距離は違う
     row = _first_kashikiri(est)
-    assert any("想定距離 350km" in n for n in row["notes"])
+    assert any("想定距離 350 km" in n for n in row["notes"])   # 2026-11-08 の直しに合わせて（数字と単位の間に空白）
     assumed = estimate_all(make_shipment([Item(3, 120, 50, 50, 40)], route="kanto_tohoku"))
     a = next(r for r in assumed if r.mode == "kashikiri_2t")
-    assert f"{a.amount:,}円" in " ".join(row["notes"])
+    assert f"{a.amount:,} 円" in " ".join(row["notes"])   # 2026-11-08 の直しに合わせて（数字と単位の間に空白）
     assert a.amount != row["amount"]
 
 
@@ -187,7 +187,7 @@ def test_f09_over_10t_shows_vehicle_count():
     k = [r for r in rows if r.mode.startswith("kashikiri")]
     assert len(k) == 1 and k[0].detail["vehicles"] == 2 and k[0].detail["vehicle"] == "10t"
     assert k[0].amount == 2 * k[0].detail["unit_amount"] and k[0].status == "要確認"
-    assert "2台" in k[0].label and "2" in " ".join(k[0].notes)
+    assert "2 台" in k[0].label and "2" in " ".join(k[0].notes)   # 2026-11-08 の直しに合わせて（数字と単位の間に空白）
     t = load_kashikiri()
     unit = [f for f in __import__("shipcompare.estimate", fromlist=["x"]).kashikiri_fares(Decimal(300), Decimal(0), t) if f["class"] == "10t"][0]
     assert k[0].detail["unit_amount"] == unit["amount"]

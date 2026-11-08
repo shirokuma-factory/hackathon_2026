@@ -112,10 +112,10 @@ def test_g61_pickup_distance_boundary():
     over = dict(t7(), pickup_radius_km=km - 0.001)
     assert spaceb.match(sh, on)[0] is True
     ok, reasons = spaceb.match(sh, over)
-    assert not ok and any("集荷の地点が便の空く地点から" in r and "km で、この便の上限" in r for r in reasons)
+    assert not ok and any("集荷の地点が、便の空く地点から" in r and "km 離れていて" in r and "この便の範囲（" in r  for r in reasons)
     # 十分に遠い地点は T7 の 15km を超える
     ok, reasons = spaceb.match(s6_ship(origin_code="14104"), t7())
-    assert not ok and any("上限 15km" in r for r in reasons)
+    assert not ok and any("範囲（15 km まで）" in r for r in reasons)   # 日本語の直し 2026-11-08
 
 
 def test_g61_floor_total_boundary():
@@ -152,7 +152,7 @@ def test_g61_pickup_and_window_apply_to_all_trips_with_defaults():
     """SPEC §21.2 の変更: 集荷の距離は便の pickup_code（無ければ origin_code）と上限（無ければ 20km）で全便に効く。日の幅も全便。"""
     s1_tokyo = BShipment((Piece(3, Decimal(1200), Decimal(500), Decimal(500), Decimal(40)),), "28110", origin_code="13104")
     ok, reasons = spaceb.match(s1_tokyo, next(t for t in spaceb.load_trips() if t["id"] == "T6"))  # 愛媛→兵庫の便
-    assert not ok and any("集荷の地点が便の空く地点から" in r and "上限 20km" in r for r in reasons)
+    assert not ok and any("集荷の地点が、便の空く地点から" in r and "範囲（20 km まで）" in r  for r in reasons)
     # 出発地が便の出発地から 20km 以内なら通る（T1 は大田区発、新宿区から約 15km）
     t1 = next(t for t in spaceb.load_trips() if t["id"] == "T1")
     assert not any("集荷の地点" in r for r in spaceb.match(s1_tokyo, t1)[1])

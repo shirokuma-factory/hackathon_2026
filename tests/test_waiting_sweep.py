@@ -76,7 +76,7 @@ def test_w02_reply_text_reads_as_japanese():
         assert "どちらも同じ額です。" in same and "5,280 円" in same
         less = page.js("""replyText({pairs: [], key_counts: {place: 0, time: 0}, limit: 15, differ: [], only_carrier: [],
             recalc: {carrier: 5280, own: 4000, diff: 1280, doc: null}})""")
-        assert "当方の額は書面より 1,280 円 少なくなります。" in less
+        assert "当方の額は書面より 1,280 円少なくなります。" in less
 
 
 def test_w04_partner_table_shows_wait_total_and_calls_party_shipper():
@@ -118,7 +118,7 @@ def test_w09_reception_column_and_deduped_notes():
         assert "受付" in out["head"] and out["head"].index("受付") == out["head"].index("到着") + 1
         assert not any("から数えると" in n for n in out["notes"]), out["notes"]
         assert len(out["notes"]) == len({n.split("は、", 1)[-1] for n in out["notes"]})   # 同じ文の注記は 1 つ
-        assert "受付の時刻から数えると" in out["basis"] and "受付の時刻から数えると" in out["text"]
+        assert "受付の時刻から数えています" in out["basis"] and "受付の時刻から数えています" in out["text"]   # 日本語の直し 2026-11-08
 
 
 def test_w12_slot_proposal_sentence_has_no_double_node():
@@ -136,7 +136,7 @@ def test_w20_w21_blank_placeholders_warn_before_copy_and_csv_name():
         page.js("window.__copied = []; Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: (t) => { window.__copied.push(t); return Promise.resolve(); }}});")
         page.js("document.querySelector('#b-copydoc').click()")
         assert page.js("window.__copied.length") == 0
-        assert "（会社名）" in page.js("document.querySelector('#copymsg').textContent")
+        assert "会社名" in page.js("document.querySelector('#copymsg').textContent")
         page.js("document.querySelector('#b-copydoc').click()")
         _wait(page, "window.__copied.length === 1", "2 回目でコピー")
         name = page.js("csvFileName()")

@@ -326,7 +326,7 @@ def test_g70_rule1_boundaries():
     assert 1 not in _rules(legs=thu(3, 0) + [_leg(9, 3, "unknown")])
     # 文: 夜に出た便と、ほかの曜日の数
     t = next(i for i in _ins(legs=thu(5, 0) + [_leg(50 + i, 0, "loaded") for i in range(4)]) if i["rule"] == 1)
-    assert "木曜の夜" in t["text"] and "5 便の帰りがすべて空" in t["text"] and "4 便中 0 便が空" in t["text"]
+    assert "木曜の夜" in t["text"] and "5 便がすべて空" in t["text"] and "4 便は、空車がありませんでした" in t["text"]   # 日本語の直し 2026-11-08
     assert t["next"]["label"] == "帰り便の下書きにする" and len(t["evidence"]) == 5
     day = next(i for i in _ins(legs=[_leg(i, 3, "empty", dep="2026-10-01T09:00") for i in range(4)]) if i["rule"] == 1)
     assert "夜" not in day["text"]
@@ -403,7 +403,7 @@ def test_g70_sample_fires_all_six_rules(sample):
         assert i["evidence"] and i["next"]["label"] and i["text"]
         assert all(e["file"] and e["text"] for e in i["evidence"])
     t = by[1]
-    assert "土曜の夜に出た 5 便の帰りがすべて空" in t["text"] and len(t["evidence"]) == 5  # 帰りの便が出た日（行きを出た木曜ではない）
+    assert "土曜の夜に出た 5 便がすべて空" in t["text"] and len(t["evidence"]) == 5  # 帰りの便が出た日（行きを出た木曜ではない）
     assert t["next"]["action"] == "draft_backhaul" and t["next"]["payload"]["trips"] == 5 and t["next"]["payload"]["empty"] == 5
     r3 = [i["text"] for i in ins if i["rule"] == 3]  # 確認待ちの別名「辰巳」を当てないので、地点 07（江東区辰巳）と地点 08（辰巳）の 2 件に分かれる（合わせて 10 回・8.0 時間）
     assert len(r3) == 2 and any("5 回" in t and "3.8 時間" in t for t in r3) and any("5 回" in t and "4.2 時間" in t for t in r3)
@@ -521,8 +521,8 @@ def test_ui_view_button_and_panels():
     assert html.index('<script src="own.js">') < html.index('<script src="app.js">')
     assert 'href="own.css"' in html
     # 常に出す文
-    for t in ("架空の会社のサンプルです", "配車表やデジタコの CSV をここに置くと、この画面の中だけで読みます。外には送りません。"   # 文言の直し 2026-11-07
-                   , "列の対応づけの Claude の提案は、開発のときに作った記録です"):
+    for t in ("架空の会社のサンプルです", "配車表やデジタコ（運行記録計）の CSV をここに置くと、この画面の中だけで読みます。外には送りません。"   # 文言の直し 2026-11-07
+                   , "サンプルの列の対応づけは、用意した記録です。"):
         assert t in html, t
     app = (WEB / "app.js").read_text(encoding="utf-8")
     assert "'own'" in app and "Own.enter" in app and "Own.layers" in app

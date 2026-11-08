@@ -305,5 +305,5 @@ def test_mail_total_and_over_1h_count_use_same_basis_and_no_stale_shipper_handli
         _paste(page, text)
         t = page.js("draftText(S.res.by_partner[0])")
         # 本文の合計と回数は、画面のタイル・添付の表と同じ数え方（荷主等の都合の待ち 90 分だけ）。数え方は 1 回だけ括弧で書く（2026-11-08 r4b）
-        assert "合計で1時間30分（荷主等の都合でない待ちは含めていません）でした" in t and "1時間以上お待ちした回が1回" in t
+        assert "合計で1時間30分でした（荷主等の都合でない待ちは含めていません）" in t and "1時間以上お待ちした回が1回" in t
         assert "貴社側で荷役をしていただいた時間も含まれています" not in t

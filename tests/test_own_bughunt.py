@@ -121,7 +121,7 @@ def test_b1_sample_json_insight_and_return_weekday_agree():
         day = (l["dep"] or "")[:10] or l["date"]
         assert l["cycle_wd"] == date.fromisoformat(day).weekday(), l["id"]                # 帰りの便が出た日
     ins = [i for i in d["insights"] if i["rule"] == 1][0]
-    assert "土曜の夜に出た 5 便の帰りがすべて空" in ins["text"] and "木曜" not in ins["text"]
+    assert "土曜の夜に出た 5 便がすべて空" in ins["text"] and "木曜" not in ins["text"]
     assert ins["next"]["payload"]["wd"] == 5
 
 
@@ -156,7 +156,7 @@ def test_b1_own_lite_sample_matches_the_map_insight():
           return { sat, ins: d.insights.find((i) => i.rule === 1).text };
         })()""")
         assert r["sat"] == [[5, 5]]
-        assert "土曜の夜に出た 5 便の帰りがすべて空" in r["ins"]
+        assert "土曜の夜に出た 5 便がすべて空" in r["ins"]
 
 
 # ---------------------------------------------------------------- B2・B3: 距離が分からないとき

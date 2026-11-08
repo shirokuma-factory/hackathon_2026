@@ -110,9 +110,9 @@ const Hubs = (() => {
     const o = info && info.object;
     if (!o || !info.layer) return null;
     const id = info.layer.id;
-    if (id === 'hub-stations') return { t: o.name, s: '貨物駅（OSM に登録された主なもの）', m: 'terminal' };
+    if (id === 'hub-stations') return { t: o.name, s: '貨物駅（OpenStreetMap に登録された主なもの）', m: 'terminal' };
     if (id === 'hub-ports') return { t: o.name, s: o.lv ? 'フェリーなどの港（航路の端）' : '港・船着場', m: 'port_crane' };
-    if (id === 'hub-routes') return { t: o.n, s: `フェリー航路 ${o.km}km（OSM、30km 以上）` };
+    if (id === 'hub-routes') return { t: o.n, s: `フェリー航路 ${o.km} km（OpenStreetMap、30 km 以上）` };
     return null;
   }
 

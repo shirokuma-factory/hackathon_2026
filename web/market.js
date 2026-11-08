@@ -100,7 +100,7 @@ const Market = (() => {
     const t = M.d.totals[M.mode];
     q('#m-rsub').textContent = `${MODE_LABEL[M.mode]}・上位 ${M.rows.length}`;
     q('#m-rtot').innerHTML = `帰りの荷が足りない分: ${n0(t.shortfall_t)} t（県をまたぐ荷の ${Math.round(t.share * 100)}%）` +
-      (M.mode === 'rail' ? ' 鉄道コンテナは標本が小さく、参考です。' : '') + ' 量は物流センサスの 3 日間の量（年間ではありません）。';
+      (M.mode === 'rail' ? ' 鉄道コンテナは調べた件数が少ないため、参考の数字です。' : '') + ' 量は物流センサスの 3 日間の量（年間ではありません）。';
     renderTable();
     buildFlows();
     renderLegend();
@@ -125,7 +125,7 @@ const Market = (() => {
     q('#m-x-out').textContent = `${M.x.toFixed(1)}%`;
     q('#calc-from').textContent = cur.toFixed(2);
     q('#calc-to').textContent = v.toFixed(2);
-    q('#calc-d').textContent = `${(v - cur).toFixed(2)} ポイント上がります`;
+    q('#calc-d').textContent = Math.abs(v - cur) < 0.005 ? '今と変わりません' : `${(v - cur).toFixed(2)} ポイント上がります`;
   }
 
   /* ------------------------------------------------------------ 凡例 */
@@ -730,7 +730,7 @@ const Market = (() => {
       `<ul class="mp-notes"><li>県ごとの数字です。各社の実際の空きとは違います。</li><li>量は物流センサスの 3 日間の量（年間ではありません）。</li></ul>`;
     h += '<div class="mp-roles">' +
       '<div class="mp-role"><span>荷主の方</span><button class="btn-primary mp-go" data-act="find">この向きの帰り便を探す</button></div>' +
-      `<div class="mp-role"><span>運送会社の方</span><button class="btn-ghost mp-go" data-act="carrier">この向きの帰り便を載せる</button></div></div>`;
+      `<div class="mp-role"><span>運送会社の方</span><button class="btn-ghost mp-go" data-act="carrier">この向きの帰り便を登録する</button></div></div>`;
     const clo = cloTarget(r);
     if (clo && r.km >= CLO_KM) {
       h += `<div class="mp-clo"><p>鉄道・船の日数と費用は、事業者に問い合わせてください。</p>` +
@@ -738,7 +738,7 @@ const Market = (() => {
     } else if (!clo) {
       h += '<div class="mp-clo"><p class="mp-clo-why">集荷地は関東の 7 か所だけのため、この向きは比べられません。</p></div>';
     } else {
-      h += `<div class="mp-clo"><p class="mp-clo-why">近いため、鉄道と船は比べに出していません。</p></div>`;
+      h += `<div class="mp-clo"><p class="mp-clo-why">距離が近いため、鉄道と船は比べる対象に入れていません。</p></div>`;
     }
     box.innerHTML = h;
     box.hidden = false;

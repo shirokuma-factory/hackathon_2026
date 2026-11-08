@@ -56,16 +56,21 @@ const WaitingShared = (() => {
 
   // 偏りの読み方の注意（SPEC §28.1）。当てはまるものだけ、括弧で後ろに。指定の無い到着の注記は平均が 30 分以上の組だけ（§29.3）
   const hotspotNotes = (h, doc) => [
-    h.designated_count * 2 < h.count && h.avg_minutes >= 30 ? (doc ? '指定の到着時刻の無い到着を含みます' : '指定の到着時刻が無い到着が多い組です。相手に到着の時刻を決めてもらうか、自社で到着を遅らせて変わるかを確かめてください') : '',
+    h.designated_count * 2 < h.count && h.avg_minutes >= 30 ? (doc ? '指定の到着時刻の無い到着を含みます' : '指定の到着時刻が無い到着が多い組です。相手に到着の時刻を決めてもらうか、到着を遅らせて待ちが減るかを確かめてください。') : '',
     h.shipper_handling_count > 0 ? '荷主側の荷役の時間を含む' : '',
     h.count < 3 ? '回数が少ない' : ''].filter(Boolean);
+  // 相手に渡す書面では、注記を括弧にせず、続く文にする
+  const consultNotes = (h) => [
+    h.designated_count * 2 < h.count && h.avg_minutes >= 30 ? '指定の到着時刻のない到着を含みます。' : '',
+    h.shipper_handling_count > 0 ? '貴社側で荷役をしていただいた時間を含みます。' : '',
+    h.count < 3 ? '回数が少ないため、参考としてご覧ください。' : ''].filter(Boolean);
   const consultLines = (hotspotList, name) => hotspotList.filter((h) => h.partner === name && h.wait_minutes > 0).slice(0, 3)
-    .map((h) => `${h.place}に${h.band}に到着した ${h.count} 回の荷待ちは、平均 ${h.avg_minutes} 分、最長 ${h.max_minutes} 分でした。${hotspotNotes(h, true).map((x) => `（${x}）`).join('')}`);
+    .map((h) => `${h.place === NO_PLACE ? '場所の記載がない分のうち、' : `${h.place}では、`}${h.band}に到着した ${h.count} 回の荷待ち（到着から荷役開始まで）は、平均 ${h.avg_minutes} 分、最長 ${h.max_minutes} 分でした。${consultNotes(h).join('')}`);
   const PLACE_MONTH_LEAD = '特定荷主は 2026 年度から、施設ごと・月別の平均の荷待ち時間を分単位で測り、国に報告します。荷主の数字を、運送会社の記録で確かめるときに使えます。';
-  const PM_DEF = '到着（指定の時刻があればその時刻）から荷役開始までの分。荷主の定期報告の算定方法に合わせています。待機時間料の計算とは数え方が違います。';
+  const PM_DEF = '到着（指定の時刻があればその時刻）から荷役開始までの分です。荷主の定期報告の算定方法に合わせています。待機時間料の計算とは数え方が違います。';
   const TRUNC_LINE = '業務記録の義務は 30 分以上の荷待ちだけです。30 分未満で荷役が始まった到着も入れると、平均と 1 時間以上の割合が実際に近くなります。';
   const TRUNC_WARN = '30 分未満の荷待ちの記録がありません。平均と割合は高めに出ている可能性があります。';
-  const MONTH_CLOSE = '発荷主・着荷主様との調整が必要な場合は、この一覧をそのままお使いください。';
+  const MONTH_CLOSE = '発荷主・着荷主の方との調整が必要な場合は、この一覧をそのままお使いいただけます。';
   const monthLabel = (m) => `${m.slice(0, 4)} 年 ${parseInt(m.slice(5), 10)} 月`;
   const CONSULT_TITLE = '荷待ちを減らすためのご相談';
   const PM_PARTNER_TITLE = '場所ごと・月ごとの平均の荷待ち';
@@ -300,7 +305,7 @@ const WaitingShared = (() => {
   // 契約の相手が空の行を、画面で相手を入れてもらうまで仮の名前で計算する（defaults.provisional_partner を渡したときだけ）
   const PROVISIONAL_PARTNER = '（相手を入れてください）';
   const MEMO_UNREADABLE = '読める形ではありませんでした（{shown}）。次のどれかの形で貼ってください: Excel の表（1 行目が見出し、列はタブ区切り）、'
-    + 'ドライバーの 1 枚（driver.html）の文（荷待ち記録 11/10 …）、1 行 1 件のメモ（11/10 江東 着7:50 呼ばれ9:40 終わり10:30）';
+    + 'ドライバー用のページで作った文（荷待ち記録 11/10 …）、1 行 1 件のメモ（11/10 江東 着7:50 呼ばれ9:40 終わり10:30）';
   const MEMO_KEYS = { '到着': 'arrive', '着': 'arrive', '受付': 'reception', '受': 'reception', '呼ばれた': 'call', '呼ばれ': 'call', '呼び出し': 'call', '呼出し': 'call', '呼出': 'call', '呼': 'call',
     '荷役開始': 'start', '積込開始': 'start', '積み始め': 'start', '積始め': 'start', '開始': 'start',
     '荷役終了': 'end', '積込終了': 'end', '積み終わり': 'end', '積み終り': 'end', '積終わり': 'end', '終わり': 'end', '終了': 'end', '積込終': 'end', '積終': 'end', '終': 'end',
@@ -397,7 +402,7 @@ const WaitingShared = (() => {
         const memo = parseMemoText(otherLines.join('\n'));
         if (memo) {
           memo.rows.forEach((r) => { if (!r.partner) r.partner = MEMO_NO_PARTNER; drows.push(r); });
-          if (memo.rows.length) notes.push(`「荷待ち記録」の無い手書きのメモの行も読みました（${memo.rows.length} 件）。契約の相手が書かれていない行は『${MEMO_NO_PARTNER}』としています`);
+          if (memo.rows.length) notes.push(`「荷待ち記録」で始まらないメモの行も読みました（${memo.rows.length} 件）。契約の相手が書かれていない行は『${MEMO_NO_PARTNER}』としています`);
           if (memo.bad.length) notes.push(`読まなかった行（${memo.bad.length} 行）: ` + memo.bad.map(([ln, why]) => `「${memoClip(ln)}」は${why}`).join('、'));
         } else notes.push(`読まなかった行（${otherLines.length} 行）: ` + otherLines.map((ln) => `「${memoClip(ln)}」`).join('、') + '。『着7:50』『呼ばれ9:40』のような言葉つきの時刻が無いので読めません');
       }
@@ -414,7 +419,7 @@ const WaitingShared = (() => {
       if (memo !== null) {
         const mrows = memo.rows, mnotes = [], mdefaulted = [];
         if (mrows.length) {
-          mnotes.push(`スマホのメモの書き方で読みました（${mrows.length} 件）。『着』『受付（受）』『呼ばれ（呼）』『積み始め』『終わり（終・積込終）』『出発』の言葉の前後の時刻を読んでいます（『6:10着』のように時刻が先でも読みます）。行ごとに読んだ相手・車番・車種・場所を下に出すので、違うときは表で直してください`);
+          mnotes.push(`スマホのメモの書き方で読みました（${mrows.length} 件）。『着』『受付（受）』『呼ばれ（呼）』『積み始め』『終わり（終・積込終）』『出発』の言葉の前後の時刻を読んでいます（『6:10着』のように時刻が先でも読みます）。行ごとに読んだ相手・車番・車種・場所を、下の「読み取った内容」に出します。違うときは、そこか表で直してください。`);
           if (mrows.some((r) => !r.partner)) {
             mrows.forEach((r) => { if (!r.partner) r.partner = MEMO_NO_PARTNER; });
             mnotes.push(`契約の相手が書かれていない行は『${MEMO_NO_PARTNER}』としました。表の『契約の相手』を書き換えてください（メモに『相手 ○○』と書き足しても読みます）`);
@@ -425,7 +430,7 @@ const WaitingShared = (() => {
         }
         if (memo.bad.length) {
           const items = memo.bad.map(([ln, why]) => `「${memoClip(ln)}」は${why}`).join('、');
-          mnotes.push(`読めなかった行は表に入れていません（${memo.bad.length} 行）: ${items}。1 行に『日付 場所 着7:50 呼ばれ9:40 終わり10:30』の形で書くか、ドライバーの 1 枚（driver.html）の文を使ってください`);
+          mnotes.push(`読めなかった行は表に入れていません（${memo.bad.length} 行）: ${items}。1 行に『日付 場所 着7:50 呼ばれ9:40 終わり10:30』の形で書くか、ドライバー用のページで作った文を使ってください`);
         }
         memo.read.forEach((rd) => { if (rd.check.length) mnotes.push(`確かめてください:「${rd.line}」は` + rd.check.join('、')); });
         return { rows: mrows, defaulted: mdefaulted, notes: mnotes, asks, shipper_log: false, memo_read: memo.read };
@@ -483,7 +488,7 @@ const WaitingShared = (() => {
     // 到着の列が無く受付の列があるとき（荷主が自社の受付記録を貼る使い方）は、受付の時刻を到着として読む
     if (header && !cols.includes('arrive') && cols.includes('reception')) {
       for (const r of rows) if (r.reception) { r.arrive = r.reception; delete r.reception; r.arrive_src = 'reception'; }   // 到着として読んだ印。早着の文を受付の言葉にする
-      notes.push('到着の列が無いので、受付の時刻を到着として読みました（荷主の受付記録の使い方。受付の前に着いて待った時間は入りません）');
+      notes.push('到着の列が無いので、受付の時刻を到着として読みました（荷主の受付記録を読むときの扱いです。受付の前に着いて待った時間は入りません）。');
     }
     // 荷役をした人の列が無いとき: 荷役作業等の内容があれば運転者（法定の記録は運転者自身の荷役）、無ければ不明
     if (header && !cols.includes('handler')) {
@@ -573,7 +578,7 @@ const WaitingShared = (() => {
     else if (!g.vehicle_class) errs.push('車種がありません');
     else {
       vclass = normalizeClass(g.vehicle_class);
-      if (vclass === null) errs.push(`車種「${g.vehicle_class}」を読めません（小型（2t）/ 中型（4t）/ 大型（10t）/ トレーラー）`);
+      if (vclass === null) errs.push(`車種「${g.vehicle_class}」を読めません。小型・中型・大型・トレーラーのどれかを入れてください（2t・4t・10t でも読みます）。`);
     }
     let partner = nz(g.partner);   // 全角・半角の違いで相手が分かれないようにそろえる
     let partnerProvisional = false;
@@ -1035,8 +1040,10 @@ const WaitingShared = (() => {
     return ['【早着の扱いについてのお願い】', '運送会社の皆様へ', '',
       `${where}の受付は、${openTime || '（受付開始の時刻）'}からです。`,
       '受付の開始より前に到着された場合は、（待機する場所）でお待ちください。受付の順番は（到着順 / 予約の時刻順）です。',
-      '予約の時刻が決まっている荷は、予約の時刻の（　）分前から受付します。',
-      '受付・呼出・作業開始の時刻は、当方でも記録しています。荷待ちの記録の照合にご利用いただけます。',
+      '予約の時刻が決まっている車両は、予約の時刻の（　）分前から受付します。',
+      '受付・呼出・作業開始の時刻は、当方でも記録しています。荷待ちの記録を照らし合わせたい場合は、お問い合わせください。', '',
+      'よろしくお願いいたします。', '',
+      '（会社名・施設名）',
       '問い合わせ先: （担当者・電話番号）'].join('\n');
   }
 

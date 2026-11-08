@@ -62,9 +62,9 @@ def test_f02_f11_cheapest_and_ratio_only_among_fitting_options():
         assert by["貸切"]["best"] == [] and not by["貸切"]["cheap"] and by["貸切"]["mark"] == ["要確認"] and "判定していません" in by["貸切"]["why"]
         assert "約 2.3 倍" in out["ratio"]  # 45,000 / 20,000。要確認の 10,000 円は入れない
         names = [r["n"].replace("2t車", "") for r in out["rows"]]
-        assert names[:3] == ["路線便", "宅配", "カゴ台車の貸切（1 本単位）"] and names[3] == "貸切"  # 行の名前を変えた
+        assert names[:3] == ["路線便", "宅配", "カゴ台車 1 本単位"] and names[3] == "貸切"  # 行の名前を変えた
         out = run(only_check)
-        assert "確認が要る便を含む" in out["title"] and "確認が要る便を含む" in out["ratio"] and "約 3 倍" in out["ratio"]   # 文言の直し 2026-11-07
+        assert "確認が要る送り方を含む" in out["title"] and "確認が要る送り方を含む" in out["ratio"] and "約 3 倍" in out["ratio"]   # 文言の直し 2026-11-07
         # 飛行機の行が末尾に加わった（額なし）ので、額のある先頭 2 行を見る
         assert [r["best"] for r in out["rows"][:2]] == [["最安（確認が要る）"], []] and all(r["chk"] and r["mark"] == ["要確認"] for r in out["rows"][:2])
         out = run(one_fit)

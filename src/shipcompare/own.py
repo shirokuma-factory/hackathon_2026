@@ -2516,8 +2516,8 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
             merged_done.add((fr, to))
             lb = f"{short(fr)} → {short(to)}"
             word = {"back": "帰り", "out": "行き", "pair": "区間"}[d]
-            wds = "・".join(WEEKDAYS[w] for w in all_wds)
-            text = (f"{lb}の{word}は、{len(all_legs)} 便がすべて空でした（{wds}曜のどの曜日も空で、曜日による違いはありません。実車か空車かが分かった便だけ）。")
+            wds = "・".join(WEEKDAYS[w] + "曜" for w in all_wds)
+            text = (f"{lb}の{word}は、{len(all_legs)} 便がすべて空でした（{wds}のどれも空で、曜日による違いはありません。実車か空車かが分かった便だけで数えています）。")
             payload = {"dir": d, "wd": wd, "weekday": WEEKDAYS[wd], "trips": len(all_legs), "empty": len(all_legs), "night": False, "month": data.get("month"),
                        "frm": fr, "to": to, "frm_label": short(fr), "to_label": short(to), "label": lb, "all_weekdays": True, "weekdays": [WEEKDAYS[w] for w in all_wds]}
             add(1, text, [{"k": lb, "v": f"{len(all_legs)} 便中 {len(all_legs)} 便が空"}, {"k": "空だった曜日", "v": f"{wds}（どの曜日も空）"}],
@@ -2530,10 +2530,10 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
         night = all((l.get("cycle_dep") or "")[11:13].isdigit() and int(l["cycle_dep"][11:13]) >= 18 for l in ls)
         when = f"{WEEKDAYS[wd]}曜" + ("の夜" if night else "")
         who = f"{when}に出た "  # 帰りも、帰りの便自身が出た日
-        body = f"{n} 便の帰りがすべて空でした" if (e == n and d == "back") else (f"{n} 便がすべて空でした" if e == n else f"{n} 便のうち {e} 便が空でした")
+        body = (f"{n} 便がすべて空でした" if e == n else f"{n} 便のうち {e} 便が空でした")
         lb = f"{short(fr)} → {short(to)}"
         word = {"back": "帰り", "out": "行き", "pair": "区間"}[d]
-        tail1 = f"ほかの曜日の同じ向きは {len(others)} 便中 {oe} 便が空です（実車か空車かが分かった便だけ）。" if others else "ほかの曜日の同じ向きの便は、実車か空車かが分かった中にはありません。"
+        tail1 = (f"ほかの曜日の同じ向きの {len(others)} 便は、空車がありませんでした（実車か空車かが分かった便だけ）。" if oe == 0 else f"ほかの曜日の同じ向きは {len(others)} 便中 {oe} 便が空です（実車か空車かが分かった便だけ）。") if others else "ほかの曜日の同じ向きの便は、実車か空車かが分かった中にはありません。"
         text = f"{lb}の{word}は、{who}{body}。{tail1}"
         payload = {"dir": d, "wd": wd, "weekday": WEEKDAYS[wd], "trips": n, "empty": e, "night": night, "month": data.get("month"),
                    "frm": fr, "to": to, "frm_label": short(fr), "to_label": short(to), "label": lb}
@@ -2562,7 +2562,7 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
         meter = any((l.get("sources") or {}).get("km") == "デジタコ" for l in legs)  # デジタコを入れていないときは、メーターと書かない
         km_n = sum(1 for l in empties if l.get("km"))
         km_miss = len(empties) - km_n  # 距離が分からない便は、km の合計に入れない（0 km として足さない）
-        km_src = f"距離は{'デジタコのメーターと OSRM の推定' if meter else 'OSRM の推定'}"
+        km_src = f"距離は{'デジタコのメーターの値と、OSRM の推定' if meter else 'OSRM の推定'}"
         if not km_n:
             km_head = f"空で走った区間は {len(empties)} 便でした（距離が分からないので、km は出していません）。"
             km_val = "距離が分からない"
@@ -2607,7 +2607,7 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
         tail = (f"うち 14 時間を超えた日は {len(over14)} 日で、同じ運転者で週 {max(len(v) for _, v in bad_weeks)} 回の週が {len(bad_weeks)} つあります（目安は週 {R4_WEEK_GUIDE} 回まで）。"
                 if bad_weeks else (f"うち 14 時間を超えた日は {len(over14)} 日です。" if over14 else ""))
         tail15 = "15 時間を超えた日はありません。" if not over15 else f"15 時間を超えた日が {len(over15)} 日あります。"
-        add(4, f"原則の 13 時間を超えた日が {len(over13)} 日ありました。{tail}{tail15}デジタコの記録から数えた目安で、始業・終業とは同じではありません。",
+        add(4, f"拘束時間が原則の 13 時間を超えた日が {len(over13)} 日ありました。{tail}{tail15}デジタコの記録から数えた目安で、始業・終業の記録とは一致しないことがあります。",
             [{"k": "13 時間超", "v": f"{len(over13)} 日"}, {"k": "14 時間超", "v": f"{len(over14)} 日"}, {"k": "15 時間超", "v": f"{len(over15)} 日"}],
             {"label": "その日の運行の一覧を開く", "action": "show_evidence", "payload": {}},
             [{"id": s.get("id"), "label": f"{_md(s['start'])} {s.get('driver_label', s.get('driver'))} 車番 {s['plate']}",
@@ -2626,7 +2626,7 @@ def insights(data: dict[str, Any]) -> list[dict[str, Any]]:
         for v in flagged:
             groups5.setdefault(v["cls"], []).append(v)
         parts = "、".join(f"{c} の {len(vs)} 台" for c, vs in groups5.items())
-        add(5, f"{parts}は、車両総重量 8t 以上か最大積載量 5t 以上として登録されています。積載の状況の記録の対象で、積んだ重さの記録がありません。車検証を確かめてください。",
+        add(5, f"{parts}は、車両総重量 8t 以上か最大積載量 5t 以上として登録されています。積載状況の記録が必要な車ですが、積んだ重さの記録がありません。車検証を確かめてください。",
             [{"k": "対象で重さが空の車", "v": f"{len(flagged)} 台"}],
             {"label": "車両の設定を開く", "action": "show_evidence", "payload": {}},
             [{"id": f"V{v['plate']}", "label": f"車番 {v['plate']}（{v['cls']}）", "file": "車両の設定", "where": "車両",

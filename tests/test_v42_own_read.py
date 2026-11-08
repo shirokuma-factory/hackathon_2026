@@ -246,7 +246,7 @@ def test_insights_name_the_real_pair_for_rule_1_and_rule_2():
     legs[4]["date"] = "2026-10-26"
     ins = own.insights({"legs": legs, "vehicles": [], "places": PLACES, "base": "p1", "dock": "p4", "month": 10, "stops": [], "shifts": []})
     r1 = [i for i in ins if i["rule"] == 1]
-    assert r1 and r1[0]["text"].startswith("名古屋 → 加古川の帰りは、水曜に出た 5 便の帰りがすべて空でした")
+    assert r1 and r1[0]["text"].startswith("名古屋 → 加古川の帰りは、水曜に出た 5 便がすべて空でした")
     p = r1[0]["next"]["payload"]
     assert p["dir"] == "back" and p["frm"] == "p2" and p["to"] == "p1" and p["label"] == "名古屋 → 加古川"
     r2 = [i for i in ins if i["rule"] == 2][0]

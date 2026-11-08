@@ -368,7 +368,7 @@ def test_g147_unit_cost_shows_formula_and_is_hidden_when_empty(app):
     assert page.js("document.querySelectorAll('#own-cost-out .o-crow').length") == 0
     assert "円" not in page.js("document.querySelector('#own-cost-out').innerText")
     heads = page.js("[...document.querySelectorAll('#own-tw th')].map(t => t.textContent)")
-    assert "空車の費用" not in heads and "停車の費用" not in heads and len(heads) == 5
+    assert "空車の費用" not in heads and "停車の費用" not in heads and len(heads) == 6   # 2026-11-08 の直しに合わせて: 「実車か空車か不明」の列が増えて 6 列
     empty_km = page.js("Own.state.data.legs.filter(l => l.kind === 'empty').reduce((a, l) => a + (l.km || 0), 0)")
     long_min = page.js("Own.state.data.stops.filter(s => s.minutes >= 30).reduce((a, s) => a + s.minutes, 0)")
     assert empty_km > 0 and long_min > 0
@@ -396,7 +396,7 @@ def test_g147_unit_cost_shows_formula_and_is_hidden_when_empty(app):
     for sel in ("#own-perkm", "#own-perhour"):
         page.js(f"(function(){{const e = document.querySelector('{sel}'); e.value = ''; e.dispatchEvent(new Event('input', {{bubbles: true}}));}})()")
     assert page.js("document.querySelectorAll('#own-cost-out .o-crow').length") == 0
-    assert len(page.js("[...document.querySelectorAll('#own-tw th')]")) == 5
+    assert len(page.js("[...document.querySelectorAll('#own-tw th')]")) == 6   # 2026-11-08 の直しに合わせて（列が 1 つ増えた）
     _to_sample(page)
 
 
@@ -408,7 +408,7 @@ def test_g147_unit_cost_works_on_the_sample_too_and_text_includes_it(app):
     assert "円/km" in page.js("document.querySelector('#own-cost-out').innerText")
     page.js("document.querySelector('[data-copy=text]').click()")
     page.wait(lambda: page.js("Own.state.lastCopy.length") > 0, 10, "コピー")
-    assert "空車の費用の目安" in page.js("Own.state.lastCopy") and "約束ではありません" in page.js("Own.state.lastCopy")
+    assert "空車の費用の目安" in page.js("Own.state.lastCopy") and "示すものではありません" in page.js("Own.state.lastCopy")   # 日本語の直し 2026-11-08
     page.js("(function(){const e = document.querySelector('#own-perkm'); e.value = ''; e.dispatchEvent(new Event('input', {bubbles: true}));})()")
 
 
@@ -430,7 +430,7 @@ def test_g148_copy_leg_csv_and_text(app):
     t = page.js("Own.state.lastCopy")
     d = page.js("Own.state.data")
     assert f"実車率 {d['kpis']['actual_rate']['value'] * 100:.1f}%" in t and "全国は 62.15%" in t
-    assert "トンキロの比で式が違います" in t
+    assert "トンキロの比で、式が違うため比べられません" in t   # 2026-11-08 の直しに合わせて
     for i, ins in enumerate(d["insights"], 1):
         assert f"{i}. {ins['text']}" in t
     # クリップボードそのものにも入っている（許可が出せる環境だけ）

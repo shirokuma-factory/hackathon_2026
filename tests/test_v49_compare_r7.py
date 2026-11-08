@@ -41,7 +41,7 @@ def test_chart_does_not_preselect_the_only_priced_option():
 def test_template_has_10t_pref_distance_cards_and_no_banner():
     t = TEMPLATE.read_text(encoding="utf-8")
     assert "evalKashikiri('10t'" in t and "DECK_10T" in t
-    assert "PREFXY" in t and "直線×1.25" in t
+    assert "PREFXY" in t and "KM_FACTOR = 1.25" in t and "直線距離の 1.25 倍" in t   # 2026-11-08 の直しに合わせて（「直線×1.25」→「直線距離の 1.25 倍」）
     assert "max-width: 600px" in t and "attr(data-l)" in t
     assert 'class="banner"' not in t and "BANNER" not in t
     for p in (PAGE, ROOT / "web" / "publish" / "compare_lite_artifact.html"):

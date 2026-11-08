@@ -28,7 +28,7 @@
 
   <nav class="pipe glass" aria-label="データが画面に届くまでの流れ">
     <div class="row" id="stages">
-      <button type="button" class="stage" data-stage="api" aria-pressed="false"><span class="lb">国土交通省 交通量 API</span><span class="vl" id="s-api">-</span><span class="sb" id="s-api2">&nbsp;</span></button>
+      <button type="button" class="stage" data-stage="api" aria-pressed="false"><span class="lb">国土交通省 交通量 API（交通量を配信する国の仕組み）</span><span class="vl" id="s-api">-</span><span class="sb" id="s-api2">&nbsp;</span></button>
       <span class="arr" aria-hidden="true"></span>
       <button type="button" class="stage" data-stage="fetch" aria-pressed="false"><span class="lb" id="s-fetch-lb">取得</span><span class="vl" id="s-fetch">-</span><span class="sb" id="s-fetch2">&nbsp;</span></button>
       <span class="arr" aria-hidden="true"></span>
@@ -48,13 +48,13 @@
       <div class="sec">
         <h2>道路の色<button type="button" class="toggle" id="lg-toggle" aria-expanded="false">詳しく</button></h2>
         <div class="bins" id="lg-bins"></div>
-        <div class="basis">色は、その地点の直近24時間でいちばん多い時を100%とした割合です（速度ではありません）</div>
+        <div class="basis">色は、その地点の直近 24 時間でいちばん多い時を 100% とした割合です。速度を表すものではありません。</div>
       </div>
       <div class="collapsible">
         <div class="sec">
           <div class="k"><i class="line glow"></i><span>白く光って見える所は、流れの帯が重なった所です（台数が多い区間。色の意味はありません）</span></div>
-          <div class="k"><i class="line"></i><span>流れの帯は大型車の台数に比例し、混むほどゆっくり流れます（見せ方で、速度ではありません）。道路の左右 2 本は上り・下りで、それぞれの台数で数と色が変わります</span></div>
-          <div class="k"><i class="line grey"></i><span>観測点の間は、同じ道路の上で 2 つの観測点の値を距離に応じて混ぜて色を付けます。最後の観測点の先は 25 km まで延ばし、15 km を超えた区間は細く薄く描きます。灰青の細い線は観測点につながらない道路（データなし。0 台ではありません）</span></div>
+          <div class="k"><i class="line"></i><span>流れの帯は大型車の台数に比例し、混むほどゆっくり流れます（見せ方で、速度ではありません）。道路の左右 2 本は上り・下りで、それぞれの台数で数と色が変わります。</span></div>
+          <div class="k"><i class="line grey"></i><span>観測点の間は、同じ道路の上で 2 つの観測点の値を距離に応じて混ぜて色を付けます。最後の観測点の先は 25 km まで延ばし、15 km を超えた区間は細く薄く描きます。灰青の細い線は観測点につながらない道路（データなし。0 台ではありません）。</span></div>
           <div class="k"><i class="ring"></i><span>輪（◯）は欠測の観測点</span></div>
           <p class="calc">割合 = その時間の台数 ÷ その地点の 24 時間の最大（最大が 20 台/時未満の地点は 20 で割る）。線の太さは道路の種類で、台数ではありません。</p>
         </div>
@@ -83,7 +83,7 @@
     <button type="button" class="handle" id="handle" aria-expanded="false">県ごとの順位と地点のカード<span>タップで開く</span></button>
     <div class="body">
       <div id="pin" class="card" hidden></div>
-      <h2>県ごとの大型車（1地点あたり）<button type="button" class="btn sm" id="rank-sort">並べ替え</button></h2>
+      <h2>県ごとの大型車（1 地点あたり）<button type="button" class="btn sm" id="rank-sort">並べ替え</button></h2>
       <p class="hint" id="rank-hint"></p>
       <div class="rk-head" id="rank-head" aria-hidden="true"><span class="n">順位</span><span class="nm">県</span><span class="bar"></span><span class="v">台/時</span><span class="c" id="rank-diff-h">先週比</span></div>
       <div class="rank" id="rank"></div>
@@ -95,7 +95,7 @@
         <p>道路の形: © OpenStreetMap contributors（ODbL）。高速道路と国道の線を間引いて使っています。</p>
         <p><b>地点のカードの数字の元の項目</b>: 折れ線の各時間 = 上り・大型交通量 + 下り・大型交通量（どちらかが空なら欠測）。小型車 = 上り・小型交通量 + 下り・小型交通量。先週 = 同じ 2 項目の 7 日前の同じ時間帯。ファイルには、24 時間の大型車の台数、先週の同じ時刻、上り、下り、小型車の台数を持っています。観測点は、国土交通省の常時観測点コードで区別しています。</p>
         <ul id="notes"></ul>
-        <p>データの更新: <code>uv run python tools/fetch_trucks_now.py --loop 20</code>（20分以上あけて繰り返します）。この画面は取得済みの JSON だけを読み、API には直接つなぎません。</p>
+        <p>データは 20 分以上の間隔で取得しています。この画面は取得済みのファイルだけを読み、国の配信には直接つなぎません。</p>
       </details>
     </div>
   </aside>

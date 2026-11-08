@@ -24,7 +24,7 @@ PAGE = ROOT / "web" / "waiting.html"
 LITE = ROOT / "web" / "compare_lite.html"
 OWN_JS = (ROOT / "web" / "own.js").read_text(encoding="utf-8")
 NOTE = "荷主の都合で待ったかの列が無いので、全部「はい」で計算しました。違う行は表で「いいえ」にしてください。"   # 文言の直し 2026-11-07
-NOTE_OLD = "荷主等の都合の欄が無いので『はい』として計算しました。違う行は『いいえ』に変えてください"   # own.js は別担当で未変更
+NOTE_OLD = "荷主等の都合の欄が無いので「はい」として計算しました。違う行は「いいえ」に変えてください。"   # own.js の文言。2026-11-08 の直しに合わせて「」と句点に更新
 
 
 def row(**kw):
@@ -151,8 +151,8 @@ def test_g96_page_paste_in_headless_edge_has_zero_errors_and_shows_the_note():
 def test_g97_bulk_controls_exist_in_both_uis():
     page = PAGE.read_text(encoding="utf-8")
     for src in (page, OWN_JS):
-        for t in (("この相手の行を全部「荷主の都合」にする", "この相手の行をすべて荷主等の都合にする"), ("空いた相手の欄を上の行と同じにする", "契約の相手を下の行に埋める"), ("空いた車種の欄を上の行と同じにする", "車種を下の行に埋める")):   # 文言の直し 2026-11-07
-            assert t[0] in src or t[1] in src, t
+        for t in (("この相手の行を全部「荷主等の都合: はい」にする", "この相手の行を全部「荷主の都合」にする", "この相手の行をすべて荷主等の都合にする", "この相手の行をすべて「荷主等の都合」にする"), ("空いた相手の欄を上の行と同じにする", "契約の相手を下の行に埋める"), ("空いた車種の欄を上の行と同じにする", "車種を下の行に埋める")):   # 文言の直し 2026-11-07
+            assert any(x in src for x in t), t
 
 
 def test_g97_bulk_fault_and_fill_down_in_headless_edge():

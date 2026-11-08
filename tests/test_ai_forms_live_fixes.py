@@ -266,7 +266,8 @@ def cargo_page(local_server):
 
 def test_untouched_example_row_is_replaced_by_the_first_ai_row(cargo_page):
     page = cargo_page
-    assert "例 S1" in page.js("document.querySelector('#sc-simple').innerText")
+    # 2026-11-08 の直しに合わせて: 初めの荷は例 S1 ではなく、段ボール 100 サイズ・10 kg・10 個の簡単な荷
+    assert page.js("W.draft.items.length") == 1 and page.js("W.draft.items[0].count") == 10 and "100 サイズ" in page.js("document.querySelector('#sc-simple').innerText")
     n0 = page.js("W.draft.items.length")
     page.js("document.querySelector('#ai-cg-box').open = true")
     page.js("(function(){const e = document.querySelector('#ai-cg-text'); e.value = '段ボール 3箱 各40kg、パレット1枚 110×110×150cm 450kg'; e.dispatchEvent(new Event('input', {bubbles: true}));})()")

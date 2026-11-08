@@ -49,7 +49,7 @@ def test_5_rosen_amount_note_on_both_screens():
         h = (WEB / p).read_text(encoding="utf-8")
         assert "目安の額は出せません。契約単価を入れると額が出ます。" in h  # 文言の直し 2026-11-07
     src = (ROOT / "src" / "shipcompare" / "estimate.py").read_text(encoding="utf-8")
-    assert "路線便の試算は、区間の表を持つ区間に限ります" in src
+    assert "路線便の試算は、運賃表を持っている区間だけです" in src   # 日本語の直し 2026-11-08
 
 
 def test_5_rosen_row_in_map_estimate_carries_the_note(pub):
@@ -57,7 +57,7 @@ def test_5_rosen_row_in_map_estimate_carries_the_note(pub):
     status, r = post(pub, "/api/estimate", {"shipment": s, "origin_code": "13104", "dest_code": "27128"})
     assert status == 200
     rosen = [x for x in r["rows"] if x["mode"] == "rosen"]
-    assert rosen and any("区間の表を持つ区間に限ります" in n for n in rosen[0]["notes"])
+    assert rosen and any("運賃表を持っている区間だけです" in n for n in rosen[0]["notes"])   # 日本語の直し 2026-11-08
 
 
 def test_6_partner_table_heading_says_only_this_partners_rows():

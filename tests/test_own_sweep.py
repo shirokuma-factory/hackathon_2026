@@ -95,17 +95,17 @@ def test_p1_03_ok_without_details_is_asked_not_claimed(calc):
     if t is None:
         pytest.skip("Negotiate は公開されていない")
     assert "内容は別途お伝えします" not in t
-    assert "積込場所の荷役設備" in t and "納品先（受取側）が受け取れる日時" in t   # 未確認として質問に残る
-    assert "荷物の品名・荷姿" in t and "お見積りは、荷物の内容と日時を伺ってから" in t
+    assert "積み込み場所の荷役設備" in t and "納品先（受け取り側）が受け取れる日時" in t   # 未確認として質問に残る
+    assert "荷物の品名・荷姿" in t and "■進め方" in t   # 日本語の直し 2026-11-08: 「お見積りは…伺ってからお出しします」の行は進め方に統合
     t2 = draft(calc, load={"state": "ok", "note": "平日 9 時から 17 時"}, recv={"state": "ok", "note": "フォークリフトあり"})
-    assert "積込の条件: 平日 9 時から 17 時" in t2 and "積込場所の荷役設備" not in t2 and "荷物の品名・荷姿" in t2
+    assert "積み込みの条件: 平日 9 時から 17 時" in t2 and "積み込み場所の荷役設備" not in t2 and "荷物の品名・荷姿" in t2
 
 
 def test_p1_04_reconfirmation_does_not_open_as_a_first_contact(calc):
     t = draft(calc, recv={"state": "ng", "note": ""}, hold={"action": "hold", "picks": ["recv_time"]})
     if t is None:
         pytest.skip("Negotiate は公開されていない")
-    assert "突然のご連絡" not in t and "先日ご相談した件" in t and "再確認させてください" in t
+    assert "突然のご連絡" not in t and "先日ご相談した" in t and "あらためてご相談させてください" in t   # 日本語の直し 2026-11-08
     assert "突然のご連絡" in draft(calc)
 
 
@@ -184,7 +184,7 @@ def tab(page, name):
 def test_p0_01_alt_actual_rate_differs_from_main_and_says_count(app):
     t = app.js("(() => { const tl = [...document.querySelectorAll('.o-tile')].find((x) => /実車率/.test(x.querySelector('.o-tl').textContent)); return { main: tl.querySelector('.o-tv').textContent.trim(), alt: (tl.querySelector('.o-talt') || {textContent: ''}).textContent }; })()")
     import re
-    m = re.search(r"不明の区間を空とした場合\s*([\d.]+)%", t["alt"])
+    m = re.search(r"不明の区間を空車とした場合\s*([\d.]+)%", t["alt"])
     assert m, t
     assert m.group(1) != t["main"].replace("%", "").strip()
     assert "区間の数で数えています" in t["alt"] and "65.4" in t["alt"]   # 1 枚のページ（own_lite）と同じ値
@@ -192,7 +192,7 @@ def test_p0_01_alt_actual_rate_differs_from_main_and_says_count(app):
 
 def test_p1_01_weekday_table_has_unknown_column_and_note(app):
     r = app.js("({ th: [...document.querySelectorAll('#own-right table.o-tab thead th')].map((x) => x.textContent), note: (document.querySelector('#own-unknote') || {textContent: ''}).textContent })")
-    assert "うち行き先不明" in r["th"] and "17 本" in r["note"] or "本" in r["note"]
+    assert "実車か空車か不明" in r["th"]   # 日本語の直し 2026-11-08: 列名を中身に合わせた and "17 本" in r["note"] or "本" in r["note"]
 
 
 def test_p1_05_no_anonymous_place_labels_on_screen(app):

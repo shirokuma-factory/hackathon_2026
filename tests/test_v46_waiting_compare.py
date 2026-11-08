@@ -88,7 +88,7 @@ def test_driver_page_has_a_way_back_and_the_day_sheet_and_keeps_distribution_hel
     html = DRIVER.read_text(encoding="utf-8")
     assert 'href="/"' in html and "最初の画面に戻る" in html
     assert "事務の方へ" in html and "URL をコピー" in html   # 文言の直し 2026-11-07          # 配り方の説明は残す
-    assert "日報に写す表" in html and "日報の表をコピー" in html and "荷待ち（分）" in html
+    assert "乗務記録（日報）に写す表" in html and "日報の表をコピー" in html and "荷待ち（分）" in html
     assert html.count("localStorage") == 3 and "fetch(" not in html
     assert "--bg: #070b12" in html                                      # 地図の画面の暗い地
 
@@ -243,7 +243,7 @@ def test_cross_check_recalculates_with_own_times_and_writes_a_reply():
         r = out["r"]
         assert r["n"] == 1 and r["own"] < r["carrier"] and r["diff"] == r["carrier"] - r["own"] > 0, r
         assert "受付簿の時刻で数えた額" in out["text"] and "書面のほうが多い" in out["text"]
-        assert "当方の受付の時刻で数え直した参考額" in out["reply"] and "2026-10-05" in out["reply"] and "（運送会社の担当者名）" in out["reply"]
+        assert "当方の受付の時刻で数え直すと" in out["reply"] and "10月5日" in out["reply"] and "（運送会社の名称）" in out["reply"] and "よろしくお願いいたします。" in out["reply"]
         assert "荷役をした人が分からない" not in out["notes"]
 
 

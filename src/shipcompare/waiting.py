@@ -263,7 +263,7 @@ MEMO_NO_PARTNER = "（相手未記入）"
 # 契約の相手が空の行を、画面で相手を入れてもらうまで仮の名前で計算する（defaults に provisional_partner を渡したときだけ。web/waiting_calc.js と同じ）
 PROVISIONAL_PARTNER = "（相手を入れてください）"
 MEMO_UNREADABLE = ("読める形ではありませんでした（{shown}）。次のどれかの形で貼ってください: Excel の表（1 行目が見出し、列はタブ区切り）、"
-                   "ドライバーの 1 枚（driver.html）の文（荷待ち記録 11/10 …）、1 行 1 件のメモ（11/10 江東 着7:50 呼ばれ9:40 終わり10:30）")
+                   "ドライバー用のページで作った文（荷待ち記録 11/10 …）、1 行 1 件のメモ（11/10 江東 着7:50 呼ばれ9:40 終わり10:30）")
 _MEMO_KEYS = {"到着": "arrive", "着": "arrive", "受付": "reception", "受": "reception", "呼ばれた": "call", "呼ばれ": "call", "呼び出し": "call", "呼出し": "call", "呼出": "call", "呼": "call",
               "荷役開始": "start", "積込開始": "start", "積み始め": "start", "積始め": "start", "開始": "start",
               "荷役終了": "end", "積込終了": "end", "積み終わり": "end", "積み終り": "end", "積終わり": "end", "終わり": "end", "終了": "end", "積込終": "end", "積終": "end", "終": "end",
@@ -425,7 +425,7 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
                         r["partner"] = MEMO_NO_PARTNER
                     rows.append(r)
                 if memo["rows"]:
-                    notes.append(f"「荷待ち記録」の無い手書きのメモの行も読みました（{len(memo['rows'])} 件）。契約の相手が書かれていない行は『{MEMO_NO_PARTNER}』としています")
+                    notes.append(f"「荷待ち記録」で始まらないメモの行も読みました（{len(memo['rows'])} 件）。契約の相手が書かれていない行は『{MEMO_NO_PARTNER}』としています")
                 if memo["bad"]:
                     notes.append(f"読まなかった行（{len(memo['bad'])} 行）: " + "、".join(f"「{_memo_clip(l)}」は{why}" for l, why in memo["bad"]))
             else:
@@ -445,7 +445,7 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
             notes = []
             defaulted = []
             if rows:
-                notes.append(f"スマホのメモの書き方で読みました（{len(rows)} 件）。『着』『受付（受）』『呼ばれ（呼）』『積み始め』『終わり（終・積込終）』『出発』の言葉の前後の時刻を読んでいます（『6:10着』のように時刻が先でも読みます）。行ごとに読んだ相手・車番・車種・場所を下に出すので、違うときは表で直してください")
+                notes.append(f"スマホのメモの書き方で読みました（{len(rows)} 件）。『着』『受付（受）』『呼ばれ（呼）』『積み始め』『終わり（終・積込終）』『出発』の言葉の前後の時刻を読んでいます（『6:10着』のように時刻が先でも読みます）。行ごとに読んだ相手・車番・車種・場所を、下の「読み取った内容」に出します。違うときは、そこか表で直してください。")
                 if any(not r.get("partner") for r in rows):
                     for r in rows:
                         if not r.get("partner"):
@@ -458,7 +458,7 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
                 defaulted.append("shipper_fault")
             if memo["bad"]:
                 items = "、".join(f"「{_memo_clip(ln)}」は{why}" for ln, why in memo["bad"])
-                notes.append(f"読めなかった行は表に入れていません（{len(memo['bad'])} 行）: {items}。1 行に『日付 場所 着7:50 呼ばれ9:40 終わり10:30』の形で書くか、ドライバーの 1 枚（driver.html）の文を使ってください")
+                notes.append(f"読めなかった行は表に入れていません（{len(memo['bad'])} 行）: {items}。1 行に『日付 場所 着7:50 呼ばれ9:40 終わり10:30』の形で書くか、ドライバー用のページで作った文を使ってください")
             for rd in memo["read"]:
                 if rd["check"]:
                     notes.append(f"確かめてください:「{rd['line']}」は" + "、".join(rd["check"]))
@@ -520,7 +520,7 @@ def parse_paste_detail(text: str) -> dict[str, Any]:
             if r.get("reception"):
                 r["arrive"] = r.pop("reception")
                 r["arrive_src"] = "reception"   # 到着として読んだ印。早着の文を受付の言葉にする
-        notes.append("到着の列が無いので、受付の時刻を到着として読みました（荷主の受付記録の使い方。受付の前に着いて待った時間は入りません）")
+        notes.append("到着の列が無いので、受付の時刻を到着として読みました（荷主の受付記録を読むときの扱いです。受付の前に着いて待った時間は入りません）。")
     # 荷役をした人の列が無いとき: 荷役作業等の内容があれば運転者（法定の記録は運転者自身の荷役）、無ければ不明
     if header and "handler" not in cols:
         derived = False
@@ -596,7 +596,7 @@ def _calc_row(n: int, raw: dict[str, Any], year: int | None, tariff: dict[str, A
     else:
         vclass = _normalize_class(g["vehicle_class"])
         if vclass is None:
-            errs.append(f"車種「{g['vehicle_class']}」を読めません（小型（2t）/ 中型（4t）/ 大型（10t）/ トレーラー）")
+            errs.append(f"車種「{g['vehicle_class']}」を読めません。小型・中型・大型・トレーラーのどれかを入れてください（2t・4t・10t でも読みます）。")
 
     partner = _nz(g["partner"])   # 全角・半角の違いで相手が分かれないようにそろえる
     partner_provisional = False

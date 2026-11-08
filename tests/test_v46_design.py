@@ -152,7 +152,7 @@ def test_market_guided_legend_button_state_and_panel_after_selecting(w, h):
         page.js("document.querySelector('.mg-row').click()")
         time.sleep(2.8)
         assert page.js("document.getElementById('mg-next').disabled") is False
-        assert page.js("document.getElementById('mg-next').textContent.trim()").startswith(("この向きで帰り便を探す", "この区間で空きを探す"))   # 例の便が無い区間は後者（2026-11-08）   # 文言の直し 2026-11-07
+        assert page.js("document.getElementById('mg-next').textContent.trim()").startswith(("この向きで帰り便を探す", "この向きで空きを探す"))   # 例の便が無い区間は後者（2026-11-08。日本語の直し 2026-11-08 で「区間」を「向き」に）   # 文言の直し 2026-11-07
         # 案内の欄は選んだあとも残り（360 でも）、選んだ区間がその中に出る
         r = json.loads(page.js("JSON.stringify(document.getElementById('m-guide').getBoundingClientRect())"))
         assert r["width"] > 0 and r["height"] > 0 and r["bottom"] <= h + 1 and r["top"] >= 0, r

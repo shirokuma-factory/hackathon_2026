@@ -16,12 +16,12 @@
   const STEP_TEXT = {
     check: { run: 'が記録を点検中', done: 'が記録を点検' },
     draft: { run: 'が説明文を下書き中', done: 'が説明文を下書き' },
-    verify: { run: 'が数字と根拠を確かめ中', done: 'が数字と根拠を確かめ' },
+    verify: { run: 'が数字と根拠を確かめています', done: 'が数字と根拠を確認' },
   };
   const ORDER = ['check', 'draft', 'verify'];
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // 点検の欄の名前（英字のキー）を画面では日本語で出す
-  const FIELD_JA = { date: '日付', place: '場所', arrive: '到着', reception: '受付', appointed: '指定の到着時刻', start: '荷役開始', end: '荷役終了', handler: '荷役をした人', shipper_fault: '荷主等の都合', wait_min: '待ち時間', handling_min: '荷役の時間', amount: '参考額', row: '行' };
+  const FIELD_JA = { date: '日付', place: '場所', arrive: '到着', reception: '受付', appointed: '指定の到着時刻', start: '荷役開始', end: '荷役終了', handler: '荷役をした人', shipper_fault: '荷主等の都合', wait_min: '待機（分）', handling_min: '荷役の時間', amount: '参考額', row: '行' };
   const fieldJa = (f) => FIELD_JA[f] || f;
   const usd = (x) => `約 $${(x < 0.01 ? x.toFixed(4) : x.toFixed(3))}`;
   const memo = { key: '', events: [], result: null };
@@ -162,7 +162,7 @@
     return ORDER.filter((s) => by[s]).map((s) => {
       const e = by[s], t = STEP_TEXT[s], label = e.label || '';
       if (e.model === 'machine') {   // 機械による数字の照合（費用なし）
-        return e.event !== 'done' ? '<li>数字を機械で照合中…</li>' : `<li>数字を機械で照合 → ${e.verified ? '一致' : '要確認'} <span class="ai-cost">費用なし</span></li>`;
+        return e.event !== 'done' ? '<li>数字を機械で照合中…</li>' : `<li>数字の機械照合: ${e.verified ? '一致' : '要確認'} <span class="ai-cost">費用なし</span></li>`;
       }
       if (e.event !== 'done') return `<li>${esc(label)} ${t.run}…</li>`;
       let tail;
@@ -170,7 +170,7 @@
       else if (s === 'check') tail = `完了（指摘 ${e.count || 0} 件）`;
       else if (s === 'verify') tail = e.verified ? '一致' : '要確認';
       else tail = `完了（${esc(e.detail)}）`;
-      return `<li>${esc(label)} ${t.done} → ${tail} <span class="ai-cost">入力 ${e.input_tokens} / 出力 ${e.output_tokens} トークン、${usd(e.cost_usd || 0)}（目安）、${(e.ms / 1000).toFixed(1)} 秒</span></li>`;
+      return `<li>${esc(label)} ${t.done}: ${tail} <span class="ai-cost">入力 ${e.input_tokens} / 出力 ${e.output_tokens} トークン、${usd(e.cost_usd || 0)}（目安）、${(e.ms / 1000).toFixed(1)} 秒</span></li>`;
     }).join('');
   }
 
@@ -281,7 +281,7 @@
         let off = el.querySelector('.ai-off');
         if (!off) { off = document.createElement('p'); off.className = 'small ai-off'; el.appendChild(off); }
         const why = reasonText(st);
-        off.textContent = /（費用の上限のため）$/.test(why) ? 'AI による言い換えは、この公開版では使えません。下書きは決まった文型で作っています。' : `説明文の自動作成: ${why}（今は型どおりの書面です）`;
+        off.textContent = /（費用の上限のため）$/.test(why) ? '説明文の自動作成は、この公開版では使えません。今は型どおりの書面です。' : `説明文の自動作成: ${String(why).replace(/[。\s]+$/, '')}。今は型どおりの書面です。`;
         return false;
       }
       injectStyle();
@@ -347,7 +347,7 @@
         ${rows.length ? `<p class="small">寸法は cm、重さは 1 個あたり kg です。</p><div class="ai-cg-scroll"><table class="ai-cg-table"><thead><tr>${['種類', '個数', '縦', '横', '高さ', '重さ'].map((l) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>` : '<p class="small">表にできる行がありませんでした。</p>'}
         ${r.origin || r.destination ? `<p class="small" id="ai-cg-places">発地: ${esc(r.origin || '（書かれていません）')} / 着地: ${esc(r.destination || '（書かれていません）')}（参考です。地図の選択は変わりません）</p>` : ''}
         ${(r.unknowns || []).length ? `<p class="ai-cg-h">分からなかったこと</p><ul class="ai-cg-list" id="ai-cg-unknowns">${r.unknowns.map((u) => `<li>${esc(u)}</li>`).join('')}</ul>` : ''}
-        ${(r.dropped || []).length ? `<details class="ai-cg-drop"><summary>入れなかった行・消した所（${r.dropped.length} 件）</summary><ul class="ai-cg-list" id="ai-cg-dropped">${r.dropped.map((u) => `<li>${esc(u)}</li>`).join('')}</ul></details>` : ''}
+        ${(r.dropped || []).length ? `<details class="ai-cg-drop"><summary>入れなかった行・消した箇所（${r.dropped.length} 件）</summary><ul class="ai-cg-list" id="ai-cg-dropped">${r.dropped.map((u) => `<li>${esc(u)}</li>`).join('')}</ul></details>` : ''}
         <div class="ai-bar"><button type="button" class="btn-link" data-cg="close">閉じる</button></div></div>`);
     }
     parts.push('</details>');

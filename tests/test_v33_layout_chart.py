@@ -60,7 +60,7 @@ def test_g143_10_app_name_is_backfull():
 def test_g143_11_summary_separates_the_two_ranges():
     html = read("index.html")
     assert "営業用の計" in html and "38.97%" in html and "と比べるのはこの値" in html
-    assert "営業用普通車だけの範囲で、別の値です" in html and 'id="sum-load-ref"' in html
+    assert "営業用普通車だけの値です" in html and 'id="sum-load-ref"' in html
 
 
 def test_g143_13_entry_button_has_origin_destination_on_its_own_line():
@@ -94,7 +94,7 @@ def test_g143_3_7_chart_sentence_ratio_and_ship_row():
         assert 'value="船"' in none_html
         ask = h(ship_ask)
         assert "つながる航路がありません" not in ask and "日数と額は見積で確認" in ask   # 鉄道・船は額を出さない（v5.0: 公表の運賃表を持たない）
-        assert "金額は見積で確かめます" in ask   # 文言の直し 2026-11-07
+        assert "金額は見積で確かめてください" in ask   # 文言の直し 2026-11-07。2026-11-08 の直しに合わせて「確かめてください」
         assert not page.js("window.__errs.length") and not page.js("window.__con.length"), page.js("window.__con")
 
 
@@ -131,7 +131,7 @@ def test_g143_11_13_market_summary_and_entry_button_at_1920():
         _watch(page)
         open_("#v=market&p=27-12")
         t = page.js("document.querySelector('#m-summary .sum-gap').textContent")
-        assert "営業用の計" in t and "38.97%" in t and "別の値" in t
+        assert "営業用の計" in t and "38.97%" in t and "営業用普通車だけの値" in t   # 日本語の直し 2026-11-08
         r = page.js("(function(){const b=document.querySelector('#m-pair [data-act=clo]');"
                     "const m=b.querySelector('.mp-go-main').getBoundingClientRect(),s=b.querySelector('.mp-go-sub').getBoundingClientRect();"
                     "return [m.height,s.height,b.scrollWidth,b.clientWidth]})()")

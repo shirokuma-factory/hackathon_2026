@@ -11,11 +11,11 @@
   const BASE = { bg: '#0a0f19', land: '#0e1621', water: '#05080e', park: '#0d1a1d', roadMinor: '#17212f', roadMajor: '#222f44', motorway: '#33455f', rail: '#131c29',
     b2: '#4b5c7a', b3: '#27344a', label: '#7f8da6', labelStrong: '#a9b6cc', labelWater: '#46617f', halo: '#0a0f19' };
   const STAGE_NOTE = {
-    api: (m) => `<b>国土交通省 交通量 API</b>: 直轄国道の観測点 ${f(m.api.points)} 地点（常設 ${f(m.api.kinds['常設'] || 0)}、CCTV ${f(m.api.kinds['CCTV'] || 0)}）を、道路の線に結びつけて使います。`,
+    api: (m) => `<b>国土交通省 交通量 API</b>: 直轄国道の観測点 ${f(m.api.points)} 地点（常設 ${f(m.api.kinds['常設'] || 0)}、道路カメラ（CCTV） ${f(m.api.kinds['CCTV'] || 0)}）を、道路の線に結びつけて使います。`,
     fetch: (m) => `<b>取得</b>: ${f(m.fetch.requests)} 回の要求で、直近24時間と先週の同じ時刻の 1 時間値を集めました。値がある地点だけが色の元になります。`,
     missing: (m) => `<b>欠測 ${f(m.missing.count)} 地点</b>: 値が空の地点は 0 台にせず、輪（◯）で残しています。道路の色と平均には入れていません。`,
     agg: (m) => `<b>県ごとに集計</b>: ${f(m.agg.prefs)} 都道府県それぞれで、観測できた地点の平均を出しています。右の順位と県境が光ります。`,
-    map: (m) => `<b>地図</b>: 観測点 ${f(m.draw.drawn)} 点の値を、近くの道路の ${f(S.nCol || 0)} 区間に色と流れる点で映しています。${f(S.nGrey || 0)} 区間は近くに観測点がなく灰色です。`,
+    map: (m) => `<b>地図</b>: 観測点 ${f(m.draw.drawn)} 点の値を、近くの道路の ${f(S.nCol || 0)} 区間に、色と流れの帯で表しています。${f(S.nGrey || 0)} 区間は近くに観測点がなく灰色です。`,
   };
   const S = {
     data: null, T: NH - 1, playing: false, mode: 'week', focus: null, selKey: null, hoverKey: null, prefHover: null, prefSel: null,
@@ -418,7 +418,7 @@
       // 上り・下り・小型車は、最新の 1 時間の分だけをファイルに持っている。選んだ時間が最新でないときは、別の時間の値を並べず「ありません」と書く
       const isLatest = idx === NH - 1, selHour = C.fmtHour(S.data.hours[idx]);
       const u = isLatest ? p.up : null, d = isLatest ? p.down : null, tot = u != null && d != null ? u + d : null;
-      const none = `<span title="上り・下り・小型車は最新の ${esc(lastHour)} の分だけを持っています">データなし（${esc(lastHour)}のみ）</span>`;
+      const none = `<span title="上り・下り・小型車は最新の ${esc(lastHour)} の分だけを持っています">この時間の値はありません（${esc(lastHour)}の分だけあります）</span>`;
       h += `<tr><td>${esc(selHour)} の上り / 下り</td><td>${isLatest ? `${f(u)} / ${f(d)}` : none}</td></tr>`;
       if (tot) h += `<tr><td>地図の流れの帯</td><td title="この比で台数を分けて、道路の左右 2 本の帯にしています">上り ${Math.round((u / tot) * 100)}% / 下り ${Math.round((d / tot) * 100)}%</td></tr>`;
       if (tot) h += `<tr><td colspan="2"><div class="split" aria-hidden="true"><i style="width:${(u / tot) * 100}%;background:#5cc8ff"></i><i style="width:${(d / tot) * 100}%;background:#7d8aff"></i></div></td></tr>`;
@@ -427,7 +427,7 @@
     }
     h += '</table>';
     if (full) {
-      h += `<div class="src">観測点コード ${esc(p.id)}（${p.type === 'CCTV' ? 'CCTV トラカン' : '常設'}）。数字の元の項目は、下の「出典と注意」にあります。</div>`;
+      h += `<div class="src">観測点コード ${esc(p.id)}（${p.type === 'CCTV' ? '道路カメラ（CCTV）で数える観測点' : '常設の観測点'}）。数字の元の項目は、下の「出典と注意」にあります。</div>`;
     }
     return h;
   }
@@ -520,7 +520,7 @@
       else { c.textContent = (r.ratio >= 1.005 ? '+' : r.ratio <= 0.995 ? '−' : '±') + Math.abs((r.ratio - 1) * 100).toFixed(0) + '%'; c.className = 'c ' + (r.ratio >= 1.05 ? 'up' : r.ratio <= 0.95 ? 'dn' : ''); }
       el.classList.toggle('sel', r.pref === S.prefSel);
     });
-    $('#rank-hint').textContent = `${C.fmtHour(S.data.hours[Math.round(S.T)])}の 1 地点あたり大型車（台/時）。左の番号は、この時間の順位です。行の並びは ${C.fmtHour(S.data.hours[S.rankSortedAt])} の値の順で動かさないので、番号が前後することがあります（「並べ替え」で今の時間の順に直せます）。右端の列は${mode === 'week' ? '先週の同じ時刻との差' : '1 時間前との差'}です。行を指すと地図の県が光ります。`;
+    $('#rank-hint').textContent = `${C.fmtHour(S.data.hours[Math.round(S.T)])}の 1 地点あたりの大型車（台/時）です。左の番号はこの時間の順位で、行は ${C.fmtHour(S.data.hours[S.rankSortedAt])} の順のまま動きません。「並べ替え」で今の時間の順に直せます。右端の列は${mode === 'week' ? '先週の同じ時刻との差' : '1 時間前との差'}です。行を指すと地図の県が光ります。`;
   }
   function setPrefHover(name) { S.prefHover = name; for (const [k, el] of S.rankEls) el.classList.toggle('hl', k === name); S.dirty = true; }
   function selectPref(name) {
@@ -684,7 +684,7 @@
       showError('');
     } catch (e) {
       S.checkState = 'ng';
-      if (!S.data) showError('データを読み込めませんでした。tools/fetch_trucks_now.py を実行して web/data/trucks_now.json を作ってください。（' + e.message + '）');
+      if (!S.data) { try { console.error(e); } catch (x) { /* コンソールが無いとき */ } showError('データを読み込めませんでした。時間をおいて読み直してください。'); }
     }
     updateFresh();
   }
@@ -816,7 +816,7 @@
       applyData(d, false);
       if (rd) { buildRoads(rd); S.dirty = true; }
     } catch (e) {
-      showError('データを読み込めませんでした。tools/fetch_trucks_now.py を実行して web/data/trucks_now.json を作ってください。（' + e.message + '）');
+      { try { console.error(e); } catch (x) { /* コンソールが無いとき */ } showError('データを読み込めませんでした。時間をおいて読み直してください。'); }
       return;
     }
     S.polling = pollEnabled();

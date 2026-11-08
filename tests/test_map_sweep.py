@@ -191,4 +191,5 @@ def test_compare_destination_carries_over_to_find():
         want = page.js(f"__app.S.idx.codes[{code}]")
         page.wait(lambda: page.js("__app.Find.state.dest") == want, 30, "届け先の引き継ぎ")
         assert page.js("__app.Find.state.dest") != "46201"
+        page.wait(lambda: "大阪" in page.js("document.getElementById('f-dest-q').value"), 15, "届け先の欄の表示")   # 2026-11-08: 状態の更新より欄の描き直しが少し遅れるので、条件を待つ
         assert "大阪" in page.js("document.getElementById('f-dest-q').value")

@@ -48,12 +48,12 @@ def test_h05_flex_only_when_the_user_chose_it(path):
         _open_lite(page, path)
         assert page.js("document.querySelector('#flex').value") == ""
         txt = page.js("document.querySelector('#quote').value")
-        assert "日の間で届けばよい" not in txt and "日の幅" not in txt, txt
+        assert "日ほどは遅れても構いません" not in txt and "この日に届く必要があります" not in txt, txt   # 日本語の直し 2026-11-08
         _set(page, "#flex", "4")
         txt = page.js("document.querySelector('#quote').value")
-        assert "日の幅があります（4 日の間で届けばよい）" in txt, txt
+        assert "4 日ほどは遅れても構いません" in txt, txt
         _set(page, "#flex", "0")
-        assert "日の幅はありません" in page.js("document.querySelector('#quote').value")
+        assert "この日に届く必要があります" in page.js("document.querySelector('#quote').value")
 
 
 @pytest.mark.parametrize("path", [PAGE, ARTIFACT], ids=["page", "artifact"])

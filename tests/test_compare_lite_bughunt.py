@@ -54,7 +54,7 @@ def test_s01_charter_is_not_priced_across_the_sea(to, status, km):
     for cls in ("2t", "4t"):
         o = out["opts"]["kashikiri_" + cls]
         assert o["s"] == status and o["a"] is None, (cls, o)
-        assert "海を渡るため、フェリーか船の見積が要ります" in o["why"], o
+        assert "海を渡るため、船（フェリーなど）の見積が要ります" in o["why"], o   # 2026-11-08 の直しに合わせて
     assert not (out["best"] or "").startswith("kashikiri"), out
     assert "387,570" not in out["head"] + out["tile"] + out["bars"]
 

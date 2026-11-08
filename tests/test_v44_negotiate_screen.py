@@ -133,7 +133,7 @@ def test_conditions_default_unconfirmed_and_hold_skip(app):
     click(page, "[data-act=to-cond]")
     page.js("(function(){const e = document.querySelector('[data-pick=load_time]'); e.checked = true; e.dispatchEvent(new Event('change', {bubbles: true}));})()")
     click(page, "#neg-go-draft")
-    assert "積込の日時を変えることは可能でしょうか" in page.js("document.querySelector('#neg-text').value")
+    assert "積み込みの日時を変えることは可能でしょうか" in page.js("document.querySelector('#neg-text').value")
     assert page.js("document.querySelector('#neg-copy').disabled") is False
     click(page, "[data-act=to-cond]")
     page.js("(function(){const e = document.querySelector('[data-hold=skip]'); e.checked = true; e.dispatchEvent(new Event('change', {bubbles: true}));})()")
@@ -175,7 +175,7 @@ def test_draft_edit_protection_regenerate_confirm_and_copy(app):
     # 社外の文に入れないもの
     for bad in ("5678", "3344", "haisha", "digitaco", ".csv", "5/5", "2,790", "2790", "6,931", "6931", "D01", "L0", "さつま運輸", "円"):
         assert bad not in v0, bad
-    assert "【宛先" in v0 and "江東区周辺" in v0 and "土曜日" in v0 and "積込を希望する日時" in v0 and "お受けできるかとお見積りをお送りします" in v0
+    assert "【宛先" in v0 and "江東区周辺" in v0 and "土曜日" in v0 and "積み込みを希望する日時" in v0 and "お受けできるかどうかとお見積りをお送りします" in v0
     assert "社内の根拠" in T(page, "#neg-internal") or page.js("!!document.querySelector('#neg-internal')")
     page.js("document.querySelector('#neg-internal').open = true")
     assert "5 本中 空車 5 本" in T(page, "#neg-internal") and "6,931.9 km" in T(page, "#neg-internal")  # 2026-11-07 見本の鹿児島化（文言の直し 2026-11-07 で「便」を「本」に統一）
@@ -207,14 +207,14 @@ def test_draft_edit_protection_regenerate_confirm_and_copy(app):
     click(page, "#neg-regen")
     click(page, "#neg-regen-yes")
     nv = page.js("document.querySelector('#neg-text').value")
-    assert nv != edited and "積込の条件: 金曜夕方に準備可と、荷主の担当者に電話で確認" in nv and "積込を希望する日時" not in nv and "納品先（受取側）が受け取れる日時" in nv
+    assert nv != edited and "積み込みの条件: 金曜夕方に準備可と、荷主の担当者に電話で確認" in nv and "積み込みを希望する日時" not in nv and "納品先（受け取り側）が受け取れる日時" in nv
     assert page.js("!document.querySelector('#neg-stale')") and page.js("window.__confirmCalled") is False
     # 編集していない文は、条件を変えると黙って作り直される（守る編集が無い）
     click(page, "[data-act=to-cond]")
     radio(page, "neg-recv", "ok")
     setv(page, "[data-note=recv]", "土曜の午前に受取可と確認")
     click(page, "#neg-go-draft")
-    assert "受取の条件: 土曜の午前に受取可と確認" in page.js("document.querySelector('#neg-text').value") and page.js("!document.querySelector('#neg-stale')")
+    assert "受け取りの条件: 土曜の午前に受取可と確認" in page.js("document.querySelector('#neg-text').value") and page.js("!document.querySelector('#neg-stale')")
     assert "確認の状況: " not in page.js("document.querySelector('#neg-text').value")
 
 
@@ -381,7 +381,7 @@ def test_single_file_page_has_the_same_flow(app, tmp_path):
     click(page, "#neg-go-cond")
     click(page, "#neg-go-draft")
     v = page.js("document.querySelector('#neg-text').value")
-    assert "5678" not in v and "積込を希望する日時" in v
+    assert "5678" not in v and "積み込みを希望する日時" in v
     setv(page, "#neg-text", v + "\n手で足した行")
     click(page, "[data-act=to-cond]")
     page.js("(function(){const e = document.querySelector('input[name=neg-load][value=ok]'); e.checked = true; e.dispatchEvent(new Event('change', {bubbles: true}));})()")

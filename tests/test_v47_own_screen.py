@@ -164,13 +164,13 @@ def test_lite_sample_has_rate_input_tomorrow_fields_and_text(tmp_path):
         assert page.js("!!document.querySelector('#own-rate') && !!document.querySelector('#own-rate-kind')")
         page.js("(function(){const e = document.querySelector('#own-rate'); e.value = '120'; e.dispatchEvent(new Event('input', {bubbles: true}));})()")
         out = page.js("document.querySelector('#rev-own-out').innerText")
-        assert "自社の運賃の単価" in out and "円" in out, out
+        assert "自社の成約単価" in out and "円" in out, out   # 日本語の直し 2026-11-08: 入力欄の名前にそろえた
         # 明日の空き: 荷台の形・内寸・積める時間の幅
         for sel, val in (("[data-tm=bed]", "ウイング"), ("[data-tm=size]", "9.6m×2.4m×2.4m"), ("[data-tm=time]", "18:00"), ("[data-tm=timeTo]", "22:00"), ("[data-tm=kg]", "5"), ("[data-tm=date]", "2026-11-09")):
             page.js("(function(){const e = document.querySelector(%s); e.value = %s; e.dispatchEvent(new Event('change', {bubbles: true}));})()" % (json.dumps(sel), json.dumps(val)))
         page.js("document.querySelector('[data-act=tm-make]').click()")
         txt = page.js("document.querySelector('#tm-out').value")
-        assert "荷台: ウイング（内寸 9.6m×2.4m×2.4m）" in txt and "18:00〜22:00 の間に積めます" in txt, txt
+        assert "荷台: ウイング（内寸 9.6m×2.4m×2.4m）" in txt and "積み込み 18:00〜22:00（積み込み後に出発）" in txt, txt   # 日本語の直し 2026-11-08
 
 
 def test_lite_merges_tatsumi_places_and_the_switch_splits_them():

@@ -144,9 +144,9 @@ def test_page_append_paste_undo_and_reception_wording_in_edge():
         page.wait(lambda: page.js("document.body.classList.contains('shipper-mode')"), 10, "荷主として使う")
         page.js("document.querySelector('#b-mode').click()")
         page.wait(lambda: page.js("!!document.querySelector('#wait-doc table.rec')"), 10, "書面")
-        doc = page.js("document.querySelector('#wait-doc').textContent")
+        doc = page.js("document.querySelector('#doc-attach').textContent")
         assert "荷主の受付の前に着いた可能性" not in doc
-        assert "早い時刻の受付" in doc and "受付の前に着いて待った時間は入っていません" in doc
+        assert "早い時刻の受付" not in doc and "受付の前に着いて待った時間は入っていません" not in doc   # 荷主に渡る書面には社内の見方を入れない  # 日本語の直し 2026-11-08
 
 
 # ---------------------------------------------------------------- 荷主として使う、運送会社の書面との照合（Edge）
@@ -193,7 +193,7 @@ def test_shipper_mode_shows_analysis_actions_and_cross_check_in_edge():
         cross = page.js("""({text: document.querySelector('#cross-result').textContent, differ: document.querySelector('#cross-differ') ? document.querySelector('#cross-differ').textContent : '',
                              only: document.querySelector('#cross-only').textContent, ta: document.querySelector('#cross-ta').value.length})""")
         assert "2 回のうち、時刻が 15 分以上違うのは 1 回です" in cross["text"]  # 文言の直し 2026-11-07, cross["text"][:300]
-        assert "書面だけにある回 1、受付簿だけにある回 2" in cross["text"]  # 文言の直し 2026-11-07
+        assert "書面だけにある回は 1 回、受付簿だけにある回は 2 回" in cross["text"]  # 文言の直し 2026-11-07
         assert "1234" in cross["differ"] and "+20" in cross["differ"] and "5678" not in cross["differ"]
         assert "9999" in cross["only"] and "1111" in cross["only"] and cross["ta"] > 100
         # 画面を作り直しても（行を直しても）、貼った CSV と結果は残る

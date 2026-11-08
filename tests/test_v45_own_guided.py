@@ -180,7 +180,7 @@ def test_guided_steps_stay_within_budget(app, w):
     assert step_of(page) == 2
     res = T(page, "#neg-result")
     assert "5 / 5 便が空車" in res and "15 / 40 便が空車" in res and "金曜" in res and "ほかの曜日" in res
-    assert "ほか 8 便は除外" in T(page, "#neg-denom")   # 文言の直し 2026-11-07
+    assert "ほか 8 本は除外" in T(page, "#neg-denom")   # 文言の直し 2026-11-07
     assert page.js("document.querySelector('#neg-ev').open") is False and page.js("document.querySelector('#own-adv').open") is False
     assert "データ" in T(page, "#neg-head") and "架空のサンプル" in T(page, "#neg-head")  # 選んだあとも、どのデータかが見える
     m = measure(page); report(f"手順2 {w}", m)

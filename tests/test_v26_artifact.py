@@ -180,9 +180,13 @@ def test_g106_copy_buttons_forget_two_step_and_csv_paste():
         assert page.js("document.querySelector('#copybox').hidden") is True
         # 断られたら、見える枠に文を出して選ぶ
         page.js("Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: () => Promise.reject(new Error('denied'))}}); document.querySelector('#b-copydoc').click()")
+        # 2026-11-08 の直しに合わせて: 空欄（会社名など）が残っていると、1 回目は知らせるだけで、同じボタンをもう一度押すとコピーに進む
+        assert "空欄のまま" in page.js("document.querySelector('#copymsg').textContent")
+        assert page.js("document.querySelector('#copybox').hidden") is True
+        page.js("document.querySelector('#b-copydoc').click()")
         page.wait(lambda: page.js("document.querySelector('#copybox').hidden === false"), 10, "枠")
         text = page.js("document.querySelector('#copyta').value")
-        for need in ("いつもお世話になっております", "お打ち合わせ", "記録の一覧を下に", "よろしくお願いいたします", "参考：参考額の計算のしかた", "33,550", "第21項", "架空 元請A物流\n物流ご担当者様"):   # メールの形に 2026-11-07
+        for need in ("いつもお世話になっております", "お打ち合わせ", "記録の一覧を以下にお送りします", "よろしくお願いいたします", "参考額の計算のしかた", "33,550", "第21項", "架空 元請A物流\n物流ご担当者様"):   # メールの形に 2026-11-07
             assert need in text, need
         assert text.count("\n10月") == 12  # 記録の表は、その相手（架空 元請A物流）の 12 行
         assert page.js("document.activeElement.id") == "copyta"

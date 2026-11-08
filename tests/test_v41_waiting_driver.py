@@ -120,7 +120,7 @@ def test_defaults_only_fill_blank_cells_and_name_the_columns_used():
             {"date": "2026-10-05", "partner": "A", "vehicle_class": "軽", "arrive": "09:00", "start": "10:00", "shipper_fault": "はい"}]
     res = waiting.calc(rows, 2026, defaults=DEFAULTS)
     assert [r.get("defaults_used") for r in res["rows"]] == [["vehicle_class"], ["method"]]
-    assert [e["message"] for e in res["errors"]] == ["車種「軽」を読めません（小型（2t）/ 中型（4t）/ 大型（10t）/ トレーラー）"]   # 読めない値は既定にしない
+    assert [e["message"] for e in res["errors"]] == ["車種「軽」を読めません。小型・中型・大型・トレーラーのどれかを入れてください（2t・4t・10t でも読みます）。"]  # 日本語の直し 2026-11-08   # 読めない値は既定にしない
     assert res["rows"][0]["wait_fee"] == waiting.calc([{**rows[0], "vehicle_class": "中型"}], 2026)["rows"][0]["wait_fee"]
     assert waiting.calc(rows[:1], 2026, defaults={"vehicle_class": "軽"})["errors"]   # 知らない既定は使わない
 
@@ -240,17 +240,17 @@ def test_document_for_the_receiving_shipper_shows_fault_column_early_split_and_n
                            sum: document.querySelector('#partners table.par tbody tr').textContent})""")
         assert "待機（分）" in doc["head"]   # 書面の作り直し 2026-11-07: 荷主等の都合の列は注記に移した
         t = doc["text"]
-        assert "荷主等の都合の欄が貼り付けの記録に無かったため" not in t and "再計算してください" not in t   # 事務の指示はメールに入れない（2026-11-08）
-        assert "荷主等の都合の欄が貼り付けの記録に無かったため" in page.js("document.querySelector('#fault-box').textContent") and "該当 3 行" in page.js("document.querySelector('#fault-box').textContent")
+        assert "貼り付けた記録に荷主等の都合の欄が無かったため" not in t and "再計算してください" not in t   # 事務の指示はメールに入れない（2026-11-08）
+        assert "貼り付けた記録に荷主等の都合の欄が無かったため" in page.js("document.querySelector('#fault-box').textContent") and "3 行すべて" in page.js("document.querySelector('#fault-box').textContent")
         assert "記録のすべての待ちを数えています" in t and "渋滞や当社側の遅れによる待ちは含めていません" not in t
         # 受付の時刻がある回は受付から数えた額が主な額（SPEC §43）。受付があるので「早着の疑いを除くと」は出さない
         assert "受付から数えた数字" in t and "受付の時刻がある3回" in t and "早く着いた可能性" not in t   # メールには書かない（画面の注意だけ。2026-11-08）  # 文言の直し 2026-11-07
         assert "早着の疑いを分けた数字" not in t and "を除くと 0 円" not in t
-        assert "指定の到着時刻が無く、到着が05:00から07:59までの回" in t
+        assert "指定の到着時刻が無く、到着が05:00から07:59までの回" not in t   # 早着の定義は荷主に渡る書面に入れない（画面の社内向けの注意だけ）  # 日本語の直し 2026-11-08
         assert "車種が記入されていない3行は『中型』の単価で計算しています" in t
         assert "運転者が荷役をして荷役の方法が記入されていない1行は『手積み』の単価" in t
         assert "受付の時刻から数えた額" in page.js("document.querySelector('#partner-notes').textContent") and "受付の時刻から数えた額" not in doc["sum"]  # 文言の直し 2026-11-07 and "を除くと" not in doc["sum"]
-        assert "車種が空欄の 3 行は『中型』" in doc["defaults"] and "積み降ろしの方法が空欄の 1 行" in doc["defaults"]  # 文言の直し 2026-11-07
+        assert "車種が空欄の 3 行は『中型』" in doc["defaults"] and "荷役の方法が空欄の 1 行" in doc["defaults"]  # 文言の直し 2026-11-07
         assert "運送を頼んできた会社として読みました" in doc["ask"] and doc["askDoc"]
         assert doc["process"].index("正式名") < doc["process"].index("取適法では、相手")
         # 車種をまとめて選ぶと、空欄の行がすべて埋まって断りが消える

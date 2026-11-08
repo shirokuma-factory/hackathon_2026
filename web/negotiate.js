@@ -37,31 +37,31 @@ const Negotiate = (() => {
     ['size', '荷姿・数量を分けられるか'], ['equip', '荷役の設備・所要時間を変えられるか'], ['other_day', '別の曜日の集荷が可能か'],
   ];
   const HOLD_ASK = {
-    load_time: '積込の日時を変えることは可能でしょうか。', recv_time: '受取の日時を変えることは可能でしょうか。', range: '積込・受取の日程を広げられる範囲を教えてください。',
-    size: '荷姿・数量を分けて運ぶことは可能でしょうか。', equip: '荷役の設備や所要時間を変えることは可能でしょうか。', other_day: '別の曜日の集荷であれば可能でしょうか。',
+    load_time: '積み込みの日時を変えることは可能でしょうか。', recv_time: '受け取りの日時を変えることは可能でしょうか。', range: '積み込み・受け取りの日程を広げられる範囲を教えてください。',
+    size: '荷姿・数量を分けて運ぶことは可能でしょうか。', equip: '荷役の方法や所要時間を変えていただくことは可能でしょうか。', other_day: '集荷を別の曜日にしていただくことは可能でしょうか。',
   };
   // 質問。cond は、その条件が未確認のときだけ聞く（load: 積込、recv: 受取、always: いつも）
   const QUESTIONS = {
     commodity: [
       ['cargo', '荷物の品名・荷姿（箱・パレットなど）、1 個あたりの寸法・重量、数量'],
-      ['load', '積込を希望する日時と、日程を広げられる範囲'],
-      ['load', '積込場所の荷役設備（フォークリフト・ドックなど）と、積込にかかる時間'],
+      ['load', '積み込みを希望する日時と、日程を広げられる範囲'],
+      ['load', '積み込み場所の荷役設備（フォークリフト・ドックなど）と、積み込みにかかる時間'],
       ['load', 'ほかの荷物との混載の可否と、積み降ろしの順の希望'],
-      ['load', '集荷先が当社の通常の経路から離れる場合の、おおよその場所'],
-      ['recv', '納品先（受取側）が受け取れる日時'],
-      ['recv', '納品先の荷役設備と、荷卸しにかかる時間'],
-      ['always', '現在の送り方と、その条件（比べるため）'],
+      ['load', '集荷先のおおよその場所（当社の通常の経路から離れる場合があるため）'],
+      ['recv', '納品先（受け取り側）が受け取れる日時'],
+      ['recv', '納品先の荷役設備と、荷降ろしにかかる時間'],
+      ['always', '現在の輸送の方法と、その条件（比較のため）'],
     ],
     returnable: [
       ['cargo', '通い箱・パレットの種類（規格・寸法）と数量'],
       ['load', '積み重ねの可否と、重ねられる段数'],
-      ['load', '回収・受け渡しの方法（誰が積み込み、検品をどうするか）'],
+      ['load', '回収・受け渡しの方法（積み込みのご担当と、検品の方法）'],
       ['load', '回収を希望する日時と、日程を広げられる範囲'],
-      ['load', '集荷先が当社の通常の経路から離れる場合の、おおよその場所'],
-      ['recv', '返却先（受取側）が受け取れる日時'],
-      ['recv', '返却先の荷役設備と、荷卸しにかかる時間'],
+      ['load', '集荷先のおおよその場所（当社の通常の経路から離れる場合があるため）'],
+      ['recv', '返却先（受け取り側）が受け取れる日時'],
+      ['recv', '返却先の荷役設備と、荷降ろしにかかる時間'],
       ['always', '容器の所有者と返却先'],
-      ['always', '現在の返送の方法と、その条件（比べるため）'],
+      ['always', '現在の返送の方法と、その条件（比較のため）'],
     ],
   };
   const INTERNAL_CHECK = ['車格・床の空き・重量の余力', '追加の集荷で増える距離と時間', '次の運行との関係（帰庫の時刻・次の便への影響）', '荷役の設備と所要時間', '積み降ろしの順・混載の可否'];
@@ -112,34 +112,36 @@ const Negotiate = (() => {
   const placeMuni = (data, id) => { const p = (data.places || {})[id] || {}; return p.muni || ''; };
   const phrase = (muni) => (muni ? `${muni}周辺` : '【地名を入れてください】周辺');
 
+  // 結びと署名（日本語の直し 2026-11-08）。案内文の最後に付ける
+  const SIGN = ['', 'お手数ですが、ご検討のほどよろしくお願いいたします。', '', '【運送会社名】【担当者名】', '連絡先: 【電話・メール】'];
   function buildDraft(p) {
     const st = statusOf(p);
     if (st === 'skip' || st === 'skip_econ') return '';
     const from = phrase(p.fromMuni), to = phrase(p.toMuni), day = p.weekday ? `${p.weekday}曜日` : '【曜日】';
-    const head = ['【宛先（会社名・ご担当者名）】 様', '', '突然のご連絡で失礼します。【運送会社名】の【担当者名】です。'];
+    const head = ['【宛先（会社名・ご担当者名）】 様', '', '突然のご連絡にて失礼いたします。【運送会社名】の【担当者名】と申します。'];
     if (st === 'hold') {
-      head[2] = 'お世話になっております。【運送会社名】の【担当者名】です。先日ご相談した件でご連絡します。';
+      head[2] = 'いつもお世話になっております。【運送会社名】の【担当者名】です。';
       const picks = (p.hold && p.hold.picks) || [];
-      return [...head, '', `${from}から${to}へ戻る便でお運びする件で、条件が合わない点がありました。条件を変えられるか、再確認させてください。`, '',
+      return [...head, '', `先日ご相談した、${from}から${to}へ戻る便でのお運びの件で、条件が合わない点がありました。条件を変えられるか、あらためてご相談させてください。`, '',
         '■再確認したいこと', ...(picks.length ? picks.map((k) => `・${HOLD_ASK[k]}`) : ['・【再確認する内容を選ぶか、ここに書いてください】']), '',
-        '※ 条件の確認のご連絡です。お受けできるかは、確認のあとでお伝えします。'].join('\n');
+        '※ 条件の確認のご連絡です。お受けできるかは、確認のあとでお伝えします。', ...SIGN].join('\n');
     }
     const type = p.type === 'returnable' ? 'returnable' : 'commodity';
     // 「毎週」と書くのは、その曜日の帰りの便の 8 割以上が空車で、3 回以上あるときだけ。そうでなければ、記録にあったことだけを書く
-    const when = p.weekly ? `毎週${day}に、` : `これまでの記録では、${day}の帰りに、`;
-    const vacant = p.weekly ? '空きがあります' : '空きがありました';
+    const lead = type === 'returnable'
+      ? (p.weekly ? `毎週${day}に、${from}から${to}へ戻る便に空きがあります。` : `${day}は、${from}から${to}へ戻る便に空きが出ることがあります。`)
+      : (p.weekly ? `毎週${day}に、${from}から${to}へ戻るトラックに空きがあります。` : `${day}は、${from}から${to}へ戻るトラックに空きが出ることがあります。`);
     const intro = type === 'returnable'
-      ? `${when}${from}から${to}へ戻る便に${vacant}。空の通い箱・パレットの返送にお使いいただけます。`
-      : `${when}${from}から${to}へ戻るトラックに${vacant}。この方面へ出荷される荷物があれば、この便でお運びできます。`;
+      ? `${lead}空の通い箱・パレットの返送にお使いいただけます。`
+      : `${lead}この方面へ出荷される荷物があれば、この便でお運びできるかもしれません。`;
     const confirmed = [];
-    if (okCond(p.load)) confirmed.push(`・積込の条件: ${p.load.note.trim()}`);
-    if (okCond(p.recv)) confirmed.push(`・受取の条件: ${p.recv.note.trim()}`);
+    if (okCond(p.load)) confirmed.push(`・積み込みの条件: ${p.load.note.trim()}`);
+    if (okCond(p.recv)) confirmed.push(`・受け取りの条件: ${p.recv.note.trim()}`);
     // 内容を書いていない「合う」は未確認として質問に残す。荷物の内容（cargo）は、積込・受取の確認とは別に、いつも聞く
     const asks = QUESTIONS[type].filter(([c]) => c === 'always' || c === 'cargo' || (c === 'load' && !okCond(p.load)) || (c === 'recv' && !okCond(p.recv))).map(([, t]) => `・${t}`);
-    return [...head, '', intro, 'お運びできるかを確かめるため、次の点をお聞かせください。', '', '■確認できている条件', ...(confirmed.length ? confirmed : ['・現時点で、確認できている条件はありません']), '',
+    return [...head, '', intro, 'お運びできるかを確かめるため、次の点をお聞かせください。', '', ...(confirmed.length ? ['■確認できている条件', ...confirmed, ''] : []),
       '■お聞かせいただきたいこと', ...asks, '',
-      'お見積りは、荷物の内容と日時を伺ってからお出しします。', '',
-      '■進め方', 'まずは 1 回、お試しでいかがでしょうか。条件を伺ったうえで、お受けできるかとお見積りをお送りします。'].join('\n');
+      '■進め方', 'まずは 1 回、試しにお運びさせてください。条件を伺ったうえで、お受けできるかどうかとお見積りをお送りします。', ...SIGN].join('\n');
   }
 
   // 社外の文に入れてはいけない語。車番・運転者・元のファイル名と行・他の地点名・会社名・社内の数字・入れた金額
@@ -356,7 +358,7 @@ const Negotiate = (() => {
          <div class="neg-row"><span class="neg-lab">ほかの曜日</span>${bar(o.empty, o.judged)}<b class="neg-val">${o.empty} / ${o.judged} 便が空車</b></div>`;
     const basisNote = k.trips ? `行き先が分かった ${k.trips} 本のうち ${m.basis.date + m.basis.none} 本は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
     const warn = noEmpty
-      ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。空車の記録がある曜日を選び直すか、実車か空車か分からない帰りの便があるときは、「確認」の欄で空車か実車かを決めてください（決めると数え直します）。それでも空車が出ないときは、配車表の空車の印の列を確かめてください。</p>` : '';
+      ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もないため、' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がないため、`}案内文は作れません。空車の記録がある曜日を選び直すか、実車か空車か分からない帰りの便があるときは、「確認」の欄で空車か実車かを決めてください（決めると数え直します）。それでも空車が出ないときは、配車表の空車の印の列を確かめてください。</p>` : '';
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。</p>` : '';
     return `<div class="neg-box" id="neg-result"><h3>曜日ごとの帰りの空車</h3>
       <div class="neg-pick">${pairSel}${wdSel}</div>
@@ -405,14 +407,14 @@ const Negotiate = (() => {
       <div class="neg-row"><span class="neg-lab">ほかの曜日</span>${bar(o.empty, o.judged)}<b class="neg-val">${o.empty} / ${o.judged} 便が空車</b></div>`;
     const basisNote = k.trips ? `行き先が分かった ${k.trips} 本のうち ${m.basis.date + m.basis.none} 本は出発時刻の記録がなく、帰りの便の日付の曜日で数えています。` : '';
     const kmLine = t.confirmed.empty ? `<p class="neg-note">${t.weekday}曜の空車の走行距離は合計 ${n1(t.confirmed.empty_km)} km${t.confirmed.km_missing ? `（距離が記録にない ${t.confirmed.km_missing} 便は含みません）` : ''}。既に走り終えた距離です。帰り荷があっても走行が同じだけ減るとは限らないので、削減した距離や金額には換算していません。</p>` : '';
-    const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もありません。' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がありません。`}この曜日は帰りの空車がないため、案内文は作れません。空車の記録がある曜日を選び直すか、実車か空車か分からない帰りの便があるときは、「確認」の欄で空車か実車かを決めてください（決めると数え直します）。それでも空車が出ないときは、配車表の空車の印の列を確かめてください。</p>` : '';
+    const warn = noEmpty ? `<p class="neg-warn" id="neg-noempty" role="status">${m.confirmed.empty === 0 ? '行き先まで分かった空車の便が 1 本もないため、' : `${t.weekday ? t.weekday + '曜' : 'この曜日'}には、行き先まで分かった空車の便がないため、`}案内文は作れません。空車の記録がある曜日を選び直すか、実車か空車か分からない帰りの便があるときは、「確認」の欄で空車か実車かを決めてください（決めると数え直します）。それでも空車が出ないときは、配車表の空車の印の列を確かめてください。</p>` : '';
     const pre = `<p class="neg-base" id="neg-base">帰りの便 <b>${c.trips} 本</b>（空車 ${c.empty}・実車 ${c.loaded}・不明 ${c.unknown}）のうち、行き先が分かった便は <b>${k.trips} 本</b>（空車 ${k.empty}・実車 ${k.loaded}）です。残り ${u.trips} 本は行き先と積荷が分からないので、${esc(a.pair.to_label)}に着いた便には入れていません。</p>
-      <p class="neg-note">ほかの曜日で空車か実車か分からない ${o.unknown} 便は別に数えています。</p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}</p>${kmLine}
+      <p class="neg-note">ほかの曜日で空車か実車か分からない ${o.unknown} 本は別に数えています。</p><p class="neg-note" id="neg-basis">${esc(basisNote)}${m.duplicates_dropped ? `同じ内容の行 ${m.duplicates_dropped} 件は 1 便として数えました。` : ''}</p>${kmLine}
       <p class="neg-note">${ctx.mode === 'import' ? '過去の記録の集計です。今後も同じ曜日に空く保証ではなく、今予約できる便でもありません。' : '架空の過去の運行記録です。今予約できる便や、今後も毎週空く保証ではありません。'}</p>`;
     return `<div class="neg-box" id="neg-result"><h3>空いた帰りを見る</h3>
       <div class="neg-pick">${pairSel}${wdSel}</div>${lines}
       <p class="neg-lg" id="neg-lg"><i class="lg-s"></i>実線＝荷物あり、<i class="lg-d"></i>点線＝空車</p>
-      <p class="neg-note" id="neg-denom">行き先まで分かった便だけ数えています（ほか ${u.trips} 便は除外）。</p>${warn}
+      <p class="neg-note" id="neg-denom">行き先まで分かった便だけ数えています（ほか ${u.trips} 本は除外）。</p>${warn}
       ${evidenceHtml(a, pre)}
       <div class="neg-btns"><button type="button" class="btn-primary" id="neg-go-cond" data-act="go-cond" ${noEmpty ? 'disabled aria-disabled="true"' : ''}>荷主に案内する文を作る</button>
         <button type="button" class="btn-sm" data-act="to-entry">別のデータを選ぶ</button></div></div>`;
@@ -428,7 +430,7 @@ const Negotiate = (() => {
     const opts = Object.entries(COND_STATES).map(([v, l]) => `<option value="${v}" ${st.state === v ? 'selected' : ''}>${l}</option>`).join('');
     return `<fieldset class="neg-cond" id="neg-cond-${key}"><legend>${title}</legend><p class="neg-ev1">${esc(ev || '記録に時刻がありません')}</p>
       <label class="neg-pickrow">確認した結果<select id="neg-sel-${key}" class="ctl sm" name="neg-${key}" data-cond="${key}" aria-label="${title}の確認した結果">${opts}</select></label>
-      ${st.state === 'unconfirmed' ? '' : `<label class="neg-nl">確認した内容（誰に・いつ・何を）<input type="text" class="ctl" data-note="${key}" value="${esc(st.note)}" autocomplete="off"></label>`}
+      ${st.state === 'unconfirmed' ? '' : `<label class="neg-nl">確認した条件（案内文にそのまま入ります。例: フォークリフトで積み込み、9〜11 時）<input type="text" class="ctl" data-note="${key}" value="${esc(st.note)}" autocomplete="off"></label>`}
       ${st.state === 'ok' && !st.note.trim() ? '<p class="neg-note neg-y">確認した内容を書いてください（書くまでは、相手への文では未確認として質問にします）</p>' : ''}</fieldset>`;
   }
   function gCondHtml(a) {
@@ -448,7 +450,7 @@ const Negotiate = (() => {
     return `<fieldset class="neg-cond" id="neg-cond-${key}"><legend>${title}</legend>
       <p class="neg-ev1"><small>自社の記録</small>${esc(ev || '記録に時刻がありません')}</p>
       <div class="neg-rads" role="radiogroup" aria-label="${title}の確認した結果"><small>確認した結果</small>${radios}</div>
-      <label class="neg-nl">確認した内容（誰に・いつ・何を確認したか）<input type="text" class="ctl" data-note="${key}" value="${esc(st.note)}" autocomplete="off" ${st.state === 'unconfirmed' ? 'placeholder="確認したら入れます"' : ''}></label>
+      <label class="neg-nl">確認した条件（案内文にそのまま入ります。例: フォークリフトで積み込み、9〜11 時）<input type="text" class="ctl" data-note="${key}" value="${esc(st.note)}" autocomplete="off" ${st.state === 'unconfirmed' ? 'placeholder="確認したら入れます"' : ''}></label>
       ${st.state === 'ok' && !st.note.trim() ? '<p class="neg-note neg-y">確認した内容を書いてください（書くまでは、相手への文では未確認として質問にします）</p>' : ''}</fieldset>`;
   }
 
@@ -484,7 +486,7 @@ const Negotiate = (() => {
       extra = `<div class="neg-hold"><label class="neg-rad"><input type="radio" name="neg-hold" data-hold="hold" ${S.hold.action === 'hold' ? 'checked' : ''}>保留（条件を変えて再確認する）</label>
         <label class="neg-rad"><input type="radio" name="neg-hold" data-hold="skip" ${S.hold.action === 'skip' ? 'checked' : ''}>見送る（この荷主には案内しない）</label>
         ${S.hold.action === 'hold' ? `<div class="neg-picks"><small>再確認する内容を選ぶ</small>${HOLD_OPTS.map(([k, l]) => `<label class="neg-rad"><input type="checkbox" data-pick="${k}" ${S.hold.picks.includes(k) ? 'checked' : ''}>${l}</label>`).join('')}</div>` : ''}
-        <p class="neg-note">合わない条件のままでは、依頼の文は作りません。</p></div>`;
+        <p class="neg-note">合わない条件のままでは、案内文は作りません。保留を選ぶと、再確認の文を作ります。</p></div>`;
     }
     return `<div class="neg-status ${cls}${plain ? ' plain' : ''}" id="neg-status" role="status"><b>${STATUS_JA[st]}</b>${extra}</div>`;
   }
@@ -579,7 +581,7 @@ const Negotiate = (() => {
     if (!S.draft.text.trim()) return;
     const toks = internalTokens(ctx.data, a.model.rows, { fr: a.pair.fr, to: a.pair.to, kmText: kmText(a), econ: S.econ });
     const lk = leaks(S.draft.text, toks);
-    if (lk.length) { S.polish = { phase: 'error', msg: `社内の情報（${lk.join('、')}）が文面に入っています。消してからコピーしてください。AI には送っていません。` }; paintAi(); return; }
+    if (lk.length) { S.polish = { phase: 'error', msg: `社内の情報（${lk.join('、')}）が文面に入っているため、AI には送っていません。消してからもう一度押してください。` }; paintAi(); return; }
     S.polish = { phase: 'confirm', text: S.draft.text };   // 確認の枠に出した本文を、そのまま送る
     paintAi();
   }
@@ -594,7 +596,7 @@ const Negotiate = (() => {
       S.polish = { phase: 'result', text, res }; paintAi();
     }).catch((e) => {
       if (seq !== S.polishSeq || !S.polish || S.polish.phase !== 'busy') return;
-      S.polish = { phase: 'error', msg: `${e && e.message ? e.message : '整えられませんでした'}。今の文のままお使いください。` }; paintAi();
+      S.polish = { phase: 'error', msg: `${(e && e.message ? String(e.message) : '整えられませんでした').replace(/。?今の文のままお使いください。?$/, '').replace(/。$/, '')}。今の文のままお使いください。` }; paintAi();
     });
   }
   function aiReplace() {

@@ -1450,6 +1450,8 @@ body.view-home #home .home-card p { max-width: none; }
 @media (max-width: 600px) {
   .mg-row { padding: 5px 12px; }
   body.guided .mg-src { margin: 8px 0 12px; }
+  body.guided .mg-tag:not(.rec) { display: none; }   /* 2026-11-08: 狭い画面では「おすすめ」の行だけ例の便の有無を出す。ほかは選ぶと下の文に出る（見える文字数を 300 字以内に保つ） */
+  body.guided #mg-rows { max-height: max(120px, calc(60svh - 258px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }   /* 2026-11-08: 各行に「例の便あり・なし」の行が付いて案内の欄が画面より高くなったので、一覧だけを内側でスクロールにする */
   .mg-sel { margin-top: 8px; min-height: 0; }
   body.guided #m-guide .p-title { margin-bottom: 4px; }
 }
@@ -1542,6 +1544,7 @@ body.view-home #home .home-wrap { position: relative; z-index: 1; box-sizing: bo
   background: rgba(10, 16, 28, 0.9); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
   word-break: keep-all; word-break: auto-phrase; line-break: strict; overflow-wrap: anywhere; text-align: center; color: var(--text); }
 @media (min-height: 900px) { body.view-home #home .home-wrap { max-height: calc(100vh - 40vh - 24px); max-height: calc(100svh - 40svh - 24px); } }
+@media (min-height: 821px) and (max-height: 1000px) and (min-width: 701px) { body.view-home #home .home-wrap { padding-top: 28px; padding-bottom: 28px; } }   /* 2026-11-08: 目的の文が 2 行になった分 */
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   body.view-home #home .home-wrap { background: rgba(10, 16, 28, 0.58); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); }
 }
@@ -1589,11 +1592,11 @@ body.view-home #home #home-step2 #home-reselect { display: block; margin-left: a
 
 /* 1280×720 と 1366×768: 上の端を 34% にしたまま、余白を詰めてスクロールなしで収める */
 @media (max-height: 820px) and (min-width: 701px) {
-  body.view-home #home .home-wrap { padding: 28px 32px; }
+  body.view-home #home .home-wrap { padding: 24px 32px; }
   body.view-home #home .home-wrap h1 { font-size: 24px; }
-  body.view-home #home .home-purpose { margin-bottom: 16px; }
+  body.view-home #home .home-purpose { margin-bottom: 12px; line-height: 1.5; }
   body.view-home #home .home-roles { gap: 16px; }
-  body.view-home #home .home-card { padding: 20px; }
+  body.view-home #home .home-card { padding: 16px 20px; }
   body.view-home #home .home-foot { margin-top: 16px; padding-top: 8px; }
   body.view-home #home .purpose { padding: 12px 20px; }
 }
@@ -1626,6 +1629,9 @@ body.view-home #home #home-step2 #home-reselect { display: block; margin-left: a
   body.view-home #home .home-card .btn-primary { height: 42px; }
   body.view-home #home .home-foot { margin-top: 8px; padding-top: 4px; }
   body.view-home #home .home-map small { display: none; }
+  body.view-home #home .home-purpose { font-size: 12px; line-height: 1.5; margin-bottom: 8px; }   /* 2026-11-08: 目的の文が長くなったので 2 行に収める */
+  body.view-home #home .home-wrap { padding: 14px 16px; }
+  body.view-home #home .home-roles { gap: 6px; }
 }
 
 /* 最初の画面: 名前（左上）と、背景の映像に合わせた場面の字幕。どちらも飾りの絵の上に置くだけで、押せる所ではない */

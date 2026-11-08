@@ -141,7 +141,7 @@ def test_internal_info_in_the_text_is_not_sent(app):
     click(page, "#neg-ai-ask")
     time.sleep(0.2)
     assert page.js("window.__polishCalls.length") == 0 and page.js("!document.querySelector('#neg-ai-confirm')")
-    assert "社内の情報（5/5）が文面に入っています。消してからコピーしてください。" in T(page, "#neg-ai-msg")
+    assert "社内の情報（5/5）が文面に入っているため、AI には送っていません。消してからもう一度押してください。" in T(page, "#neg-ai-msg")   # 日本語の直し 2026-11-08
 
 
 def test_problem_proposal_is_shown_as_needs_check_with_reasons(app):

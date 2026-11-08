@@ -99,7 +99,8 @@ def test_g81_shipper_role_html_has_no_formula_panel():
     js = (WEB / "find.js").read_text(encoding="utf-8")
     body = js[js.index("function renderFormula()"):]
     assert "if (F.role !== 'carrier') { el.innerHTML = ''" in body.split("if (!F.fm.built)")[0]  # 荷主の役では空にして戻る
-    for text in ("値段の式", "基準積載率（%）", "リードタイムの割引", "地域の表", "個建運賃の参考額 = 距離制運賃 × max（重さの割合, 床の割合）÷ 基準積載率 ×（1 − リードタイムの割引）",
+    for text in ("値段の式", "基準積載率（%）", "リードタイムの割引", "地域の表", "個建運賃の参考額 = 距離制運賃 ×（重さの割合と床の割合の大きいほう）÷ 基準積載率 ×（1 − リードタイムの割引）",   # 2026-11-08 の直しに合わせて
+                
                  "国の標準的運賃から出した参考額です。値段は運送会社が決めます。"):
         assert text in js, text
     assert re.search(r'<div id="f-formula"[^>]*></div>', html)  # 中身は空の入れ物だけ

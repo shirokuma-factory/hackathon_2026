@@ -48,7 +48,7 @@ def test_sparse_paste_email_has_no_screen_only_text_and_handler_bulk_works():
         assert "記録のすべての待ちを数えています" in t
         assert page.js("document.querySelector('#wait-doc').textContent.includes('再計算してください')") is False
         # 画面の確認欄
-        assert "荷主等の都合の欄が貼り付けの記録に無かった" in page.js("document.querySelector('#fault-box').textContent")
+        assert "貼り付けた記録に荷主等の都合の欄が無かった" in page.js("document.querySelector('#fault-box').textContent")
         assert page.js("!!document.querySelector('#handler-box #bulk-handler')")
         before = page.js("S.res.by_partner[0].handling_fee")
         assert before == 0

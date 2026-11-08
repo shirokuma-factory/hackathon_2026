@@ -206,7 +206,7 @@ def test_g141_16_request_uses_chosen_place_and_road_distance():
     s = load_scenario("S1")["shipment"]
     place = {"label": "新宿区 → 大阪市中央区", "km": 491.8, "note": None}
     text = build_request(s, None, place).text
-    assert "発着: 新宿区 → 大阪市中央区（道路距離 491.8km）" in text
+    assert "発着: 新宿区 → 大阪市中央区（道路距離 491.8 km）" in text
     assert "想定の道路距離 500km" not in text
 
 
@@ -215,7 +215,7 @@ def test_g141_16_api_passes_place(srv):
     note = "距離は最寄りの出発地（新宿区）の値で代用"
     body = {**s1_body(), "place": {"label": "江東区 → 大阪市中央区", "km": 491.8, "note": note}}
     status, r = post(port, "/api/request", body)
-    assert status == 200 and f"発着: 江東区 → 大阪市中央区（道路距離 491.8km。{note}）" in r["text"]
+    assert status == 200 and f"発着: 江東区 → 大阪市中央区（道路距離 491.8 km。{note}）" in r["text"]
     for bad in ({"label": "", "km": 1}, {"label": "a", "km": -1}, {"label": "a", "km": True}, "x"):
         assert post(port, "/api/request", {**s1_body(), "place": bad})[0] == 400
 

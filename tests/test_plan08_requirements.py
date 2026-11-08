@@ -15,7 +15,7 @@ from shipcompare.storage import ORDER_NOTICE, load_scenario, save_case, scenario
 def test_spec13_1_public_match_and_acceptance_check_are_separate_names():
     # 公表の条件に合うこと（estimate の状態名）と、運送会社が受託できるかの確認（依頼文の確認事項）を別の言葉で出す
     assert estimate.ST_OK == "公開条件に合う"
-    assert "この荷を受託できるか" in request.CONFIRM_ITEMS
+    assert "この荷物をお引き受けいただけるか" in request.CONFIRM_ITEMS   # 日本語の直し 2026-11-08
     assert all("受託" not in s for s in (estimate.ST_OK, estimate.ST_CHECK, estimate.ST_UNUSABLE, estimate.ST_NOCALC))
 
 

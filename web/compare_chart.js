@@ -32,9 +32,9 @@ const CompareChart = (() => {
   function ratioText(r, ref) {
     if (!r) return '';
     const pre = '';
-    if (r.ratio < 1.05) return ref ? '確認が要る便を含めて、金額はほぼ同じです。' : '使える送り方の金額はほぼ同じです。';
+    if (r.ratio < 1.05) return ref ? '確認が要る送り方を含めて、金額はほぼ同じです。' : '使える送り方の金額はほぼ同じです。';
     const n = r.ratio >= 10 ? Math.round(r.ratio) : Math.round(r.ratio * 10) / 10;
-    return `一番高い送り方は、一番安い送り方の約 ${n} 倍です${ref ? '（確認が要る便を含む）' : ''}。`;
+    return `一番高い送り方は、一番安い送り方の約 ${n} 倍です${ref ? '（確認が要る送り方を含む）' : ''}。`;
   }
 
   // 額の出る手段が 1 つだけのとき（倍率は出さない。SPEC §33 #3）。表を持たない手段は、宅配・路線便・カゴ台車のうち問い合わせになっているもの
@@ -44,7 +44,7 @@ const CompareChart = (() => {
   }
 
   // 行の表示名。内部の名前（label）は app.js と共有する選択の値なので変えず、表示だけ分かりやすくする
-  const DISP = { 'カゴ台車': 'カゴ台車の貸切（1 本単位）', '鉄道': '鉄道', '船': '船', '飛行機': '飛行機' };
+  const DISP = { 'カゴ台車': 'カゴ台車 1 本単位', '鉄道': '鉄道', '船': '船', '飛行機': '飛行機' };
   const ALT_DETAIL = { '鉄道': '鉄道（コンテナ貨物）', '船': '船（フェリー）', '飛行機': '飛行機（航空便）' };
   const disp = (l) => DISP[l] || l;
   // 公表の運賃表を持たない手段（鉄道・船・飛行機）。額は出さず、地図に経路を出すだけ
@@ -102,7 +102,7 @@ const CompareChart = (() => {
       const expl = c.label === 'カゴ台車' ? `<span class="cc-expl">${esc(CAGE_EXPL)}</span>` : '';
       return `<label class="cc-row${cheapest && !isCheck ? ' cheap' : ''}${isCheck ? ' chk' : ''}">${name(c, true)}` +
         `${ok(isCheck ? '要確認' : '使える', isCheck ? 'chk' : 'yes')}` +
-        `<span class="cc-track" data-l="費用の目安"><i class="cc-bar" style="width:${w}%"></i><b class="cc-val num">${fmt(c.amount)}円${c.est ? '<em>概算</em>' : ''}${c.sample ? '<em class="cc-sample" title="実在の運賃ではありません。架空の表から出した例です">架空の表の例</em>' : ''}</b>${best}</span>${days(c)}${why}${expl}</label>`;
+        `<span class="cc-track" data-l="費用の目安"><i class="cc-bar" style="width:${w}%"></i><b class="cc-val num">${fmt(c.amount)} 円${c.est ? '<em>概算</em>' : ''}${c.sample ? '<em class="cc-sample" title="実在の運賃ではありません。架空の表から出した例です">架空の表の例</em>' : ''}</b>${best}</span>${days(c)}${why}${expl}</label>`;
     };
     const none = (c) => {
       const unusable = c.status === '使えない';
@@ -110,7 +110,7 @@ const CompareChart = (() => {
       const alt = !!MODE_OF[c.label];   // 鉄道・船・飛行機: 公表の運賃表が無い。日数も出典のある値が無いので見積で確かめる
       const shipNoData = nonet && c.label !== '飛行機';   // 船: 持っている経路の表に無いだけ。船が無いとは言わず、見積を頼む形で選べるままにする
       const txt = unusable ? '—' : shipNoData ? '航路の表に入っていません' : nonet ? 'なし（つながる路線がありません）' : alt ? '日数と額は見積で確認' : '見積が要ります';   // 料金が取れない手段は 0 円にせず「要見積」
-      const note = unusable ? (c.none ? `<span class="cc-why">理由: ${esc(c.none)}</span>` : '') : shipNoData ? `<span class="cc-nofare">${esc(SHIP_NO_DATA)}</span>` : nonet ? '' : alt ? `<span class="cc-nofare">${esc(ALT_DETAIL[c.label])}。金額は見積で確かめます。道は地図に出ます。</span>` : (c.none && /不足:.*荷物/.test(c.none) ? `<span class="cc-why">荷物の入力が足りないため計算できません。${esc(String(c.none).replace(/^計算できない[（(]?/, '').replace(/[）)]$/, ''))}</span>` : '<span class="cc-why">この行き先の料金表がないため、見積で確かめてください。</span>');
+      const note = unusable ? (c.none ? `<span class="cc-why">理由: ${esc(c.none)}</span>` : '') : shipNoData ? `<span class="cc-nofare">${esc(SHIP_NO_DATA)}</span>` : nonet ? '' : alt ? `<span class="cc-nofare">${esc(ALT_DETAIL[c.label])}。金額は見積で確かめてください。経路は地図に表示しています。</span>` : (c.none && /不足:.*荷物/.test(c.none) ? `<span class="cc-why">荷物の入力が足りないため計算できません。${esc(String(c.none).replace(/^計算できない[（(]?/, '').replace(/[）)]$/, ''))}</span>` : '<span class="cc-why">この行き先の料金表がないため、見積で確かめてください。</span>');
       const dy = alt && !c.days ? '<span class="cc-days unk" data-l="日数">見積で確認</span>' : days(c);
       return `<label class="cc-row off">${name(c, !unusable && (!nonet || shipNoData))}${ok(unusable ? '使えない' : '未確認', unusable ? 'no' : 'unk')}` +
         `<span class="cc-track" data-l="費用の目安"><span class="cc-off">${txt}</span></span>${dy}${note}</label>`;
@@ -122,12 +122,12 @@ const CompareChart = (() => {
     const near = nearText(cards);
     if (near) sum += `<p class="cc-near">${esc(near)}</p>`;
     if (!r && !fits.length && checks.length === 1) sum = '<p class="cc-only">金額が出たのは確認が要る送り方だけです。どれが安いかはまだ決められません。</p>';
-    const ttl = ref ? '送り方ごとの費用（確認が要る便を含む）' : '送り方ごとの費用';
+    const ttl = ref ? '送り方ごとの費用（確認が要る送り方を含む）' : '送り方ごとの費用';
     return `<section class="cc" aria-label="送り方の比べ">` +
       `<h4 class="cc-title">${ttl}<small class="cc-long">税抜・この荷物 1 件分です。高速代と待機料は別です。</small><small class="cc-unit">円・税抜・この荷物 1 件分。付帯料金は別</small></h4>` +
       `${sum}<div class="cc-head" aria-hidden="true"><span>送り方</span><span>使えるか</span><span title="棒の長さは金額の大きさです">費用の目安</span><span>日数</span></div>` +
       `<div class="cc-rows" role="radiogroup" aria-label="見積依頼文を作る送り方">${fits.map(line).join('')}${checks.map(line).join('')}${plain.map(none).join('')}</div>` +
-      (unusable.length ? `<details class="cc-unusable"><summary>使えない手段 ${unusable.length} 件（${unusable.map((c) => esc(disp(c.label))).join('・')}）</summary><div class="cc-alt-rows">${unusable.map(none).join('')}</div></details>` : '') +
+      (unusable.length ? `<details class="cc-unusable"><summary>使えない送り方 ${unusable.length} 件（${unusable.map((c) => esc(disp(c.label))).join('・')}）</summary><div class="cc-alt-rows">${unusable.map(none).join('')}</div></details>` : '') +
       (auto && alt.length ? `<p class="cc-alt-line">${alt.map((c) => esc(disp(c.label))).join('・')}: 見積で確認（地図に経路を出しています）</p>` : '') +
       (alt.length ? `<details class="cc-alt"${(auto ? altTouched && altOpen : altOpen) ? ' open' : ''}><summary>鉄道・船・飛行機（見積で確認）</summary><div class="cc-alt-rows" role="radiogroup" aria-label="見積依頼文を作る送り方（額を出さない手段）">${alt.map(none).join('')}</div></details>` : '') +
       `</section>`;

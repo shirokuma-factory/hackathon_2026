@@ -489,7 +489,7 @@ def test_ui_year_selector_for_sheets_without_weekdays_and_clock_is_not_used(app,
     _set_files(page, [p])
     page.wait(lambda: "自社のファイル: 1 件" in _src(page), 120, "取り込み")
     assert page.js("Own.state.data.year") == 2026 and page.js("!!document.querySelector('#own-year')")
-    assert "今日の日付では決めていません" in page.js("document.querySelector('.o-year').innerText")
+    assert "選び直してください" in page.js("document.querySelector('.o-year').innerText")   # 日本語の直し 2026-11-08: 作り手の説明を外した
     page.js("(function(){const s = document.querySelector('#own-year'); s.value = '2025'; s.dispatchEvent(new Event('change', {bubbles: true}));})()")
     page.wait(lambda: page.js("Own.state.data.year") == 2025, 20, "年の選び直し")
     assert page.js("Own.state.data.legs.every(l => l.date.startsWith('2025-'))") and page.js("document.querySelector('#own-year').value") == "2025"

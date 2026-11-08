@@ -59,7 +59,7 @@ const Muni = (() => {
   }
 
   // 推定の式は、入力の表にする（式の全文は docs/guide/画面の文言の補足.md。文言の直し 2026-11-07）
-  const FORMULA_ROWS = [['出荷', '県の出荷量 × 働く人の割合'], ['入荷', '県の入荷量 × 人口の割合'], ['差', '出荷 − 入荷'], ['数字がない所', '灰色にして配らない'], ['元の数字', '物流センサス（出典は凡例・出典）']];
+  const FORMULA_ROWS = [['出荷', '県の出荷量 × 働く人の割合'], ['入荷', '県の入荷量 × 人口の割合'], ['差', '出荷 − 入荷'], ['数字がない所', '灰色にして、県の値を割り振らない'], ['元の数字', '物流センサス（出典は凡例・出典）']];
   function renderFormula() {
     const el = q('#mu-formula-text');
     if (!el) return;
@@ -371,8 +371,8 @@ const Muni = (() => {
       }
       return { t: nameOf(i), s: concLine(i) };
     }
-    if (id === 'fac-p31') return { t: o.name, s: `${GLYPH[o.kind][0]}・${o.address || '住所なし'}・2013 年（国土数値情報 P31）`, m: HOVER_MODEL[o.kind] };
-    if (id === 'fac-air') return { t: o.name, s: `空港（${o.status}）・国土数値情報 C28`, m: 'air_cargo_terminal' };
+    if (id === 'fac-p31') return { t: o.name, s: `${GLYPH[o.kind][0]}・${o.address || '住所なし'}・2013 年（国土数値情報の物流拠点データ）`, m: HOVER_MODEL[o.kind] };
+    if (id === 'fac-air') return { t: o.name, s: `空港（${o.status}）・国土数値情報の空港データ`, m: 'air_cargo_terminal' };
     if (id === 'fac-osm') return { t: '倉庫・物流施設（OSM）', s: U.osm.tags[U.osm.types[o[2]]] || '', m: 'warehouse' };
     if (id === 'fac-osm-agg') return { t: nameOf(o.i), s: `倉庫・物流施設 ${n0(o.n)} 件（大きくすると 1 件ずつ出ます）` };
     return null;

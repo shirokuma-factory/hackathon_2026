@@ -192,7 +192,7 @@ def _src(name):
 
 def test_screen_texts_in_find_js_and_css():
     js, css = _src("find.js"), _src("find_extra.css")
-    assert "「仮予約と空きを最初の状態に戻す」で消えます" in js
+    assert "「仮予約を消して最初に戻す」で消えます" in js   # 日本語の直し 2026-11-08: 画面のボタン名にそろえた
     assert "。「最初の状態に戻す」で消えます" not in js.replace("「仮予約と空きを最初の状態に戻す」", "")
     for kind in ("寸法が合いません", "重さが合いません", "床が足りません", "日が合いません", "集荷の範囲外", "出発済み", "受けない品目"):
         assert kind in js

@@ -72,7 +72,8 @@ def test_match_excess_messages_never_print_zero_or_same_numbers():
     ok2, reasons2 = spaceb.match(_ship(100.1, 60, 100, 100, count=10), t)  # 床 6.006m² > 空き 6.00m²
     assert not ok2
     j2 = " ".join(reasons2)
-    assert "+0.006m²" in j2 and "0.00m²" not in j2
+    # 2026-11-08 の直しに合わせて: 床の超過は小数 2 桁にそろえて出す（空き 6.00m²、荷 6.01m²、+0.01m²）。差が 0 に見える桁には丸めない
+    assert "床の空き 6.00m² に対して荷の床 6.01m²" in j2 and "+0.01m²" in j2 and "+0.00m²" not in j2
     assert "0.0kg 超え" not in j2
 
 
@@ -173,14 +174,14 @@ def test_compare_lite_contract_rates_in_headless_edge():
           cell(0, 'n', '1'); cell(0, 'l', '40'); cell(0, 'w', '30'); cell(0, 'h', '20'); cell(0, 'kg', '5');
           set('#c-t-100', '900'); set('#c-r-rate', '15'); set('#c-r-min', '3000');
         })()""")
-        page.wait(lambda: "宅配で足ります" in page.js("document.querySelector('#cmp').textContent"), 10, "比べる")
+        page.wait(lambda: "宅配で送れます" in page.js("document.querySelector('#cmp').textContent"), 10, "比べる")   # 2026-11-08 の直しに合わせて（「宅配で足ります」→「宅配で送れます」）
         cmp_text = page.js("document.querySelector('#cmp').textContent")
         assert "いちばん安いのは" in cmp_text and "宅配便" in cmp_text
         kei = page.js("document.querySelector('tr[data-opt=kei]').textContent")
         assert "目安の額は出せません。契約単価を入れると額が出ます。" not in kei and "会員登録して見積もります" in kei   # 文言の直し 2026-11-07
         order = page.js("Array.from(document.querySelectorAll('#cmp table.cmpt tbody tr td.num')).map((td) => Number(td.textContent.replace(/[^0-9]/g, '')))")
         assert order == sorted(order) and len(order) >= 2
-        assert "過大" in page.js("document.querySelector('tr[data-opt=kashikiri_4t]').textContent")
+        assert "大きすぎ" in page.js("document.querySelector('tr[data-opt=kashikiri_4t]').textContent")   # 2026-11-08 の直しに合わせて（「過大」→「大きすぎ」）
         assert page.js("JSON.parse(localStorage.getItem('compare_lite_contract_v1')).tk['100']") == "900"
         # 読み直しても残る
         page.goto(PAGE.as_uri() + "?example=1")

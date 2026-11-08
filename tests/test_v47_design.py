@@ -110,7 +110,7 @@ def test_handoff_passes_the_selected_section_and_fills_pickup(w, h):
         page.js("document.querySelector('.mg-row').click()")   # 兵庫県 → 東京都（荷が多い向き）
         time.sleep(2.2)
         label = page.js("document.getElementById('mg-next').innerText.replace(/\\s+/g,' ').trim()")
-        assert label.startswith(("この向きで帰り便を探す", "この区間で空きを探す")) and "架空のデモ" in label, label   # 文言の直し 2026-11-07
+        assert label.startswith(("この向きで帰り便を探す", "この向きで空きを探す")) and "架空のデモ" in label, label   # 文言の直し 2026-11-07
         if w == 360:   # 折れない（ボタンの高さは 2 行まで）
             assert page.js("document.getElementById('mg-next').getBoundingClientRect().height") < 70
             assert page.js("document.querySelector('#mg-next .mg-badge').getBoundingClientRect().height") < 20
@@ -291,7 +291,7 @@ def test_home_has_purpose_line_and_hero_visible(w, h):
         page.wait(lambda: page.js("document.body.classList.contains('view-home') && !!document.querySelector('#role-shipper')"), 30, "最初の画面")
         time.sleep(1.0)
         txt = page.js("document.getElementById('home-purpose').textContent.trim()")
-        assert txt == "帰り便の空きを探して、荷待ちと運賃を減らすための画面です。", txt
+        assert txt == "帰り便の空きを探す、送り方と費用を比べる、荷待ちを記録して荷主と話し合う、の 3 つに使う画面です。", txt   # 日本語の直し 2026-11-08
         assert page.js("document.getElementById('home-purpose').getBoundingClientRect().top") < h * 0.6   # パネルは画面の高さの 34〜40% から始まる（第 9 部 r1）。絵はパネルの周りに見える
         r = json.loads(page.js("""JSON.stringify((function(){const h=document.querySelector('.home-hero').getBoundingClientRect(), t=document.getElementById('home-h').getBoundingClientRect(), b=document.getElementById('role-shipper').getBoundingClientRect();
           return {hh:h.height, ht:h.top, hw:h.width, title:t.top, btnBottom:b.bottom, img: document.querySelector('.home-hero img').complete};})())"""))
