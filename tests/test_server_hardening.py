@@ -158,3 +158,48 @@ def test_html_has_csp_and_other_types_do_not(srv):
     assert "object-src 'none'" in h["content-security-policy"]
     h = {k.lower(): v for k, v in req(port, "GET", "/app.js")[1]}
     assert "content-security-policy" not in h
+
+
+def _item():
+    return {"count": 1, "length_cm": 1, "width_cm": 1, "height_cm": 1, "weight_kg": 0.001}
+
+
+def _match_body(**kw):
+    b = {"dest_code": "28110", "is_box": True, "shipment": {"items": [_item()]}}
+    b.update(kw)
+    return b
+
+
+def test_category_length_is_capped(srv):
+    port = srv.server_address[1]
+    sid = {"X-Demo-Session": uuid.uuid4().hex}
+    for path, make in (("/api/b/hold", _hold_body), ("/api/b/match", lambda: _match_body())):
+        big = make()
+        big["category"] = "x" * 1_900_000
+        st, _, raw = req(port, "POST", path, big, sid)
+        assert st == 400 and "文字まで" in json.loads(raw)["error"]
+        b41 = make()
+        b41["category"] = "x" * 41
+        assert req(port, "POST", path, b41, sid)[0] == 400
+    ok = _match_body(category="x" * 40)
+    assert req(port, "POST", "/api/b/match", ok, sid)[0] == 200
+
+
+def test_bad_origin_code_is_rejected(srv):
+    port = srv.server_address[1]
+    sid = {"X-Demo-Session": uuid.uuid4().hex}
+    for path, make in (("/api/b/hold", _hold_body), ("/api/b/match", lambda: _match_body())):
+        b = make()
+        b["origin_code"] = "abc"
+        st, _, raw = req(port, "POST", path, b, sid)
+        assert st == 400 and "5 桁" in json.loads(raw)["error"]
+
+
+def test_too_many_item_rows_are_rejected(srv):
+    port = srv.server_address[1]
+    sid = {"X-Demo-Session": uuid.uuid4().hex}
+    for path, make in (("/api/b/hold", _hold_body), ("/api/b/match", lambda: _match_body())):
+        b = make()
+        b["shipment"]["items"] = [_item() for _ in range(51)]
+        st, _, raw = req(port, "POST", path, b, sid)
+        assert st == 400 and "50 行まで" in json.loads(raw)["error"]

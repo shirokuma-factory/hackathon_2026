@@ -132,6 +132,17 @@ def load_trips() -> list[dict[str, Any]]:
     return out
 
 
+MAX_ITEM_ROWS = 50  # 荷物の行数の上限。公開版でメモリと CPU を使い切らせないため
+MAX_CATEGORY_CHARS = 40
+MAX_ITEM_VALUE = 10_000_000  # 縦・横・高さ（cm）と 1 個の重さ（kg）の上限
+
+
+def _check_place_code(v: str, label: str) -> None:
+    """市区町村コードは 5 桁の数字で、アプリの地点表にあるものだけ受ける。"""
+    if len(v) != 5 or not (v.isascii() and v.isdigit()) or v not in geo.load_points():
+        raise ValueError(f"{label}は地点表にある 5 桁の数字で入れてください")
+
+
 def parse_shipment(body: dict[str, Any]) -> BShipment:
     """API の本文から荷物を作る。shipment.items は 15.2 の荷物（cm と kg）。誤りは ValueError（日本語）。"""
     raw = body.get("shipment")
@@ -140,6 +151,8 @@ def parse_shipment(body: dict[str, Any]) -> BShipment:
     items = raw.get("items")
     if not isinstance(items, list) or not items:
         raise ValueError("荷物の行（items）が1行以上必要です")
+    if len(items) > MAX_ITEM_ROWS:
+        raise ValueError(f"荷物の行（items）は {MAX_ITEM_ROWS} 行までで入れてください")
     pieces = []
     for n, it in enumerate(items, start=1):
         if not isinstance(it, dict):
@@ -152,8 +165,10 @@ def parse_shipment(body: dict[str, Any]) -> BShipment:
             d = parse_number_text(it.get(key))
             if d is None:
                 raise ValueError(f"荷物{n}行目の{label}は数で入れてください（数字だけ。全角の数字は半角に直して読みます）")
-            if d <= 0:
+            if not d.is_finite() or d <= 0:
                 raise ValueError(f"荷物{n}行目の{label}は0より大きい数で入れてください")
+            if d > MAX_ITEM_VALUE:
+                raise ValueError(f"荷物{n}行目の{label}は {MAX_ITEM_VALUE:,} 以下で入れてください")
             vals[key] = d
         pieces.append(Piece(count, vals["length_cm"] * 10, vals["width_cm"] * 10, vals["height_cm"] * 10,
                             vals["weight_kg"]))
@@ -164,9 +179,12 @@ def parse_shipment(body: dict[str, Any]) -> BShipment:
     dest = pick("dest_code", None)
     if not isinstance(dest, str) or not dest:
         raise ValueError("dest_code（受け取り場所の市区町村コード）がありません")
+    _check_place_code(dest, "dest_code（受け取り場所の市区町村コード）")
     category = pick("category", None)
     if category is not None and not isinstance(category, str):
         raise ValueError("category（品目）は文字列で入れてください")
+    if category is not None and len(category.strip()) > MAX_CATEGORY_CHARS:
+        raise ValueError(f"category（品目）は {MAX_CATEGORY_CHARS} 文字までで入れてください")
     flags = {}
     for key, default in (("in_container", False), ("fragile", False), ("is_box", True)):
         v = pick(key, default)
@@ -176,6 +194,8 @@ def parse_shipment(body: dict[str, Any]) -> BShipment:
     origin = pick("origin_code", None)
     if origin is not None and (not isinstance(origin, str) or not origin):
         raise ValueError("origin_code（集荷の地点の市区町村コード）は文字列で入れてください")
+    if origin is not None:
+        _check_place_code(origin, "origin_code（集荷の地点の市区町村コード）")
     wf, wt = _parse_day(pick("window_from", None), "window_from"), _parse_day(pick("window_to", None), "window_to")
     if (wf is None) != (wt is None):
         raise ValueError("届けばよい日の幅は window_from と window_to を両方入れてください")
