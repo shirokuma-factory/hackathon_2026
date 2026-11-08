@@ -172,7 +172,7 @@ uv run pytest -n 8
 |---|---|
 | `src/shipcompare/` | 目安額、照合と仮予約（`spaceb.py`）、荷待ちの計算（`waiting.py`）、自社の運行（`own.py`）、説明文の自動作成（`ai_explain.py`）などの関数 |
 | `tools/serve_web.py` | 標準ライブラリだけの配信サーバーと API |
-| `web/` | 地図の画面（MapLibre + deck.gl）とファイル 1 枚のページ。`own_calc.js`・`waiting_calc.js` は Python と同じ結果になる JS（共通の試験表で確かめる） |
+| `web/` | 地図の画面（MapLibre + deck.gl）とファイル 1 枚のページ。`own_calc.js`・`waiting_calc.js` は Python と同じ計算の JS（共通の試験表で同じ結果になることを確かめている。相手の列が無い表を仮の相手で計算するのは JS の画面だけ） |
 | `data/` | 運賃・標準的運賃の表・場面・架空の便とサンプル（出典・確認日つき） |
 | `tests/` | 自動試験 2,277 件（手元の PC で全件を流した結果は [docs/reviews/2026-11-08_全件の試験.md](docs/reviews/2026-11-08_全件の試験.md)）。GitHub Actions でも push のたびに流す。ただし Actions の Linux には Edge が無いので、画面を開く試験は飛ばし、残りを流す（`.github/workflows/test.yml`） |
 
