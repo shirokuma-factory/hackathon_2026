@@ -191,6 +191,7 @@ def build_hubs(codes: list[str], points: dict) -> None:
         dst["pt"].append(b[0]); dst["pt_km"].append(round(b[1], 1))
     write_json("hubs.json", {
         "attribution": "© OpenStreetMap contributors（ODbL 1.0）",
+        "license": "ODbL-1.0",
         "fetched_on": "2026-11-03",
         "stations": [[h["name"], r4(h["lon"]), r4(h["lat"])] for h in st],
         "terminals": [[h["name"], r4(h["lon"]), r4(h["lat"]), 2 if i in long_haul else 1 if i in major else 0] for i, h in enumerate(tm)],
@@ -277,7 +278,7 @@ def build_real_routes() -> None:
     trips = read_json(ROUTES_SRC / "trips.json")["trips"]
     write_json("routes_trips.json", {k: {"o": v["origin_code"], "d": v["dest_code"], "truck": slim_mode(v["truck"])} for k, v in trips.items()})
     net = read_json(ROUTES_SRC / "rail_network.json")
-    write_json("routes_rail.json", {"attribution": net["attribution"], "lines": [enc_line(l) for l in net["lines"]]})
+    write_json("routes_rail.json", {"attribution": net["attribution"], "license": "ODbL-1.0（貨物専用線・側線は OpenStreetMap）。国土数値情報は CC BY 4.0", "lines": [enc_line(l) for l in net["lines"]]})
 
 
 # ---------------------------------------------------------------- 市区町村の推定・集積・施設（SPEC §18）

@@ -1223,7 +1223,7 @@ const Find = (() => {
     if (!id) return;
     const inp = F.ct[id] || {};
     try {
-      F.ctData = (await Work.api('/api/b/contract', { hold_id: id, fuel_surcharge: inp.fuel || null, payment_method: inp.pay || null })).contract;
+      F.ctData = (await Work.api('/api/b/contract', { hold_id: id, fuel_surcharge: inp.fuel || null, payment_method: inp.pay || null, lift_equipment: inp.lift || null })).contract;
       F.err = '';
     } catch (e) { F.ctData = null; toast(e.message); F.ctOpen = null; }
     renderContract();
@@ -1239,7 +1239,7 @@ const Find = (() => {
     const sel = (k, list, cur) => `<select class="ctl sm" data-ct="${k}"><option value="">選んでください</option>${list.map((x) => `<option value="${esc(x)}"${x === cur ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
     const rows = d.items.map((it) => {
       let v;
-      if (carrierRole && it.by === 'carrier') v = sel(it.key === 'surcharge' ? 'fuel' : 'pay', it.key === 'surcharge' ? FUEL_CHOICES : it.options, it.value);
+      if (carrierRole && it.by === 'carrier') v = sel(it.key === 'surcharge' ? 'fuel' : it.key === 'lift' ? 'lift' : 'pay', it.key === 'surcharge' ? FUEL_CHOICES : it.options, it.value);
       else if (it.value) v = esc(it.value);
       else v = it.by === 'carrier' ? '<em class="fc-miss">未記入（運送会社が選びます）</em>' : '<em class="fc-miss">未登録</em>';
       return `<div class="fc-row${it.legal ? ' legal' : ''}"><span>${esc(it.label)}</span><b>${v}</b></div>`;
@@ -1279,7 +1279,7 @@ const Find = (() => {
       F.ctShErr = !name ? '荷主の名称を入れてください' : !address ? '荷主の住所を入れてください' : cn && !/^\d{13}$/.test(cn) ? '法人番号は 13 桁の数字で入れてください（個人事業主は空欄）' : '';
       if (F.ctShErr) { renderContract(); return; }
       try {
-        F.ctData = (await Work.api('/api/b/contract', { hold_id: id, fuel_surcharge: inp.fuel || null, payment_method: inp.pay || null, shipper: { name, address, corporate_number: cn } })).contract;
+        F.ctData = (await Work.api('/api/b/contract', { hold_id: id, fuel_surcharge: inp.fuel || null, payment_method: inp.pay || null, lift_equipment: inp.lift || null, shipper: { name, address, corporate_number: cn } })).contract;
         F.ctShErr = ''; inp.sh = null;
         toast('荷主の情報を保存しました');
       } catch (err) { F.ctShErr = err.message; }

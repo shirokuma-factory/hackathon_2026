@@ -163,7 +163,8 @@ def main():
         out.append([fi, ti, flat])
         acc += p[2] + p[3]
     print("pairs", len(out), "skipped", skipped, "cover", round(acc / tot, 4))
-    res = {"note": "県庁所在地どうしの区間の道路の線（OSRM の線をつないだ概算）。経度・緯度は 1/1000 度の差分", "scale": 1000, "lines": out}
+    res = {"license": "ODbL-1.0", "attribution": "© OpenStreetMap contributors（OSRM で求めた道路の線を加工）",
+           "note": "県庁所在地どうしの区間の道路の線（OSRM の線をつないだ概算）。経度・緯度は 1/1000 度の差分", "scale": 1000, "lines": out}
     with open(DATA / "flow_lines.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(res, f, ensure_ascii=False, separators=(",", ":"))
 

@@ -435,6 +435,8 @@ def main() -> int:
         "built_on": "2026-11-07",
         "scale": SCALE,
         "source": "道路の形: © OpenStreetMap contributors (ODbL)",
+        "license": "ODbL-1.0",
+        "attribution": "© OpenStreetMap contributors（道路の形）",
         "keys": keys,
         "unsnapped": [keys[i] for i in unsnapped],
         "pieces": pieces,

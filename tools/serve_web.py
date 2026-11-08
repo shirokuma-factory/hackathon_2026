@@ -718,7 +718,7 @@ def api_b_contract(body: Any) -> dict[str, Any]:
     body = _need_dict(body)
     try:
         return {"contract": _board().contract(body.get("hold_id"), body.get("fuel_surcharge"), body.get("payment_method"),
-                                       body.get("shipper")),
+                                       body.get("shipper"), body.get("lift_equipment")),
                 **_b_notices()}
     except spaceb.BoardError as e:
         raise BadRequest(str(e)) from e

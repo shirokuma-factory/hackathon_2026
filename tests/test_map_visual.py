@@ -58,14 +58,14 @@ def test_contract_accepts_shipper_and_becomes_ready():
         opts = next(i for i in c["contract"]["items"] if i["key"] == "payment")["options"]
         pay = opts[0] if opts else None
         sh = {"name": "架空商事株式会社", "address": "東京都江東区（架空の住所）", "corporate_number": ""}
-        st, c = _post(port, "/api/b/contract", {"hold_id": hid, "fuel_surcharge": "なし", "payment_method": pay, "shipper": sh})
+        st, c = _post(port, "/api/b/contract", {"hold_id": hid, "fuel_surcharge": "なし", "payment_method": pay, "lift_equipment": "あり（架空）", "shipper": sh})
         assert st == 200, c
         d = c["contract"]
         assert d["ready"] and d["missing"] == [], d
         assert next(i for i in d["items"] if i["key"] == "corp_no")["value"] == "なし（個人事業主）"
         # 13 桁を入れたら、その番号が書面に出る
         sh["corporate_number"] = "1234567890123"
-        st, c = _post(port, "/api/b/contract", {"hold_id": hid, "fuel_surcharge": "なし", "payment_method": pay, "shipper": sh})
+        st, c = _post(port, "/api/b/contract", {"hold_id": hid, "fuel_surcharge": "なし", "payment_method": pay, "lift_equipment": "あり（架空）", "shipper": sh})
         assert next(i for i in c["contract"]["items"] if i["key"] == "corp_no")["value"] == "1234567890123"
     finally:
         _post(port, "/api/b/reset", {})

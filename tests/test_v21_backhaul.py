@@ -257,17 +257,17 @@ def test_g63_contract_has_six_legal_items_and_ready_flag():
     assert labels == ["運送の内容と対価", "附帯業務の対価", "燃料サーチャージなどの料金", "当事者の名称と住所", "支払方法", "交付日"]
     # 運送会社の役が選ぶ前は未記入が 2 つで、確定できない
     assert d["ready"] is False
-    assert d["missing"] == ["燃料サーチャージなどの料金", "支払方法"]
+    assert d["missing"] == ["燃料サーチャージなどの料金", "支払方法", "積み降ろしの機材（フォークリフトかパワーゲートの有無）"]
     by = {i["key"]: i["value"] for i in d["items"]}
     assert "95,000円（税抜）" in by["transport"] and "江東区" in by["transport"] and "陳列棚" not in by["transport"]
     assert "架空 さつま運輸" in by["parties"] and "東雲木工（架空）" in by["parties"]
-    assert "2 人" in by["handling"] and by["cancel"] and by["terms"] and by["insurance"] and "架空" in by["license"]
+    assert "フォークリフトかパワーゲート" in by["handling"] and by["cancel"] and by["terms"] and by["insurance"] and "架空" in by["license"]
     assert by["corp_no"] == "1234567890123"
     # 選ぶと埋まる（「なし」も可）
     c4 = next(c for c in spaceb.load_demo()["carriers"] if c["id"] == "C4")
-    d2 = b.contract(h, fuel_surcharge="なし", payment_method=c4["payment_options"][0])
+    d2 = b.contract(h, fuel_surcharge="なし", payment_method=c4["payment_options"][0], lift_equipment="あり（架空）")
     assert d2["ready"] is True and d2["missing"] == []
-    d3 = b.contract(h, fuel_surcharge="なし")
+    d3 = b.contract(h, fuel_surcharge="なし", lift_equipment="あり（架空）")
     assert d3["ready"] is False and d3["missing"] == ["支払方法"]
     with pytest.raises(BoardError, match="選択肢"):
         b.contract(h, fuel_surcharge="なし", payment_method="現金で手渡し")
@@ -277,7 +277,7 @@ def test_g63_missing_shipper_or_carrier_fields_are_listed():
     b = t7_board()
     h = b.hold("T7", s6_ship(), hold_minutes=60)["hold_id"]  # 荷主の情報なし
     b.decide(h, "accept")
-    d = b.contract(h, fuel_surcharge="なし", payment_method="前払い")
+    d = b.contract(h, fuel_surcharge="なし", payment_method="前払い", lift_equipment="あり（架空）")
     assert d["ready"] is False
     assert "当事者の名称と住所" in d["missing"] and "荷主の法人番号（架空の番号）" in d["missing"]
 
@@ -292,9 +292,9 @@ def test_g63_api_contract_flow(srv):  # noqa: F811
     assert status == 400 and "承諾した" in r["error"]
     assert post(port, "/api/b/decide", {"hold_id": hid, "decision": "accept"})[0] == 200
     status, r = post(port, "/api/b/contract", {"hold_id": hid})
-    assert status == 200 and r["contract"]["ready"] is False and len(r["contract"]["missing"]) == 2
+    assert status == 200 and r["contract"]["ready"] is False and len(r["contract"]["missing"]) == 3
     assert r["contract"]["notice"] == spaceb.CONTRACT_NOTICE
-    status, r = post(port, "/api/b/contract", {"hold_id": hid, "fuel_surcharge": "なし", "payment_method": "前払い"})
+    status, r = post(port, "/api/b/contract", {"hold_id": hid, "fuel_surcharge": "なし", "payment_method": "前払い", "lift_equipment": "あり（架空）"})
     assert status == 200 and r["contract"]["ready"] is True
     status, r = post(port, "/api/b/hold", dict(s6_body(), trip_id="T7", shipper="東雲"))
     assert status == 400

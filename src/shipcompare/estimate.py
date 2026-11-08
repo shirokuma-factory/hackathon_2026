@@ -27,6 +27,11 @@ ISSUE_OUT_OF_RANGE = "out_of_range"
 ISSUE_NOT_MODELED = "not_modeled"
 ISSUE_NEEDS_INPUT = "needs_input"
 ISSUE_PICKUP_UNKNOWN = "pickup_unknown"
+ISSUE_HANDLING = "handling_check"  # 荷役（フォークリフト）の要確認
+
+# 人手で積み降ろしできる 1 個の重さの目安（kg）。比べるページ（compare_lite）の RULES.handKg と同じ値
+HAND_HANDLING_KG = 50
+HANDLING_CHECK = "荷役（フォークリフト）を確かめてください"
 
 # 利用者が手入力した額から出した行の出典（運送会社の表ではない）
 USER_INPUT_SOURCE = Source("利用者の入力", "", None, "")
@@ -677,7 +682,28 @@ def estimate_all(shipment: Shipment, manual: dict[str, int] | None = None,
                 r.status = ST_CHECK
                 r.issues.append(Issue(ISSUE_MULTI_DEST, msg))
 
+    _apply_handling(shipment, rows)
     return sort_rows(rows)
+
+
+def _apply_handling(shipment: Shipment, rows: list[EstimateRow]) -> None:
+    """フォークリフトなしと入力されたのに 1 個 50kg を超える荷（パレット渡しを含む）があるとき、
+    路線便と貸切を「公開条件に合う」にしない（比べるページの荷役の規則と同じ。△ と理由を足す）。
+    フォークリフトが未入力のときは変えない（この画面は未入力を既定にしているため）。"""
+    if shipment.forklift is not False:
+        return
+    heavy = [(i, to_decimal(it.weight_kg)) for i, it in enumerate(shipment.items, start=1)
+             if (to_decimal(it.weight_kg) or Decimal(0)) > HAND_HANDLING_KG]
+    if not heavy:
+        return
+    i, kg = heavy[0]
+    why = (f"荷物{i}行目の1個 {kg.normalize():f}kg は人手で積み降ろしできません（目安 {HAND_HANDLING_KG}kg まで）。"
+           "フォークリフトなしとして入力されているので、フォークリフトかパワーゲートで積み降ろせるか確かめてください")
+    for r in rows:
+        if (r.mode == "rosen" or r.mode.startswith("kashikiri")) and r.status == ST_OK:
+            r.status = ST_CHECK
+            r.reasons = [HANDLING_CHECK, why, *r.reasons]
+            r.issues.append(Issue(ISSUE_HANDLING, why))
 
 
 def rebase_kashikiri_on_road_distance(shipment: Shipment, rows: list[EstimateRow], km: float,

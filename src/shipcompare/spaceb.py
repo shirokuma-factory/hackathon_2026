@@ -582,7 +582,7 @@ class Board:
 
     # --- 書面の下書き（SPEC §21.3）
     def contract(self, hold_id: Any, fuel_surcharge: Any = None, payment_method: Any = None,
-                 shipper: Any = None) -> dict[str, Any]:
+                 shipper: Any = None, lift_equipment: Any = None) -> dict[str, Any]:
         """承諾済みの仮予約から、運送会社と荷主の間の書面の下書きを作る。承諾前は BoardError。
 
         燃料サーチャージなどの料金と支払方法は運送会社の役が選ぶ。選ばれていない項目は missing に入れ、ready を false にする。
@@ -603,7 +603,8 @@ class Board:
             pay = _text_or_none(payment_method, "payment_method")
             if pay is not None and options and pay not in options:
                 raise BoardError("支払方法は運送会社が示した選択肢から選んでください")
-            return _contract_draft(h, trip, carrier, fuel, pay, self._clock().date())
+            lift = _text_or_none(lift_equipment, "lift_equipment")
+            return _contract_draft(h, trip, carrier, fuel, pay, self._clock().date(), lift)
 
 
 def _text_or_none(v: Any, name: str) -> str | None:
@@ -635,6 +636,7 @@ def _clean_shipper(v: Any) -> dict[str, str]:
 
 # 改正法の書面の項目（SPEC §21.3）。画面の並びもこの順
 LEGAL_KEYS = ("transport", "ancillary", "surcharge", "parties", "payment", "issued_on")
+LIFT_OPTIONS = ("あり（運送会社の車にパワーゲート）", "あり（積む側か降ろす側のフォークリフト）", "なし（積み降ろしの方法を決め直す）")
 CONTRACT_NOTICE = "この書面は運送会社と荷主の間で交わすものです。Backfull は運送の当事者ではなく、運賃を受け取りません。"
 
 
@@ -644,7 +646,7 @@ def muni_name(code: str) -> str:
 
 
 def _contract_draft(h: _Hold, trip: dict[str, Any], carrier: dict[str, Any], fuel: str | None, pay: str | None,
-                    today: date) -> dict[str, Any]:
+                    today: date, lift: str | None = None) -> dict[str, Any]:
     s, sh = h.shipment, (h.shipper or {})
     pieces = s.pieces if s else ()
 
@@ -667,8 +669,9 @@ def _contract_draft(h: _Hold, trip: dict[str, Any], carrier: dict[str, Any], fue
     trip_line = (f"{muni_name(trip['origin_code'])} → {muni_name(trip['dest_code'])}"
                  f"（{hm(trip['depart_at'])} 発、{hm(trip['arrive_at'])} 着）")
     heavy = max((p.weight_kg for p in pieces), default=Decimal(0))
-    handling = ("1個 %skg の荷があるため、積む側と降ろす側がそれぞれ 2 人を出す" % _fmt(heavy)) if heavy >= 100 \
-        else "積み降ろしは運送会社と荷主で当日に決める"
+    # 1 個 50kg を超える荷は人手で積み降ろさない（比べるページの目安と同じ）。機材の有無は書面で答えるまで未記入にする
+    over_hand = heavy > 50
+    handling = ("1個 %skg の荷があるため、フォークリフトかパワーゲートで積み降ろす" % _fmt(heavy)) if over_hand         else "積み降ろしは運送会社と荷主で当日に決める"
     carrier_party = f"運送会社: {carrier.get('name', '')}"
     if carrier.get("address"):
         carrier_party += f"（{carrier['address']}）"
@@ -685,6 +688,9 @@ def _contract_draft(h: _Hold, trip: dict[str, Any], carrier: dict[str, Any], fue
          "options": carrier.get("payment_options") or []},
         {"key": "issued_on", "legal": True, "label": "交付日", "value": f"{today.year}/{today.month}/{today.day}"},
         {"key": "handling", "legal": False, "label": "荷役の人手", "value": handling},
+        *([{"key": "lift", "legal": False, "label": "積み降ろしの機材（フォークリフトかパワーゲートの有無）", "value": lift,
+           "by": "carrier", "options": list(LIFT_OPTIONS)}]
+          if over_hand else []),
         {"key": "cancel", "legal": False, "label": "取消しの条件", "value": carrier.get("cancel_terms")},
         {"key": "terms", "legal": False, "label": "運送約款", "value": carrier.get("terms")},
         {"key": "insurance", "legal": False, "label": "貨物保険", "value": carrier.get("insurance")},
