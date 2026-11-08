@@ -1,0 +1,18 @@
+{
+ "CLAUDE_HUB_": "Counts from this repository's tests and git history",
+ "FLOW_KAGO": "Source: MLIT Net Freight Flow Survey (2021, 3-day survey), shipment weight from mining, manufacturing, wholesale and warehousing",
+ "W20_LIVE": "Processed from MLIT traffic volume API data (reference values). Counts of large vehicles at national-highway stations; load status unknown",
+ "W20_P10": "Fictional example. Return-trip prices are set by the carrier",
+ "W20_P12": "Fictional example. Return-trip prices are set by the carrier",
+ "W20_END": "Voice: ElevenLabs   Music: Suno (composed by Claude operating the browser)   Map: © OpenStreetMap contributors, National Land Numerical Information (MLIT), traffic API (JARTIC)   All screens and graphics made during the event",
+ "W20_P7": "Estimates calculated from Japan's standard freight rates (excl. tax and tolls)",
+ "W20_P8": "Estimates calculated from Japan's standard freight rates (excl. tax and tolls)",
+ "W20_P9": "Fictional example. Return-trip prices are set by the carrier",
+ "W19_AI": "The draft is real output from Claude (Haiku 5.5 checks, Sonnet 5.5 drafts, Opus 5.5 verifies). The records are fictional",
+ "CHAIN_": "Sources: Japan Trucking Association, \"Trucking in Japan 2025\"; MHLW job information; Recommendations of the study group on the 2030 logistics policy outline (Mar 2026): 2030 capacity shortfall avg. ~7% to max. ~25%; calculated from MLIT Automobile Transport Statistics",
+ "HOOK_": "Source: MLIT Automobile Transport Statistics (FY2025), commercial truck load efficiency 38.97% (by weight and distance)",
+ "FLOW_": "Source: MLIT Net Freight Flow Survey (2021, 3-day survey), trucks, by weight",
+ "MG5s2": "Charter price is an estimate from Japan's standard freight rates (excl. tax and tolls). The return-trip price is a fictional example set by the carrier",
+ "MGSAT": "Fictional example",
+ "MG9_": "Calculated from MLIT Automobile Transport Statistics (FY2025): loaded-distance ratio 62.15% and load efficiency 39.08% for commercial standard trucks; empty running includes deadheading"
+}

@@ -22,6 +22,9 @@ ROOT = Path(__file__).resolve().parents[2]
 VOICE = ROOT / "outputs" / "video" / "voice"
 # 項目: (読みの言葉, その言葉より何秒前に出始めるか)
 # r10: P1 は「運転手が足りない」と「2030 年度に約 3 分の 1」だけを言うので、図も 2 項目（two）にする
+# 英語版（11/8、--lang en）: 読みは docs/video/shots_en.json。英語は「足りなく（fall short）」が「4分の1（a quarter）」より先に来る
+ANCHORS_EN = {"n2": ("truck drivers", 0.4), "n3": ("twenty thirty", 0.2), "n3c": ("up to a quarter", 0.5), "n3d": ("fall short", 0.3)}
+H1_EN = ("There aren't enough", "sixty percent")
 ANCHORS = {"n2": ("運転手が", 0.4), "n3": ("にせんさんじゅうねんど", 0.2), "n3c": ("よんぶんのいち", 0.5), "n3d": ("足りなく", 0.3)}  # n3c は「さんぶんのいち」（r14 で「運ぶ力が」を「トラックによる運送能力が」に）
 
 
@@ -30,6 +33,7 @@ def main() -> None:
     ap.add_argument("--voice-dir", required=True)
     ap.add_argument("--atempo", type=float, default=1.10)
     ap.add_argument("--tag", default="r7")
+    ap.add_argument("--lang", default="ja", choices=["ja", "en"], help="en で英語版（CHAIN_m_en.html → CHAIN_p1_m_en.html）")
     ap.add_argument("--gap", type=float, default=None,
                     help="P1 の声の終わりから H1 の声の始まりまでの秒（P1 の tail + H1 の lead）。渡すと、図を P1 から H1 まで 1 本で流す時刻にする（r16）")
     a = ap.parse_args()
@@ -38,7 +42,7 @@ def main() -> None:
     rd = "".join(al["characters"])
     sil = ms.silences(VOICE / f"P1_{a.tag}.mp3")
     tm = {}
-    for k, (w, lead) in ANCHORS.items():
+    for k, (w, lead) in (ANCHORS_EN if a.lang == "en" else ANCHORS).items():
         i = rd.find(w)
         if i < 0:
             raise SystemExit(f"P1 の読みに「{w}」がありません")
@@ -51,8 +55,9 @@ def main() -> None:
     a1 = json.loads((VOICE / f"H1_{a.tag}.json").read_text(encoding="utf-8"))["alignment"]
     r1 = "".join(a1["characters"])
     s1 = ms.silences(VOICE / f"H1_{a.tag}.mp3")
-    t_hako = ms.squeeze(a1["character_start_times_seconds"][r1.find("運ぶ人が")], s1) / a.atempo
-    t_beru = ms.squeeze(a1["character_start_times_seconds"][r1.find("運べる量")], s1) / a.atempo
+    w_hako, w_beru = H1_EN if a.lang == "en" else ("運ぶ人が", "運べる量")
+    t_hako = ms.squeeze(a1["character_start_times_seconds"][r1.find(w_hako)], s1) / a.atempo
+    t_beru = ms.squeeze(a1["character_start_times_seconds"][r1.find(w_beru)], s1) / a.atempo
     if a.gap is None:
         tm["f2"] = round(tm["fade"] + 0.7 + (t_beru - t_hako) - 0.2, 2)
     else:
@@ -66,7 +71,8 @@ def main() -> None:
         tm["f2"] = round(c_beru - 0.2, 2)
     tm["two"], tm["fadeTo"] = "true", 1.0
     tm["D"] = round(tm["f2"] + 10.0, 1)  # H1 の 2 文目（困っているのは…）の間も最後の一文を出しておく
-    src = (ROOT / "docs/video/motion/CHAIN_m.html").read_text(encoding="utf-8")
+    sfx = "_en" if a.lang == "en" else ""
+    src = (ROOT / f"docs/video/motion/CHAIN_m{sfx}.html").read_text(encoding="utf-8")
     js = "{" + ", ".join(f"{k}: {v}" for k, v in tm.items()) + "}"
     out, n = re.subn(r"var TM = \{[^}]*\};", f"var TM = {js};", src)
     out, m = re.subn(r'data-duration="[0-9.]+"', f'data-duration="{tm["D"]}"', out)

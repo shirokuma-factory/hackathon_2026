@@ -159,13 +159,15 @@ def main() -> None:
         for i, pc in enumerate(b["v1"]):
             if "len" in pc:
                 ln = pc["len"]
+            elif "until_say" in pc:  # 英語版（11/8）: 字幕の切れ目ではなく、その言葉を言い始める瞬間で切り替える
+                ln = say_t(pc["until_say"]) - pos
             elif "until" in pc:
                 ln = card_t(pc["until"]) - pos
             else:
                 ln = None
             if ln is not None and ln <= 0:
                 # 台本を変えて until の字幕が前へ動くと、長さが 0 以下になって Resolve が置けない（r15 で S2 に起きた）
-                raise SystemExit(f"{sid}: {pc['path']} の長さが {ln:.2f} 秒です（until「{pc.get('until')}」の字幕がこの切れより前にある）")
+                raise SystemExit(f"{sid}: {pc['path']} の長さが {ln:.2f} 秒です（until「{pc.get('until') or pc.get('until_say')}」がこの切れより前にある）")
             pcs.append([pc, ln])
             if ln is not None:
                 pos += ln
@@ -198,7 +200,7 @@ def main() -> None:
             at = o["at"]
             st = at_t(at)
             p = OV / o["path"]
-            ln = o.get("len") or (card_t(o["until"]) - st if "until" in o else dur(p) - o.get("off", 0.0))
+            ln = o.get("len") or (say_t(o["until_say"]) - st if "until_say" in o else card_t(o["until"]) - st if "until" in o else dur(p) - o.get("off", 0.0))
             if not o.get("span"):
                 ln = min(ln, blk_end - st)  # 図は自分の区間の中で終える（次の場面にはみ出さない）。span なら次の区間へ続けてよい
             V(o["track"]).append({"s": round(st * FPS), "L": round(ln * FPS), "off": round(o.get("off", 0.0) * FPS), "path": str(p)})
@@ -277,7 +279,7 @@ def main() -> None:
         (ms.OUT / "subs.mov").replace(sub)
     V(4).append({"s": 0, "L": round(total * FPS), "off": 0, "path": str(sub)})
     # 出典の行
-    smap = json.loads((ROOT / "docs/video/sources_r4_map.json").read_text(encoding="utf-8"))
+    smap = json.loads((ROOT / plan.get("sources", "docs/video/sources_r4_map.json")).read_text(encoding="utf-8"))  # 英語版は sources_en_map.json
     by_tr: dict[str, list[dict]] = {"1": [], "5": []}
     for tr in ("1", "5"):
         for d in edl["video"].get(tr, []):
@@ -319,7 +321,9 @@ def main() -> None:
         A(track).append({"s": round(max(0.0, at) * FPS), "L": round(dur(p) * FPS), "off": 0, "path": str(p), "gain_db": gain})
 
     LANDS = {"HOOK_m.mov": (2.4, None), "MG1_m.mov": (2.0, (0.9, 2.0)), "MG7_m.mov": (1.7, (0.6, 1.7)), "MG5s2_m.mov": (6.4, (5.2, 6.4)),
-             "MG3_m.mov": (4.4, (3.3, 4.4)), "MG3_m2.mov": (4.4, (3.3, 4.4)), "MG5_m.mov": (4.5, (3.5, 4.5)), "MG8_m.mov": (3.0, None)}
+             "MG3_m.mov": (4.4, (3.3, 4.4)), "MG3_m2.mov": (4.4, (3.3, 4.4)), "MG5_m.mov": (4.5, (3.5, 4.5)), "MG8_m.mov": (3.0, None),
+             # 英語版（11/8）: 「約17.8万円安い」の数え上げを英語の声に合わせて 0.8 秒早めた（MG5s2_m_en.html）
+             "HOOK_m_en.mov": (2.4, None), "MG5s2_m_en.mov": (5.4, (4.4, 5.4))}
     for d in edl["video"].get("6", []):
         nm, s0 = Path(d["path"]).name, d["s"] / FPS
         if nm.startswith("TR_LINE"):

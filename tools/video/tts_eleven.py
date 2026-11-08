@@ -61,11 +61,13 @@ def voices() -> None:
 
 
 def shot(sid: str, voice: str, stability: float, speed: float, model: str = MODEL, text: str | None = None, tag: str = "", shots_file: str = "docs/video/shots.json") -> None:
-    shots = json.loads((ROOT / shots_file).read_text(encoding="utf-8"))["shots"]
+    doc = json.loads((ROOT / shots_file).read_text(encoding="utf-8"))
+    shots = doc["shots"]
     s = next(x for x in shots if x["id"] == sid)
+    lang = doc.get("lang", "ja")  # 英語版（shots_en.json、11/8）は "en"
     text = text or s["read"]
     name = sid + (f"_{tag}" if tag else "")
-    body = {"text": text, "model_id": model, "language_code": "ja",
+    body = {"text": text, "model_id": model, "language_code": lang,
             "voice_settings": {"stability": stability, "similarity_boost": 0.75, "speed": speed}}
     d = call("POST", f"/text-to-speech/{voice}/with-timestamps?output_format=mp3_44100_128", body)
     audio = base64.b64decode(d["audio_base64"])
@@ -74,7 +76,7 @@ def shot(sid: str, voice: str, stability: float, speed: float, model: str = MODE
     al = d.get("alignment") or {}
     ends = al.get("character_end_times_seconds") or [0]
     meta = {"shot": sid, "voice_id": voice, "model": model, "settings": body["voice_settings"],
-            "text": text, "duration_s": round(ends[-1], 2), "planned_s": float(s["end"]) - float(s["start"]),
+            "text": text, "duration_s": round(ends[-1], 2), "planned_s": float(s.get("end", 0)) - float(s.get("start", 0)),
             "sha256": hashlib.sha256(audio).hexdigest(), "alignment": al}
     with open(OUT / f"{name}.json", "w", encoding="utf-8", newline="\n") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)

@@ -71,11 +71,29 @@ def squeeze(t: float, sil: list[tuple[float, float]]) -> float:
 
 
 def sentences(s: str) -> list[str]:
-    return [x + "。" for x in s.split("。") if x.strip()]
+    if "。" in s or not s.isascii():
+        return [x + "。" for x in s.split("。") if x.strip()]
+    # 英語版（11/8）: 「. ? !」のあとに空白と大文字が来たら文の切れ目。「...」（間）は切れ目にしない。
+    # 空白は前の文に付けて、つなぐと元の文字列に戻るようにする（読みの文字の位置で時刻を引くため）
+    out, start = [], 0
+    for i, c in enumerate(s):
+        if c in ".?!" and i + 2 < len(s) and s[i + 1] == " " and s[i + 2].isupper() and not (c == "." and i > 0 and s[i - 1] == "."):
+            out.append(s[start:i + 2])
+            start = i + 2
+    out.append(s[start:])
+    return [x for x in out if x.strip()]
 
 
 def split_card(s: str) -> list[str]:
     """MAXC 字を超える文は、真ん中に近い「、」で分ける。"""
+    if s.isascii():  # 英語版: 1 枚 90 字まで、真ん中に近い「, 」で分ける
+        if len(s) <= 90:
+            return [s]
+        marks = [i + 2 for i in range(len(s) - 1) if s[i:i + 2] == ", "]
+        if not marks:
+            return [s]
+        cut = min(marks, key=lambda i: abs(i - len(s) / 2))
+        return split_card(s[:cut]) + split_card(s[cut:])
     if len(s) <= MAXC:
         return [s]
     marks = [i + 1 for i, c in enumerate(s) if c == "、"]

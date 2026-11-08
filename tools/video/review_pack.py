@@ -44,7 +44,7 @@ def tile(ims: list, cols: int, out: Path) -> None:
     s.save(out, quality=85)
 
 
-def stt(mp4: str) -> dict:
+def stt(mp4: str, lang: str = "jpn") -> dict:
     import tts_eleven as te
     with tempfile.TemporaryDirectory() as td:
         mp3 = Path(td) / "a.mp3"
@@ -52,7 +52,7 @@ def stt(mp4: str) -> dict:
         data = mp3.read_bytes()
     b = uuid.uuid4().hex
     body = (f"--{b}\r\nContent-Disposition: form-data; name=\"model_id\"\r\n\r\nscribe_v1\r\n"
-            f"--{b}\r\nContent-Disposition: form-data; name=\"language_code\"\r\n\r\njpn\r\n"
+            f"--{b}\r\nContent-Disposition: form-data; name=\"language_code\"\r\n\r\n{lang}\r\n"
             f"--{b}\r\nContent-Disposition: form-data; name=\"timestamps_granularity\"\r\n\r\nword\r\n"
             f"--{b}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.mp3\"\r\nContent-Type: audio/mpeg\r\n\r\n").encode() + data + f"\r\n--{b}--\r\n".encode()
     req = urllib.request.Request(te.API + "/speech-to-text", data=body, method="POST",
@@ -89,6 +89,7 @@ def main() -> None:
     ap.add_argument("--mp4", required=True)
     ap.add_argument("--edl", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--lang", default="jpn", help="文字起こしの言語（英語版は eng、11/8）")
     a = ap.parse_args()
     out = ROOT / a.out
     (out / "clause_sheets").mkdir(parents=True, exist_ok=True)
@@ -98,7 +99,7 @@ def main() -> None:
     font = ImageFont.truetype(FONT, 22)
 
     # 文字起こし
-    r = stt(mp4)
+    r = stt(mp4, a.lang)
     ph = phrases(r.get("words", []))
     (out / "transcript.json").write_text(json.dumps(r, ensure_ascii=False, indent=1), encoding="utf-8", newline="\n")
     with open(out / "transcript.txt", "w", encoding="utf-8", newline="\n") as f:

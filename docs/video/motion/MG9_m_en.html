@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>MG9_m_en</title><link rel="stylesheet" href="trailer_kit.css">
+<style>
+#blob{position:absolute;left:0;top:0;width:1920px;height:780px;background:radial-gradient(ellipse 64% 44% at 50% 40%,rgba(5,8,12,.66) 0%,rgba(5,8,12,.42) 55%,rgba(5,8,12,0) 100%)}
+#head{left:135px;top:96px;font-size:56px;font-weight:700;letter-spacing:.02em}
+.lab{position:absolute;top:524px;white-space:nowrap;font-size:40px;font-weight:700;opacity:0;display:flex;align-items:center}
+.lab i{display:inline-block;width:22px;height:22px;border-radius:6px;margin-right:14px}
+#big{left:135px;top:636px;font-size:60px;font-weight:700;letter-spacing:.02em}
+#ul{position:absolute;height:8px;border-radius:4px;background:var(--warn);transform-origin:left;transform:scaleX(0)}
+</style></head><body data-duration="9.0">
+<div id="stage">
+ <div class="layer" id="bg"><div id="blob"></div></div>
+ <div class="layer" id="fig">
+  <div class="lab" id="l1" style="color:#fff"><i style="background:#8a99a8"></i>Used: 39%</div>
+  <div class="lab" id="l2" style="color:var(--warn)"><i style="background:#f0c04a"></i>Driving with no load</div>
+  <div class="lab" id="l3" style="color:var(--muted)"><i style="background:#3a4757"></i>Empty while loaded</div>
+ </div>
+ <div class="layer" id="txt">
+  <div class="abs sh" id="head">Where the unused capacity goes</div>
+  <div class="abs sh" id="big"><span id="b1">About </span><span id="b2" class="y">60%</span><span id="b3"> of the unused part is miles driven empty</span></div>
+  <div id="ul"></div>
+ </div>
+</div>
+<script src="trailer_kit.js"></script>
+<script>
+(function () {
+  var D = 9.0, BX = 135, BY = 300, BW = 1500, BH = 130, IN = 10, K = BH / 250;
+  var svg = TK.svg('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, TK.$('fig'));
+  var bgsvg = TK.svg('svg', { width: 1920, height: 1080, viewBox: '0 0 1920 1080' }, TK.$('bg'));
+  var guide = TK.svg('path', { d: 'M96 604 H1824', fill: 'none', stroke: 'rgba(255,255,255,.12)', 'stroke-width': 4, 'stroke-linecap': 'round', 'stroke-dasharray': '14 16', pathLength: 1 }, bgsvg);
+  var defs = TK.svg('defs', {}, svg);
+  var IX = BX + IN, IW = BW - IN * 2, IY = BY + IN, IH = BH - IN * 2;
+  var cp = TK.svg('clipPath', { id: 'cap' }, defs); TK.svg('path', { d: TK.rr(IX, IY, IW, IH, 18) }, cp);
+  var segs = TK.svg('g', { 'clip-path': 'url(#cap)' }, svg);
+  var W = [39.0, 37.9, 23.1], COL = ['#8a99a8', '#f0c04a', '#3a4757'], X = [], acc = 0, sr = [];
+  W.forEach(function (w, i) {
+    X.push(IX + IW * acc / 100); acc += w;
+    sr.push(TK.svg('rect', { x: X[i], y: IY, width: 0, height: IH, fill: COL[i] }, segs));
+  });
+  function P(d, parent, extra) {
+    var a = { fill: 'none', stroke: '#fff', 'stroke-width': 4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', pathLength: 1, d: d };
+    for (var k in extra) a[k] = extra[k];
+    var e = TK.svg('path', a, parent); e.style.opacity = 0; return e;
+  }
+  var box = P(TK.rr(BX, BY, BW, BH, 26), svg);
+  var cabX = BX + BW + 8, gx = cabX - 716 * K;
+  var cg = TK.svg('g', { transform: 'translate(' + gx + ' ' + BY + ') scale(' + K + ')' }, svg);
+  var sw = 4 / K, o = { 'stroke-width': sw };
+  var cab = P(TK.CAB, cg, o), win = P(TK.WIN, cg, o);
+  var railEnd = (974 * K + gx);
+  var rail = P('M' + (BX + 12) + ' ' + (BY + 266 * K) + ' H' + railEnd, svg);
+  var wl = [(BX + 190 - gx) / K, (BX + 290 - gx) / K, 860].map(function (cx) { return P(TK.circ(cx, 300, 34), cg, o); });
+  var clipM = TK.svg('clipPath', { id: 'mclip' }, defs), mr = TK.svg('rect', { x: X[1], y: IY, width: 0, height: IH }, clipM);
+  var mg = TK.svg('g', { 'clip-path': 'url(#mclip)' }, svg);
+  var ys = IY + IH / 2, xa = X[1] + 30, xb = X[1] + IW * W[1] / 100 - 30;
+  var dl = TK.svg('path', { d: 'M' + xa + ' ' + ys + ' H' + xb, fill: 'none', stroke: '#6f5b28', 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-dasharray': '14 16' }, mg);
+  var cs = TK.svg('clipPath', { id: 'sclip' }, defs), sr2 = TK.svg('rect', { x: X[1], y: IY, width: 0, height: IH }, cs);
+  var mg2 = TK.svg('g', { 'clip-path': 'url(#sclip)' }, svg);
+  var sl = TK.svg('path', { d: 'M' + xa + ' ' + ys + ' H' + xb, fill: 'none', stroke: '#6f5b28', 'stroke-width': 6, 'stroke-linecap': 'round' }, mg2);
+  var segW = [IW * W[0] / 100, IW * W[1] / 100, IW * W[2] / 100];
+  var labs = [TK.$('l1'), TK.$('l2'), TK.$('l3')];
+  labs.forEach(function (el, i) {
+    var wdt = el.offsetWidth; el.style.left = (X[i] + segW[i] / 2 - wdt / 2) + 'px';
+  });
+  var hc = TK.split(TK.$('head')), b1 = TK.split(TK.$('b1')), b2s = TK.$('b2'), b2 = TK.split(b2s), b3 = TK.split(TK.$('b3'));
+  var ul = TK.$('ul');
+  function placeUl() {
+    var r = b2s.getBoundingClientRect(), root = TK.$('txt').getBoundingClientRect();
+    ul.style.left = (r.left - root.left) + 'px'; ul.style.width = r.width + 'px'; ul.style.top = (r.bottom - root.top + 2) + 'px';
+  }
+  TK.run(D, function (s) {
+    if (s === 0) { labs.forEach(function (el, i) { el.style.left = (X[i] + segW[i] / 2 - el.offsetWidth / 2) + 'px'; }); placeUl(); }
+    TK.draw(guide, TK.mov(TK.pr(s, 0.1, 1.5)));
+    TK.reveal(hc, s, 0.1, 0.03, 0.55);
+    TK.draw(box, TK.mov(TK.pr(s, 0.15, 0.85)));
+    TK.draw(cab, TK.mov(TK.pr(s, 0.3, 0.95)));
+    TK.draw(rail, TK.mov(TK.pr(s, 0.35, 0.95)));
+    TK.draw(win, TK.mov(TK.pr(s, 0.6, 1.0)));
+    wl.forEach(function (w, i) { TK.draw(w, TK.mov(TK.pr(s, 0.6 + i * 0.07, 1.05 + i * 0.07))); });
+    var t0 = [1.0, 2.0, 3.2], t1 = [1.8, 3.0, 3.9];
+    sr.forEach(function (r, i) { r.setAttribute('width', segW[i] * TK.out(TK.pr(s, t0[i], t1[i])) + (TK.pr(s, t0[i], t1[i]) > 0.999 ? 1 : 0)); });
+    labs.forEach(function (el, i) { TK.rise(el, s, t1[i] - 0.5, 0.55, 18); });
+    var m1 = TK.mov(TK.pr(s, 3.0, 4.6)), m2 = TK.mov(TK.pr(s, 3.5, 5.0));
+    mr.setAttribute('x', X[1]); mr.setAttribute('width', (segW[1]) * m1);
+    sr2.setAttribute('x', X[1]); sr2.setAttribute('width', (segW[1]) * m2);
+    dl.style.strokeDashoffset = String(-(s - 3.0) * 70);
+    TK.reveal(b1, s, 4.6, 0.04, 0.55);
+    TK.reveal(b2, s, 4.6 + 8 * 0.04 + 0.05, 0.06, 0.6);
+    TK.reveal(b3, s, 5.3, 0.04, 0.55);
+    ul.style.transform = 'scaleX(' + TK.mov(TK.pr(s, 6.0, 6.7)) + ')';
+  });
+})();
+</script></body></html>

@@ -81,10 +81,11 @@ def main() -> None:
             elif s1 >= total - 0.02:
                 k, why = 0.1, "末尾"
             else:
-                kind = "…" if "…" in inside else ("。" if ("。" in inside or "？" in inside) else "、")
+                # 英語版（11/8）: 「...」は間、「. ? !」は文の終わり、「,」はそのほか
+                kind = "…" if ("…" in inside or "..." in inside) else ("。" if any(c in inside for c in "。？.?!") else "、")
                 k, why = DEFAULT[kind], kind
                 for r in rules.get(sid, []):
-                    tail = before.rstrip("、。…？ ")
+                    tail = before.rstrip("、。…？ .,?!")
                     if tail.endswith(r["after"]):
                         k, why = r["keep"], f"指定 {r['after']}"
                         used.add(r["after"])
