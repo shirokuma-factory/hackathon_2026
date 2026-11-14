@@ -175,7 +175,7 @@
 | 段 | 中身 |
 |---|---|
 | 指摘 | 第 4 回の採点者 E（Claude の活用）が P0 として「CLAUDE_USAGE の回数の時点が表ごとにばらばら」「試験の件数に未コミットのファイルが入る」を挙げた（89 点、`docs/reviews/2026-11-08_リポジトリの採点_r4e.md`） |
-| 直し | すべての表を同じ時点で数え直し、数える台本を追跡しているファイルだけ数える形にした（`a029fa6`） |
+| 直し | すべての表を同じ時点で数え直し、数える台本を追跡しているファイルだけ数える形にした（`9d9ac70`） |
 | 確かめ | 前の点を知らない新しい採点者 E が第 5 回で照合し、14 項目中 13 項目が一致して 95 点（`docs/reviews/2026-11-08_リポジトリの採点_r5e.md`） |
 
 作り直した判断の全部、試して採らなかったもの、止めた判断は [docs/試行錯誤の記録.md](docs/試行錯誤の記録.md) に、提出前のリポジトリの採点（5 人、平均 76.5 → 92.2 点）は [docs/reviews/2026-11-08_リポジトリの採点_推移.md](docs/reviews/2026-11-08_リポジトリの採点_推移.md) にあります。
@@ -266,8 +266,8 @@ flowchart LR
 
 | 区分 | 中身 | 確かめ方 |
 |---|---|---|
-| イベントの前から持っていた開発の道具（アプリの機能ではない） | 最初のコミット `35e4866`（2026-11-03 00:11、23 ファイル・934 行）。23 ファイルはすべて道具と雛形で、アプリのコードは無い: `.claude/`（サブエージェント・スキル・フック）、`tools/local_ai_mcp/`、`scripts/`、設定（`.gitignore`・`.gitattributes`・`.mcp.json`・`.env.example`）、テーマが決まる前の雛形の文書（`README.md`・`CLAUDE.md`・`docs/CLAUDE_USAGE.md`・`docs/DEVLOG.md`・`docs/LOCAL_AI.md`・`workflows/comfyui/README.md`） | `git show --stat 35e4866`、`git show 35e4866:README.md`（テーマ未定の雛形） |
-| 期間中（11/3〜11/8）に作ったもの | アプリのすべて（`src/`・`web/`・`tools/serve_web.py`・`data/`・`tests/`）、仕様、計画・調査・採点の記録、動画。道具を期間中に直した所（フックの修正 `1c24f0a` など）も含む | `git log --reverse` |
+| イベントの前から持っていた開発の道具（アプリの機能ではない） | 最初のコミット `5b5c08a`（2026-11-03 00:11、23 ファイル・934 行）。23 ファイルはすべて道具と雛形で、アプリのコードは無い: `.claude/`（サブエージェント・スキル・フック）、`tools/local_ai_mcp/`、`scripts/`、設定（`.gitignore`・`.gitattributes`・`.mcp.json`・`.env.example`）、テーマが決まる前の雛形の文書（`README.md`・`CLAUDE.md`・`docs/CLAUDE_USAGE.md`・`docs/DEVLOG.md`・`docs/LOCAL_AI.md`・`workflows/comfyui/README.md`） | `git show --stat 5b5c08a`、`git show 5b5c08a:README.md`（テーマ未定の雛形） |
+| 期間中（11/3〜11/8）に作ったもの | アプリのすべて（`src/`・`web/`・`tools/serve_web.py`・`data/`・`tests/`）、仕様、計画・調査・採点の記録、動画。道具を期間中に直した所（フックの修正 `626e211` など）も含む | `git log --reverse` |
 
 | 日 | 11/3 | 11/4 | 11/5 | 11/6 | 11/7 | 11/8 |
 |---|---:|---:|---:|---:|---:|---:|

@@ -6,7 +6,7 @@
   },
   "fixed_findings": {
     "value": 27, "display": "27", "verified_on": "2026-11-06",
-    "source": "git log のコミット件名 a6b0f63 'Fix the 17 findings of vision review r2' と 7a328ac 'Fix the 10 findings of vision review r3' の合計。ほかの採点（筋書き・論理の筋など）で直した件数は含まない（過少）"
+    "source": "git log のコミット件名 f10c42f 'Fix the 17 findings of vision review r2' と 4c92886 'Fix the 10 findings of vision review r3' の合計。ほかの採点（筋書き・論理の筋など）で直した件数は含まない（過少）"
   },
   "coder_runs": {
     "value": 34, "display": "34", "verified_on": "2026-11-06",

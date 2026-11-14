@@ -16,11 +16,11 @@
 - local-ai MCP の接続確認: ComfyUI は応答（RTX 5080、VRAM 空き 15.6GB、キュー 0）。`workflows/comfyui/` はまだ空。Ollama は未導入で 11434 番が拒否。代わりに LM Studio（`lms`）が入っていて、gemma-4-12b-qat / gemma-4-26b-a4b-qat / qwen3.8-27b / nomic-embed が手元にある。
 - 決定: ローカル LLM は当面使わず、ComfyUI だけで進める（作成者の判断）。Ollama の導入と LM Studio への切り替えは見送り。
 - 物流レビュー資料の制作環境を手元と照合: ComfyUI 応答あり、Resolve Studio 21.1.1 は MCP 接続済みだが未起動、ffmpeg 7.1 は `C:\ai\bin` にあるが PATH 外で ffprobe なし、ElevenLabs の API キーは環境変数に未設定、Node は未導入（uv / Python 3.13 はあり）。
-- 公開前の確認: 秘密情報・個人情報なし。PC 固有パス3か所を相対パスに修正（68fd89c）。修正前のパスが残る 33260ea の履歴書き換えは、ユーザー名と作業フォルダ ID だけで認証に使えないため行わない（作成者の判断）。
+- 公開前の確認: 秘密情報・個人情報なし。PC 固有パス3か所を相対パスに修正。修正前のパスが残る 59f233f の履歴書き換えは、ユーザー名と作業フォルダ ID だけで認証に使えないため行わない（作成者の判断）。
 - 提出条件: 動画3分、締切 11/8（日）20:00、提出目標 11/7（土）（作成者の指定）。今日を開発1日目とし、開発 11/3〜11/5、動画 11/6〜11/7、予備 11/8。審査基準との照合は docs/plan/2026-11-03_審査基準と計画の照合.md。
 - 決定: 物流の実体験・身近な対象者はいない。テーマを自分の分野へ変える案は採らず、テーマ2・物流のまま進める（作成者の判断）。利用者は架空と明示し、困りごとの大きさは公的な出典で示す。
 - 補足: 作成者は物流業界の課題を認識しており、Web などで照合済み。課題は公的にも問題として認識されている。審査照合のインパクト「現場から出発」を × から △ に変更。
-- 呼び名を「作成者」に統一（0822815）。過去のコミットに残る旧表記は本名ではないため、履歴の書き換えはしない（作成者の判断）。
+- 呼び名を「作成者」に統一（5dee927）。過去のコミットに残る旧表記は本名ではないため、履歴の書き換えはしない（作成者の判断）。
 - 作成者の構想（中小の荷主・カゴ台車の上の空き）を docs/plan に取り込み。例の運賃の計算を検算して一致。審査照合のインパクト2行を ○ に変更。作成者の構想が参照する results/ 以下のスクリプトとデータはリポジトリに無い。
 - 決定: アプリの比較を公表運賃からの計算に切り替える（作成者の判断）。運賃表は全体を取り込まず、デモで使う値だけを出典つきで持つ（作成者の構想の許諾の注意と公開リポジトリのため）。
 - 開発1日目: SPEC.md を作成（Python + Streamlit、宅配・路線便・カゴ台車単位・貸切の4手段を公表運賃で計算）。日通の積合せ運賃 PDF と佐川の関東発の表を開き、作成者の構想の S1〜S4 の運賃を照合して一致。デモで使う列だけを data/tariffs に出典つきで保存。
@@ -185,10 +185,10 @@
 
 ## コミット（自動記録）
 
-- 2026-11-02 15:22 `8a82719` Record local environment and ComfyUI chardet crash fix
-- 2026-11-02 15:22 `1c24f0a` Fix devlog hook: skip DEVLOG-only commits, keep blank line after heading
-- 2026-11-03 12:53 `eaf4ff1` Record validator run from cloud session (100/100)
-- 2026-11-03 22:53 `e94e7f6` Add v4 summary, backhaul data from census 2021 and OSM hubs
+- 2026-11-02 15:22 `831860f` Record local environment and ComfyUI chardet crash fix
+- 2026-11-02 15:22 `626e211` Fix devlog hook: skip DEVLOG-only commits, keep blank line after heading
+- 2026-11-03 12:53 `1e56acd` Record validator run from cloud session (100/100)
+- 2026-11-03 22:53 `37700c4` Add v4 summary, backhaul data from census 2021 and OSM hubs
 
 ## 2026-11-05 荷待ちの指定時刻・附帯業務、単独ページ、帰り便の式の距離（SPEC §23.7・§21.7）
 
@@ -216,7 +216,7 @@
 - 検証 r5 の P1 #1〜#3 に対応。到着日時・荷役開始日時・集荷地点等・荷主都合などの別名を足し、乗務員氏名・荷主の確認の有無は読まずに捨てる。日時の欄から日付も取る。
 - 知らない見出しは名前で注記し、見出しがあるときは列の順に戻らない。荷役をした人の列が無いときは、荷役作業等の内容があれば運転者、無ければ「不明」で行を残す。荷主都合の値が読めない行は誤りにした。
 - 試験表に 8 例を足した（Python、ローカル版と Artifact 版の JS で同じ結果）。
-- 2026-11-05 14:21 `1d73fec` Separate return trips from the waiting-time logic (review r3)
+- 2026-11-05 14:21 `77c0175` Separate return trips from the waiting-time logic (review r3)
 
 ## 2026-11-05 元の思想に戻す（SPEC §30、思想と公開版 r1）
 - 作成者の指示で、元の思想（v4 の見えていない 3 つ、「見せる」と「つなぐ」、地図が中心）を含めた採点基準（第 5 部）を作り、公開版と同じ設定で採点した。r1 は 64 点。
@@ -225,11 +225,11 @@
 - 荷待ちの計算を `web/waiting_calc.js` に出し、`waiting.html` と地図の荷待ちのタブで同じものを使う。荷待ちの場所を地図の点にした。手段ごとの横棒の図を足した。経路が取れないときの案内と距離の食い違いを直した。幅 600px 以下は下のパネルを 1 枚ずつ出す。
 - 本線が見つけた不具合: `web/sheet.js` の MutationObserver が body の class を毎回書き直し、無限ループで地図の画面が起動しなかった。撮影の時間切れの原因はこれで、Edge の数ではなかった。値が変わるときだけ書き換えるように直した。
 - 試験 727 件合格。画面写真 `docs/assets/2026-11-05_v31_*`。
-- 2026-11-05 07:39 `55e3e0a` Add gap analysis against the official judging criteria
-- 2026-11-05 07:39 `372f9eb` Merge remote-tracking branch 'origin/claude/exciting-bell-uj2kvl' into claude/exciting-bell-uj2kvl
-- 2026-11-05 10:54 `0b2f6ca` Revise gap analysis: exclude demo video, add public-version and new points
-- 2026-11-05 11:21 `cec16cf` Correct ComfyUI status in gap analysis
-- 2026-11-05 12:00 `9eaa9f4` Add findings from other sessions and SPEC 30 status to gap analysis
+- 2026-11-05 07:39 `d31e181` Add gap analysis against the official judging criteria
+- 2026-11-05 07:39 `6277ae1` Merge remote-tracking branch 'origin/claude/exciting-bell-uj2kvl' into claude/exciting-bell-uj2kvl
+- 2026-11-05 10:54 `1a801f9` Revise gap analysis: exclude demo video, add public-version and new points
+- 2026-11-05 11:21 `a4b201a` Correct ComfyUI status in gap analysis
+- 2026-11-05 12:00 `66c500b` Add findings from other sessions and SPEC 30 status to gap analysis
 
 ## 2026-11-05 r2 の残り 17 件（SPEC §31）
 - 地図の荷待ちのタブは `web/waiting_calc.js` だけでブラウザの中で計算し、`/api/waiting` を呼ばない（画面の「外に送りません」と合わせた）。点の平均は定期報告の定義にそろえた。点の位置がずれていた原因は own.css の `position: relative` だった。
@@ -246,7 +246,7 @@
 - 公開版の地図の画面は見積の窓口を出さず、比べるページへの案内だけにした。窓口の条件から商品名を外した。路線便の試算が地図の画面だけにある理由を、両方の画面の本文に書いた。
 - 荷待ちの書面の表の見出しに「この相手の行だけ」。画面とデータの文字から SPEC の節番号を外した。README に公開版を足した。
 - 試験 787 件合格。画面写真 `docs/assets/2026-11-05_v33_*`。
-- 2026-11-05 13:30 `b772aa9` Add vision review r3 (87) and SPEC 32
+- 2026-11-05 13:30 `46447d9` Add vision review r3 (87) and SPEC 32
 
 ## 2026-11-05 後から補った記録（4 つのセッションの記録を読み直して）
 
@@ -285,7 +285,7 @@
 - 11/5 10:13: 作成者が公開先に Cloud Run（A）を選んだ（`docs/plan/2026-11-05_公開先の検討.md`）。
 - 11/5 19:51: 作成者が、実在 3 社（佐川急便・日本通運・ヤマト運輸）の名前と運賃を画面から外すと決めた（SPEC §30）。
 - ComfyUI は、アプリの開発では生成に使っていない（`comfy_run_workflow` は 0 回）。デモ動画の制作で使う（作成者の方針、11/5）。
-- 2026-11-05 13:32 `7379065` Record work found in other sessions: tools, counts, trial and error
+- 2026-11-05 13:32 `bc587dc` Record work found in other sessions: tools, counts, trial and error
 
 ## 2026-11-06 r4 の残り 14 件（SPEC §33）
 - 400 の送り方を比べるで「着地」のタブは下のパネルを 60% に広げる。額が 1 つだけのときは倍率を出さずに理由を書く。船は経路のカードと図で「なし」「問い合わせ」をそろえた。手段の名前は「鉄道」「船」。
@@ -320,7 +320,7 @@
 - 分かったこと: 画面の試験がときどき「Rt is not defined」で落ちていた原因は、配信サーバーの待ち行列が標準の 5 だったこと。ブラウザが JS を一斉に取りに来ると Windows が接続を切る（100 並列で 500 件中 24 件が 10054）。128 にすると 0 件。スクリプトの読み込み失敗は `window` の error に上がらないので、`__errs` に残すようにした。
 - 失敗したこと: 担当の連続実行と別の作業の試験が同時に走り、Edge が約 920 個残って CPU が 100% になった。担当は自分のプロセスを止められなかった（権限の判定）。作成者に止めてもらってから流し直した。Edge の試験は同時に 1 本ずつに限った。
 - 試験 1,002 件合格、skip 0 件（静かな状態で 9 分 47 秒）。
-- 2026-11-06 17:36 `03bf25b` Record adoption of opening cuts C1_s101 and C2_s111
+- 2026-11-06 17:36 `dcb74f5` Record adoption of opening cuts C1_s101 and C2_s111
 
 ## 2026-11-06 道具の採点 r2 の指摘を直した（SPEC §40）と第 7 部
 - r2 は A 77、B 72（r1 は 70、60）。指摘を 3 人に分けて直した: 自社の運行（最大積載量を超える重さを平均から外す、符号つき・kg の重さ、Python と JS の日時と列名の読み方、年を選ぶまで計算しない、文言）、予約と保存（最大積載量を超える荷を断る、時差、壊れた保存ファイル、積付けの △ の理由）、地図の画面と部品（時間の帯の再生が 1/1000 の速さだった、閉じた枠の inert、#v= の切り替え、24px、荷・荷待ちの記録・拠点の形）。
@@ -349,7 +349,7 @@
 ## 2026-11-06 いまの大型車（全国の大型車をほぼ即時に見るページ）
 - JARTIC の 1 時間値は全国 1 回の要求で取れた（常設 995 地点、CCTV 981 地点）。最新の 24 時間と先週の同じ時刻を 50 回の要求で取り、県ごとの 1 地点あたり台数にまとめて `web/trucks_now.html` に出した。
 - 21 時台の実測: 観測できた地点 1,545、全国 30.3 台/時、先週比 1.01。積荷の有無は分からない。記録は `docs/plan/2026-11-06_いまの大型車.md`。
-- 2026-11-06 23:06 `7de02bb` Add single-file own-fleet page and fix persona r3 findings (SPEC §43)
+- 2026-11-06 23:06 `e48d998` Add single-file own-fleet page and fix persona r3 findings (SPEC §43)
 
 ## 2026-11-06 Cloud Run への公開（SPEC §44）
 - 作成者の判断で公開した。`backfull` のプロジェクトは請求先アカウントのプロジェクト数の上限でつなげず、使っていない既存のプロジェクト（My Project 2615）に置いた。新しいプロジェクトでは、ビルドに使う既定のサービスアカウントに `roles/cloudbuild.builds.builder` を付ける必要があった。
@@ -371,7 +371,7 @@
 - 自社の運行の手順 3 で地図が積込の側へ寄り、横へずらした点線が道路から離れた切れ端に見えたので、手順 3 も区間の全体を映すようにした（`web/own.js` stepCamera）。
 - 全件: 1,781 件が合格、2 件は意図した変更に合わせて期待を直して合格（find.js の名前のまとめ、地図に置かない地点 p08 を部品のスキーマに渡さない）。
 - 採点の台本: 公開版が手元より古いことを採点者に伝え、機能は手元で、公開版では開けるかだけを見るようにした。
-- 2026-11-07 10:35 `c2a76d8` r3 v5: ending returns to the hook, shipper location matches the calculation
+- 2026-11-07 10:35 `23a7668` r3 v5: ending returns to the hook, shipper location matches the calculation
 
 ## 2026-11-07 昼 入口の背景を Blender v3 に
 
@@ -387,8 +387,8 @@
 - 15 時ごろ 映画のような映像 v6（36 秒、細かい標高、港・倉庫・トラックの作り込み、流体のような流れ、九州の主役は鹿屋 → 東京）を `web/img/hero/v6/` に入れ、`?hero=v6` で確認できるようにした。webm 4.95MB、mp4 6.77MB。九州の字幕を「鹿児島 → 東京 長距離の帰りは空車になりがちです」に変えた。九州の場面では鹿屋の端が欄の左上の角にかかる。
 - 15:45 作成者の了承で v6 を既定の背景にした（`web/img/hero/` に静止画・映像・scenes.json を置き、スマートフォンは縦長の絵 `hero_portrait_720.webp`（v5 のもの）を出す）。前の夕方の版は `outputs/hero_v3_golden_backup/` に控えた。全国の入口の小さな絵 `web/img/home_map.jpg` も v6 から切り出した。ヘッドレス Edge で 1920（9.6 秒、関東の字幕）と 390 を撮って確かめた。
 - v7（空中写真を貼った Google Earth 風）の見本を確かめた。写真の見え方は出た。本線の判断: 下半分の空きは傾きを下げて地平線と霞を見せる、伊豆諸島の黒を直す、九州の色を周りに合わせる、主役の線のにじみを弱めて色を残す、都市の白飛びを抑える。そのうえで全部を描く。見本は `docs/assets/2026-11-07_hero_v7_preview.jpg`。
-- 2026-11-07 17:46 `93c010e` r7 script: causal-chain opening, people's pains, feature tour, who benefits
-- 2026-11-07 17:47 `9adbbd0` r7: fact-check fixes, 4K-supersampled 1080p render, feature takes
+- 2026-11-07 17:46 `05aa780` r7 script: causal-chain opening, people's pains, feature tour, who benefits
+- 2026-11-07 17:47 `4e06eb7` r7: fact-check fixes, 4K-supersampled 1080p render, feature takes
 - 18 時台 v7（空中写真の Google Earth 風、36 秒）を描き上げ、`web/img/hero/v7/` に置いて `?hero=v7` で確認できるようにした。既定はまだ v6。残る点: 主役の線と交通の流れが細く薄い、伊豆諸島の小島が黒い（12 秒で欄の位置に入る）、九州が灰色寄り。webm 4.25MB、mp4 6.03MB。
 - 19:15 作成者の指示で v7 を直して既定にした。主役の線を合成側で描き直し（1920 幅で約 5px、芯の色 青 92,200,255・橙 244,150,70）、伊豆諸島は欄に入るため描かない、九州の色を Lab で中国・四国に合わせた（九州 L58〜64、四国 L61〜65）。webm 4.89MB、mp4 6.38MB。前の v6 は `outputs/hero_v6_backup/`。ヘッドレス Edge で 1920（24.7 秒、九州の場面、鹿屋 → 東京の青い実線と橙の点線）と 390 を撮って確かめた。390 では左上の「帰りの荷台を、荷主の荷で埋める」が明るい空に重なって読みにくい。
 
@@ -413,8 +413,8 @@
 - r10: 冒頭の図の下に暗くする幕、連鎖の図は声で言う 2 項目だけ（`CHAIN_m.html` の two）、H1 の声を戻し「運べる量の」で「6割」の行を出す（`make_chain_timed.py` が H1 の声の時刻から決める）、P1 の「荷物の約9割」を声と図から外す、HP を 1 文に、章の見出しから 1.4 秒・線とロゴの音の後に声、切り替えは重ねない（gap_style "cut"）、ロゴの音を前へ。`tools/video/check_sfx_gap.py` で声と効果音の重なりを数える（0 件）。
 - r11: S2 の料金の図の出始めを早め、最後の「約17.8万円安い」を 1.4 秒見せる（遅らせた版では数え上げが途中で切れた）。最後の場面の出典の行に外の素材のクレジット（GitHub リポジトリ採点基準準備のセッションの依頼）。EDL のパスをリポジトリからの相対パスに。Resolve の書き出しの前に、タイムラインの素材の数が EDL と合うかを確かめる（配置が途中で切れたまま書き出しを始めたことがあったため）。
 - 確認表: `docs/video/2026-11-07_r10_確認表.md`（指摘 23 項目、確かめ方と結果）。
-- 2026-11-07 22:21 `fe19584` Redesign pages, Kagoshima sample, hero video, Claude explanation
-- 作成者が Cloud Shell で fe19584 を Cloud Run にデプロイした（revision backfull-demo-00003-pvz）。公開版で /・driver.html・compare_lite.html・waiting.html・背景の映像が 200 で返り、最初の画面は新しい版（中央の欄、Backfull、v7 の背景映像が 14.6 秒で再生中）であることをヘッドレス Edge で確かめた。/api/ai/status は available false（disabled）。Artifact の 2 つ（荷待ちの書面 Version 4、送り方を比べる Version 2）も同じ URL に出し直した。1920 幅では左上の「帰りの荷台を、荷主の荷で埋める」が明るい陸の上で読みにくい。
+- 2026-11-07 22:21 `9b9a0d0` Redesign pages, Kagoshima sample, hero video, Claude explanation
+- 作成者が Cloud Shell で 9b9a0d0 を Cloud Run にデプロイした（revision backfull-demo-00003-pvz）。公開版で /・driver.html・compare_lite.html・waiting.html・背景の映像が 200 で返り、最初の画面は新しい版（中央の欄、Backfull、v7 の背景映像が 14.6 秒で再生中）であることをヘッドレス Edge で確かめた。/api/ai/status は available false（disabled）。Artifact の 2 つ（荷待ちの書面 Version 4、送り方を比べる Version 2）も同じ URL に出し直した。1920 幅では左上の「帰りの荷台を、荷主の荷で埋める」が明るい陸の上で読みにくい。
 
 ## 2026-11-07 夜 デモ動画 r12（窓を左右に、データの見える化、海外の素材をやめる）
 
@@ -439,14 +439,14 @@
 - H1 の一文（運ぶ人が足りないのに／運べる量の6割が使われていない）を画面の縦の中央へ。P1 の 2 文目が 2 枚に分かれて字幕の割り付けの数がずれ、白い箱の字幕に戻っていたので、割り付けに 1 枚足した。H1 の暗くする幕が遅れて地図が明るく見えたので、H1 の図を 0.3 秒早く出す。3 分に収めるため、ロゴを短く、章の見出しから声までを 1.3 秒に。
 - YouTube 用: Resolve の ProRes の元から `tools/video/deliver_mp4.py` で mp4 を作る（H.264 High、約 8 Mbps、AAC 48kHz、時刻のトラックなし、moov 先頭）。crf では画面がほぼ止まっているため 2〜3 Mbps まで下がり、YouTube の作り直しで文字が崩れやすいので平均 10 Mbps にした。
 - 公開リポジトリの片づけ（GitHub リポジトリ採点基準準備のセッションの依頼）: Resolve の台本はリポジトリの場所を ROOT_DIR か BACKFULL_ROOT から受け取る。r4 の表は相対パス。
-- 2026-11-08 01:03 `5aff3a7` AI explanation: pseudonymise, Haiku draft, show payload, cost and remaining
-- 2026-11-08 01:07 `5913f00` Waiting: keep table columns readable in every entry mode and width
-- 2026-11-08 01:18 `044da81` Map compare: describe cargo in words, Haiku proposes rows
-- 2026-11-08 01:21 `a021ccf` Compare chart: keep the short cost heading, explain the bar in a tooltip
-- 2026-11-08 01:21 `38df0cc` CLAUDE_USAGE: describe the four in-app Haiku features as they are now
-- 2026-11-08 01:23 `26d0d19` CLAUDE_USAGE: describe the in-app helpers as Haiku with machine checks
-- 2026-11-08 01:26 `3d7eac4` AI explanation: write for the email, no confessional phrasing; record real API run
-- 2026-11-08 01:31 `c256e8e` Video r16: live-app takes, continuous chain, timed MGs, Resolve guards
+- 2026-11-08 01:03 `30ec313` AI explanation: pseudonymise, Haiku draft, show payload, cost and remaining
+- 2026-11-08 01:07 `68f861d` Waiting: keep table columns readable in every entry mode and width
+- 2026-11-08 01:18 `28fec34` Map compare: describe cargo in words, Haiku proposes rows
+- 2026-11-08 01:21 `272f7ae` Compare chart: keep the short cost heading, explain the bar in a tooltip
+- 2026-11-08 01:21 `3d99fa0` CLAUDE_USAGE: describe the four in-app Haiku features as they are now
+- 2026-11-08 01:23 `107fbe8` CLAUDE_USAGE: describe the in-app helpers as Haiku with machine checks
+- 2026-11-08 01:26 `fa3d035` AI explanation: write for the email, no confessional phrasing; record real API run
+- 2026-11-08 01:31 `87e4d97` Video r16: live-app takes, continuous chain, timed MGs, Resolve guards
 
 ## 2026-11-08 深夜 デモ動画 r15〜r17（タイミングの総点検、公式の審査の観点）
 
@@ -454,93 +454,97 @@
 - r15: タイミングだけを見る点検（`docs/reviews/2026-11-08_タイミングの点検_r15.md`、43 件）。r16 で直した: 録画を動いているアプリから取り直し（`record_live.py`、W16_*）、冒頭の連鎖図を 1 枚につなぐ、H3 を荷台に荷物が載る図に、S2 の金額を言葉に合わせて出す図、スマートフォンは 1.4 倍で「押すだけ」に押す瞬間を合わせる、章の見出しは新しい場面と一緒に出し声は 1.2 秒後。Resolve の取り込みで、上書きした WAV の古い長さを入れ直す。
 - r16 の採点（新しい Opus、`docs/reviews/2026-11-08_デモ動画の採点_r16.md`）: 44 点（素点 73、減点 −29）、P0 0 件・P1 7 件。指摘の多くは出典の行と架空の表示の抜け。本線がコマで確かめたもの: 電話の画面に字幕が重なる、締めの字幕がロゴの前の黒に残る。
 - r17 で直した: 上に重ねた図の出典を下の映像の出典より優先（19〜28 秒の「6割」の下に純流動調査が出ていた）、27 万円の画面と帰り便の図に「目安」「架空の例」の行（r16 の録画の名前が出典の表の鍵に無かった）、締めの字幕はロゴの場面の始まりで消しロゴは暗い入りを 0.3 秒飛ばす、電話の場面の字幕を右の列へ、Haiku 点検・Sonnet 下書き・Opus 確かめを字幕で示す、「約27万円（目安）」を言う時に出す。
-- 2026-11-08 01:48 `b671d5c` Waiting email: no clerk instructions, no 0-minute handling, no blank-place phrase
-- 2026-11-08 06:38 `8624cfa` README top: try-now URL and results image first; check public pages vs HEAD
-- 2026-11-08 06:43 `1f8f461` AI checks hardened; fact fixes; validator and bug-hunt records
-- 2026-11-08 06:43 `c04aad9` README: try-now table before the first screenshot (grader r3c)
-- 2026-11-08 06:46 `77e703f` Add screenshots of the in-app Claude confirmation and result
-- 2026-11-08 06:46 `8bb0354` README: show the in-app Claude helper (confirm box and result) as screenshots
-- 2026-11-08 06:48 `037ee54` Submission form r5 fixes; devlog hook now catches git -c ... commit
+- 2026-11-08 01:48 `ccacf7b` Waiting email: no clerk instructions, no 0-minute handling, no blank-place phrase
+- 2026-11-08 06:38 `bbb291b` README top: try-now URL and results image first; check public pages vs HEAD
+- 2026-11-08 06:43 `c28b0df` AI checks hardened; fact fixes; validator and bug-hunt records
+- 2026-11-08 06:43 `9ba276e` README: try-now table before the first screenshot (grader r3c)
+- 2026-11-08 06:46 `5d2da16` Add screenshots of the in-app Claude confirmation and result
+- 2026-11-08 06:46 `1bd700c` README: show the in-app Claude helper (confirm box and result) as screenshots
+- 2026-11-08 06:48 `707543e` Submission form r5 fixes; devlog hook now catches git -c ... commit
 - r18（作成者の指摘 11/8 朝）: 「Backfull です」と締めのロゴの動きが途中で切れていた。1.5 倍のロゴ（LOGO_F、2.5 秒で描き終わる）を最後まで出し、締めは描き終わってから約 1.4 秒残す。書面の場面を、Claude が説明文を作っている最中の画面（送る内容 → Haiku 点検中 → Sonnet 下書き中 → Opus 確かめ → 一致と本文）に替えた（W18_AI_L、待ちの間は 4.5 倍）。尺は声を 1.12 倍にして 179.6 秒。
 - 書き出し: MOV を作らず、Resolve から「YouTube - 1080p」の設定で mp4 を直接書き出す（H.264 High、7.2 Mbps）。API から画質も音量の正規化も指定できず、音は -20.4 LUFS だったので、`deliver_mp4.py --copy-video` で映像は写すだけにして音だけ -14.6 LUFS に直した。
-- 2026-11-08 06:51 `7da7b75` Video r18: full logo animations, live AI generation shot, direct mp4 from Resolve
-- 2026-11-08 06:52 `bb0cd6d` Rights doc matches HEAD; record history decisions; drop an unused untraced image
-- 2026-11-08 07:01 `2b17c46` Submission form r6 fixes; stop scoring at 87/85/87
-- 2026-11-08 07:03 `9b3aaac` Waiting: bug-hunt fixes (duplicates, CSV re-import, year crossing, title rows, mode, mixed handlers, LINE text)
-- 2026-11-08 07:05 `071080b` Map compare: bug-hunt fixes; AI check field names in Japanese
+- 2026-11-08 06:51 `a44e1db` Video r18: full logo animations, live AI generation shot, direct mp4 from Resolve
+- 2026-11-08 06:52 `82570a6` Rights doc matches HEAD; record history decisions; drop an unused untraced image
+- 2026-11-08 07:01 `2a528cb` Submission form r6 fixes; stop scoring at 87/85/87
+- 2026-11-08 07:03 `71a7a75` Waiting: bug-hunt fixes (duplicates, CSV re-import, year crossing, title rows, mode, mixed handlers, LINE text)
+- 2026-11-08 07:05 `a8da6ae` Map compare: bug-hunt fixes; AI check field names in Japanese
 - r19（作成者の指摘 11/8 朝 2 回目）: ②などの地図の画面で 3D が 2 重に見える（3 か所）、書面を作る場面が実際に文章を作っている画面になっていない、さつま運輸の困りごとが抜けている、1:57〜2:00 は広く切り出す。困りごと 3 つを図にした（MGSAT_m、声の「帰りが」「荷待ちで」「言い出しにくい」に合わせて出す）。書面の場面を広く切り出した（W19_AI_L、送る内容 → 点検中 → 下書き中 → 確かめ中 → 一致と本文）。地図の 2 重は、録画の段階で県境・塗り・経路（deck.gl の層）が下の地図からずれていた。アプリのセッションに伝え、直し中（画素比 2 で地図と deck の解像度比が食い違う疑い）。直ったら地図の場面を撮り直す。
-- 2026-11-08 07:12 `ffd2870` Video r19: Satsuma's three problems as a figure, wider AI generation shot
-- 2026-11-08 07:13 `47e9acd` Compare lite: bug-hunt and grader fixes
-- 2026-11-08 07:18 `0c81241` Map: keep the deck.gl overlay at the map's real pixel ratio (no doubled Japan at DPR 2)
-- 2026-11-08 07:21 `56afd91` Own fleet: return weekday is the return trip's own day; km-free judging; header-less CSV
-- 2026-11-08 07:22 `f76c2b9` README: own-fleet example on Saturday (unified weekday); refresh counts
-- 2026-11-08 07:28 `5f300fa` Parcel 160 size weight limit: 25 kg (author's decision)
-- 2026-11-08 07:33 `bae8a7e` Video r20: sync check tool, re-record map shots after the overlay fix
-- 2026-11-08 07:35 `e310f2f` Commit generation log and the i2i style workflow
-- 2026-11-08 07:35 `a029fa6` Fix grader r4 findings: usage counts at one time point, tracked-only test count
-- 2026-11-08 07:36 `c9deecc` Docs: LOCAL_AI describes what each in-app Claude feature sends; third real run
-- 2026-11-08 07:36 `43f04e2` README: add skills/hooks and the working pattern with the author (grader r4e)
-- 2026-11-08 07:39 `cafa549` README: retake screenshots on the current build; add a shipper-side figure
-- 2026-11-08 07:39 `bdc74e5` README: state where the Claude usage counts come from (grader r4b)
-- 2026-11-08 07:42 `2a2edce` Commit grader records r1-r4 and the score history; rights doc counts and ranges
+- 2026-11-08 07:12 `fdac4de` Video r19: Satsuma's three problems as a figure, wider AI generation shot
+- 2026-11-08 07:13 `548c1d8` Compare lite: bug-hunt and grader fixes
+- 2026-11-08 07:18 `a66c4f4` Map: keep the deck.gl overlay at the map's real pixel ratio (no doubled Japan at DPR 2)
+- 2026-11-08 07:21 `32d3287` Own fleet: return weekday is the return trip's own day; km-free judging; header-less CSV
+- 2026-11-08 07:22 `241dbee` README: own-fleet example on Saturday (unified weekday); refresh counts
+- 2026-11-08 07:28 `28ea9ad` Parcel 160 size weight limit: 25 kg (author's decision)
+- 2026-11-08 07:33 `3992478` Video r20: sync check tool, re-record map shots after the overlay fix
+- 2026-11-08 07:35 `c695f68` Commit generation log and the i2i style workflow
+- 2026-11-08 07:35 `9d9ac70` Fix grader r4 findings: usage counts at one time point, tracked-only test count
+- 2026-11-08 07:36 `f257379` Docs: LOCAL_AI describes what each in-app Claude feature sends; third real run
+- 2026-11-08 07:36 `c57a308` README: add skills/hooks and the working pattern with the author (grader r4e)
+- 2026-11-08 07:39 `b2217df` README: retake screenshots on the current build; add a shipper-side figure
+- 2026-11-08 07:39 `2726533` README: state where the Claude usage counts come from (grader r4b)
+- 2026-11-08 07:42 `4eaec58` Commit grader records r1-r4 and the score history; rights doc counts and ranges
 - r20〜r21（作成者の指示 11/8: 撮ったものが出力に入り意図どおりに動くかを毎回確かめる。話し終わる前に終わる映像、内容とナレーションのずれは強く禁止）: `tools/video/check_sync.py` を作った。書き出した動画の文字起こしと EDL から、声より先に終わる画面（E2）、描き終わる前に切れる図（E4）、文の途中で消える図・字幕（E5・E6）、余韻（E7）、黒（E8）を数える。r17 で既知の欠け（ロゴが途中で切れる、声より先に終わる）を拾い、r19 は 0 件。文字起こしが英字の語（BackFull）の始まりを 1〜2 秒早く付けるので、英字の語は終わりから付け直す。
-- アプリのセッションが地図の層のずれを直した（0c81241、画素比 2 で MapLibre と deck.gl の解像度比が食い違い、層が 1.33 倍に拡大していた）。地図の場面を撮り直した（rec20、W20_*）。帰りの曜日はアプリ側で土曜にそろった。
+- アプリのセッションが地図の層のずれを直した（a66c4f4、画素比 2 で MapLibre と deck.gl の解像度比が食い違い、層が 1.33 倍に拡大していた）。地図の場面を撮り直した（rec20、W20_*）。帰りの曜日はアプリ側で土曜にそろった。
 - r21: check_sync の注意（E3）で、S2 の最初の切り替えが「帰り便を|探すと」の途中だったので、読点の間（144.5 秒）に合わせ、続きの画面を同じ所から始める（W20_P9b_L・W20_P10b_L）。r21 は誤り 0 件、注意 3 件（「Backfull」と言う瞬間の切り替えで、意図どおり）。179.6 秒、-14.6 LUFS。r20 の mp4 は書き出し後に assembly から消えていた（原因不明、点検の材料は残っている）。
-- 2026-11-08 07:47 `0e77273` Video r21: S2 cut on the pause, sync check handles English tokens
-- 2026-11-08 07:52 `789c5af` Waiting: body total equals the tile again; r4b fixes; label tests for both tariff sets
-- 2026-11-08 08:05 `eae4859` Own fleet: visual-debug fixes (稼働日, Japanese role names, 毎週 rule, T7 text, sample label)
-- 2026-11-08 08:06 `3766a0c` Rights: record the decision to leave the pre-rewrite commits as they are
-- 2026-11-08 08:15 `4e6cffd` Compare lite: r4c and visual-debug fixes
-- 2026-11-08 08:17 `040933b` Waiting and driver: visual-debug fixes
-- 2026-11-08 08:17 `44c64d9` Submission form: add demo video URL
-- 2026-11-08 08:17 `f433079` YouTube description draft: repo URL, credits as of r21
-- 2026-11-08 08:32 `36c90c5` Map, AI forms and narrow screens: visual-debug and live-run fixes
-- 2026-11-08 08:44 `47f1f21` AI forms: accurate removed-items list, stale cost table note, short JSON heading
-- 2026-11-08 08:59 `4238f10` Submission form: richer project overview (load factor, shipper cost pass-through, more features)
-- 2026-11-08 09:06 `5424eda` Submission form: overview leads with charts and national statistics
-- 2026-11-08 09:06 `a6a4226` Tests: follow today's intended changes (request signature, consult wording, mm guard, optional date fields)
-- 2026-11-08 09:07 `2318cc0` Refresh counts before redeploying
+- 2026-11-08 07:47 `89201ff` Video r21: S2 cut on the pause, sync check handles English tokens
+- 2026-11-08 07:52 `ef941e9` Waiting: body total equals the tile again; r4b fixes; label tests for both tariff sets
+- 2026-11-08 08:05 `c8aad52` Own fleet: visual-debug fixes (稼働日, Japanese role names, 毎週 rule, T7 text, sample label)
+- 2026-11-08 08:06 `e1e42c9` Rights: record the decision to leave the pre-rewrite commits as they are
+- 2026-11-08 08:15 `48d4cb7` Compare lite: r4c and visual-debug fixes
+- 2026-11-08 08:17 `281dcbd` Waiting and driver: visual-debug fixes
+- 2026-11-08 08:17 `b5fd772` Submission form: add demo video URL
+- 2026-11-08 08:17 `abd7eb1` YouTube description draft: repo URL, credits as of r21
+- 2026-11-08 08:32 `c35e2c0` Map, AI forms and narrow screens: visual-debug and live-run fixes
+- 2026-11-08 08:44 `32c2c37` AI forms: accurate removed-items list, stale cost table note, short JSON heading
+- 2026-11-08 08:59 `4b07a7f` Submission form: richer project overview (load factor, shipper cost pass-through, more features)
+- 2026-11-08 09:06 `3b35fdd` Submission form: overview leads with charts and national statistics
+- 2026-11-08 09:06 `aac3802` Tests: follow today's intended changes (request signature, consult wording, mm guard, optional date fields)
+- 2026-11-08 09:07 `488211a` Refresh counts before redeploying
 
-- 訂正（2026-11-08）: DEVLOG のフックは手元の Windows でも動いていた（11/3 21:51 の「動いていない」は誤り）。記録されなかったのは `git -c user.name=… commit` の形とマージ・amend で、`-c` の形は 037ee54 で拾うようにした。記録は 311 件中 66 件（11/8 07:35 の時点）。
-- 2026-11-08 09:24 `e786e85` Fix grader r5e findings (documents only)
-- 2026-11-08 09:24 `5ceb565` SPEC A53-4: worst-case cost matches §53.3 (Haiku draft, optional Opus)
-- 2026-11-08 09:25 `100b0c0` Refresh counts
-- 2026-11-08 09:28 `80b09e8` README: narrow the Python/JS sameness claim (grader r5b P2)
-- 2026-11-08 11:37 `6e18652` YouTube description: describe the AI draft as the app does now
-- 2026-11-08 11:38 `b43a220` Waiting: screen hotspots use the email's measure; memo rows without partner; Python provisional partner
-- 2026-11-08 11:40 `8116444` Fix grader r5 findings: map data row, plain MIT LICENSE, history counts, r21 video sources
-- 2026-11-08 11:43 `924fa5a` Forklift rule in the map compare, safe handling text in the booking document, ODbL on OSM data
-- 2026-11-08 11:47 `5c7ca1c` English demo video en1: script, voice settings, graphics, captions, plan
-- 2026-11-08 11:51 `a5668b3` Plan: stop the grading loop at round 5 (author's decision)
-- 2026-11-08 11:52 `e56b9ab` Compare lite: r5c fixes (whole-table mm question, mm button over 1,000 cm, 縦×横×高さ header, partial modes not counted)
-- 2026-11-08 12:10 `b5499fe` Final full test run and refreshed counts before the last redeploy
-- 2026-11-08 12:15 `d466cc8` Test: compare view keeps animated truck, rail, ship and plane layers; no CSP violations
+- 訂正（2026-11-08）: DEVLOG のフックは手元の Windows でも動いていた（11/3 21:51 の「動いていない」は誤り）。記録されなかったのは `git -c user.name=… commit` の形とマージ・amend で、`-c` の形は 707543e で拾うようにした。記録は 311 件中 66 件（11/8 07:35 の時点）。
+- 2026-11-08 09:24 `a1f4463` Fix grader r5e findings (documents only)
+- 2026-11-08 09:24 `6e71f97` SPEC A53-4: worst-case cost matches §53.3 (Haiku draft, optional Opus)
+- 2026-11-08 09:25 `238d4f5` Refresh counts
+- 2026-11-08 09:28 `eade298` README: narrow the Python/JS sameness claim (grader r5b P2)
+- 2026-11-08 11:37 `c7a3882` YouTube description: describe the AI draft as the app does now
+- 2026-11-08 11:38 `20cb0ed` Waiting: screen hotspots use the email's measure; memo rows without partner; Python provisional partner
+- 2026-11-08 11:40 `e073be6` Fix grader r5 findings: map data row, plain MIT LICENSE, history counts, r21 video sources
+- 2026-11-08 11:43 `547e6ab` Forklift rule in the map compare, safe handling text in the booking document, ODbL on OSM data
+- 2026-11-08 11:47 `d24537c` English demo video en1: script, voice settings, graphics, captions, plan
+- 2026-11-08 11:51 `97faf95` Plan: stop the grading loop at round 5 (author's decision)
+- 2026-11-08 11:52 `b5be42d` Compare lite: r5c fixes (whole-table mm question, mm button over 1,000 cm, 縦×横×高さ header, partial modes not counted)
+- 2026-11-08 12:10 `7c54290` Final full test run and refreshed counts before the last redeploy
+- 2026-11-08 12:15 `7355860` Test: compare view keeps animated truck, rail, ship and plane layers; no CSP violations
 - 英語版 en1（作成者の指示 11/8: 日本語版を残して編集できるまま、アメリカ英語の英語版。中身は全部英語、デモの画面は日本語のまま）: 台本 `docs/video/shots_en.json`（13 区間を同じ内容で）、声は ElevenLabs の Eric（アメリカ英語、男性）・eleven_v4・1.05 倍。図・章の見出し・ロゴは *_en.html（coder が 15 本を英語にした）、字幕 `subs_en1_layout.json`、出典の行 `sources_en_map.json`、組み立て `tools/video/en1_plan.json`。英語は語順が違うので、画面の切り替えは字幕の切れ目ではなく言葉の時刻（until_say）で決める。道具は英語に対応させた（文の切れ目、間の種類、文字起こしの言語）。日本語版 r21 を作り直して EDL と字幕が前と同じことを確かめた。
 - 英語版の途中の誤り: 連鎖図の時刻を作る道具が、英語の出力先を日本語版の CHAIN_p1_m.html に書いていた（本線の直し漏れ）。日本語の .mov は描き直していなかったので動画には影響なし。git から戻し、出力先を直した。check_sync で、2 文目の頭の 1 秒の黒（図の最初の項目を文の後ろの言葉に合わせていた）を見つけて直した。
 - Resolve の Backfull_en1 タイムライン → `outputs/video/assembly/Backfull_en1c.mp4`（167.1 秒、-14.6 LUFS、check_sync 誤り 0 件）。日本語版のタイムライン Backfull_r21 はそのまま残してある。
-- 2026-11-08 12:18 `209bd2c` English video en1c: retimed graphics, held closing logo, chain output path fix
-- 2026-11-08 12:31 `0cb08bd` Refresh counts after the final redeploy
-- 2026-11-08 12:32 `97dde6f` Test: vehicles move in the guided compare flow without clicks
+- 2026-11-08 12:18 `e93d756` English video en1c: retimed graphics, held closing logo, chain output path fix
+- 2026-11-08 12:31 `0c798d9` Refresh counts after the final redeploy
+- 2026-11-08 12:32 `4a9eceb` Test: vehicles move in the guided compare flow without clicks
 - 2026-11-08 作成者が提出した（「多少問題あるけど submit した」）。日本語版 r21 系と英語版 en1c まで。残りの指摘（声で言う Opus・Sonnet・Haiku の役割分担とアプリの既定の食い違い、英語版の新しい採点者による採点）は未対応。
-- 2026-11-08 12:35 `b3847dd` README: link the English demo video
-- 2026-11-08 12:41 `d28b0f1` Compare: tint and light the 3D vehicles so planes, ships and trains stand out
-- 2026-11-08 12:54 `c1af204` Trucks now: refresh the JARTIC counts (were 14 hours old)
-- 2026-11-08 13:01 `2061f61` Final check: add plus points the README was missing; tidy stray files
-- 2026-11-08 13:03 `69d721f` README: skills used and how each was put to work; fix mermaid diagrams
-- 2026-11-08 13:06 `9b4e59c` Fix final-check findings: first-commit contents, test count once, compare example, SPEC scope, rights rows
-- 2026-11-08 13:07 `a75cc1b` Add the final security audit record (high 0, medium 1, low 4)
-- 2026-11-08 13:13 `f81db03` Compare lite and trucks now: public-sweep fixes; API terms sentence always visible
-- 2026-11-08 13:17 `236168f` Waiting and driver: public-sweep fixes (shipper comparison amount P0, reply text, scope labels, phone table)
-- 2026-11-08 13:31 `0909ee8` Own fleet: public-sweep fixes (alternative rate P0, 有/無 marks P0, clarity, offer text)
-- 2026-11-08 13:31 `824d1cf` Waiting shipper comparison: own amount only from the reception log (P0 cluster)
-- 2026-11-08 13:55 `2efda57` Validator: remap plan-08 checks to current tests, add README run and order headings
-- 2026-11-08 14:08 `c73206d` Public-site sweep fixes: map compare, find, input guards (P0s and P1s)
-- 2026-11-08 15:16 `3e9225c` Bound shipment input in parse_shipment (security audit medium)
-- 2026-11-08 16:39 `e116376` Japanese wording sweep and full-suite fixes after the public review
-- 2026-11-08 16:40 `ea9bd06` Refresh counts (344 commits, 2,393 tests)
-- 2026-11-08 18:00 `5d704e5` Record final validator run on ea9bd06 (90/100, D1 open)
-- 2026-11-08 18:49 `496d107` Final screen review r1-r2 fixes: less text, inputs that work, layout
-- 2026-11-14 00:54 `1203908` Remove non-commercial wording and personal traces from docs
-- 2026-11-14 02:24 `e3134d4` Remove remaining hints about the author's workplace
-- 2026-11-14 07:50 `83d1a13` Remove the v3 problem statement and the RB top-space document
-- 2026-11-14 08:04 `8e82ef1` Remove the first plan folder and the find-screen photo from README
+- 2026-11-08 12:35 `00d74e8` README: link the English demo video
+- 2026-11-08 12:41 `487388d` Compare: tint and light the 3D vehicles so planes, ships and trains stand out
+- 2026-11-08 12:54 `30ac674` Trucks now: refresh the JARTIC counts (were 14 hours old)
+- 2026-11-08 13:01 `368fd96` Final check: add plus points the README was missing; tidy stray files
+- 2026-11-08 13:03 `c9cca6d` README: skills used and how each was put to work; fix mermaid diagrams
+- 2026-11-08 13:06 `a4a837e` Fix final-check findings: first-commit contents, test count once, compare example, SPEC scope, rights rows
+- 2026-11-08 13:13 `e9cea10` Compare lite and trucks now: public-sweep fixes; API terms sentence always visible
+- 2026-11-08 13:17 `ac91ef5` Waiting and driver: public-sweep fixes (shipper comparison amount P0, reply text, scope labels, phone table)
+- 2026-11-08 13:31 `54372b3` Own fleet: public-sweep fixes (alternative rate P0, 有/無 marks P0, clarity, offer text)
+- 2026-11-08 13:31 `0bf369b` Waiting shipper comparison: own amount only from the reception log (P0 cluster)
+- 2026-11-08 13:55 `3242733` Validator: remap plan-08 checks to current tests, add README run and order headings
+- 2026-11-08 14:08 `9ef004e` Public-site sweep fixes: map compare, find, input guards (P0s and P1s)
+- 2026-11-08 15:16 `9ffb2d1` Bound shipment input in parse_shipment (security audit medium)
+- 2026-11-08 16:39 `e3a01ae` Japanese wording sweep and full-suite fixes after the public review
+- 2026-11-08 16:40 `0bac3a3` Refresh counts (344 commits, 2,393 tests)
+- 2026-11-08 18:00 `a621617` Record final validator run on 0bac3a3 (90/100, D1 open)
+- 2026-11-08 18:49 `c85fa0f` Final screen review r1-r2 fixes: less text, inputs that work, layout
+- 2026-11-14 00:54 `d8edce1` Remove non-commercial wording and personal traces from docs
+- 2026-11-14 02:24 `132edd3` Remove remaining hints about the author's workplace
+- 2026-11-14 07:50 `380e28f` Remove the v3 problem statement and the RB top-space document
+- 2026-11-14 08:04 `100ffdf` Remove the first plan folder and the find-screen photo from README
+
+## 2026-11-14 履歴の整理
+
+- 作成者の指示で、全ブランチの履歴を書き換えた。最初の計画資料・作成者の構想の文書と、それに関わる 11/3 のコミット 4 つ、11/14 に消した文書、実在の運賃表の抜粋を履歴から外し、履歴の中の作成者の呼び名・PC のユーザー名・作者欄のメールアドレスを置き換えた。
+- コミット番号はすべて変わった。文書の中のコミット番号は新しい番号に差し替えた（履歴から消えたコミットを指していた 2 か所は外した）。
