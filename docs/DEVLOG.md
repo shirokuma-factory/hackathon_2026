@@ -542,3 +542,4 @@
 - 2026-11-08 18:49 `496d107` Final screen review r1-r2 fixes: less text, inputs that work, layout
 - 2026-11-14 00:54 `1203908` Remove non-commercial wording and personal traces from docs
 - 2026-11-14 02:24 `e3134d4` Remove remaining hints about the author's workplace
+- 2026-11-14 07:50 `83d1a13` Remove the v3 problem statement and the RB top-space document
