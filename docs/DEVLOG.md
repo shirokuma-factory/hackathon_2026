@@ -543,3 +543,4 @@
 - 2026-11-14 00:54 `1203908` Remove non-commercial wording and personal traces from docs
 - 2026-11-14 02:24 `e3134d4` Remove remaining hints about the author's workplace
 - 2026-11-14 07:50 `83d1a13` Remove the v3 problem statement and the RB top-space document
+- 2026-11-14 08:04 `8e82ef1` Remove the first plan folder and the find-screen photo from README
