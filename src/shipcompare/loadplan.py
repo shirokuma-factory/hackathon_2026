@@ -59,8 +59,7 @@ def _box_container() -> Container:
     box = load_tariff("jitbox")["box"]
     ln, wd, ht = (int(x) for x in box["inner_mm"])
     return Container("jitbox", "ボックス（JITBOX 1本）", ln, wd, ht, int(box["max_kg"]), "公表例",
-                     "提供会社の公表値（内寸 1,040×1,040×1,700mm、最大積載量 500kg）。"
-                     "最初の計画資料 の 04 と 05 に出典。")
+                     "提供会社の公表値（内寸 1,040×1,040×1,700mm、最大積載量 500kg）。")
 
 
 def _deck(deck_id: str) -> tuple[int, int, int, int]:
