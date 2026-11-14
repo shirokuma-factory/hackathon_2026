@@ -154,10 +154,14 @@ def test_spec13_9_ferry_has_no_price_example():
 def test_spec13_9_guide_values_match_spec():
     rows = {g.name: g for g in load_guide()}
     pal = rows["パレット1枚単位（ヤマト JITパレットチャーター便）"]
-    assert "東京→宮城 18,300円" in pal.price and pal.who == "法人発→法人着"
-    assert "500km で 69,100円（公表の距離制から計算）" in rows["軽トラック1台の貸切（赤帽首都圏）"].price
+    assert pal.who == "法人発→法人着"
     jr = rows["鉄道 12ft コンテナ（JR貨物、駅間）"]
-    assert "札幌→東京 98,900円" in jr.price and "要確認" in jr.who and "札幌→東京 翌日" in jr.days
+    assert "要確認" in jr.who and "札幌→東京 翌日" in jr.days
+    # 各社の運賃の写しは公開しない（2026-11-14）。額は出さず、出典の頁を見るよう書く
+    for name in (pal.name, "軽トラック1台の貸切（赤帽首都圏）", jr.name):
+        g = rows[name]
+        assert g.price is None and "出典の頁で確かめる" in g.price_note
+        assert not any(ch.isdigit() for ch in g.price_text)
     assert "運賃表なし" in rows["パレット1枚単位（SST便）"].price_text
 
 

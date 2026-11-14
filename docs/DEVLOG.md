@@ -15,7 +15,7 @@
 - 次にすること: Claude Code で `/mcp` を開き `local-ai` の接続を確かめる。テーマと課題を決める。
 - local-ai MCP の接続確認: ComfyUI は応答（RTX 5080、VRAM 空き 15.6GB、キュー 0）。`workflows/comfyui/` はまだ空。Ollama は未導入で 11434 番が拒否。代わりに LM Studio（`lms`）が入っていて、gemma-4-12b-qat / gemma-4-26b-a4b-qat / qwen3.8-27b / nomic-embed が手元にある。
 - 決定: ローカル LLM は当面使わず、ComfyUI だけで進める（作成者の判断）。Ollama の導入と LM Studio への切り替えは見送り。
-- 物流レビュー資料（最初の計画資料）の制作環境を手元と照合: ComfyUI 応答あり、Resolve Studio 21.1.1 は MCP 接続済みだが未起動、ffmpeg 7.1 は `C:iin` にあるが PATH 外で ffprobe なし、ElevenLabs の API キーは環境変数に未設定、Node は未導入（uv / Python 3.13 はあり）。
+- 物流レビュー資料（最初の計画資料）の制作環境を手元と照合: ComfyUI 応答あり、Resolve Studio 21.1.1 は MCP 接続済みだが未起動、ffmpeg 7.1 は `C:\ai\bin` にあるが PATH 外で ffprobe なし、ElevenLabs の API キーは環境変数に未設定、Node は未導入（uv / Python 3.13 はあり）。
 - 公開前の確認: 秘密情報・個人情報なし。PC 固有パス3か所を相対パスに修正（68fd89c）。修正前のパスが残る 33260ea の履歴書き換えは、ユーザー名と作業フォルダ ID だけで認証に使えないため行わない（作成者の判断）。
 - 提出条件: 動画3分、締切 11/8（日）20:00、提出目標 11/7（土）（作成者の指定）。今日を開発1日目とし、開発 11/3〜11/5、動画 11/6〜11/7、予備 11/8。審査基準との照合は docs/plan/2026-11-03_審査基準と計画の照合.md。
 - 決定: 物流の実体験・身近な対象者はいない。テーマを自分の分野へ変える案は採らず、テーマ2・物流のまま進める（作成者の判断）。利用者は架空と明示し、困りごとの大きさは公的な出典で示す。
@@ -413,8 +413,8 @@
 - r10: 冒頭の図の下に暗くする幕、連鎖の図は声で言う 2 項目だけ（`CHAIN_m.html` の two）、H1 の声を戻し「運べる量の」で「6割」の行を出す（`make_chain_timed.py` が H1 の声の時刻から決める）、P1 の「荷物の約9割」を声と図から外す、HP を 1 文に、章の見出しから 1.4 秒・線とロゴの音の後に声、切り替えは重ねない（gap_style "cut"）、ロゴの音を前へ。`tools/video/check_sfx_gap.py` で声と効果音の重なりを数える（0 件）。
 - r11: S2 の料金の図の出始めを早め、最後の「約17.8万円安い」を 1.4 秒見せる（遅らせた版では数え上げが途中で切れた）。最後の場面の出典の行に外の素材のクレジット（GitHub リポジトリ採点基準準備のセッションの依頼）。EDL のパスをリポジトリからの相対パスに。Resolve の書き出しの前に、タイムラインの素材の数が EDL と合うかを確かめる（配置が途中で切れたまま書き出しを始めたことがあったため）。
 - 確認表: `docs/video/2026-11-07_r10_確認表.md`（指摘 23 項目、確かめ方と結果）。
-- 2026-11-07 22:21 `959dddb` Redesign pages, Kagoshima sample, hero video, Claude explanation
-- 作成者が Cloud Shell で 959dddb を Cloud Run にデプロイした（revision backfull-demo-00003-pvz）。公開版で /・driver.html・compare_lite.html・waiting.html・背景の映像が 200 で返り、最初の画面は新しい版（中央の欄、Backfull、v7 の背景映像が 14.6 秒で再生中）であることをヘッドレス Edge で確かめた。/api/ai/status は available false（disabled）。Artifact の 2 つ（荷待ちの書面 Version 4、送り方を比べる Version 2）も同じ URL に出し直した。1920 幅では左上の「帰りの荷台を、荷主の荷で埋める」が明るい陸の上で読みにくい。
+- 2026-11-07 22:21 `fe19584` Redesign pages, Kagoshima sample, hero video, Claude explanation
+- 作成者が Cloud Shell で fe19584 を Cloud Run にデプロイした（revision backfull-demo-00003-pvz）。公開版で /・driver.html・compare_lite.html・waiting.html・背景の映像が 200 で返り、最初の画面は新しい版（中央の欄、Backfull、v7 の背景映像が 14.6 秒で再生中）であることをヘッドレス Edge で確かめた。/api/ai/status は available false（disabled）。Artifact の 2 つ（荷待ちの書面 Version 4、送り方を比べる Version 2）も同じ URL に出し直した。1920 幅では左上の「帰りの荷台を、荷主の荷で埋める」が明るい陸の上で読みにくい。
 
 ## 2026-11-07 夜 デモ動画 r12（窓を左右に、データの見える化、海外の素材をやめる）
 
